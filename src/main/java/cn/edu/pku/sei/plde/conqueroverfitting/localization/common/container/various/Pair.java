@@ -63,7 +63,6 @@ public class Pair<U, V> implements Comparable<Pair<U, V>> {
         return format("<%s, %s>", first().toString(), second().toString());
     }
 
-    @Override
     public int compareTo(Pair<U, V> otherPair) {
         Object[] components = new Object[]{first(), second(), otherPair.first(), otherPair.second()};
         for (int i = 0; i < 2; i += 1) {

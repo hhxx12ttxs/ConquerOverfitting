@@ -1,0 +1,436 @@
+package cn.edu.pku.sei.plde.conqueroverfitting.fixcapture;
+
+import com.gzoltar.core.GZoltar;
+import com.gzoltar.core.instr.testing.TestResult;
+import de.unisb.cs.st.javaslicer.slicing.Slicer;
+import de.unisb.cs.st.javaslicer.tracer.TracerAgent;
+import javassist.NotFoundException;
+import org.apache.commons.lang3.StringUtils;
+import org.junit.runner.JUnitCore;
+import java.io.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+
+
+/**
+ * Created by yanrunfa on 16/2/16.
+ */
+
+public class Capturer {
+    public final String _classpath;
+    public final String _testclasspath;
+    public final String _testsrcpath;
+    public String _classname;
+    public String _functionname;
+    public String _fileaddress;
+    public String _testTrace;
+    public String _classCode;
+    public String _functionCode;
+    public int _errorLineNum;
+    /**
+     *
+     * @param classpath The class path
+     * @param testclasspath The test's class path
+     * @param testsrcpath the test's source path
+     */
+    public Capturer(String classpath, String testclasspath, String testsrcpath){
+        _classpath = classpath;
+        _testclasspath = testclasspath;
+        _testsrcpath = testsrcpath;
+
+    }
+    /**
+     *
+     * @param classname The test's class name to be fixed
+     * @param functionname the name of test function
+     * @return the fix string
+     */
+    public String getFixFrom(String classname, String functionname) throws Exception{
+        _classname = classname;
+        _functionname = functionname;
+        _fileaddress = _testsrcpath + System.getProperty("file.separator") + _classname.replace('.',System.getProperty("file.separator").charAt(0))+".java";
+        return run();
+    }
+
+    private String run() throws Exception{
+        _testTrace = runTest();
+        _classCode =  getCodeFromFile(_fileaddress);
+        _functionCode = getFunctionCodeFromCode(_classCode, _functionname);
+        _errorLineNum = getErrorLineNumFromTestTrace();
+        return fixTest();
+    }
+
+    private int getErrorLineNumFromTestTrace(){
+        if (_testTrace == null){
+            return -1;
+        }
+        String[] traces = _testTrace.split("\n");
+        for (String trace: traces){
+            if (trace.contains(_classname+"."+_functionname)){
+                return Integer.valueOf(trace.substring(trace.lastIndexOf(':')+1, trace.lastIndexOf(')')));
+            }
+        }
+        return -1;
+    }
+
+    private String fixTest() throws Exception{
+        String functionBody = _functionCode.substring(_functionCode.indexOf('{')+1,_functionCode.lastIndexOf('}'));
+        String[] functionLines = functionBody.split("\n");
+        boolean annotationFlag = false;
+        int errorLineIndex = 0;
+        if (_errorLineNum > 0){
+            String errorLine = _classCode.split("\n")[_errorLineNum -1].trim();
+            for (int i=0; i< functionLines.length; i++){
+                String functionLine = functionLines[i].replace("\n","").trim();
+                if (functionLine.equals(errorLine)){
+                    errorLineIndex = i;
+                }
+            }
+        }
+        for (int i=errorLineIndex; i<functionLines.length; i++){
+            String detectingLine = functionLines[i].replace("\n","").trim();
+            //clean the annotation
+            if (detectingLine.contains("*/")){
+                detectingLine = detectingLine.substring(detectingLine.indexOf("*/")+1);
+                annotationFlag = false;
+            }
+            if (annotationFlag || detectingLine.startsWith("//")){
+                continue;
+            }
+            if (detectingLine.contains("//")){
+                detectingLine = detectingLine.substring(0,detectingLine.indexOf("//"));
+            }
+            if (detectingLine.contains("/*")){
+                detectingLine = detectingLine.substring(0,detectingLine.indexOf("/*"));
+                annotationFlag = true;
+            }
+
+            if (detectingLine.contains("Exception") && detectingLine.contains("catch")){
+                return exceptionProcessing(detectingLine);
+            }
+            if (detectingLine.contains("assert")){
+                return assertProcessing(detectingLine);
+            }
+        }
+        //No Assert And Throw Exception Found
+        if (_functionCode.startsWith("(expected")){
+            String expectedClass = _functionCode.substring(_functionCode.indexOf("=")+1,_functionCode.indexOf(")"));
+            return "throw new " +expectedClass.replace(".class","").trim() + "()";
+        }
+
+        throw new Exception("No Fix Found for This Test");
+    }
+
+    private String exceptionProcessing(String exceptionLine){
+        String exceptionName = exceptionLine.substring(exceptionLine.indexOf("(")+1, exceptionLine.indexOf(")")).trim().split(" ")[0];
+        return "throw new " + exceptionName + "()";
+    }
+
+    private String assertProcessing(String assertLine) throws Exception{
+        String assertType = assertLine.substring(0, assertLine.indexOf('('));
+        List<String> parameters = divideParameter(assertLine, 1);
+        if (assertType.contains("assertEquals")){
+            List<String> callParam;
+            List<String> returnParam;
+            String returnString;
+            if (parameters.get(0).contains("(") && parameters.get(0).contains(")")){
+                callParam = divideParameter(parameters.get(0),1);
+                returnParam = divideParameter(parameters.get(1), 1);
+                returnString = "return "+parameters.get(1);
+                if (parameters.get(0).contains(".")){
+                    String testClass = parameters.get(0).substring(0,parameters.get(0).indexOf("."));
+                    if (parameters.get(1).contains(".")){
+                        if (parameters.get(1).substring(0, parameters.get(1).indexOf(".")).equals(testClass)){
+                            returnString = "return " + parameters.get(1).substring(parameters.get(1).indexOf(".")+1);
+                        }
+
+                    }
+                }
+            }
+            else {
+                callParam = divideParameter(parameters.get(1),1);
+                returnParam = divideParameter(parameters.get(0), 1);
+                returnString = "return "+parameters.get(0);
+                if (parameters.get(1).contains(".")){
+                    String testClass = parameters.get(1).substring(0,parameters.get(1).indexOf("."));
+                    if (parameters.get(0).contains(".")){
+                        if (parameters.get(0).substring(0, parameters.get(0).indexOf(".")).equals(testClass)){
+                            returnString = "return " + parameters.get(0).substring(parameters.get(0).indexOf(".")+1);
+                        }
+
+                    }
+                }
+            }
+            String attachLines = slicingProcess(returnParam, callParam, assertLine);
+            return attachLines + returnString;
+        }
+        else if (assertType.contains("assertNull")){
+            return "return null";
+        }
+        else if (assertType.contains("assertFalse")){
+            return "return false";
+        }
+        else if (assertType.contains("assertTrue")){
+            return "return true";
+        }
+        throw new Exception("Unknown assert type");
+    }
+
+
+
+    private String runTest() throws Exception {
+        ArrayList<String> classpaths = new ArrayList<String>();
+        classpaths.add(_classpath);
+        classpaths.add(_testclasspath);
+        GZoltar gzoltar = new GZoltar(System.getProperty("user.dir"));
+        gzoltar.setClassPaths(classpaths);
+        gzoltar.addPackageNotToInstrument("org.junit");
+        gzoltar.addPackageNotToInstrument("junit.framework");
+        gzoltar.addTestPackageNotToExecute("junit.framework");
+        gzoltar.addTestPackageNotToExecute("org.junit");
+        gzoltar.addTestToExecute(_classname);
+        gzoltar.addClassNotToInstrument(_classname);
+        gzoltar.run();
+        List<TestResult> testResults = gzoltar.getTestResults();
+        for (TestResult testResult: testResults){
+            if (testResult.getName().substring(testResult.getName().lastIndexOf('#')+1).equals(_functionname)){
+                return testResult.getTrace();
+            }
+        }
+        throw new NotFoundException("No Test Named "+_functionname + " Found in Test Class " + _classname);
+    }
+
+
+
+    private static String getCodeFromFile(String fileaddress) throws Exception{
+        try {
+            FileInputStream stream = new FileInputStream(new File(fileaddress));
+            byte[] b=new byte[stream.available()];
+            int len = stream.read(b);
+            if (len <= 0){
+                throw new IOException("Source code file "+fileaddress+" read fail!");
+            }
+            stream.close();
+            return new String(b);
+        } catch (Exception e){
+            System.out.println(e.getMessage());
+            throw e;
+        }
+    }
+
+
+
+
+    private static List<String> divideTestFunction(String code){
+        List<String> result = new ArrayList<String>();
+        String[] items = code.split("public void");
+        for (int j = 1; j<items.length; j++){
+            String item = items[j];
+            int startPoint = item.indexOf('{')+1;
+            int braceCount = 1;
+            for (int i=startPoint; i<item.length();i++){
+                if (item.charAt(i) == '}'){
+                    if (--braceCount == 0){
+                        result.add(item.substring(0, i+1));
+                        break;
+                    }
+                }
+                if (item.charAt(i) == '{'){
+                    braceCount++;
+                }
+            }
+        }
+        return result;
+    }
+
+
+    private static List<String> divideParameter(String line, int level){
+        line = line.replace(" ", "");
+        List<String> result = new ArrayList<String>();
+        int bracketCount = 0;
+        int startPoint = 0;
+        for (int i=0;i<line.length();i++){
+            char ch = line.charAt(i);
+            if (ch == ',' && bracketCount <= level){
+                if (startPoint != i ){
+                    result.add(line.substring(startPoint,i));
+                }
+                startPoint = i+1;
+            }
+            else if (ch == '('){
+                if (++bracketCount <= level){
+                    startPoint = i + 1;
+                }
+            }
+            else if (ch == '['){
+                if (++bracketCount <= level){
+                    if (startPoint != i){
+                        result.add(line.substring(startPoint,i));
+                    }
+                    startPoint = i + 1;
+                }
+            }
+            else if (ch == ')' || ch == ']'){
+                if (bracketCount-- <= level){
+                    if (startPoint != i){
+                        result.add(line.substring(startPoint,i));
+                    }
+                    startPoint = i + 1;
+                }
+            }
+            else if (ch == '+' || ch == '-' || ch == '/' || ch == '*') {
+                if (bracketCount < level) {
+                    if (startPoint != i) {
+                        result.add(line.substring(startPoint, i));
+                    }
+                    startPoint = i + 1;
+                }
+            }
+        }
+        return result;
+    }
+
+    private static String getFunctionCodeFromCode(String code, String targetFunctionName) throws NotFoundException{
+        if (code.contains("@Test")){
+            String[] tests = code.split("@Test");
+            for (String test: tests){
+                if (test.contains("public void "+targetFunctionName+"()")){
+                    return test;
+                }
+            }
+        }
+        else {
+            List<String> tests = divideTestFunction(code);
+            for (String test: tests){
+                if (test.trim().startsWith(targetFunctionName+"()")){
+                    return "public void"+ test.trim();
+                }
+            }
+        }
+
+        throw new NotFoundException("Target function: "+ targetFunctionName+ " No Found");
+    }
+
+    private String slicingProcess(List<String> returnParam, List<String> callParam, String assertLine) throws Exception{
+        for (int i=0; i<returnParam.size(); i++){
+            if (StringUtils.isNumeric(returnParam.get(i))){
+                returnParam.remove(i);
+            }
+        }
+        for (int i=0; i<callParam.size(); i++){
+            if (StringUtils.isNumeric(callParam.get(i))){
+                callParam.remove(i);
+            }
+        }
+        for (int i=0; i<callParam.size(); i++){
+           if (returnParam.contains(callParam.get(i))){
+               returnParam.remove(callParam.get(i));
+          }
+        }
+        if (returnParam.size() == 0){
+            return "";
+        }
+        int assertLineNum = 0;
+        String[] codeLines = _classCode.split("\n");
+        for (int i=0;i<codeLines.length; i++){
+            if (codeLines[i].contains(assertLine)) {
+                assertLineNum = i+1;
+            }
+        }
+        if (assertLineNum == 0){
+            throw new NotFoundException("Cannot Found Assert Line :"+assertLine+" in Class "+_classname);
+        }
+        List<String> args = new ArrayList<String>();
+        List<Integer> lineToBeAdd = new ArrayList<Integer>();
+        String slicePath = Slicer.class.getProtectionDomain().getCodeSource().getLocation().getFile();
+        for (String var: returnParam){
+            String[] arg = {"java -Xmx2g -jar",slicePath,"-p",System.getProperty("user.dir")+"/test.trace",_classname+"."+_functionname+":"+assertLineNum+":{"+var+"}"};
+            args.add(StringUtils.join(arg," ")+'\n');
+        }
+        String slicingResult = slicing(_classpath,_testclasspath,_classname, args);
+        //System.out.print(slicingResult);
+        for (String var: returnParam){
+            if (!slicingResult.contains("{"+var+"}")){
+                throw new Exception("Slice Output Error: \n"+slicingResult);
+            }
+            String[] sliceResult = slicingResult.substring(slicingResult.indexOf("{"+var+"}"), slicingResult.indexOf("Computation took",slicingResult.indexOf("{"+var+"}"))).split("\n");
+            for (String line: sliceResult){
+                if (line.contains(_classname+"."+_functionname)){
+                    lineToBeAdd.add(Integer.valueOf(line.substring(line.indexOf(':')+1,line.indexOf(' '))));
+                }
+            }
+        }
+        String result = "";
+        lineToBeAdd = new ArrayList<Integer>(new HashSet<Integer>(lineToBeAdd));
+        for (int line: lineToBeAdd){
+            result += _classCode.split("\n")[line-1].trim() + "\n";
+        }
+        return result;
+    }
+
+    private String slicing(String classpath, String testclasspath, String classname, List<String> sliceArgs) throws Exception{
+        String tracePath = TracerAgent.class.getProtectionDomain().getCodeSource().getLocation().getFile();
+        String junitPath = JUnitCore.class.getProtectionDomain().getCodeSource().getLocation().getFile();
+        String[] args = {
+                "java", "-javaagent:"+tracePath+"=tracefile:"+System.getProperty("user.dir")+"/test.trace",
+                "-cp","\""+classpath+System.getProperty("path.separator")+testclasspath+System.getProperty("path.separator")+junitPath+"\"",
+                "org.junit.runner.JUnitCore",
+                classname
+        };
+        String arg = StringUtils.join(args, ' ')+'\n';
+        String fileName;
+        String cmd;
+        if (System.getProperty("os.name").toLowerCase().startsWith("win")){
+            fileName = System.getProperty("user.dir")+"/args.bat";
+            cmd = System.getProperty("user.dir")+"/args.bat";
+        }
+        else {
+            fileName = System.getProperty("user.dir")+"/args.sh";
+            cmd = "bash " + System.getProperty("user.dir")+"/args.sh";
+        }
+        File batFile = new File(fileName);
+        if (!batFile.exists()){
+            boolean result = batFile.createNewFile();
+            if (!result){
+                throw new Exception("Cannot Create bat file:" + fileName);
+            }
+        }
+        FileOutputStream outputStream = new FileOutputStream(batFile);
+        outputStream.write(arg.getBytes());
+        for (String sliceArg: sliceArgs){
+            outputStream.write(sliceArg.getBytes());
+        }
+        outputStream.close();
+        batFile.deleteOnExit();
+        Process process= Runtime.getRuntime().exec(cmd);
+        return getShellOut(process);
+    }
+
+    private static  String getShellOut(Process p) throws IOException{
+        StringBuilder sb = new StringBuilder();
+        BufferedInputStream in = null;
+        BufferedReader br = null;
+
+        try {
+            in = new BufferedInputStream(p.getInputStream());
+            br = new BufferedReader(new InputStreamReader(in));
+            String s;
+            while ((s = br.readLine()) != null) {
+                sb.append(System.getProperty("line.separator"));
+                sb.append(s);
+            }
+        } catch (IOException e) {
+            System.out.println(e.getMessage());
+            throw e;
+        } finally {
+            if (br != null){
+                br.close();
+            }
+            if (in != null){
+                in.close();
+            }
+        }
+        return sb.toString();
+    }
+}
