@@ -16,11 +16,11 @@ import com.gzoltar.core.components.Statement;
  */
 public class ErrorLocalizationTest {
 
-    private final String classPath = "/Users/yanrunfa/Documents/defects4j/tmp/Math-3/target/classes";
-    private final String testPath = "/Users/yanrunfa/Documents/defects4j/tmp/Math-3/target/test-classes";
+    private final String classPath = "H:/defects4j/tmp/Math-3/target/classes";
+    private final String testPath = "H:/defects4j/tmp/Math-3/target/test-classes";
     @Test
     public void testGetSuspiciousList(){
-        Localization localization = new Localization("/Users/yanrunfa/Documents/defects4j/tmp/Math-3/target/classes", "/Users/yanrunfa/Documents/defects4j/tmp/Math-3/target/test-classes");
+        Localization localization = new Localization("H:/defects4j/tmp/Math-3/target/classes", "H:/defects4j/tmp/Math-3/target/test-classes");
         Collection<Statement> statements = localization.getSuspiciousList();
         for (Statement statement: statements){
             if (statement.getSuspiciousness() > -1){
@@ -32,7 +32,7 @@ public class ErrorLocalizationTest {
 
     @Test
     public void testGetSuspiciousListLite(){
-        Localization localization = new Localization("/Users/yanrunfa/Documents/defects4j/tmp/Math-3/target/classes", "/Users/yanrunfa/Documents/defects4j/tmp/Math-3/target/test-classes");
+        Localization localization = new Localization("H:/defects4j/tmp/Math-3/target/classes", "H:/defects4j/tmp/Math-3/target/test-classes");
         List<HashMap<SuspiciousField, String>> maps = localization.getSuspiciousListLite();
         for (HashMap<SuspiciousField, String> map: maps){
             map.forEach(new BiConsumer<SuspiciousField, String>() {
@@ -47,7 +47,7 @@ public class ErrorLocalizationTest {
 
     @Test
     public void testGetSuspiciousListLiteWithSpecificLine(){
-        Localization localization = new Localization("/Users/yanrunfa/Documents/defects4j/tmp/Math-3/target/classes", "/Users/yanrunfa/Documents/defects4j/tmp/Math-3/target/test-classes");
+        Localization localization = new Localization("H:/defects4j/tmp/Math-3/target/classes", "H:/defects4j/tmp/Math-3/target/test-classes");
         List<HashMap<SuspiciousField, String>> maps = localization.getSuspiciousListLiteWithSpecificLine();
         for (HashMap<SuspiciousField, String> map: maps){
             map.forEach(new BiConsumer<SuspiciousField, String>() {
@@ -68,7 +68,7 @@ public class ErrorLocalizationTest {
         //Np=(successfulTests - executedAndPassedCount);
         //Nf=(nbFailingTest - executedAndFailedCount);
 
-        Localization localization = new Localization("/Users/yanrunfa/Documents/defects4j/tmp/Math-3/target/classes", "/Users/yanrunfa/Documents/defects4j/tmp/Math-3/target/test-classes");
+        Localization localization = new Localization("H:/defects4j/tmp/Math-3/target/classes", "H:/defects4j/tmp/Math-3/target/test-classes");
         Collection<Statement> statements = localization.getSuspiciousListWithMetric(newMetric);
         for (Statement statement: statements){
             if (statement.getSuspiciousness() > -1){

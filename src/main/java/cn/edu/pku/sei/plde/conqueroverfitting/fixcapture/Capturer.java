@@ -116,7 +116,7 @@ public class Capturer {
         //No Assert And Throw Exception Found
         if (_functionCode.startsWith("(expected")){
             String expectedClass = _functionCode.substring(_functionCode.indexOf("=")+1,_functionCode.indexOf(")"));
-            return "throw new " +expectedClass.replace(".class","").trim() + "()";
+            return "throw new " +expectedClass.replace(".class","").trim() + "();";
         }
 
         throw new Exception("No Fix Found for This Test");
@@ -124,7 +124,7 @@ public class Capturer {
 
     private String exceptionProcessing(String exceptionLine){
         String exceptionName = exceptionLine.substring(exceptionLine.indexOf("(")+1, exceptionLine.indexOf(")")).trim().split(" ")[0];
-        return "throw new " + exceptionName + "()";
+        return "throw new " + exceptionName + "();";
     }
 
     private String assertProcessing(String assertLine) throws Exception{
@@ -163,16 +163,16 @@ public class Capturer {
                 }
             }
             String attachLines = slicingProcess(returnParam, callParam, assertLine);
-            return attachLines + returnString;
+            return attachLines + returnString + ";";
         }
         else if (assertType.contains("assertNull")){
-            return "return null";
+            return "return null;";
         }
         else if (assertType.contains("assertFalse")){
-            return "return false";
+            return "return false;";
         }
         else if (assertType.contains("assertTrue")){
-            return "return true";
+            return "return true;";
         }
         throw new Exception("Unknown assert type");
     }
@@ -344,6 +344,9 @@ public class Capturer {
         List<String> args = new ArrayList<String>();
         List<Integer> lineToBeAdd = new ArrayList<Integer>();
         String slicePath = Slicer.class.getProtectionDomain().getCodeSource().getLocation().getFile();
+        if (System.getProperty("os.name").toLowerCase().startsWith("win") && slicePath.charAt(0) == '/'){
+            slicePath = slicePath.substring(1);
+        }
         for (String var: returnParam){
             String[] arg = {"java -Xmx2g -jar",slicePath,"-p",System.getProperty("user.dir")+"/test.trace",_classname+"."+_functionname+":"+assertLineNum+":{"+var+"}"};
             args.add(StringUtils.join(arg," ")+'\n');
@@ -351,8 +354,11 @@ public class Capturer {
         String slicingResult = slicing(_classpath,_testclasspath,_classname, args);
         //System.out.print(slicingResult);
         for (String var: returnParam){
-            if (!slicingResult.contains("{"+var+"}")){
-                throw new Exception("Slice Output Error: \n"+slicingResult);
+            if (slicingResult.contains("Error occurred during initialization of VM")){
+                throw new Exception("Slice Initialization Error: \n"+slicingResult);
+            }
+            if (slicingResult.contains("There was an error while tracing:")){
+                throw new Exception("There was an error occurs because of slice, Maybe you should use linux or mac instead of windows.");
             }
             String[] sliceResult = slicingResult.substring(slicingResult.indexOf("{"+var+"}"), slicingResult.indexOf("Computation took",slicingResult.indexOf("{"+var+"}"))).split("\n");
             for (String line: sliceResult){
@@ -372,6 +378,12 @@ public class Capturer {
     private String slicing(String classpath, String testclasspath, String classname, List<String> sliceArgs) throws Exception{
         String tracePath = TracerAgent.class.getProtectionDomain().getCodeSource().getLocation().getFile();
         String junitPath = JUnitCore.class.getProtectionDomain().getCodeSource().getLocation().getFile();
+
+        //small bug of get jar path from class in windows
+        if (System.getProperty("os.name").toLowerCase().startsWith("win") && tracePath.charAt(0) == '/' && junitPath.charAt(0) == '/'){
+            tracePath = tracePath.substring(1);
+            junitPath = junitPath.substring(1);
+        }
         String[] args = {
                 "java", "-javaagent:"+tracePath+"=tracefile:"+System.getProperty("user.dir")+"/test.trace",
                 "-cp","\""+classpath+System.getProperty("path.separator")+testclasspath+System.getProperty("path.separator")+junitPath+"\"",
@@ -413,6 +425,8 @@ public class Capturer {
         BufferedReader br = null;
 
         try {
+            Thread t=new Thread(new InputStreamRunnable(p.getErrorStream(),"ErrorStream"));
+            t.start();
             in = new BufferedInputStream(p.getInputStream());
             br = new BufferedReader(new InputStreamReader(in));
             String s;
@@ -432,5 +446,39 @@ public class Capturer {
             }
         }
         return sb.toString();
+    }
+}
+
+class InputStreamRunnable implements Runnable
+{
+    BufferedReader bReader=null;
+    String type=null;
+    public InputStreamRunnable(InputStream is, String _type)
+    {
+        try
+        {
+            bReader=new BufferedReader(new InputStreamReader(new BufferedInputStream(is),"UTF-8"));
+            type=_type;
+        }
+        catch(Exception ex)
+        {
+        }
+    }
+    public void run()
+    {
+        String line;
+        int lineNum=0;
+        try
+        {
+            while((line=bReader.readLine())!=null)
+            {
+                lineNum++;
+                //Thread.sleep(200);
+            }
+            bReader.close();
+        }
+        catch(Exception ex)
+        {
+        }
     }
 }
