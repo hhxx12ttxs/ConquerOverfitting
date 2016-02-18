@@ -191,7 +191,11 @@ public class Capturer {
         gzoltar.addTestPackageNotToExecute("org.junit");
         gzoltar.addTestToExecute(_classname);
         gzoltar.addClassNotToInstrument(_classname);
-        gzoltar.run();
+        try{
+            gzoltar.run();
+        } catch (NullPointerException e){
+            throw new NotFoundException("Test Class " + _classname +  " No Found in Test Class Path " + _testclasspath);
+        }
         List<TestResult> testResults = gzoltar.getTestResults();
         for (TestResult testResult: testResults){
             if (testResult.getName().substring(testResult.getName().lastIndexOf('#')+1).equals(_functionname)){

@@ -10,18 +10,21 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.function.BiConsumer;
 import com.gzoltar.core.components.Statement;
+import sun.jvm.hotspot.utilities.Assert;
 
 /**
  * Created by yanrunfa on 2016/2/18.
  */
 public class ErrorLocalizationTest {
 
-    private final String classPath = "H:/defects4j/tmp/Math-3/target/classes";
-    private final String testPath = "H:/defects4j/tmp/Math-3/target/test-classes";
+
+    private final String PATH_OF_DEFECTS4J = "/Users/yanrunfa/Documents/defects4j/tmp/";
+
     @Test
     public void testGetSuspiciousList(){
-        Localization localization = new Localization("H:/defects4j/tmp/Math-3/target/classes", "H:/defects4j/tmp/Math-3/target/test-classes");
+        Localization localization = new Localization(PATH_OF_DEFECTS4J+"Math-3/target/classes", PATH_OF_DEFECTS4J+"Math-3/target/test-classes");
         Collection<Statement> statements = localization.getSuspiciousList();
+        org.junit.Assert.assertEquals(((Statement)statements.toArray()[0]).getLabel(), "org.apache.commons.math3.util.MathArrays{linearCombination([D[D)D[846");
         for (Statement statement: statements){
             if (statement.getSuspiciousness() > -1){
                 String msg = statement.getLabel()+"---"+statement.getSuspiciousness()+"\n";
@@ -32,8 +35,12 @@ public class ErrorLocalizationTest {
 
     @Test
     public void testGetSuspiciousListLite(){
-        Localization localization = new Localization("H:/defects4j/tmp/Math-3/target/classes", "H:/defects4j/tmp/Math-3/target/test-classes");
+        Localization localization = new Localization(PATH_OF_DEFECTS4J+"Math-3/target/classes", PATH_OF_DEFECTS4J+"Math-3/target/test-classes");
         List<HashMap<SuspiciousField, String>> maps = localization.getSuspiciousListLite();
+        org.junit.Assert.assertEquals(maps.get(0).get(SuspiciousField.class_address),"org.apache.commons.math3.util.MathArrays");
+        org.junit.Assert.assertEquals(maps.get(0).get(SuspiciousField.target_function),"linearCombination([D[D\\)");
+        org.junit.Assert.assertEquals(maps.get(0).get(SuspiciousField.line_number),"816-846");
+        org.junit.Assert.assertEquals(maps.get(0).get(SuspiciousField.suspiciousness),"2.041241452319315");
         for (HashMap<SuspiciousField, String> map: maps){
             map.forEach(new BiConsumer<SuspiciousField, String>() {
 
@@ -47,8 +54,12 @@ public class ErrorLocalizationTest {
 
     @Test
     public void testGetSuspiciousListLiteWithSpecificLine(){
-        Localization localization = new Localization("H:/defects4j/tmp/Math-3/target/classes", "H:/defects4j/tmp/Math-3/target/test-classes");
+        Localization localization = new Localization(PATH_OF_DEFECTS4J+"Math-3/target/classes", PATH_OF_DEFECTS4J+"Math-3/target/test-classes");
         List<HashMap<SuspiciousField, String>> maps = localization.getSuspiciousListLiteWithSpecificLine();
+        org.junit.Assert.assertEquals(maps.get(0).get(SuspiciousField.class_address),"org.apache.commons.math3.util.MathArrays");
+        org.junit.Assert.assertEquals(maps.get(0).get(SuspiciousField.target_function),"linearCombination([D[D\\)");
+        org.junit.Assert.assertEquals(maps.get(0).get(SuspiciousField.line_number),"846-845-841-840-839-838-837-836-835-834-833-832-830-829-828-827-826-824-823-817-816");
+        org.junit.Assert.assertEquals(maps.get(0).get(SuspiciousField.suspiciousness),"2.041241452319315");
         for (HashMap<SuspiciousField, String> map: maps){
             map.forEach(new BiConsumer<SuspiciousField, String>() {
                 public void accept(SuspiciousField suspiciousField, String s) {
@@ -68,13 +79,10 @@ public class ErrorLocalizationTest {
         //Np=(successfulTests - executedAndPassedCount);
         //Nf=(nbFailingTest - executedAndFailedCount);
 
-        Localization localization = new Localization("H:/defects4j/tmp/Math-3/target/classes", "H:/defects4j/tmp/Math-3/target/test-classes");
+        Localization localization = new Localization(PATH_OF_DEFECTS4J+"Math-3/target/classes", PATH_OF_DEFECTS4J+"Math-3/target/test-classes");
         Collection<Statement> statements = localization.getSuspiciousListWithMetric(newMetric);
         for (Statement statement: statements){
-            if (statement.getSuspiciousness() > -1){
-                String msg = statement.getLabel()+"---"+statement.getSuspiciousness()+"\n";
-                System.out.println(msg);
-            }
+            org.junit.Assert.assertEquals(statement.getSuspiciousness(),"1");
         }
 
 
