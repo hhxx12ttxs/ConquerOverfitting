@@ -76,7 +76,7 @@ public final class GZoltarSuspiciousProgramStatements implements SuspiciousProgr
         return rootPackage;
     }
 
-    private final GZoltar gzoltar;
+    private final WGzoltar gzoltar;
 
 
     protected GZoltarSuspiciousProgramStatements(final URL[] classpath, Collection<String> packageNames, Metric metric) {
@@ -112,8 +112,7 @@ public final class GZoltarSuspiciousProgramStatements implements SuspiciousProgr
      * @see cn.edu.pku.sei.plde.conqueroverfitting.localization.common.sps.SuspiciousProgramStatements#sortBySuspiciousness(String...)
      */
 
-    public List<Statement> sortBySuspiciousness(final String... testClasses) {
-
+    public List<StatementExt> sortBySuspiciousness(final String... testClasses) {
         for (String className : checkNotNull(testClasses)) {
             gzoltar.addTestToExecute(className); // we want to execute the test
             gzoltar.addClassNotToInstrument(className); // we don't want to include the test as root-cause
@@ -121,7 +120,7 @@ public final class GZoltarSuspiciousProgramStatements implements SuspiciousProgr
         }
         gzoltar.run();
 
-        List<Statement> statements = gzoltar.getSuspiciousStatements();
+        List<StatementExt> statements = gzoltar.getSuspiciousStatementExts();
 
 		/*Logger logger = LoggerFactory.getLogger(this.getClass());
 		if (logger.isDebugEnabled()) {

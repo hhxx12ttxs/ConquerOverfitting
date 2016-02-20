@@ -1,5 +1,6 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.localization;
 
+import cn.edu.pku.sei.plde.conqueroverfitting.localization.gzoltar.StatementExt;
 import com.gzoltar.core.components.Statement;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.common.SuspiciousField;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.metric.Metric;
@@ -7,6 +8,8 @@ import cn.edu.pku.sei.plde.conqueroverfitting.localization.metric.Ochiai;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.common.synth.TestClassesFinder;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.gzoltar.GZoltarSuspiciousProgramStatements;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.common.library.JavaLibrary;
+import org.apache.commons.lang3.StringUtils;
+
 import java.net.URL;
 import java.util.*;
 
@@ -29,15 +32,15 @@ public class Localization  {
         testClasses = new TestClassesFinder().findIn(JavaLibrary.classpathFrom(testClassPath), false);
     }
 
-    public List<Statement> getSuspiciousList(){
+    public List<StatementExt> getSuspiciousList(){
         return this.getSuspiciousListWithMetric(new Ochiai());
     }
 
 
-    public List<Statement> getSuspiciousListWithSuspiciousnessBiggerThanZero(){
-        List<Statement> statements = this.getSuspiciousList();
-        List<Statement> result = new ArrayList<Statement>();
-        for (Statement statement: statements){
+    public List<StatementExt> getSuspiciousListWithSuspiciousnessBiggerThanZero(){
+        List<StatementExt> statements = this.getSuspiciousList();
+        List<StatementExt> result = new ArrayList<StatementExt>();
+        for (StatementExt statement: statements){
             if (statement.getSuspiciousness()>0){
                 result.add(statement);
             }
@@ -46,17 +49,18 @@ public class Localization  {
     }
 
     public List<HashMap<SuspiciousField, String>> getSuspiciousListLite() {
-        List<Statement> statements = this.getSuspiciousListWithSuspiciousnessBiggerThanZero();
+        List<StatementExt> statements = this.getSuspiciousListWithSuspiciousnessBiggerThanZero();
         List<HashMap<SuspiciousField, String>> result = new ArrayList<HashMap<SuspiciousField, String>>();
         Statement firstline = statements.get(0);
         Statement lastline = statements.get(0);
-        for (Statement statement: statements){
+        for (StatementExt statement: statements){
             if (getClassAddressFromStatement(statement).equals(getClassAddressFromStatement(firstline)) && getTargetFunctionFromStatement(statement).equals(getTargetFunctionFromStatement(firstline))){
                 firstline = statement.getLineNumber() < firstline.getLineNumber() ? statement : firstline;
                 lastline = statement.getLineNumber() > lastline.getLineNumber() ? statement : lastline;
             }else {
                 HashMap<SuspiciousField, String> data = new HashMap<SuspiciousField, String>();
                 data.put(SuspiciousField.class_address, getClassAddressFromStatement(firstline));
+                data.put(SuspiciousField.error_tests, getErrorTestsStringFromStatement(statement));
                 data.put(SuspiciousField.line_number, getLineNumberFromStatement(firstline)+"-"+getLineNumberFromStatement(lastline));
                 data.put(SuspiciousField.suspiciousness, getSupiciousnessFromStatement(firstline));
                 data.put(SuspiciousField.target_function, getTargetFunctionFromStatement(firstline));
@@ -69,11 +73,11 @@ public class Localization  {
     }
 
     public List<HashMap<SuspiciousField, String>> getSuspiciousListLiteWithSpecificLine(){
-        List<Statement> statements = this.getSuspiciousListWithSuspiciousnessBiggerThanZero();
+        List<StatementExt> statements = this.getSuspiciousListWithSuspiciousnessBiggerThanZero();
         List<HashMap<SuspiciousField, String>> result = new ArrayList<HashMap<SuspiciousField, String>>();
         Statement firstline = statements.get(0);
         Collection<String> lineNumbers = new ArrayList<String>();
-        for (Statement statement: statements){
+        for (StatementExt statement: statements){
             if (getClassAddressFromStatement(statement).equals(getClassAddressFromStatement(firstline)) && getTargetFunctionFromStatement(statement).equals(getTargetFunctionFromStatement(firstline))){
                 lineNumbers.add(String.valueOf(statement.getLineNumber()));
             }else {
@@ -84,6 +88,7 @@ public class Localization  {
                 }else {
                     data.put(SuspiciousField.line_number, String.join("-",lineNumbers));
                 }
+                data.put(SuspiciousField.error_tests, getErrorTestsStringFromStatement(statement));
                 data.put(SuspiciousField.suspiciousness, getSupiciousnessFromStatement(firstline));
                 data.put(SuspiciousField.target_function, getTargetFunctionFromStatement(firstline));
                 result.add(data);
@@ -101,13 +106,11 @@ public class Localization  {
      * @param metric the suspiciousness calculate metric
      * @return the list of suspicious statement
      */
-    public List<Statement> getSuspiciousListWithMetric(Metric metric){
+    public List<StatementExt> getSuspiciousListWithMetric(Metric metric){
         URL[] classpaths = JavaLibrary.classpathFrom(testClassPath);
         classpaths = JavaLibrary.extendClasspathWith(classpath, classpaths);
         GZoltarSuspiciousProgramStatements gZoltar = GZoltarSuspiciousProgramStatements.create(classpaths, testClasses, new Ochiai());
-        List<Statement> statements = gZoltar.sortBySuspiciousness(testClasses);
-
-        return statements;
+        return gZoltar.sortBySuspiciousness(testClasses);
     }
 
     /**
@@ -144,5 +147,9 @@ public class Localization  {
      */
     public static String getTargetFunctionFromStatement(Statement statement){
         return statement.getLabel().split("\\{")[1].split("\\)")[0]+"\\)";
+    }
+
+    public static String getErrorTestsStringFromStatement(StatementExt statementExt){
+        return StringUtils.join(statementExt.getTests(),"-");
     }
 }

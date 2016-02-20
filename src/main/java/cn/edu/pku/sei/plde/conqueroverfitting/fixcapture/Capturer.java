@@ -1,5 +1,6 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.fixcapture;
 
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.ShellUtils;
 import com.gzoltar.core.GZoltar;
 import com.gzoltar.core.instr.testing.TestResult;
 import de.unisb.cs.st.javaslicer.slicing.Slicer;
@@ -395,97 +396,12 @@ public class Capturer {
                 classname
         };
         String arg = StringUtils.join(args, ' ')+'\n';
-        String fileName;
-        String cmd;
-        if (System.getProperty("os.name").toLowerCase().startsWith("win")){
-            fileName = System.getProperty("user.dir")+"/args.bat";
-            cmd = System.getProperty("user.dir")+"/args.bat";
-        }
-        else {
-            fileName = System.getProperty("user.dir")+"/args.sh";
-            cmd = "bash " + System.getProperty("user.dir")+"/args.sh";
-        }
-        File batFile = new File(fileName);
-        if (!batFile.exists()){
-            boolean result = batFile.createNewFile();
-            if (!result){
-                throw new Exception("Cannot Create bat file:" + fileName);
-            }
-        }
-        FileOutputStream outputStream = new FileOutputStream(batFile);
-        outputStream.write(arg.getBytes());
-        for (String sliceArg: sliceArgs){
-            outputStream.write(sliceArg.getBytes());
-        }
-        outputStream.close();
-        batFile.deleteOnExit();
-        Process process= Runtime.getRuntime().exec(cmd);
-        return getShellOut(process);
+        sliceArgs.add(arg);
+        return ShellUtils.shellRun(sliceArgs);
     }
 
-    private  String getShellOut(Process p) throws IOException{
-        StringBuilder sb = new StringBuilder();
-        BufferedInputStream in = null;
-        BufferedReader br = null;
 
-        try {
-            Thread t=new Thread(new InputStreamRunnable(p.getErrorStream(),"ErrorStream"));
-            t.start();
-            in = new BufferedInputStream(p.getInputStream());
-            br = new BufferedReader(new InputStreamReader(in));
-            String s;
-            while ((s = br.readLine()) != null) {
-                sb.append(System.getProperty("line.separator"));
-                sb.append(s);
-            }
-        } catch (IOException e) {
-            System.out.println(e.getMessage());
-            throw e;
-        } finally {
-            if (br != null){
-                br.close();
-            }
-            if (in != null){
-                in.close();
-            }
-        }
-        return sb.toString();
-    }
 
-    class InputStreamRunnable implements Runnable
-    {
-        BufferedReader bReader=null;
-        String type=null;
-        public InputStreamRunnable(InputStream is, String _type)
-        {
-            try
-            {
-                bReader=new BufferedReader(new InputStreamReader(new BufferedInputStream(is),"UTF-8"));
-                type=_type;
-            }
-            catch(Exception ex)
-            {
-                ex.printStackTrace();
-            }
-        }
-        public void run()
-        {
-            String line;
-            int lineNum=0;
-            try
-            {
-                while((line=bReader.readLine())!=null)
-                {
-                    lineNum++;
-                    //Thread.sleep(200);
-                }
-                bReader.close();
-            }
-            catch(Exception ex)
-            {
-                ex.printStackTrace();
-            }
-        }
-    }
+
 }
 

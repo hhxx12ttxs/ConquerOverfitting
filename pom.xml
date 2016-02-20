@@ -5,7 +5,10 @@
 	<groupId>cn.edu.pku.sei.plde</groupId>
 	<artifactId>ConquerOverfitting</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<packaging>jar</packaging>
+	<modules>
+		<module>VariableTraceAgent</module>
+	</modules>
+	<packaging>pom</packaging>
 
 	<name>ConquerOverfitting</name>
 	<url>http://maven.apache.org</url>

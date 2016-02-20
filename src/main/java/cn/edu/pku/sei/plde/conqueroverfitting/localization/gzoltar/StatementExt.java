@@ -5,6 +5,9 @@ import com.gzoltar.core.components.Statement;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.metric.Metric;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.metric.Ochiai;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Created by spirals on 24/07/15.
  */
@@ -14,6 +17,7 @@ public class StatementExt extends Statement  {
     private int np;
     private int nf;
     private Metric defaultMetric;
+    private List<String> tests = new ArrayList<String>();
 
     public StatementExt(Component c, int lN) {
         super(c, lN);
@@ -28,6 +32,14 @@ public class StatementExt extends Statement  {
         this.setLabel(s.getLabel());
         this.setSuspiciousness(s.getSuspiciousness());
         this.setLineNumber(s.getLineNumber());
+    }
+
+    public void addTest(String test){
+        tests.add(test);
+    }
+
+    public List<String> getTests(){
+        return tests;
     }
 
     public int getEf() {

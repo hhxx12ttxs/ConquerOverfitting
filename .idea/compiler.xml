@@ -22,11 +22,12 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <processorPath useClasspath="true" />
-        <module name="ConquerOverfitting" />
+        <module name="VariableTraceAgent" />
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
       <module name="ConquerOverfitting" target="1.5" />
+      <module name="VariableTraceAgent" target="1.5" />
     </bytecodeTargetLevel>
   </component>
 </project>

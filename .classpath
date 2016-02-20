@@ -46,5 +46,6 @@
 	<classpathentry kind="lib" path="lib/slicer.jar"/>
 	<classpathentry kind="lib" path="lib/tracer.jar"/>
 	<classpathentry kind="lib" path="lib/commons-lang3-3.4.jar"/>
+	<classpathentry kind="lib" path="lib/VariableTraceAgent.jar"/>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>

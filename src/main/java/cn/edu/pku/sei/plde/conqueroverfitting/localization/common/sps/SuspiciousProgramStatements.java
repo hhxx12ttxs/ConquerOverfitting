@@ -15,6 +15,7 @@
  */
 package cn.edu.pku.sei.plde.conqueroverfitting.localization.common.sps;
 
+import cn.edu.pku.sei.plde.conqueroverfitting.localization.gzoltar.StatementExt;
 import com.gzoltar.core.components.Statement;
 
 import java.util.List;
@@ -29,5 +30,5 @@ public interface SuspiciousProgramStatements {
     /**
      * @return a ranked list of potential bug root-cause.
      */
-    List<Statement> sortBySuspiciousness(final String... testClasses);
+    List<StatementExt> sortBySuspiciousness(final String... testClasses);
 }

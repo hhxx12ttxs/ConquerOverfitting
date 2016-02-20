@@ -27,12 +27,20 @@ public class WGzoltar extends GZoltar {
 
     @Override
     public List<Statement> getSuspiciousStatements() {
+        List<Statement> statements = new ArrayList<Statement>();
+        for (StatementExt statementExt: getSuspiciousStatements(metric)){
+            statements.add(statementExt);
+        }
+        return statements;
+    }
+
+    public List<StatementExt> getSuspiciousStatementExts() {
         return getSuspiciousStatements(metric);
     }
 
-    private List<Statement> getSuspiciousStatements(Metric metric) {
+    private List<StatementExt> getSuspiciousStatements(Metric metric) {
         List<Statement> suspiciousStatements = super.getSuspiciousStatements();
-        List<Statement> result = new ArrayList<Statement>(suspiciousStatements.size());
+        List<StatementExt> result = new ArrayList<StatementExt>(suspiciousStatements.size());
         int successfulTests;
         int nbFailingTest = 0;
         //try {
@@ -60,16 +68,18 @@ public class WGzoltar extends GZoltar {
             int executedAndPassedCount = 0;
             int executedAndFailedCount = 0;
             int nextTest = coverage.nextSetBit(0);
+            StatementExt s = new StatementExt(statement, metric);
+
             while(nextTest != -1) {
                 TestResult testResult = this.getTestResults().get(nextTest);
                 if(testResult.wasSuccessful()) {
                     executedAndPassedCount++;
                 } else {
                     executedAndFailedCount++;
+                    s.addTest(testResult.getName());
                 }
                 nextTest = coverage.nextSetBit(nextTest + 1);
             }
-            StatementExt s = new StatementExt(statement, metric);
             s.setEf(executedAndFailedCount);
             s.setEp(executedAndPassedCount);
             s.setNp(successfulTests - executedAndPassedCount);

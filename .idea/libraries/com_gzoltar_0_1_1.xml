@@ -29,6 +29,7 @@
       <root url="jar://$PROJECT_DIR$/lib/slicer.jar!/" />
       <root url="jar://$PROJECT_DIR$/lib/tracer.jar!/" />
       <root url="jar://$PROJECT_DIR$/lib/commons-lang3-3.4.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/VariableTraceAgent.jar!/" />
     </CLASSES>
     <JAVADOC />
     <SOURCES />
