@@ -70,6 +70,14 @@ public class ErrorLocalizationTest {
         }
     }
 
+
+    class NewMetric implements Metric{
+        public double value(int ef, int ep, int nf, int np) {
+            // abs((ef/float(ef+nf)) - (ep/float(ep+np)))
+            return 1;
+        }
+    }
+
     @Test
     public void testGetSuspiciousListWithMetric(){
         NewMetric newMetric = new NewMetric();
@@ -84,15 +92,8 @@ public class ErrorLocalizationTest {
         for (Statement statement: statements){
             org.junit.Assert.assertEquals(statement.getSuspiciousness(),"1");
         }
-
-
     }
+
 }
 
 
-class NewMetric implements Metric{
-    public double value(int ef, int ep, int nf, int np) {
-        // abs((ef/float(ef+nf)) - (ep/float(ep+np)))
-        return 1;
-    }
-}

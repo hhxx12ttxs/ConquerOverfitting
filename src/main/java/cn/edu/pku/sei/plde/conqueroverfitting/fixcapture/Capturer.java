@@ -423,7 +423,7 @@ public class Capturer {
         return getShellOut(process);
     }
 
-    private static  String getShellOut(Process p) throws IOException{
+    private  String getShellOut(Process p) throws IOException{
         StringBuilder sb = new StringBuilder();
         BufferedInputStream in = null;
         BufferedReader br = null;
@@ -451,38 +451,41 @@ public class Capturer {
         }
         return sb.toString();
     }
+
+    class InputStreamRunnable implements Runnable
+    {
+        BufferedReader bReader=null;
+        String type=null;
+        public InputStreamRunnable(InputStream is, String _type)
+        {
+            try
+            {
+                bReader=new BufferedReader(new InputStreamReader(new BufferedInputStream(is),"UTF-8"));
+                type=_type;
+            }
+            catch(Exception ex)
+            {
+                ex.printStackTrace();
+            }
+        }
+        public void run()
+        {
+            String line;
+            int lineNum=0;
+            try
+            {
+                while((line=bReader.readLine())!=null)
+                {
+                    lineNum++;
+                    //Thread.sleep(200);
+                }
+                bReader.close();
+            }
+            catch(Exception ex)
+            {
+                ex.printStackTrace();
+            }
+        }
+    }
 }
 
-class InputStreamRunnable implements Runnable
-{
-    BufferedReader bReader=null;
-    String type=null;
-    public InputStreamRunnable(InputStream is, String _type)
-    {
-        try
-        {
-            bReader=new BufferedReader(new InputStreamReader(new BufferedInputStream(is),"UTF-8"));
-            type=_type;
-        }
-        catch(Exception ex)
-        {
-        }
-    }
-    public void run()
-    {
-        String line;
-        int lineNum=0;
-        try
-        {
-            while((line=bReader.readLine())!=null)
-            {
-                lineNum++;
-                //Thread.sleep(200);
-            }
-            bReader.close();
-        }
-        catch(Exception ex)
-        {
-        }
-    }
-}
