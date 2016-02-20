@@ -397,7 +397,12 @@ public class Capturer {
         };
         String arg = StringUtils.join(args, ' ')+'\n';
         sliceArgs.add(arg);
-        return ShellUtils.shellRun(sliceArgs);
+        String result = ShellUtils.shellRun(sliceArgs);
+        File traceFile = new File(System.getProperty("user.dir")+"/test.trace");
+        if (traceFile.exists()){
+            traceFile.deleteOnExit();
+        }
+        return result;
     }
 
 

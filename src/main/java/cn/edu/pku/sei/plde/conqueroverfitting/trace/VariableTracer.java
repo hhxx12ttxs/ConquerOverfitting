@@ -26,16 +26,17 @@ public class VariableTracer {
     */
     private final String _classpath;
     private final String _testClasspath;
+    private final String _srcPath;
     private String _testClassname;
     private String _classname;
     private List<String> _varName;
     private int _errorLine;
 
 
-    public VariableTracer(String classpath, String testClasspath){
+    public VariableTracer(String classpath, String testClasspath, String srcPath){
         _classpath = classpath;
         _testClasspath = testClasspath;
-
+        _srcPath = srcPath;
     }
 
     /**
@@ -58,7 +59,7 @@ public class VariableTracer {
             tracePath = tracePath.substring(1);
             junitPath = junitPath.substring(1);
         }
-        String agentArg = "class:"+_classname+",line:"+_errorLine+",var:"+ StringUtils.join(varName,";");
+        String agentArg = "class:"+_classname+",line:"+_errorLine+",var:"+ StringUtils.join(varName,";")+",src:"+_srcPath+",cp:"+_classpath;
         String classpath = "\"" + _classpath + System.getProperty("path.separator") + _testClasspath + System.getProperty("path.separator")+ junitPath+ "\"";
         String[] arg = {"java","-javaagent:"+tracePath+"="+agentArg,"-cp",classpath,"org.junit.runner.JUnitCore",_testClassname};
         List<String> args = new ArrayList<String>();

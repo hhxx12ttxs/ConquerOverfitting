@@ -21,10 +21,11 @@ public class VariableTraceTest {
         int i=3;
         String clspth = PATH_OF_DEFECTS4J + "Math-"+i+"/target/classes";
         String tstpth = PATH_OF_DEFECTS4J + "Math-"+i+"/target/test-classes";
+        String srcpth = PATH_OF_DEFECTS4J + "Math-"+i+"/src/main/java";
         //Localization localization = new Localization(clspth, tstpth);
         //List<HashMap<SuspiciousField, String>> maps = localization.getSuspiciousListLite();
         //HashMap<SuspiciousField, String> suspicious = maps.get(0);
-        VariableTracer tracer = new VariableTracer(clspth,tstpth);
+        VariableTracer tracer = new VariableTracer(clspth,tstpth,srcpth);
         List<String> varList = new ArrayList<String>();
         varList.add("len");
         //int line = Integer.valueOf(suspicious.get(SuspiciousField.line_number).split("-")[1]);
