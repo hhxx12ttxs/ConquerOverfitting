@@ -34,7 +34,7 @@ public class VariableTraceAgent {
                 targetLineNum = Integer.valueOf(value);
             }
             else if (key.equalsIgnoreCase("var")){
-                targetVariables = value.split(";");
+                targetVariables = value.split("/");
             }
             else if (key.equalsIgnoreCase("src")){
                 srcPath = value;

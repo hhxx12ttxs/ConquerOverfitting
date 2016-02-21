@@ -17,6 +17,8 @@ public class AddPrintTransformer implements ClassFileTransformer {
     public final String[] _targetVariables;
     public final String _srcPath;
     public final String _classPath;
+    private String tempJavaName;
+    private String tempClassName;
 
     public AddPrintTransformer(String targetClassName, int targetLineNum, String[] targetVariables, String srcPath, String classPath){
         _targetClassName = targetClassName;
@@ -36,8 +38,7 @@ public class AddPrintTransformer implements ClassFileTransformer {
             // Read in the bytes
             int offset = 0;
             int numRead = 0;
-            while (offset <bytes.length
-                    && (numRead = is.read(bytes, offset, bytes.length - offset)) >= 0) {
+            while (offset <bytes.length && (numRead = is.read(bytes, offset, bytes.length - offset)) >= 0) {
                 offset += numRead;
             }
 
@@ -51,12 +52,20 @@ public class AddPrintTransformer implements ClassFileTransformer {
         }
     }
     public byte[] transform(ClassLoader loader, String className, Class<?> classBeingRedefined, ProtectionDomain protectionDomain, byte[] classfileBuffer) throws IllegalClassFormatException {
-        if (!className.equals(_targetClassName)) {
-            return null;
+        if (className.contains(_targetClassName) && className.contains("$") && tempJavaName.length() > 1){
+            String tempAnonymityClassName = tempJavaName.substring(0,tempJavaName.lastIndexOf("."))+className.substring(className.indexOf("$"))+".class";
+            new File(tempAnonymityClassName).deleteOnExit();
+            byte[] result = getBytesFromFile(tempAnonymityClassName);
+            if (result == null){
+                return classfileBuffer;
+            }
+            return result;
         }
-        System.out.println(className);
-        String tempJavaName = System.getProperty("user.dir")+"/"+className.replace("/",".").substring(className.replace("/",".").lastIndexOf(".")+1)+".java";
-        System.out.println(tempJavaName);
+        if (!className.equals(_targetClassName)) {
+            return classfileBuffer;
+        }
+        tempJavaName = System.getProperty("user.dir")+"/temp/"+className.replace("/",".").substring(className.replace("/",".").lastIndexOf(".")+1)+".java";
+        tempClassName = System.getProperty("user.dir")+"/temp/"+className.replace("/",".").substring(className.replace("/",".").lastIndexOf(".")+1)+".class";
         File tempJavaFile = new File(tempJavaName);
         try {
             FileOutputStream outputStream = new FileOutputStream(tempJavaFile);
@@ -67,26 +76,35 @@ public class AddPrintTransformer implements ClassFileTransformer {
                 line++;
                 if (line == _targetLineNum){
                     for (String var: _targetVariables){
-                        String printLine = "System.out.println(\""+var+"=\"+"+var+"+\"\\n\""+");\n";
-                        System.out.println(printLine);
+                        //outputStream.write("try{\n".getBytes());
+                        String printLine = "System.out.print(\"|"+var+"=\"+"+var+"+\"|\""+");\n";
                         outputStream.write(printLine.getBytes());
+                        //outputStream.write("} catch (Exception e){\n".getBytes());
+                        //outputStream.write("e.printStackTrace();\n".getBytes());
+                        //outputStream.write("};".getBytes());
                     }
                 }
                 outputStream.write((lineString+"\n").getBytes());
+                if (lineString.startsWith("package")){
+                    //outputStream.write(("import java.lang.System;\n").getBytes());
+                }
             }
             outputStream.close();
-            //File srcFile = new File(_srcPath+"/"+className.replace(".","/")+".java");
-            //srcFile.renameTo(new File(_srcPath+"/"+className.replace(".","/")));
-            System.out.println("javac -cp "+_classPath+" "+tempJavaName);
             ShellUtils.shellRun(Arrays.asList("javac -cp "+_classPath+" "+tempJavaName));
-            //srcFile.renameTo(new File(_srcPath+"/"+className.replace(".","/")+".java"));
         } catch (FileNotFoundException e){
             System.out.println("ERROR: Cannot Find Source File: "+className+" in Source Path: "+_srcPath);
             e.printStackTrace();
         } catch (IOException e){
             e.printStackTrace();
         }
-        byte[] result = getBytesFromFile(tempJavaName);
+        byte[] result = getBytesFromFile(tempClassName);
+
+        //clean temp file
+        tempJavaFile.deleteOnExit();
+        new File(tempClassName).deleteOnExit();
+        //the start flag of the result
+        System.out.print(">>");
+
         if (result == null){
             return classfileBuffer;
         }

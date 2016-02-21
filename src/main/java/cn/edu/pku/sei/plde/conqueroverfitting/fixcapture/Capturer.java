@@ -353,7 +353,7 @@ public class Capturer {
             slicePath = slicePath.substring(1);
         }
         for (String var: returnParam){
-            String[] arg = {"java -Xmx2g -jar",slicePath,"-p",System.getProperty("user.dir")+"/test.trace",_classname+"."+_functionname+":"+assertLineNum+":{"+var+"}"};
+            String[] arg = {"java -Xmx2g -jar",slicePath,"-p",System.getProperty("user.dir")+"/temp/"+"/test.trace",_classname+"."+_functionname+":"+assertLineNum+":{"+var+"}"};
             args.add(StringUtils.join(arg," ")+'\n');
         }
         String slicingResult = slicing(_classpath,_testclasspath,_classname, args);
@@ -390,7 +390,7 @@ public class Capturer {
             junitPath = junitPath.substring(1);
         }
         String[] args = {
-                "java", "-javaagent:"+tracePath+"=tracefile:"+System.getProperty("user.dir")+"/test.trace",
+                "java", "-javaagent:"+tracePath+"=tracefile:"+System.getProperty("user.dir")+"/temp/"+"/test.trace",
                 "-cp","\""+classpath+System.getProperty("path.separator")+testclasspath+System.getProperty("path.separator")+junitPath+"\"",
                 "org.junit.runner.JUnitCore",
                 classname
@@ -398,7 +398,7 @@ public class Capturer {
         String arg = StringUtils.join(args, ' ')+'\n';
         sliceArgs.add(arg);
         String result = ShellUtils.shellRun(sliceArgs);
-        File traceFile = new File(System.getProperty("user.dir")+"/test.trace");
+        File traceFile = new File(System.getProperty("user.dir")+"/temp/"+"/test.trace");
         if (traceFile.exists()){
             traceFile.deleteOnExit();
         }

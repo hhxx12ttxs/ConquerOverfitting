@@ -9,7 +9,6 @@ import org.junit.Test;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
-import java.util.function.BiConsumer;
 import com.gzoltar.core.components.Statement;
 
 /**
@@ -42,15 +41,6 @@ public class ErrorLocalizationTest {
         org.junit.Assert.assertEquals(maps.get(0).get(SuspiciousField.line_number),"816-846");
         org.junit.Assert.assertEquals(maps.get(0).get(SuspiciousField.suspiciousness),"2.041241452319315");
         org.junit.Assert.assertEquals(maps.get(0).get(SuspiciousField.error_tests),"org.apache.commons.math3.util.MathArraysTest#testLinearCombinationWithSingleElementArray");
-        for (HashMap<SuspiciousField, String> map: maps){
-            map.forEach(new BiConsumer<SuspiciousField, String>() {
-
-                public void accept(SuspiciousField suspiciousField, String s) {
-                    System.out.print(suspiciousField.name()+":"+s+" | ");
-                }
-            });
-            System.out.print("\n");
-        }
     }
 
     @Test
@@ -62,14 +52,6 @@ public class ErrorLocalizationTest {
         org.junit.Assert.assertEquals(maps.get(0).get(SuspiciousField.line_number),"846-845-841-840-839-838-837-836-835-834-833-832-830-829-828-827-826-824-823-817-816");
         org.junit.Assert.assertEquals(maps.get(0).get(SuspiciousField.suspiciousness),"2.041241452319315");
         org.junit.Assert.assertEquals(maps.get(0).get(SuspiciousField.error_tests),"org.apache.commons.math3.util.MathArraysTest#testLinearCombinationWithSingleElementArray");
-        for (HashMap<SuspiciousField, String> map: maps){
-            map.forEach(new BiConsumer<SuspiciousField, String>() {
-                public void accept(SuspiciousField suspiciousField, String s) {
-                    System.out.print(suspiciousField.name()+":"+s+" | ");
-                }
-            });
-            System.out.print("\n");
-        }
     }
 
 

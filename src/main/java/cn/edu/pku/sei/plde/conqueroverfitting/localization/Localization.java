@@ -86,7 +86,7 @@ public class Localization  {
                 if (lineNumbers.size() == 1){
                     data.put(SuspiciousField.line_number, (String)lineNumbers.toArray()[0]);
                 }else {
-                    data.put(SuspiciousField.line_number, String.join("-",lineNumbers));
+                    data.put(SuspiciousField.line_number, StringUtils.join("-",lineNumbers));
                 }
                 data.put(SuspiciousField.error_tests, getErrorTestsStringFromStatement(statement));
                 data.put(SuspiciousField.suspiciousness, getSupiciousnessFromStatement(firstline));
