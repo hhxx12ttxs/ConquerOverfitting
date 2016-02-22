@@ -17,9 +17,7 @@ public class MethodCollectTest {
 	private final String projectPath = "filesfortest";
 	private final String suspiciousFilePath = new File(
 			"filesfortest\\FileForTestMethodCollect.java").getAbsolutePath();
-	private final String otherFilePath = new File(
-			"filesfortest\\FileForTestMethodCollect2.java")
-			.getAbsolutePath();
+	private final String otherFilePath = new File("filesfortest\\FileForTestMethodCollect2.java").getAbsolutePath();
 
 	@Test
 	public void testFieldsCollectInClass() {

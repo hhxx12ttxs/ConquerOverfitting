@@ -46,9 +46,9 @@ public class ExecptionExtractorTest {
         traceResults.add(traceResultTwo);
         traceResults.add(traceResultFour);
         traceResults.add(traceResultThree);
-        Map<String, List<String>> result = ExceptionExtractor.extractWithAbandonTrueValue(traceResults);
-        for (Map.Entry<String, List<String>> entry: result.entrySet()){
-            System.out.print(" Key = " + entry.getKey() + ", Value = " + entry.getValue().toString());
-        }
+        //Map<String, List<String>> result = ExceptionExtractor.extractWithAbandonTrueValue(traceResults);
+        //for (Map.Entry<String, List<String>> entry: result.entrySet()){
+        //    System.out.print(" Key = " + entry.getKey() + ", Value = " + entry.getValue().toString());
+        //}
     }
 }

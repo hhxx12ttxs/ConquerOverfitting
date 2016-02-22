@@ -11,7 +11,17 @@ public class VariableInfo implements Comparable<VariableInfo>{
     public int methodStartPos;
     public int methodEndPos;
     public int variablePos;
-    
+
+	/**
+	 *
+	 * @param variableName
+	 * @param variableSimpleType
+	 * @param isSimpleType
+	 * @param otherType
+	 * @param methodStartPos
+	 * @param methodEndPos
+     * @param variablePos
+     */
 	public VariableInfo(String variableName,
 			TypeEnum variableSimpleType, boolean isSimpleType,
 			String otherType, int methodStartPos, int methodEndPos, int variablePos) {
@@ -23,7 +33,16 @@ public class VariableInfo implements Comparable<VariableInfo>{
 		this.methodEndPos = methodEndPos;
 		this.variablePos = variablePos;
 	}
-	
+
+	/**
+	 *
+	 * @param variableName
+	 * @param variableSimpleType
+	 * @param isSimpleType
+	 * @param otherType
+	 * @param methodStartPos
+     * @param methodEndPos
+     */
 	public VariableInfo(String variableName,
 			TypeEnum variableSimpleType, boolean isSimpleType,
 			String otherType, int methodStartPos, int methodEndPos) {
@@ -34,7 +53,15 @@ public class VariableInfo implements Comparable<VariableInfo>{
 		this.methodStartPos = methodStartPos;
 		this.methodEndPos = methodEndPos;
 	}
-	
+
+	/**
+	 *
+	 * @param variableName
+	 * @param variableSimpleType
+	 * @param isSimpleType
+	 * @param otherType
+     * @param isPublic
+     */
 	public VariableInfo(String variableName,
 			TypeEnum variableSimpleType, boolean isSimpleType,
 			String otherType, boolean isPublic) {
@@ -44,7 +71,14 @@ public class VariableInfo implements Comparable<VariableInfo>{
 		this.otherType = otherType;
 		this.isPublic = isPublic;
 	}
-	
+
+	/**
+	 *
+	 * @param variableName
+	 * @param variableSimpleType
+	 * @param isSimpleType
+	 * @param otherType
+     */
 	public VariableInfo(String variableName,
 			TypeEnum variableSimpleType, boolean isSimpleType,
 			String otherType) {

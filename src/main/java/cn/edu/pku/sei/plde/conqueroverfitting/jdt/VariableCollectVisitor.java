@@ -77,8 +77,10 @@ class VariableCollectVisitor extends ASTVisitor {
 			MethodInfo methodInfo = null;
 			String methodName = node.getName().toString();
 
-			TypeInference typeInference = new TypeInference(node.getReturnType2()
-					.toString());
+			if(node.getReturnType2() == null) {
+				return true;
+			}
+			TypeInference typeInference = new TypeInference(node.getReturnType2().toString());
 			if (typeInference.isSimpleType) {
 				methodInfo = new MethodInfo(methodName, typeInference.type,
 						typeInference.isSimpleType, null, node.toString()
@@ -96,14 +98,20 @@ class VariableCollectVisitor extends ASTVisitor {
 					.toString());
 			VariableInfo variableInfo = null;
 			if (typeInference.isSimpleType) {
-				variableInfo = new VariableInfo(parameter.getName().toString(),
-						typeInference.type, typeInference.isSimpleType, null,
-						lineCounter[node.getStartPosition()], lineCounter[node.getStartPosition() + node.getLength()]);
+				if (node.getStartPosition() >= lineCounter.length || node.getStartPosition() + node.getLength() >= lineCounter.length){
+					variableInfo = new VariableInfo(parameter.getName().toString(), typeInference.type, typeInference.isSimpleType, null, 0, 0);
+				}else {
+					variableInfo = new VariableInfo(parameter.getName().toString(), typeInference.type, typeInference.isSimpleType, null,
+							lineCounter[node.getStartPosition()], lineCounter[node.getStartPosition() + node.getLength()]);
+				}
 			} else {
-				variableInfo = new VariableInfo(parameter.getName().toString(),
-						null, typeInference.isSimpleType,
-						typeInference.otherType,
-						lineCounter[node.getStartPosition()], lineCounter[node.getStartPosition() + node.getLength()]);
+				if (node.getStartPosition() >= lineCounter.length || node.getStartPosition() + node.getLength() >= lineCounter.length) {
+					variableInfo = new VariableInfo(parameter.getName().toString(), null, typeInference.isSimpleType, typeInference.otherType, 0, 0);
+				}
+				else {
+					variableInfo = new VariableInfo(parameter.getName().toString(), null, typeInference.isSimpleType, typeInference.otherType,
+							lineCounter[node.getStartPosition()], lineCounter[node.getStartPosition() + node.getLength()]);
+				}
 			}
 			parametersInMethodList.add(variableInfo);
 		}

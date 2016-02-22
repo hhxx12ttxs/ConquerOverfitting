@@ -38,8 +38,7 @@ public class VariableCollect {
 		for (String filePath : filesPath) {
 			JDTParse jdtParse = new JDTParse(filePath);
 			filedsInClassMap.put(filePath, jdtParse.getFieldInClassList());
-			parameterInMethodMap.put(filePath,
-					jdtParse.getParameterInMethodList());
+			parameterInMethodMap.put(filePath, jdtParse.getParameterInMethodList());
 			localInMethodMap.put(filePath, jdtParse.getLocalInMethodList());
 		}
 	}
@@ -65,11 +64,9 @@ public class VariableCollect {
 		return fieldsInClassMapRet;
 	}
 
-	public ArrayList<VariableInfo> getVisibleParametersInMethodList(
-			String sourcePath, int suspiciousLineNum) {
+	public ArrayList<VariableInfo> getVisibleParametersInMethodList(String sourcePath, int suspiciousLineNum) {
 		ArrayList<VariableInfo> parameters = new ArrayList<VariableInfo>();
-		if (parameterInMethodMap == null
-				|| !parameterInMethodMap.containsKey(sourcePath))
+		if (parameterInMethodMap == null || !parameterInMethodMap.containsKey(sourcePath))
 			return parameters;
 
 		ArrayList<VariableInfo> parametersInMethods = parameterInMethodMap

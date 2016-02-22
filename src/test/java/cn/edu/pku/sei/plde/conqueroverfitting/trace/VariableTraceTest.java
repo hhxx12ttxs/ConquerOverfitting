@@ -2,6 +2,8 @@ package cn.edu.pku.sei.plde.conqueroverfitting.trace;
 
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Localization;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.common.SuspiciousField;
+import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeEnum;
+import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -27,11 +29,10 @@ public class VariableTraceTest {
         //List<HashMap<SuspiciousField, String>> maps = localization.getSuspiciousListLite();
         //HashMap<SuspiciousField, String> suspicious = maps.get(0);
         VariableTracer tracer = new VariableTracer(clspth,tstpth,srcpth);
-        List<String> varList = new ArrayList<String>();
-        varList.add("len");
-        varList.add("prodLowSum");
+        List<VariableInfo> varList = new ArrayList<VariableInfo>();
+        VariableInfo info = new VariableInfo("len", TypeEnum.INT, true, null);
         //int line = Integer.valueOf(suspicious.get(SuspiciousField.line_number).split("-")[1]);
-        List<TraceResult> results = tracer.trace("org.apache.commons.math3.util.MathArrays","org.apache.commons.math3.util.MathArraysTest",varList,846);
+        List<TraceResult> results = tracer.trace("org.apache.commons.math3.util.MathArrays","org.apache.commons.math3.util.MathArraysTest",846,varList);
         for (TraceResult result: results){
             System.out.print("TestResult: "+result.getTestResult());
             for (Map.Entry<String, List<String>> entry: result.getResultMap().entrySet()){

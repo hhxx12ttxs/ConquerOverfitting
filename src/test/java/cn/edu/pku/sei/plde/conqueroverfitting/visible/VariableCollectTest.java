@@ -80,9 +80,7 @@ public class VariableCollectTest {
 		assertNotNull(localsInMethodList);
 
 		assertTrue(localsInMethodList.size() == 2);
-		assertTrue(localsInMethodList.contains((new VariableInfo("e",
-				TypeEnum.INT, true, null))));
-		assertTrue(localsInMethodList.contains((new VariableInfo("f",
-				TypeEnum.STRING, true, null))));
+		assertTrue(localsInMethodList.contains((new VariableInfo("e", TypeEnum.INT, true, null))));
+		assertTrue(localsInMethodList.contains((new VariableInfo("f", TypeEnum.STRING, true, null))));
 	}
 }

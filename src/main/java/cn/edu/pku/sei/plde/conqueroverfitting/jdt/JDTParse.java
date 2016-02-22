@@ -37,8 +37,7 @@ public class JDTParse {
 		ASTNode root = createASTForSource(sourcePath,
 				ASTParser.K_COMPILATION_UNIT);
 
-		VariableCollectVisitor variableCollectVisitor = new VariableCollectVisitor(
-				lineCounter);
+		VariableCollectVisitor variableCollectVisitor = new VariableCollectVisitor(lineCounter);
 		BoundaryCollectVisitor boundaryCollectVisitor = new BoundaryCollectVisitor();
 		root.accept(variableCollectVisitor);
 		root.accept(boundaryCollectVisitor);

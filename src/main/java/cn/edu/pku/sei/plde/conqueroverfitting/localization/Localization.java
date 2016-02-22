@@ -51,8 +51,8 @@ public class Localization  {
     public List<HashMap<SuspiciousField, String>> getSuspiciousListLite() {
         List<StatementExt> statements = this.getSuspiciousListWithSuspiciousnessBiggerThanZero();
         List<HashMap<SuspiciousField, String>> result = new ArrayList<HashMap<SuspiciousField, String>>();
-        Statement firstline = statements.get(0);
-        Statement lastline = statements.get(0);
+        StatementExt firstline = statements.get(0);
+        StatementExt lastline = statements.get(0);
         for (StatementExt statement: statements){
             if (getClassAddressFromStatement(statement).equals(getClassAddressFromStatement(firstline)) && getTargetFunctionFromStatement(statement).equals(getTargetFunctionFromStatement(firstline))){
                 firstline = statement.getLineNumber() < firstline.getLineNumber() ? statement : firstline;
@@ -60,7 +60,7 @@ public class Localization  {
             }else {
                 HashMap<SuspiciousField, String> data = new HashMap<SuspiciousField, String>();
                 data.put(SuspiciousField.class_address, getClassAddressFromStatement(firstline));
-                data.put(SuspiciousField.error_tests, getErrorTestsStringFromStatement(statement));
+                data.put(SuspiciousField.error_tests, getErrorTestsStringFromStatement(firstline));
                 data.put(SuspiciousField.line_number, getLineNumberFromStatement(firstline)+"-"+getLineNumberFromStatement(lastline));
                 data.put(SuspiciousField.suspiciousness, getSupiciousnessFromStatement(firstline));
                 data.put(SuspiciousField.target_function, getTargetFunctionFromStatement(firstline));
@@ -75,7 +75,7 @@ public class Localization  {
     public List<HashMap<SuspiciousField, String>> getSuspiciousListLiteWithSpecificLine(){
         List<StatementExt> statements = this.getSuspiciousListWithSuspiciousnessBiggerThanZero();
         List<HashMap<SuspiciousField, String>> result = new ArrayList<HashMap<SuspiciousField, String>>();
-        Statement firstline = statements.get(0);
+        StatementExt firstline = statements.get(0);
         Collection<String> lineNumbers = new ArrayList<String>();
         for (StatementExt statement: statements){
             if (getClassAddressFromStatement(statement).equals(getClassAddressFromStatement(firstline)) && getTargetFunctionFromStatement(statement).equals(getTargetFunctionFromStatement(firstline))){
@@ -88,7 +88,7 @@ public class Localization  {
                 }else {
                     data.put(SuspiciousField.line_number, StringUtils.join("-",lineNumbers));
                 }
-                data.put(SuspiciousField.error_tests, getErrorTestsStringFromStatement(statement));
+                data.put(SuspiciousField.error_tests, getErrorTestsStringFromStatement(firstline));
                 data.put(SuspiciousField.suspiciousness, getSupiciousnessFromStatement(firstline));
                 data.put(SuspiciousField.target_function, getTargetFunctionFromStatement(firstline));
                 result.add(data);
