@@ -2,6 +2,7 @@ package cn.edu.pku.sei.plde.conqueroverfitting.Entirety;
 
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.BoundaryCollect;
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.BoundaryFilter;
+import cn.edu.pku.sei.plde.conqueroverfitting.boundary.BoundaryGenerator;
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.BoundaryInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.gatherer.GathererJava;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Localization;
@@ -78,5 +79,7 @@ public class EntiretyTest {
         if (filteredVariable.size() != 1){
             System.out.println("Filter Error");
         }
+        String ifString = BoundaryGenerator.generate(filteredVariable.entrySet().iterator().next(), project);
+        System.out.println(ifString);
     }
 }

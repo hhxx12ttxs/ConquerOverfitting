@@ -29,6 +29,30 @@ public class BoundaryFilter {
 
     /**
      *
+     * @param boundaryInfos
+     * @param name
+     * @param type
+     * @return
+     */
+    public static List<BoundaryInfo> getBoundaryWithNameAndType(List<BoundaryInfo> boundaryInfos, String name, String type){
+        List<BoundaryInfo> result = new ArrayList<BoundaryInfo>();
+        for (BoundaryInfo info: boundaryInfos){
+            if (info.isSimpleType && info.variableSimpleType==null){
+                continue;
+            }
+            if (!info.isSimpleType && info.otherType == null){
+                continue;
+            }
+            String infoType = info.isSimpleType?info.variableSimpleType.toString():info.otherType;
+            if (info.name.equals(name) && infoType.equals(type)){
+                result.add(info);
+            }
+        }
+        return result;
+    }
+
+    /**
+     *
      * @param boundaryInfos The boundary info list
      * @param value the specific value
      * @param type the specific type
@@ -51,4 +75,21 @@ public class BoundaryFilter {
         return count;
     }
 
+
+    /**
+     *
+     * @param boundaryInfos
+     * @param value
+     * @param type
+     * @return
+     */
+    public static List<BoundaryInfo> getBoundaryWithValueSmaller(List<BoundaryInfo> boundaryInfos, String value, String type){
+        List<BoundaryInfo> result = new ArrayList<BoundaryInfo>();
+        for (BoundaryInfo info: boundaryInfos){
+            if (Double.valueOf(info.value) <= Double.valueOf(value)){
+                result.add(info);
+            }
+        }
+        return result;
+    }
 }
