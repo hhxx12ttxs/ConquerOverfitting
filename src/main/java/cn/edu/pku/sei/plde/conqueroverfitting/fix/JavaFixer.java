@@ -5,7 +5,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.utils.PathUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.ShellUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.MethodInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang.StringUtils;
 import org.junit.runner.JUnitCore;
 import sun.misc.BASE64Encoder;
 
