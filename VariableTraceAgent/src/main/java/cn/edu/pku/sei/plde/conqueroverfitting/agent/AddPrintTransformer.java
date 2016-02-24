@@ -57,19 +57,7 @@ public class AddPrintTransformer implements ClassFileTransformer {
                 line++;
                 if (line == _targetLineNum){
                     for (String var: _targetVariables){
-                        String printLine;
-                        if (var.contains("?")){
-                            String varname = var.substring(0,var.lastIndexOf("?"));
-                            if (var.endsWith("[]")){
-                                printLine = "System.out.print(\"|"+varname+"=\"+Arrays.toString("+varname+")+\"|\""+");\n";
-                            }
-                            else {
-                                printLine = "System.out.print(\"|"+varname+"=\"+"+varname+".toString()+\"|\""+");\n";
-                            }
-                        }
-                        else {
-                            printLine = "System.out.print(\"|"+var+"=\"+"+var+"+\"|\""+");\n";
-                        }
+                        String printLine = generatePrintLine(var);
                         outputStream.write(printLine.getBytes());
                     }
                 }
@@ -91,6 +79,26 @@ public class AddPrintTransformer implements ClassFileTransformer {
         //the start flag of the result
         System.out.print(">>");
         return result;
+    }
+
+    private String generatePrintLine(String var){
+        String printLine = "";
+        String varName = var.contains("?")?var.substring(0, var.lastIndexOf("?")):var;
+        String varType = var.contains("?")?var.substring(var.lastIndexOf("?")+1):null;
+
+        printLine += "System.out.print(\"|"+varName+"=\"+";
+        if (varType == null){
+            printLine += var +"+\"|\""+");\n";
+            return printLine;
+        }
+        String varPrinter = "";
+        varPrinter += varName;
+        if (varType.endsWith("[]")){
+            varPrinter = "Arrays.toString("+varPrinter+")";
+        }
+        printLine += varPrinter;
+        printLine += "+\"|\""+");\n";
+        return printLine;
     }
 
 

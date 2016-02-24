@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 import net.sf.json.JSONArray;
+import net.sf.json.JSONException;
 import net.sf.json.JSONObject;
 
 import org.apache.commons.httpclient.DefaultHttpMethodRetryHandler;
@@ -62,7 +63,13 @@ public class GathererJava {
 		int size = codeUrlList.size();
 		for(int i = 0; i < size; i ++){
             String codeUrl = codeUrlList.get(i);
-			String code = getCode(codeUrl);
+			String code;
+			try {
+				code = getCode(codeUrl);
+			} catch (JSONException e){
+				e.printStackTrace();
+				continue;
+			}
 			FileUtils.writeFile("experiment//searchcode//" + project + "//" + i + ".java", code);
 		}
 	}
@@ -76,8 +83,7 @@ public class GathererJava {
 		try {
 			int statusCode = httpClient.executeMethod(getMethod);
 			if (statusCode != HttpStatus.SC_OK)
-				System.err.println("Method failed: "
-						+ getMethod.getStatusLine());
+				System.err.println("Method failed: " + getMethod.getStatusLine());
 			InputStream bodyIs = getMethod.getResponseBodyAsStream();
 			BufferedReader br = new BufferedReader(
 					new InputStreamReader(bodyIs));

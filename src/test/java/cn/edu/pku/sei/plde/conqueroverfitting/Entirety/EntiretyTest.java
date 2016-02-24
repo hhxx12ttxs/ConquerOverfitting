@@ -29,8 +29,8 @@ public class EntiretyTest {
 
     @Test
     public void testEntirety() throws IOException{
-        int i = 3;
-        String project = "math";
+        int i = 4;
+        String project = "math4";
         /* 四个整个项目需要的参数 */
         String classpath = PATH_OF_DEFECTS4J+"Math-"+i+"/target/classes";              //项目的.class文件路径
         String testClasspath  = PATH_OF_DEFECTS4J+"Math-"+i+"/target/test-classes";    //项目的test的.class文件路径
@@ -40,14 +40,14 @@ public class EntiretyTest {
 
         Localization localization = new Localization(classpath, testClasspath);
         /* 从localization模块得到suspicious列表需要很长时间的运行,所以Debug状态用下面生成的参数代替  */
-        List<HashMap<SuspiciousField, String>> suspiciousnesses = //localization.getSuspiciousListLite();
-                                                                  new ArrayList<HashMap<SuspiciousField, String>>();
-        HashMap<SuspiciousField, String> example = new HashMap<SuspiciousField, String>();
-        example.put(SuspiciousField.line_number,     "816-846");
-        example.put(SuspiciousField.error_tests,     "org.apache.commons.math3.util.MathArraysTest#testLinearCombinationWithSingleElementArray");
-        example.put(SuspiciousField.class_address,   "org.apache.commons.math3.util.MathArrays");
-        example.put(SuspiciousField.target_function, "linearCombination([D[D\\)");
-        suspiciousnesses.add(example);
+        List<HashMap<SuspiciousField, String>> suspiciousnesses = localization.getSuspiciousListLite();
+                                                                  //new ArrayList<HashMap<SuspiciousField, String>>();
+        //HashMap<SuspiciousField, String> example = new HashMap<SuspiciousField, String>();
+        //example.put(SuspiciousField.line_number,     "816-846");
+        //example.put(SuspiciousField.error_tests,     "org.apache.commons.math3.util.MathArraysTest#testLinearCombinationWithSingleElementArray");
+        //example.put(SuspiciousField.class_address,   "org.apache.commons.math3.util.MathArrays");
+        //example.put(SuspiciousField.target_function, "linearCombination([D[D\\)");
+        //suspiciousnesses.add(example);
 
 
         HashMap<SuspiciousField, String> suspiciousness = suspiciousnesses.get(0);

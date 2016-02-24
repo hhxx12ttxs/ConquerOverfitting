@@ -58,6 +58,10 @@ public class ExceptionExtractor {
                         exceptionValues.get(infoKey).add(value);
                     }
                 }
+                //delete the blank key-value
+                if (exceptionValues.get(infoKey).size() == 0){
+                    exceptionValues.remove(infoKey);
+                }
             }
         }
         return exceptionValues;
@@ -73,18 +77,33 @@ public class ExceptionExtractor {
     public static Map<VariableInfo, List<String>> filterWithSearchBoundary(Map<VariableInfo, List<String>> exceptionVariable, String project, int count){
         Map<VariableInfo, List<String>> result = new HashMap<VariableInfo, List<String>>();
         for (Map.Entry<VariableInfo, List<String>> entry: exceptionVariable.entrySet()){
+            String valueType = entry.getKey().isSimpleType?entry.getKey().variableSimpleType.toString():entry.getKey().otherType;
             ArrayList<String> keywords = new ArrayList<String>();
             keywords.add("if");
+            keywords.add(valueType);
             keywords.add(entry.getKey().variableName);
             GathererJava gathererJava = new GathererJava(keywords, project+"-"+entry.getKey().variableName);
-            if (!new File("experiment/searchcode/"+project+"-"+entry.getKey().variableName).exists()){
+            File codePackage = new File("experiment/searchcode/"+project+"-"+entry.getKey().variableName);
+            if (!codePackage.exists()){
                 gathererJava.searchCode();
+                if (codePackage.list().length < 30 && !entry.getKey().isSimpleType){
+                    keywords.remove(entry.getKey().variableName);
+                    gathererJava = new GathererJava(keywords, project+"-"+entry.getKey().variableName);
+                    gathererJava.searchCode();
+                }
             }
             BoundaryCollect boundaryCollect = new BoundaryCollect("experiment/searchcode/"+project+"-"+entry.getKey().variableName);
             List<BoundaryInfo> boundaryList = boundaryCollect.getBoundaryList();
             List<BoundaryInfo> filteredList = BoundaryFilter.getBoundaryWithName(boundaryList, entry.getKey().variableName);
+            if (filteredList.size() == 0 && !entry.getKey().isSimpleType){
+                if (result.containsKey(entry.getKey())){
+                    result.get(entry.getKey()).add("null");
+                }
+                else {
+                    result.put(entry.getKey(),Arrays.asList("null"));
+                }
+            }
             for (String value: entry.getValue()){
-                String valueType = entry.getKey().isSimpleType?entry.getKey().variableSimpleType.toString():entry.getKey().otherType;
                 int valueCount = BoundaryFilter.countTheValueOccurs(filteredList,value, valueType);
                 if (valueCount >= count){
                     if (result.containsKey(entry.getKey())){
@@ -122,5 +141,4 @@ public class ExceptionExtractor {
         }
         return null;
     }
-
 }
