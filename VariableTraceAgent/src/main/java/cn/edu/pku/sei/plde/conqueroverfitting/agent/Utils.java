@@ -1,12 +1,84 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.agent;
 
 import java.io.*;
+import java.util.Arrays;
 import java.util.List;
 
 /**
  * Created by yanrunfa on 2016/2/20.
  */
-public class ShellUtils {
+public class Utils {
+
+    /**
+     *
+     * @param tempJavaName
+     * @param tempClassName
+     * @param classPath
+     * @param srcPath
+     * @param className
+     * @param targetLine
+     * @param addingCode
+     * @return
+     * @throws IOException
+     */
+    public static byte[] AddCodeToSource(String tempJavaName, String tempClassName, String classPath, String srcPath, String className, int targetLine, String addingCode) throws IOException{
+        File tempJavaFile = new File(tempJavaName);
+        try {
+            FileOutputStream outputStream = new FileOutputStream(tempJavaFile);
+            BufferedReader reader = new BufferedReader(new FileReader(srcPath+"/"+className.replace(".","/")+".java"));
+            String lineString = null;
+            int line = 1;
+            while ((lineString = reader.readLine()) != null) {
+                line++;
+                if (line == targetLine){
+                    outputStream.write(addingCode.getBytes());
+                }
+                outputStream.write((lineString+"\n").getBytes());
+            }
+            outputStream.close();
+            Utils.shellRun(Arrays.asList("javac -cp "+ classPath+" "+ tempJavaName));
+        } catch (FileNotFoundException e){
+            System.out.println("ERROR: Cannot Find Source File: "+className+" in Source Path: "+ srcPath);
+            e.printStackTrace();
+        } catch (IOException e){
+            e.printStackTrace();
+        }
+        //clean temp file
+        tempJavaFile.deleteOnExit();
+        new File(tempClassName).deleteOnExit();
+        return getBytesFromFile(tempClassName);
+    }
+
+
+    /**
+     *
+     * @param fileName
+     * @return
+     */
+    public static byte[] getBytesFromFile(String fileName) {
+        try {
+            // precondition
+            File file = new File(fileName);
+            InputStream is = new FileInputStream(file);
+            long length = file.length();
+            byte[] bytes = new byte[(int) length];
+
+            // Read in the bytes
+            int offset = 0;
+            int numRead = 0;
+            while (offset <bytes.length && (numRead = is.read(bytes, offset, bytes.length - offset)) >= 0) {
+                offset += numRead;
+            }
+
+            if (offset < bytes.length) {
+                throw new IOException("Could not completely read file " + file.getName());
+            }
+            is.close();
+            return bytes;
+        } catch (Exception e) {
+            return null;
+        }
+    }
 
     /**
      *
@@ -73,7 +145,7 @@ public class ShellUtils {
         outputStream.close();
         batFile.deleteOnExit();
         Process process= Runtime.getRuntime().exec(cmd);
-        return ShellUtils.getShellOut(process);
+        return Utils.getShellOut(process);
     };
 }
 

@@ -1,4 +1,4 @@
-package cn.edu.pku.sei.plde.conqueroverfitting.fixcapture;
+package cn.edu.pku.sei.plde.conqueroverfitting.fix;
 
 import org.junit.Assert;
 import org.junit.Test;

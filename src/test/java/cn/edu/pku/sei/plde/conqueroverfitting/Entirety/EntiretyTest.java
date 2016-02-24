@@ -1,6 +1,7 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.Entirety;
 
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.BoundaryGenerator;
+import cn.edu.pku.sei.plde.conqueroverfitting.fix.Capturer;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Localization;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.common.SuspiciousField;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.ExceptionExtractor;
@@ -13,7 +14,6 @@ import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.MethodInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 import org.junit.Test;
 
-import java.io.IOException;
 import java.util.*;
 
 /**
@@ -23,9 +23,9 @@ public class EntiretyTest {
     private final String PATH_OF_DEFECTS4J = "/Users/yanrunfa/Documents/defects4j/tmp/";
 
     @Test
-    public void testEntirety() throws IOException{
-        int i = 4;
-        String project = "math4";
+    public void testEntirety() throws Exception{
+        int i = 5;
+        String project = "math5";
         /* 四个整个项目需要的参数 */
         String classpath = PATH_OF_DEFECTS4J+"Math-"+i+"/target/classes";              //项目的.class文件路径
         String testClasspath  = PATH_OF_DEFECTS4J+"Math-"+i+"/target/test-classes";    //项目的test的.class文件路径
@@ -45,33 +45,41 @@ public class EntiretyTest {
         //suspiciousnesses.add(example);
 
 
-        HashMap<SuspiciousField, String> suspiciousness = suspiciousnesses.get(0);
-        String testFailclassName = suspiciousness.get(SuspiciousField.class_address);                             //test失败的的类
-        int testFailLineNumber = Integer.valueOf(suspiciousness.get(SuspiciousField.line_number).split("-")[1]);  //test失败所在的行
-        String[] testFailTestClasses = suspiciousness.get(SuspiciousField.error_tests).split("-");                //所有在该处中失败test
+        for (HashMap<SuspiciousField, String> suspiciousness: suspiciousnesses){
+            if (suspiciousness.get(SuspiciousField.error_tests).startsWith("check")){
+                continue;
+            }
+            String testFailclassName = suspiciousness.get(SuspiciousField.class_address);                             //test失败的的类
+            int testFailLineNumber = Integer.valueOf(suspiciousness.get(SuspiciousField.line_number).split("-")[1]);  //test失败所在的行
+            String[] testFailTestClasses = suspiciousness.get(SuspiciousField.error_tests).split("-");                //所有在该处中失败test
 
         /*  聚集所有需要跟踪的变量与无参函数  */
-        String classSrcPath = classSrc + "/" + testFailclassName.replace(".","/") + ".java";                      //test失败的时候所在的类的源码地址
-        VariableCollect variableCollect = VariableCollect.GetInstance(classSrcPath.substring(0,classSrcPath.lastIndexOf("/")));
-        List<VariableInfo> parameters = variableCollect.getVisibleParametersInMethodList(classSrcPath, testFailLineNumber-1);
-        List<VariableInfo> locals = variableCollect.getVisibleLocalInMethodList(classSrcPath, testFailLineNumber-1);
-        MethodCollect methodCollect = MethodCollect.GetInstance(classSrcPath.substring(0,classSrcPath.lastIndexOf("/")));
-        LinkedHashMap<String, ArrayList<MethodInfo>> methods = methodCollect.getVisibleMethodInAllClassMap(classSrcPath);
-        List<VariableInfo> variableInfos = new ArrayList<VariableInfo>();
-        variableInfos.addAll(parameters);
-        variableInfos.addAll(locals);
-        List<MethodInfo> methodInfos = methods.get(classSrcPath);
+            String classSrcPath = classSrc + "/" + testFailclassName.replace(".","/") + ".java";                      //test失败的时候所在的类的源码地址
+            VariableCollect variableCollect = VariableCollect.GetInstance(classSrcPath.substring(0,classSrcPath.lastIndexOf("/")));
+            List<VariableInfo> parameters = variableCollect.getVisibleParametersInMethodList(classSrcPath, testFailLineNumber-1);
+            List<VariableInfo> locals = variableCollect.getVisibleLocalInMethodList(classSrcPath, testFailLineNumber-1);
+            MethodCollect methodCollect = MethodCollect.GetInstance(classSrcPath.substring(0,classSrcPath.lastIndexOf("/")));
+            LinkedHashMap<String, ArrayList<MethodInfo>> methods = methodCollect.getVisibleMethodInAllClassMap(classSrcPath);
+            List<VariableInfo> variableInfos = new ArrayList<VariableInfo>();
+            variableInfos.addAll(parameters);
+            variableInfos.addAll(locals);
+            List<MethodInfo> methodInfos = methods.get(classSrcPath);
 
-        VariableTracer tracer = new VariableTracer(classpath, testClasspath, classSrc);
-        List<TraceResult> traceResults = new ArrayList<TraceResult>();
-        for (String testFailTestClass: testFailTestClasses){
-            String testFailTestClassName = testFailTestClass.substring(0, testFailTestClass.lastIndexOf("#")); //testFailTestClass的格式为: 类名#函数名
-            traceResults.addAll(tracer.trace(testFailclassName, testFailTestClassName, testFailLineNumber, variableInfos, methodInfos));
+            VariableTracer tracer = new VariableTracer(classpath, testClasspath, classSrc);
+            List<TraceResult> traceResults = new ArrayList<TraceResult>();
+            for (String testFailTestClass: testFailTestClasses){
+                String testFailTestClassName = testFailTestClass.substring(0, testFailTestClass.lastIndexOf("#")); //testFailTestClass的格式为: 类名#函数名
+                traceResults.addAll(tracer.trace(testFailclassName, testFailTestClassName, testFailLineNumber, variableInfos, methodInfos));
+            }
+            List<VariableInfo> allInfos = InfoUtils.AddMethodInfoListToVariableInfoList(variableInfos, methodInfos);
+            Map<VariableInfo, List<String>> exceptionVariable = ExceptionExtractor.extractWithAbandonTrueValue(traceResults, allInfos);
+            Map<VariableInfo, List<String>> filteredVariable = ExceptionExtractor.filterWithSearchBoundary(exceptionVariable,project,10);
+            String ifString = BoundaryGenerator.generate(filteredVariable, project);
+            Capturer fixCapturer = new Capturer(classpath, testClasspath, testClassSrc);
+            String fixString = fixCapturer.getFixFrom(testFailclassName.split("#")[0], testFailclassName.split("#")[1]);
+
+
+
         }
-        List<VariableInfo> allInfos = InfoUtils.AddMethodInfoListToVariableInfoList(variableInfos, methodInfos);
-        Map<VariableInfo, List<String>> exceptionVariable = ExceptionExtractor.extractWithAbandonTrueValue(traceResults, allInfos);
-        Map<VariableInfo, List<String>> filteredVariable = ExceptionExtractor.filterWithSearchBoundary(exceptionVariable,project,10);
-        String ifString = BoundaryGenerator.generate(filteredVariable.entrySet().iterator().next(), project);
-        System.out.println(ifString);
     }
 }
