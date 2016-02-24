@@ -158,23 +158,27 @@ public class VariableTracer {
         String agentCp = "cp:" + _classpath;
         String agentVars = "var:";
         for (VariableInfo var: vars){
-            if (var.isSimpleType){
-                agentVars += var.variableName;
-                agentVars += "/";
-            }
-            else {
-                agentVars += var.variableName;
+            agentVars += var.variableName;
+            if (!var.isSimpleType){
                 agentVars += "?";
                 agentVars += var.otherType;
-                agentVars += "/";
             }
+            agentVars += "/";
+
+        }
+        String agentMethods = "";
+        if (methods.size() > 0){
+            agentMethods = "method:";
         }
         for (MethodInfo method: methods){
-            agentVars += method.methodName;
-            agentVars += "()";
-            agentVars += "/";
+            agentMethods += method.methodName;
+            if (!method.isSimpleType){
+                agentMethods += "?";
+                agentMethods += method.otherType;
+            }
+            agentMethods += "/";
         }
-        return StringUtils.join(Arrays.asList(agentClass,agentLine,agentSrc,agentCp,agentVars),",");
+        return "\""+StringUtils.join(Arrays.asList(agentClass,agentLine,agentSrc,agentCp,agentVars,agentMethods),",")+"\"";
     }
 
     private String buildClasspath(List<String> additionalPath){
