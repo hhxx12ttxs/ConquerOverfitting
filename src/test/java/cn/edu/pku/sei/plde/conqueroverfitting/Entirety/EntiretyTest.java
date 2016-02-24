@@ -1,10 +1,6 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.Entirety;
 
-import cn.edu.pku.sei.plde.conqueroverfitting.boundary.BoundaryCollect;
-import cn.edu.pku.sei.plde.conqueroverfitting.boundary.BoundaryFilter;
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.BoundaryGenerator;
-import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.BoundaryInfo;
-import cn.edu.pku.sei.plde.conqueroverfitting.gatherer.GathererJava;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Localization;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.common.SuspiciousField;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.ExceptionExtractor;
@@ -15,7 +11,6 @@ import cn.edu.pku.sei.plde.conqueroverfitting.visible.MethodCollect;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.VariableCollect;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.MethodInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
-import com.gzoltar.core.instr.testing.TestResult;
 import org.junit.Test;
 
 import java.io.IOException;

@@ -1,12 +1,7 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.jdt;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
 import org.eclipse.jdt.core.JavaCore;
@@ -15,7 +10,6 @@ import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTParser;
 
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.BoundaryInfo;
-import cn.edu.pku.sei.plde.conqueroverfitting.utils.FileUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.MethodInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 
@@ -31,52 +25,42 @@ public class JDTParse {
 	private ArrayList<VariableInfo> parameterInMethodList;
 	private ArrayList<VariableInfo> localInMethodList;
 	private ArrayList<MethodInfo> methodInClassList;
+	private ArrayList<String> identifierList;
 	private int[] lineCounter;
-    
-	public JDTParse(String sourcePath) {
-		ASTNode root = createASTForSource(sourcePath,
-				ASTParser.K_COMPILATION_UNIT);
 
-		VariableCollectVisitor variableCollectVisitor = new VariableCollectVisitor(lineCounter);
-		BoundaryCollectVisitor boundaryCollectVisitor = new BoundaryCollectVisitor();
-		root.accept(variableCollectVisitor);
-		root.accept(boundaryCollectVisitor);
-		
-		boundaryList = boundaryCollectVisitor.getBoundaryInfoList();
-		filedInClassList = variableCollectVisitor.getFiledsInClassList();
-		parameterInMethodList = variableCollectVisitor.getParametersInMethodList();
-		localInMethodList = variableCollectVisitor.getLocalInMethodList();
-		methodInClassList = variableCollectVisitor.getMethodsInClassList();
-		Collections.sort(parameterInMethodList);
-		Collections.sort(localInMethodList);
-	}
-	
+	public JDTParse(String source, int kind) {
 
-	private String readAndProcessSource(String sourcePath) {
-		String content = "";
-		try {
-			FileReader fr = new FileReader(sourcePath);
-			BufferedReader br = new BufferedReader(fr);
+		ASTNode root = createASTForSource(source, kind);
 
-			String line = "";
-			line = br.readLine();
-			while (line != null) {
-				line = line.replaceAll("&nbsp;", " ");
-				line = line.replaceAll("\t", " ");
-				line = line.replaceAll("\\s{2,100}", " ");
-				content = content + line + "\r\n";
-				line = br.readLine();
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
+		if (kind == ASTParser.K_COMPILATION_UNIT) {
+			processSource(source);
+			VariableCollectVisitor variableCollectVisitor = new VariableCollectVisitor(lineCounter);
+			BoundaryCollectVisitor boundaryCollectVisitor = new BoundaryCollectVisitor();
+			root.accept(variableCollectVisitor);
+			root.accept(boundaryCollectVisitor);
+
+			boundaryList = boundaryCollectVisitor.getBoundaryInfoList();
+			filedInClassList = variableCollectVisitor.getFiledsInClassList();
+			parameterInMethodList = variableCollectVisitor.getParametersInMethodList();
+			localInMethodList = variableCollectVisitor.getLocalInMethodList();
+			methodInClassList = variableCollectVisitor.getMethodsInClassList();
+			Collections.sort(parameterInMethodList);
+			Collections.sort(localInMethodList);
+		} else if (kind == ASTParser.K_EXPRESSION || kind == ASTParser.K_STATEMENTS) {
+			IdentifierCollectVisitor identifierCollectVisitor = new IdentifierCollectVisitor();
+			root.accept(identifierCollectVisitor);
+
+			identifierList = identifierCollectVisitor.getIdentifierList();
 		}
+	}
 
-		lineCounter = new int[content.length()];
+	private void processSource(String source) {
+		lineCounter = new int[source.length()];
 		int i = 0;
 		lineCounter[0] = 1;
 		int CurrentLine = 1;
-		for (i = 0; i < content.length(); i++) {
-			if (content.charAt(i) == '\r') {
+		for (i = 0; i < source.length(); i++) {
+			if (source.charAt(i) == '\r') {
 				lineCounter[i] = CurrentLine;
 				lineCounter[i + 1] = CurrentLine;
 				CurrentLine++;
@@ -86,14 +70,12 @@ public class JDTParse {
 				lineCounter[i] = CurrentLine;
 			}
 		}
-
-		return content;
 	}
 
-	private ASTNode createASTForSource(String sourcePath, int kind) {
+	private ASTNode createASTForSource(String source, int kind) {
 
 		ASTParser parser = ASTParser.newParser(AST.JLS4);
-		parser.setSource(readAndProcessSource(sourcePath).toCharArray());
+		parser.setSource(source.toCharArray());
 		parser.setKind(kind);
 		parser.setResolveBindings(true);
 		Map options = JavaCore.getOptions();
@@ -120,5 +102,9 @@ public class JDTParse {
 
 	public ArrayList<MethodInfo> getMethodInClassList() {
 		return methodInClassList;
+	}
+
+	public ArrayList<String> getIdentifierList() {
+		return identifierList;
 	}
 }

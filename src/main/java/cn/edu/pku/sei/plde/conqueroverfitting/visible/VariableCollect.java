@@ -6,6 +6,9 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import org.eclipse.jdt.core.dom.ASTParser;
+
+import cn.edu.pku.sei.plde.conqueroverfitting.file.ReadFile;
 import cn.edu.pku.sei.plde.conqueroverfitting.jdt.JDTParse;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.FileUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
@@ -36,7 +39,7 @@ public class VariableCollect {
 		localInMethodMap = new LinkedHashMap<String, ArrayList<VariableInfo>>();
 		ArrayList<String> filesPath = FileUtils.getJavaFilesInProj(projectPath);
 		for (String filePath : filesPath) {
-			JDTParse jdtParse = new JDTParse(filePath);
+			JDTParse jdtParse = new JDTParse(new ReadFile(filePath).getSource(), ASTParser.K_COMPILATION_UNIT);
 			filedsInClassMap.put(filePath, jdtParse.getFieldInClassList());
 			parameterInMethodMap.put(filePath, jdtParse.getParameterInMethodList());
 			localInMethodMap.put(filePath, jdtParse.getLocalInMethodList());

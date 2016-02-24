@@ -5,24 +5,28 @@ import java.io.FileReader;
 import java.io.IOException;
 
 public class ReadFile {
-	private String content;
+	private String source;
 
 	public ReadFile(String filePath) {
-		StringBuilder sb = new StringBuilder();
 		try {
-			BufferedReader br = new BufferedReader(new FileReader(filePath));
+			FileReader fr = new FileReader(filePath);
+			BufferedReader br = new BufferedReader(fr);
+
 			String line = "";
-			while ((line = br.readLine()) != null) {
-				sb.append(line + "\n");
+			line = br.readLine();
+			while (line != null) {
+				line = line.replaceAll("&nbsp;", " ");
+				line = line.replaceAll("\t", " ");
+				line = line.replaceAll("\\s{2,100}", " ");
+				source = source + line + "\r\n";
+				line = br.readLine();
 			}
-			br.close();
-		} catch (IOException e) {
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		content = sb.toString();
 	}
 
-	public String getContent() {
-		return content;
+	public String getSource() {
+		return source;
 	}
 }
