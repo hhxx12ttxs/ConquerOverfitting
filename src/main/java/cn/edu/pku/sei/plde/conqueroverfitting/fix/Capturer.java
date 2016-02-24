@@ -1,10 +1,9 @@
-package cn.edu.pku.sei.plde.conqueroverfitting.fixcapture;
+package cn.edu.pku.sei.plde.conqueroverfitting.fix;
 
 import cn.edu.pku.sei.plde.conqueroverfitting.slice.StaticSlice;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.ShellUtils;
 import com.gzoltar.core.GZoltar;
 import com.gzoltar.core.instr.testing.TestResult;
-import com.sun.org.apache.bcel.internal.generic.LUSHR;
 import de.unisb.cs.st.javaslicer.slicing.Slicer;
 import de.unisb.cs.st.javaslicer.tracer.TracerAgent;
 import javassist.NotFoundException;

@@ -1,31 +1,42 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.agent;
 
-import javax.tools.*;
 import java.io.*;
 import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.IllegalClassFormatException;
 import java.security.ProtectionDomain;
 import java.util.Arrays;
-import java.util.List;
 
 /**
- * Created by yanrunfa on 2016/2/20.
+ * Created by yanrunfa on 16/2/24.
  */
-public class AddPrintTransformer implements ClassFileTransformer {
+public class AddFixTransformer implements ClassFileTransformer{
+
     public final String _targetClassName;
     public final int _targetLineNum;
-    public final String[] _targetVariables;
     public final String _srcPath;
     public final String _classPath;
+    public final String _ifString;
+    public final String _fixString;
     private String _tempJavaName="";
     private String _tempClassName="";
 
-    public AddPrintTransformer(String targetClassName, int targetLineNum, String[] targetVariables, String srcPath, String classPath){
+
+    /**
+     *
+     * @param targetClassName
+     * @param targetLineNum
+     * @param ifString
+     * @param fixString
+     * @param srcPath
+     * @param classPath
+     */
+    public AddFixTransformer(String targetClassName, int targetLineNum, String ifString, String fixString, String srcPath, String classPath){
         _targetClassName = targetClassName;
         _targetLineNum = targetLineNum;
-        _targetVariables = targetVariables;
         _srcPath = srcPath;
         _classPath = classPath;
+        _ifString = ifString;
+        _fixString = fixString;
     }
 
     public byte[] transform(ClassLoader loader, String className, Class<?> classBeingRedefined, ProtectionDomain protectionDomain, byte[] classfileBuffer) throws IllegalClassFormatException {
@@ -43,42 +54,23 @@ public class AddPrintTransformer implements ClassFileTransformer {
         if (!className.equals(_targetClassName)) {
             return classfileBuffer;
         }
+
         _tempJavaName = System.getProperty("user.dir")+"/temp/"+className.replace("/",".").substring(className.replace("/",".").lastIndexOf(".")+1)+".java";
         _tempClassName = System.getProperty("user.dir")+"/temp/"+className.replace("/",".").substring(className.replace("/",".").lastIndexOf(".")+1)+".class";
-        String printCode = "";
-        for (String var: _targetVariables){
-            printCode += generatePrintLine(var);
-        }
-        System.out.print(">>");
+
+        String fixCode = _fixString + "{" + _fixString +"}";
         try {
-            return Utils.AddCodeToSource(_tempJavaName,_tempClassName,_classPath,_srcPath,className,_targetLineNum,printCode);
+            return Utils.AddCodeToSource(_tempJavaName,_tempClassName,_classPath,_srcPath,className,_targetLineNum, fixCode);
         }catch (IOException e){
             e.printStackTrace();
         }
         return  classfileBuffer;
     }
 
-    private String generatePrintLine(String var){
-        String printLine = "";
-        String varName = var.contains("?")?var.substring(0, var.lastIndexOf("?")):var;
-        String varType = var.contains("?")?var.substring(var.lastIndexOf("?")+1):null;
-
-        printLine += "System.out.print(\"|"+varName+"=\"+";
-        if (varType == null){
-            printLine += var +"+\"|\""+");\n";
-            return printLine;
-        }
-        String varPrinter = "";
-        varPrinter += varName;
-        if (varType.endsWith("[]")){
-            varPrinter = "Arrays.toString("+varPrinter+")";
-        }
-        printLine += varPrinter;
-        printLine += "+\"|\""+");\n";
-        return printLine;
-    }
-
-
 
 
 }
+
+
+
+

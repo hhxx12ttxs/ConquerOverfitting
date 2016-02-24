@@ -75,6 +75,12 @@ public class VariableTracer {
      * @throws IOException
      */
     public List<TraceResult> trace(String classname, String testClassname, int errorLine, List<VariableInfo> vars, List<MethodInfo> methods)throws IOException{
+        if (vars.size() == 0 && methods.size() == 0){
+            System.out.println("No Variable or Method to trace");
+            return new ArrayList<TraceResult>();
+        }
+
+
         _classname = classname;
         _vars = vars;
         _methods = methods;
@@ -86,6 +92,7 @@ public class VariableTracer {
             printErrorShell();
             return new ArrayList<TraceResult>();
         }
+
         return traceAnalysis(_traceResult);
     };
 
@@ -156,7 +163,10 @@ public class VariableTracer {
         String agentLine = "line:"+ errorLine;
         String agentSrc = "src:" + _srcPath;
         String agentCp = "cp:" + _classpath;
-        String agentVars = "var:";
+        String agentVars = "";
+        if (vars.size() > 0) {
+            agentVars = "var:";
+        }
         for (VariableInfo var: vars){
             agentVars += var.variableName;
             if (!var.isSimpleType){
