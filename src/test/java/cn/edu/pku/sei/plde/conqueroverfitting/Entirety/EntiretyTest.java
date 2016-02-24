@@ -2,6 +2,7 @@ package cn.edu.pku.sei.plde.conqueroverfitting.Entirety;
 
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.BoundaryGenerator;
 import cn.edu.pku.sei.plde.conqueroverfitting.fix.Capturer;
+import cn.edu.pku.sei.plde.conqueroverfitting.fix.JavaFixer;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Localization;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.common.SuspiciousField;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.ExceptionExtractor;
@@ -76,8 +77,12 @@ public class EntiretyTest {
             Map<VariableInfo, List<String>> filteredVariable = ExceptionExtractor.filterWithSearchBoundary(exceptionVariable,project,10);
             String ifString = BoundaryGenerator.generate(filteredVariable, project);
             Capturer fixCapturer = new Capturer(classpath, testClasspath, testClassSrc);
-            String fixString = fixCapturer.getFixFrom(testFailclassName.split("#")[0], testFailclassName.split("#")[1]);
+            for (String testFailTestClass: testFailTestClasses){
+                String fixString = fixCapturer.getFixFrom(testFailTestClass.split("#")[0], testFailTestClass.split("#")[1]);
+                JavaFixer javaFixer = new JavaFixer(classpath, testClasspath, classSrcPath);
+                boolean result = javaFixer.fixWithIfStatement(testFailTestClass.split("#")[0],testFailclassName,fixCapturer._errorLineNum,ifString,fixString);
 
+            }
 
 
         }
