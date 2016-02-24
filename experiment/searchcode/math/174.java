@@ -1,7 +1,7 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2012 Red Hat, Inc., and individual contributors
- * as indicated by the @author tags.
+ * @(#)$Id$
+ *
+ * Copyright 2006-2008 Makoto YUI
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,330 +14,175 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ * 
+ * Contributors:
+ *     Makoto YUI - initial implementation
  */
-
-package io.undertow.io;
-
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
-
-import io.undertow.UndertowMessages;
-import io.undertow.server.HttpServerExchange;
-import io.undertow.util.Headers;
-import org.xnio.Buffers;
-import org.xnio.Pool;
-import org.xnio.Pooled;
-import org.xnio.channels.Channels;
-import org.xnio.channels.StreamSinkChannel;
-
-import static org.xnio.Bits.anyAreClear;
-import static org.xnio.Bits.anyAreSet;
+package xbird.util.string;
 
 /**
- * Buffering output stream that wraps a channel.
- * <p/>
- * This stream delays channel creation, so if a response will fit in the buffer it is not nessesary to
- * set the content length header.
- *
- * @author Stuart Douglas
+ * 
+ * <DIV lang="en"></DIV>
+ * <DIV lang="ja"></DIV>
+ * 
+ * @author Makoto YUI (yuin405+xbird@gmail.com)
+ * @link http://www.oreilly.com/catalog/javapt2/
  */
-public class UndertowOutputStream extends OutputStream implements BufferWritableOutputStream {
+public class TernarySearchTree {
+    private static final int LOW_OFFSET = 1;
+    private static final int HIGH_OFFSET = 2;
+    private static final int EQUAL_OFFSET = 3;
+    private static final int VALUE_OFFSET = 4;
+    private static final int NODE_SIZE = 5;
 
-    private final HttpServerExchange exchange;
-    private ByteBuffer buffer;
-    private Pooled<ByteBuffer> pooledBuffer;
-    private StreamSinkChannel channel;
-    private int state;
-    private int written;
-    private final long contentLength;
+    static final int INITIAL_TRIE_NODE = 1 + NODE_SIZE;
+    static final int INITIAL_NODE = 1;
+    static final int TRIE_CHAR_SIZE = 256;
 
-    private static final int FLAG_CLOSED = 1;
-    private static final int FLAG_WRITE_STARTED = 1 << 1;
+    char[] buff_ = new char[5000];
+    int[] nodes_;
+    Object[] objects_;
+    int nextNode_ = INITIAL_TRIE_NODE;
+    int nextObject_ = 0;
+    int initial_ = -1;
+    Object[] trie1Objects_;
+    int[][] trie2_;
+    Object[][] trie2Objects_;
 
-    private static final int MAX_BUFFERS_TO_ALLOCATE = 10;
-
-    /**
-     * Construct a new instance.  No write timeout is configured.
-     *
-     * @param exchange The exchange
-     */
-    public UndertowOutputStream(HttpServerExchange exchange) {
-        this.exchange = exchange;
-        this.contentLength = exchange.getResponseContentLength();
+    public TernarySearchTree() {
+        this(200000);
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    public void write(final int b) throws IOException {
-        write(new byte[]{(byte) b}, 0, 1);
+    public TernarySearchTree(int size) {
+        trie1Objects_ = new Object[TRIE_CHAR_SIZE];
+        trie2_ = new int[TRIE_CHAR_SIZE][TRIE_CHAR_SIZE];
+        trie2Objects_ = new Object[TRIE_CHAR_SIZE][TRIE_CHAR_SIZE];
+        nodes_ = new int[NODE_SIZE * size + 1];
+        objects_ = new Object[size];
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    public void write(final byte[] b) throws IOException {
-        write(b, 0, b.length);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public void write(final byte[] b, final int off, final int len) throws IOException {
-        if (len < 1) {
-            return;
-        }
-        if (anyAreSet(state, FLAG_CLOSED)) {
-            throw UndertowMessages.MESSAGES.streamIsClosed();
-        }
-        //if this is the last of the content
-        ByteBuffer buffer = buffer();
-        if (len == contentLength - written || buffer.remaining() < len) {
-            if (buffer.remaining() < len) {
-
-                //so what we have will not fit.
-                //We allocate multiple buffers up to MAX_BUFFERS_TO_ALLOCATE
-                //and put it in them
-                //if it still dopes not fit we loop, re-using these buffers
-
-                StreamSinkChannel channel = this.channel;
-                if (channel == null) {
-                    this.channel = channel = exchange.getResponseChannel();
-                }
-                final Pool<ByteBuffer> bufferPool = exchange.getConnection().getBufferPool();
-                ByteBuffer[] buffers = new ByteBuffer[MAX_BUFFERS_TO_ALLOCATE + 1];
-                Pooled[] pooledBuffers = new Pooled[MAX_BUFFERS_TO_ALLOCATE];
-                try {
-                    buffers[0] = buffer;
-                    int currentOffset = off;
-                    int rem = buffer.remaining();
-                    buffer.put(b, currentOffset, rem);
-                    buffer.flip();
-                    currentOffset += rem;
-                    int bufferCount = 1;
-                    for (int i = 0; i < MAX_BUFFERS_TO_ALLOCATE; ++i) {
-                        Pooled<ByteBuffer> pooled = bufferPool.allocate();
-                        pooledBuffers[bufferCount - 1] = pooled;
-                        buffers[bufferCount++] = pooled.getResource();
-                        ByteBuffer cb = pooled.getResource();
-                        int toWrite = len - currentOffset;
-                        if (toWrite > cb.remaining()) {
-                            rem = cb.remaining();
-                            cb.put(b, currentOffset, rem);
-                            cb.flip();
-                            currentOffset += rem;
-                        } else {
-                            cb.put(b, currentOffset, len - currentOffset);
-                            currentOffset = len;
-                            cb.flip();
-                            break;
-                        }
-                    }
-                    Channels.writeBlocking(channel, buffers, 0, bufferCount);
-                    while (currentOffset < len) {
-                        //ok, it did not fit, loop and loop and loop until it is done
-                        bufferCount = 0;
-                        for (int i = 0; i < MAX_BUFFERS_TO_ALLOCATE + 1; ++i) {
-                            ByteBuffer cb = buffers[i];
-                            cb.clear();
-                            bufferCount++;
-                            int toWrite = len - currentOffset;
-                            if (toWrite > cb.remaining()) {
-                                rem = cb.remaining();
-                                cb.put(b, currentOffset, rem);
-                                cb.flip();
-                                currentOffset += rem;
-                            } else {
-                                cb.put(b, currentOffset, len - currentOffset);
-                                currentOffset = len;
-                                cb.flip();
-                                break;
-                            }
-                        }
-                        Channels.writeBlocking(channel, buffers, 0, bufferCount);
-                    }
-                    buffer.clear();
-                } finally {
-                    for (int i = 0; i < pooledBuffers.length; ++i) {
-                        Pooled p = pooledBuffers[i];
-                        if (p == null) {
-                            break;
-                        }
-                        p.free();
-                    }
-                }
-            } else {
-                buffer.put(b, off, len);
-                if (buffer.remaining() == 0) {
-                    writeBufferBlocking();
-                }
+    public Object get(String key) {
+        int len = key.length();
+        key.getChars(0, len, buff_, 0);
+        int first = buff_[0];
+        int second = buff_[1];
+        if(len == 1 && (first < TRIE_CHAR_SIZE)) {
+            return trie1Objects_[first];
+        } else if(len == 2 && (first < TRIE_CHAR_SIZE) && (second < TRIE_CHAR_SIZE)) {
+            return trie2Objects_[first][second];
+        } else if((first < TRIE_CHAR_SIZE) && (second < TRIE_CHAR_SIZE)) {
+            int nodep = trie2_[first][second];
+            if(nodep == 0) {
+                return null;
             }
+            return search(buff_, 2, len - 1, nodep);
         } else {
-            buffer.put(b, off, len);
-            if (buffer.remaining() == 0) {
-                writeBufferBlocking();
+            //Use node[0] as a flag to determine if enetered here
+            if(nodes_[0] == 0) {
+                return null;
             }
+            return search(buff_, 0, len - 1, INITIAL_NODE);
         }
-        updateWritten(len);
     }
-
-
-    private void writeBufferBlocking() throws IOException {
-        if (channel == null) {
-            channel = exchange.getResponseChannel();
-        }
-        buffer.flip();
-        if (buffer.hasRemaining()) {
-            Channels.writeBlocking(channel, buffer);
-        }
-        buffer.clear();
-        state |= FLAG_WRITE_STARTED;
-    }
-
-    @Override
-    public void write(ByteBuffer[] buffers) throws IOException {
-        if (anyAreSet(state, FLAG_CLOSED)) {
-            throw UndertowMessages.MESSAGES.streamIsClosed();
-        }
-        int len = 0;
-        for (ByteBuffer buf : buffers) {
-            len += buf.remaining();
-        }
-        if (len < 1) {
-            return;
-        }
-
-        //if we have received the exact amount of content write it out in one go
-        //this is a common case when writing directly from a buffer cache.
-        if (this.written == 0 && len == contentLength) {
-            if (channel == null) {
-                channel = exchange.getResponseChannel();
+    
+    public Object put(String key, Object value) {
+        int len = key.length();
+        key.getChars(0, len, buff_, 0);
+        int first = buff_[0];
+        int second = buff_[1];
+        if(len == 1 && (first < TRIE_CHAR_SIZE)) {
+            Object old = trie1Objects_[first];
+            trie1Objects_[first] = value;
+            return old;
+        } else if(len == 2 && (first < TRIE_CHAR_SIZE) && (second < TRIE_CHAR_SIZE)) {
+            Object old = trie2Objects_[first][second];
+            trie2Objects_[first][second] = value;
+            return old;
+        } else if((first < TRIE_CHAR_SIZE) && (second < TRIE_CHAR_SIZE)) {
+            int nodep = trie2_[first][second];
+            if(nodep == 0) {
+                nodep = trie2_[first][second] = nextNode_;
+                nodes_[nextNode_] = buff_[2];
+                nextNode_ += NODE_SIZE;
             }
-            Channels.writeBlocking(channel, buffers, 0, buffers.length);
-            state |= FLAG_WRITE_STARTED;
+            return insert(buff_, 2, len - 1, value, nodep);
         } else {
-            ByteBuffer buffer = buffer();
-            if (len < buffer.remaining()) {
-                Buffers.copy(buffer, buffers, 0, buffers.length);
-            } else {
-                if (channel == null) {
-                    channel = exchange.getResponseChannel();
+            //Use node[0] as a flag to determine if enetered here
+            if(nodes_[0] == 0) {
+                nodes_[0] = 1;
+                nodes_[INITIAL_NODE] = first;
+            }
+            return insert(buff_, 0, len - 1, value, INITIAL_NODE);
+        }
+    }
+
+    public Object search(char[] str, int strIdx, int strMaxIdx, int p) {
+        int c;
+        while(p != 0) {
+            if((c = str[strIdx]) < nodes_[p])
+                p = nodes_[p + LOW_OFFSET];
+            else if(c == nodes_[p]) {
+                if(strIdx == strMaxIdx)
+                    return objects_[nodes_[p + VALUE_OFFSET]];
+                else {
+                    strIdx++;
+                    p = nodes_[p + EQUAL_OFFSET];
                 }
-                if (buffer.position() == 0) {
-                    Channels.writeBlocking(channel, buffers, 0, buffers.length);
+            } else
+                p = nodes_[p + HIGH_OFFSET];
+        }
+        return null;
+    }
+
+    public Object insert(char[] str, int strIdx, int strMaxIdx, Object value, int p) {
+        int c = str[strIdx];
+        int cdiff;
+        Object old;
+        for(;;) {
+            if((cdiff = c - nodes_[p]) < 0) {
+                if(nodes_[p + LOW_OFFSET] == 0) {
+                    nodes_[p + LOW_OFFSET] = nextNode_;
+                    nodes_[nextNode_] = c;
+                    nextNode_ += NODE_SIZE;
+                }
+                p = nodes_[p + LOW_OFFSET];
+            } else if(cdiff == 0) {
+                if(strIdx == strMaxIdx) {
+                    if(nodes_[p + VALUE_OFFSET] == 0) {
+                        nodes_[p + VALUE_OFFSET] = nextObject_;
+                        nextObject_++;
+                    }
+                    old = objects_[nodes_[p + VALUE_OFFSET]];
+                    objects_[nodes_[p + VALUE_OFFSET]] = value;
+                    return old;
                 } else {
-                    final ByteBuffer[] newBuffers = new ByteBuffer[buffers.length + 1];
-                    buffer.flip();
-                    newBuffers[0] = buffer;
-                    System.arraycopy(buffers, 0, newBuffers, 1, buffers.length);
-                    Channels.writeBlocking(channel, newBuffers, 0, newBuffers.length);
-                    buffer.clear();
+                    strIdx++;
+                    c = str[strIdx];
+                    if(nodes_[p + EQUAL_OFFSET] == 0) {
+                        nodes_[p + EQUAL_OFFSET] = nextNode_;
+                        nodes_[nextNode_] = c;
+                        nextNode_ += NODE_SIZE;
+                    }
+                    p = nodes_[p + EQUAL_OFFSET];
                 }
-                state |= FLAG_WRITE_STARTED;
-            }
-        }
-        updateWritten(len);
-    }
-
-    @Override
-    public void write(ByteBuffer byteBuffer) throws IOException {
-        write(new ByteBuffer[]{byteBuffer});
-    }
-
-    void updateWritten(final long len) throws IOException {
-        this.written += len;
-        if (contentLength != -1 && this.written >= contentLength) {
-            flush();
-            close();
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public void flush() throws IOException {
-        if (anyAreSet(state, FLAG_CLOSED)) {
-            throw UndertowMessages.MESSAGES.streamIsClosed();
-        }
-        if (buffer != null && buffer.position() != 0) {
-            writeBuffer();
-        }
-        if (channel == null) {
-            channel = exchange.getResponseChannel();
-        }
-        Channels.flushBlocking(channel);
-    }
-
-    private void writeBuffer() throws IOException {
-        buffer.flip();
-        if (channel == null) {
-            channel = exchange.getResponseChannel();
-        }
-        Channels.writeBlocking(channel, buffer);
-        buffer.clear();
-        state |= FLAG_WRITE_STARTED;
-    }
-
-    @Override
-    public void transferFrom(FileChannel source) throws IOException {
-        if (anyAreSet(state, FLAG_CLOSED)) {
-            throw UndertowMessages.MESSAGES.streamIsClosed();
-        }
-        if (buffer != null && buffer.position() != 0) {
-            writeBuffer();
-        }
-        if (channel == null) {
-            channel = exchange.getResponseChannel();
-        }
-        long position = source.position();
-        long size = source.size();
-        Channels.transferBlocking(channel, source, position, size);
-        updateWritten(size - position);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public void close() throws IOException {
-        if (anyAreSet(state, FLAG_CLOSED)) return;
-        try {
-            state |= FLAG_CLOSED;
-            if (anyAreClear(state, FLAG_WRITE_STARTED) && channel == null) {
-                if (buffer == null) {
-                    exchange.getResponseHeaders().put(Headers.CONTENT_LENGTH, "0");
-                } else {
-                    exchange.getResponseHeaders().put(Headers.CONTENT_LENGTH, "" + buffer.position());
-                }
-            }
-            if (buffer != null) {
-                writeBuffer();
-            }
-            if (channel == null) {
-                channel = exchange.getResponseChannel();
-            }
-            StreamSinkChannel channel = this.channel;
-            channel.shutdownWrites();
-            Channels.flushBlocking(channel);
-        } finally {
-            if (pooledBuffer != null) {
-                pooledBuffer.free();
-                buffer = null;
             } else {
-                buffer = null;
+                if(nodes_[p + HIGH_OFFSET] == 0) {
+                    nodes_[p + HIGH_OFFSET] = nextNode_;
+                    nodes_[nextNode_] = c;
+                    nextNode_ += NODE_SIZE;
+                }
+                p = nodes_[p + HIGH_OFFSET];
             }
         }
     }
 
-    private ByteBuffer buffer() {
-        ByteBuffer buffer = this.buffer;
-        if (buffer != null) {
-            return buffer;
-        }
-        this.pooledBuffer = exchange.getConnection().getBufferPool().allocate();
-        this.buffer = pooledBuffer.getResource();
-        return this.buffer;
+    public int nodeCount() {
+        return (nextNode_ - INITIAL_NODE + 1) / NODE_SIZE;
+    }
+
+    public void release() {
+        nodes_ = null;
+        objects_ = null;
     }
 
 }

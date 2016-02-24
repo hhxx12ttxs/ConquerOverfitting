@@ -1,9 +1,6 @@
 /*
- * IntegerArray.java - Automatically growing array of ints
- * :tabSize=8:indentSize=8:noTabs=false:
- * :folding=explicit:collapseFolds=1:
- *
- * Copyright (C) 2001 Slava Pestov
+ * DocumentUtilities.java
+ * Copyright (c) 2000 Andre Kaplan
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -18,73 +15,203 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- */
+*/
 
-package org.gjt.sp.util;
 
-/**
- * A simple collection that stores integers and grows automatically.
- */
-public class IntegerArray
-{
-	//{{{ IntegerArray constructor
-	public IntegerArray()
-	{
-		this(2000);
-	} //}}}
+package whitespace;
 
-	//{{{ IntegerArray constructor
-	public IntegerArray(int initialSize)
-	{
-		array = new int[initialSize];
-	} //}}}
 
-	//{{{ add() method
-	public void add(int num)
-	{
-		if(len >= array.length)
-		{
-			int[] arrayN = new int[len * 2];
-			System.arraycopy(array,0,arrayN,0,len);
-			array = arrayN;
-		}
+import javax.swing.text.BadLocationException;
+import javax.swing.text.Document;
+import javax.swing.text.Element;
+import javax.swing.text.Segment;
 
-		array[len++] = num;
-	} //}}}
+import org.gjt.sp.jedit.MiscUtilities;
 
-	//{{{ get() method
-	public final int get(int index)
-	{
-		return array[index];
-	} //}}}
+import org.gjt.sp.util.Log;
 
-	//{{{ getSize() method
-	public final int getSize()
-	{
-		return len;
-	} //}}}
 
-	//{{{ setSize() method
-	public final void setSize(int len)
-	{
-		this.len = len;
-	} //}}}
+public class DocumentUtilities {
+    private DocumentUtilities() {}
 
-	//{{{ clear() method
-	public final void clear()
-	{
-		len = 0;
-	} //}}}
 
-	//{{{ getArray() method
-	public int[] getArray()
-	{
-		return array;
-	} //}}}
+    public static void untabifyLeading(Document buffer, int tabSize) {
+        Element map = buffer.getDefaultRootElement();
+        WhiteSpaceInfo whiteSpaceInfo = new WhiteSpaceInfo();
 
-	//{{{ Private members
-	private int[] array;
-	private int len;
-	//}}}
+        for (int i = map.getElementCount() - 1; i >= 0; i--) {
+            Element line = map.getElement(i);
+            int start = line.getStartOffset();
+            int end   = line.getEndOffset();
+
+            // We get the line i without the line separator (always \n)
+            int len = (end - 1) - start;
+            if (len == 0) { continue; }
+
+            Segment s = new Segment();
+            try {
+                buffer.getText(start, len, s);
+            } catch (BadLocationException ble) {
+                Log.log(Log.ERROR, DocumentUtilities.class, ble);
+                continue;
+            }
+
+            getLeadingWhiteSpaceInfo(s.array, s.offset, s.count, tabSize, whiteSpaceInfo);
+
+            if (whiteSpaceInfo.hasTabs && whiteSpaceInfo.len > 0) {
+                String textOut = MiscUtilities.createWhiteSpace(whiteSpaceInfo.expandedLen, 0);
+
+                try {
+                    buffer.remove(start, whiteSpaceInfo.len);
+                    buffer.insertString(start, textOut, null);
+                } catch (BadLocationException ble) {
+                    Log.log(Log.ERROR, DocumentUtilities.class, ble);
+                }
+            }
+        }
+    }
+
+
+    public static void tabifyLeading(Document buffer, int tabSize) {
+        Element map = buffer.getDefaultRootElement();
+        WhiteSpaceInfo whiteSpaceInfo = new WhiteSpaceInfo();
+
+        for (int i = map.getElementCount() - 1; i >= 0; i--) {
+            Element line = map.getElement(i);
+            int start = line.getStartOffset();
+            int end   = line.getEndOffset();
+
+            // We get the line i without the line separator (always \n)
+            int len = (end - 1) - start;
+            if (len == 0) { continue; }
+
+            Segment s = new Segment();
+            try {
+                buffer.getText(start, len, s);
+            } catch (BadLocationException ble) {
+                Log.log(Log.ERROR, DocumentUtilities.class, ble);
+                continue;
+            }
+
+            getLeadingWhiteSpaceInfo(s.array, s.offset, s.count, tabSize, whiteSpaceInfo);
+
+            if (whiteSpaceInfo.hasSpaces && whiteSpaceInfo.len > 0) {
+                String textOut = MiscUtilities.createWhiteSpace(whiteSpaceInfo.expandedLen, tabSize);
+
+                try {
+                    buffer.remove(start, whiteSpaceInfo.len);
+                    buffer.insertString(start, textOut, null);
+                } catch (BadLocationException ble) {
+                    Log.log(Log.ERROR, DocumentUtilities.class, ble);
+                }
+            }
+        }
+    }
+
+
+    public static void removeTrailingWhiteSpace(Document buffer, String escapeChars) {
+        Element map = buffer.getDefaultRootElement();
+
+        for (int i = map.getElementCount() - 1; i >= 0; i--) {
+            Element line = map.getElement(i);
+            int start = line.getStartOffset();
+            int end   = line.getEndOffset();
+
+            // We get the line i without the line separator (always \n)
+            int len = (end - 1) - start;
+            if (len == 0) { continue; }
+
+            Segment s = new Segment();
+            try {
+                buffer.getText(start, len, s);
+            } catch (BadLocationException ble) {
+                Log.log(Log.ERROR, DocumentUtilities.class, ble);
+                continue;
+            }
+
+            int off = s.offset + s.count - 1;
+            int cnt = 0;
+            for (; off >= s.offset; off--, cnt++) {
+                char c = s.array[off];
+                if (c != ' ' && c != '\t') {
+                    if (escapeChars.indexOf(c) != -1) {
+                        if (cnt > 0) { off++; cnt--; }
+                    }
+                    if (cnt > 0) {
+                        try {
+                            buffer.remove((end - 1) - cnt, cnt);
+                        } catch (BadLocationException ble) {
+                            Log.log(Log.ERROR, DocumentUtilities.class, ble);
+                        }
+                    }
+                    break;
+                }
+
+                if (off == s.offset) {
+                    try {
+                        // The line contains only whitespaces
+                        buffer.remove(start, len);
+                    } catch (BadLocationException ble) {
+                        Log.log(Log.ERROR, DocumentUtilities.class, ble);
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+
+    private static class WhiteSpaceInfo {
+        public int len           = 0;
+        public int expandedLen   = 0;
+        public boolean hasTabs   = false;
+        public boolean hasSpaces = false;
+
+        public WhiteSpaceInfo() {
+            this(0, 0, false, false);
+        }
+
+        public WhiteSpaceInfo(int len, int expandedLen, boolean hasTabs, boolean hasSpaces) {
+            this.len         = len;
+            this.expandedLen = expandedLen;
+            this.hasTabs     = hasTabs;
+            this.hasSpaces   = hasSpaces;
+        }
+    }
+
+
+    private static void getLeadingWhiteSpaceInfo(char[] array, int off,
+            int len, int tabSize, WhiteSpaceInfo results
+    ) {
+        int resultLen         = 0;
+        int resultExpandedLen = 0;
+        boolean hasTabs   = false;
+        boolean hasSpaces = false;
+
+loop:   for (int i = len - 1; i >= 0; i--, off++) {
+            char c = array[off];
+            switch (c) {
+            case '\t':
+                hasTabs = true;
+                resultLen++;
+                resultExpandedLen += tabSize - (resultExpandedLen % tabSize);
+                break;
+
+            case ' ':
+                hasSpaces = true;
+                resultLen++;
+                resultExpandedLen++;
+                break;
+
+            default:
+                break loop;
+            }
+        }
+
+        results.len         = resultLen;
+        results.expandedLen = resultExpandedLen;
+        results.hasTabs     = hasTabs;
+        results.hasSpaces   = hasSpaces;
+    }
 }
 

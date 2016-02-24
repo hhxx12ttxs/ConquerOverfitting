@@ -1,18 +1,7 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.gatherer;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import net.sf.json.JSONArray;
-import net.sf.json.JSONException;
 import net.sf.json.JSONObject;
-
 import org.apache.commons.httpclient.DefaultHttpMethodRetryHandler;
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.HttpException;
@@ -20,109 +9,96 @@ import org.apache.commons.httpclient.HttpStatus;
 import org.apache.commons.httpclient.methods.GetMethod;
 import org.apache.commons.httpclient.params.HttpMethodParams;
 
-import cn.edu.pku.sei.plde.conqueroverfitting.utils.FileUtils;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
 
 public class GathererJava {
-	private static final int API_PAGE_NUM = 2;
-	private static final int API_PER_PAGE = 100;
-	private static final int API_CODE_LANGUAGE = 23;// java
+    private static final int API_PAGE_NUM = 2;
+    private static final int API_PER_PAGE = 100;
+    private static final int API_CODE_LANGUAGE = 23;// java
 
-	private static final String API_SEARCH_CODE_BASE_URL = "https://searchcode.com/api/";
-	private static final String API_CODE_SEARCH = "codesearch_I";
-	private static final String API_CODE_RESULT = "result";
-    
-	private HttpClient httpClient;
+    private static final String API_SEARCH_CODE_BASE_URL = "https://searchcode.com/api/";
+    private static final String API_CODE_SEARCH = "codesearch_I";
+    private static final String API_CODE_RESULT = "result";
 
-	private ArrayList<String> keyWords;
-	private String project;
-	
-	public GathererJava(ArrayList<String> keyWords, String project) {
-		httpClient = new HttpClient();
-		httpClient.getHttpConnectionManager().getParams()
-				.setConnectionTimeout(50000);
-		
-		this.keyWords = keyWords;
-		this.project = project;
-	}
+    private HttpClient httpClient;
 
-	public void searchCode() {
-		String question = keyWords.get(0);
-		for(int i = 1; i < keyWords.size(); i ++){
-			question = question + "+" + keyWords.get(i);
-		}
+    private ArrayList<String> keyWords;
+    private String project;
 
-		ArrayList<String> codeUrlList = new ArrayList<String>();
-		for (int i = 0; i < API_PAGE_NUM; i++) {
-			String url = API_SEARCH_CODE_BASE_URL + API_CODE_SEARCH + "/?q="
-					+ question + "&p=" + i + "&per_page=" + API_PER_PAGE
-					+ "&lan=" + API_CODE_LANGUAGE;
-			System.out.println("search : " + url);
-			codeUrlList.addAll(getCodeUrlList(url));
-		}
-		
-		int size = codeUrlList.size();
-		for(int i = 0; i < size; i ++){
-            String codeUrl = codeUrlList.get(i);
-			String code;
-			try {
-				code = getCode(codeUrl);
-			} catch (JSONException e){
-				e.printStackTrace();
-				continue;
-			}
-			FileUtils.writeFile("experiment//searchcode//" + project + "//" + i + ".java", code);
-		}
-	}
+    public GathererJava(ArrayList<String> keyWords, String project) {
+        httpClient = new HttpClient();
+        httpClient.getHttpConnectionManager().getParams()
+                .setConnectionTimeout(50000);
 
-	public String getHtml(String url) {
-		String html = null;
-		GetMethod getMethod = new GetMethod(url);
-		getMethod.getParams().setParameter(HttpMethodParams.SO_TIMEOUT, 50000);
-		getMethod.getParams().setParameter(HttpMethodParams.RETRY_HANDLER,
-				new DefaultHttpMethodRetryHandler());
-		try {
-			int statusCode = httpClient.executeMethod(getMethod);
-			if (statusCode != HttpStatus.SC_OK)
-				System.err.println("Method failed: " + getMethod.getStatusLine());
-			InputStream bodyIs = getMethod.getResponseBodyAsStream();
-			BufferedReader br = new BufferedReader(
-					new InputStreamReader(bodyIs));
-			StringBuffer sb = new StringBuffer();
-			String line = null;
-			while ((line = br.readLine()) != null) {
-				sb.append(line + "\n");
-			}
-			html = sb.toString();
-			return html;
-		} catch (HttpException e) {
-			System.out.println("Please check your http address!");
-			e.printStackTrace();
-			return null;
-		} catch (IOException e) {
-			e.printStackTrace();
-			return null;
-		} finally {
-			getMethod.releaseConnection();
-		}
-	}
+        this.keyWords = keyWords;
+        this.project = project;
+    }
 
-	public ArrayList<String> getCodeUrlList(String url) {
-		String html = getHtml(url);
-		ArrayList<String> codeUrlList = new ArrayList<String>();
-		JSONObject jsonObj = JSONObject.fromObject(html);
-		JSONArray jsonArray = jsonObj.getJSONArray("results");
-		for (int i = 0; i < jsonArray.size(); i++) {
-			String id = jsonArray.getJSONObject(i).getString("id");
-			String codeUrl = API_SEARCH_CODE_BASE_URL + API_CODE_RESULT + "/" + id + "/";
-			System.out.println("result : " + codeUrl);
-			codeUrlList.add(codeUrl);
-		}
-		return codeUrlList;
-	}
+    public void searchCode() {
+        String question = keyWords.get(0);
+        for (int i = 1; i < keyWords.size(); i++) {
+            question = question + "+" + keyWords.get(i);
+        }
 
-	public String getCode(String url) {
-		String html = getHtml(url);
-		JSONObject jsonObj = JSONObject.fromObject(html);
-		return jsonObj.get("code").toString();
-	}
+        ArrayList<String> codeUrlList = new ArrayList<String>();
+        for (int i = 0; i < API_PAGE_NUM; i++) {
+            String url = API_SEARCH_CODE_BASE_URL + API_CODE_SEARCH + "/?q="
+                    + question + "&p=" + i + "&per_page=" + API_PER_PAGE
+                    + "&lan=" + API_CODE_LANGUAGE;
+            System.out.println("search : " + url);
+            codeUrlList.addAll(getCodeUrlList(url));
+        }
+
+        new ThreadPoolHttpClient().test(project, codeUrlList);
+    }
+
+    public String getHtml(String url) {
+        String html = null;
+        GetMethod getMethod = new GetMethod(url);
+        getMethod.getParams().setParameter(HttpMethodParams.SO_TIMEOUT, 50000);
+        getMethod.getParams().setParameter(HttpMethodParams.RETRY_HANDLER,
+                new DefaultHttpMethodRetryHandler());
+        try {
+            int statusCode = httpClient.executeMethod(getMethod);
+            if (statusCode != HttpStatus.SC_OK)
+                System.err.println("Method failed: " + getMethod.getStatusLine());
+            InputStream bodyIs = getMethod.getResponseBodyAsStream();
+            BufferedReader br = new BufferedReader(
+                    new InputStreamReader(bodyIs));
+            StringBuffer sb = new StringBuffer();
+            String line = null;
+            while ((line = br.readLine()) != null) {
+                sb.append(line + "\n");
+            }
+            html = sb.toString();
+            return html;
+        } catch (HttpException e) {
+            System.out.println("Please check your http address!");
+            e.printStackTrace();
+            return null;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        } finally {
+            getMethod.releaseConnection();
+        }
+    }
+
+    public ArrayList<String> getCodeUrlList(String url) {
+        String html = getHtml(url);
+        ArrayList<String> codeUrlList = new ArrayList<String>();
+        JSONObject jsonObj = JSONObject.fromObject(html);
+        JSONArray jsonArray = jsonObj.getJSONArray("results");
+        for (int i = 0; i < jsonArray.size(); i++) {
+            String id = jsonArray.getJSONObject(i).getString("id");
+            String codeUrl = API_SEARCH_CODE_BASE_URL + API_CODE_RESULT + "/" + id + "/";
+            System.out.println("result : " + codeUrl);
+            codeUrlList.add(codeUrl);
+        }
+        return codeUrlList;
+    }
 }

@@ -1,1137 +1,913 @@
-package sh.calaba.org.codehaus.jackson.map.deser.std;
+/**
+ * Copyright (C) 2009 Mathieu Carbou <mathieu.carbou@gmail.com>
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package com.mycila.math.list;
 
-import java.io.IOException;
-import java.math.BigDecimal;
-import java.math.BigInteger;
-import java.util.*;
+import com.mycila.math.range.IntRange;
 
-import sh.calaba.org.codehaus.jackson.JsonParser;
-import sh.calaba.org.codehaus.jackson.JsonProcessingException;
-import sh.calaba.org.codehaus.jackson.JsonToken;
-import sh.calaba.org.codehaus.jackson.JsonParser.NumberType;
-import sh.calaba.org.codehaus.jackson.io.NumberInput;
-import sh.calaba.org.codehaus.jackson.map.*;
-import sh.calaba.org.codehaus.jackson.map.annotate.JacksonStdImpl;
-import sh.calaba.org.codehaus.jackson.type.JavaType;
+import java.util.AbstractList;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Random;
 
 /**
- * Base class for common deserializers. Contains shared
- * base functionality for dealing with primitive values, such
- * as (re)parsing from String.
- * 
- * @since 1.9 (moved from higher-level package)
+ * @author Mathieu Carbou
  */
-public abstract class StdDeserializer<T>
-    extends JsonDeserializer<T>
-{
-    /**
-     * Type of values this deserializer handles: sometimes
-     * exact types, other time most specific supertype of
-     * types deserializer handles (which may be as generic
-     * as {@link Object} in some case)
-     */
-    final protected Class<?> _valueClass;
+public final class IntSequence implements Iterable<Integer> {
 
-    protected StdDeserializer(Class<?> vc) {
-        _valueClass = vc;
+    private static final int DEFAULT_CAPACITY = 10;
+
+    private int[] data;
+    public int pos;
+
+    public IntSequence() {
+        this(DEFAULT_CAPACITY);
     }
 
-    protected StdDeserializer(JavaType valueType) {
-        _valueClass = (valueType == null) ? null : valueType.getRawClass();
+    public IntSequence(int capacity) {
+        data = new int[capacity];
+        pos = 0;
     }
-    
-    /*
-    /**********************************************************
-    /* Extended API
-    /**********************************************************
-     */
 
-    public Class<?> getValueClass() { return _valueClass; }
-
-    /**
-     * Exact structured type deserializer handles, if known.
-     *<p>
-     * Default implementation just returns null.
-     */
-    public JavaType getValueType() { return null; }
-
-    /**
-     * Method that can be called to determine if given deserializer is the default
-     * deserializer Jackson uses; as opposed to a custom deserializer installed by
-     * a module or calling application. Determination is done using
-     * {@link JacksonStdImpl} annotation on deserializer class.
-     * 
-     * @since 1.7
-     */
-    protected boolean isDefaultSerializer(JsonDeserializer<?> deserializer)
-    {
-        return (deserializer != null && deserializer.getClass().getAnnotation(JacksonStdImpl.class) != null);
+    public IntSequence(int... values) {
+        this(Math.max(values.length, DEFAULT_CAPACITY));
+        add(values);
     }
-    
-    /*
-    /**********************************************************
-    /* Partial JsonDeserializer implementation 
-    /**********************************************************
-     */
-    
+
+    public IntSequence ensureCapacity(int capacity) {
+        if (capacity > data.length) {
+            int newCap = Math.max(data.length << 1, capacity);
+            int[] tmp = new int[newCap];
+            System.arraycopy(data, 0, tmp, 0, data.length);
+            data = tmp;
+        }
+        return this;
+    }
+
+    public List<Integer> asList() {
+        return new AbstractList<Integer>() {
+            @Override
+            public Integer get(int index) {
+                return IntSequence.this.get(index);
+            }
+
+            @Override
+            public int size() {
+                return pos;
+            }
+        };
+    }
+
+    @Override
+    public Iterator<Integer> iterator() {
+        return ReadOnlySequenceIterator.on(pos == 0 ? IntRange.empty() : IntRange.range(0, pos - 1), data);
+    }
+
+    public int[] internalArray() {
+        return data;
+    }
+
     /**
-     * Base implementation that does not assume specific type
-     * inclusion mechanism. Sub-classes are expected to override
-     * this method if they are to handle type information.
+     * Returns the number of values in the list.
+     *
+     * @return the number of values in the list.
+     */
+    public int size() {
+        return pos;
+    }
+
+    /**
+     * Tests whether this list contains any values.
+     *
+     * @return true if the list is empty.
+     */
+    public boolean isEmpty() {
+        return pos == 0;
+    }
+
+    /**
+     * Sheds any excess capacity above and beyond the current size of
+     * the list.
+     */
+    public IntSequence trimToSize() {
+        if (data.length > size()) {
+            int[] tmp = new int[size()];
+            toNativeArray(tmp, 0, tmp.length);
+            data = tmp;
+        }
+        return this;
+    }
+
+    // modifying
+
+    /**
+     * Adds <tt>val</tt> to the end of the list, growing as needed.
+     *
+     * @param val an <code>int</code> value
+     */
+    public IntSequence add(int val) {
+        ensureCapacity(pos + 1);
+        data[pos++] = val;
+        return this;
+    }
+
+    public IntSequence addQuick(int val) {
+        data[pos++] = val;
+        return this;
+    }
+
+    public IntSequence addFirst(int val) {
+        insert(0, val);
+        return this;
+    }
+
+    public IntSequence addLast(int val) {
+        add(val);
+        return this;
+    }
+
+    public int first() {
+        return get(0);
+    }
+
+    public int firstQuick() {
+        return data[0];
+    }
+
+    public int last() {
+        return get(pos - 1);
+    }
+
+    public int lastQuick() {
+        return data[pos - 1];
+    }
+
+    public IntSequence addIfMissing(int n) {
+        if (lastIndexOf(pos, n) != -1) add(n);
+        return this;
+    }
+
+    /**
+     * Adds the values in the array <tt>vals</tt> to the end of the
+     * list, in order.
+     *
+     * @param vals an <code>int[]</code> value
+     */
+    public IntSequence add(int[] vals) {
+        add(0, vals.length, vals);
+        return this;
+    }
+
+    public IntSequence addAll(int... vals) {
+        add(0, vals.length, vals);
+        return this;
+    }
+
+    /**
+     * Adds a subset of the values in the array <tt>vals</tt> to the
+     * end of the list, in order.
+     *
+     * @param vals   an <code>int[]</code> value
+     * @param offset the offset at which to start copying
+     * @param length the number of values to copy.
+     */
+    public IntSequence add(int offset, int length, int... vals) {
+        ensureCapacity(pos + length);
+        System.arraycopy(vals, offset, data, pos, length);
+        pos += length;
+        return this;
+    }
+
+    /**
+     * Inserts <tt>value</tt> into the list at <tt>offset</tt>.  All
+     * values including and to the right of <tt>offset</tt> are shifted
+     * to the right.
+     *
+     * @param offset an <code>int</code> value
+     * @param value  an <code>int</code> value
+     */
+    public IntSequence insert(int offset, int value) {
+        if (offset == pos) {
+            add(value);
+            return this;
+        }
+        ensureCapacity(pos + 1);
+        // shift right
+        System.arraycopy(data, offset, data, offset + 1, pos - offset);
+        // insert
+        data[offset] = value;
+        pos++;
+        return this;
+    }
+
+    /**
+     * Inserts the array of <tt>values</tt> into the list at
+     * <tt>offset</tt>.  All values including and to the right of
+     * <tt>offset</tt> are shifted to the right.
+     *
+     * @param offset an <code>int</code> value
+     * @param values an <code>int[]</code> value
+     */
+    public IntSequence insert(int offset, int[] values) {
+        insert(offset, 0, values.length, values);
+        return this;
+    }
+
+    /**
+     * Inserts a slice of the array of <tt>values</tt> into the list
+     * at <tt>offset</tt>.  All values including and to the right of
+     * <tt>offset</tt> are shifted to the right.
+     *
+     * @param offset    an <code>int</code> value
+     * @param values    an <code>int[]</code> value
+     * @param valOffset the offset in the values array at which to
+     *                  start copying.
+     * @param len       the number of values to copy from the values array
+     */
+    public IntSequence insert(int offset, int valOffset, int len, int... values) {
+        if (offset == pos) {
+            add(valOffset, len, values);
+            return this;
+        }
+
+        ensureCapacity(pos + len);
+        // shift right
+        System.arraycopy(data, offset, data, offset + len, pos - offset);
+        // insert
+        System.arraycopy(values, valOffset, data, offset, len);
+        pos += len;
+        return this;
+    }
+
+    /**
+     * Returns the value at the specified offset.
+     *
+     * @param offset an <code>int</code> value
+     * @return an <code>int</code> value
+     */
+    public int get(int offset) {
+        if (offset >= pos) {
+            throw new ArrayIndexOutOfBoundsException(offset);
+        }
+        return data[offset];
+    }
+
+    /**
+     * Returns the value at the specified offset without doing any
+     * bounds checking.
+     *
+     * @param offset an <code>int</code> value
+     * @return an <code>int</code> value
+     */
+    public int getQuick(int offset) {
+        return data[offset];
+    }
+
+    /**
+     * Sets the value at the specified offset.
+     *
+     * @param offset an <code>int</code> value
+     * @param val    an <code>int</code> value
+     */
+    public IntSequence set(int offset, int val) {
+        if (offset >= pos) {
+            throw new ArrayIndexOutOfBoundsException(offset);
+        }
+        data[offset] = val;
+        return this;
+    }
+
+    /**
+     * Sets the value at the specified offset and returns the
+     * previously stored value.
+     *
+     * @param offset an <code>int</code> value
+     * @param val    an <code>int</code> value
+     * @return the value previously stored at offset.
+     */
+    public int getSet(int offset, int val) {
+        if (offset >= pos) {
+            throw new ArrayIndexOutOfBoundsException(offset);
+        }
+        int old = data[offset];
+        data[offset] = val;
+        return old;
+    }
+
+    /**
+     * Replace the values in the list starting at <tt>offset</tt> with
+     * the contents of the <tt>values</tt> array.
+     *
+     * @param offset the first offset to replace
+     * @param values the source of the new values
+     */
+    public IntSequence set(int offset, int... values) {
+        set(offset, 0, values.length, values);
+        return this;
+    }
+
+    /**
+     * Replace the values in the list starting at <tt>offset</tt> with
+     * <tt>length</tt> values from the <tt>values</tt> array, starting
+     * at valOffset.
+     *
+     * @param offset    the first offset to replace
+     * @param values    the source of the new values
+     * @param valOffset the first value to copy from the values array
+     * @param length    the number of values to copy
+     */
+    public IntSequence set(int offset, int valOffset, int length, int... values) {
+        if (offset < 0 || offset + length > pos) {
+            throw new ArrayIndexOutOfBoundsException(offset);
+        }
+        System.arraycopy(values, valOffset, data, offset, length);
+        return this;
+    }
+
+    /**
+     * Sets the value at the specified offset without doing any bounds
+     * checking.
+     *
+     * @param offset an <code>int</code> value
+     * @param val    an <code>int</code> value
+     */
+    public IntSequence setQuick(int offset, int val) {
+        data[offset] = val;
+        return this;
+    }
+
+    /**
+     * Flushes the internal state of the list, resetting the capacity
+     * to the default.
+     */
+    public IntSequence clear() {
+        clear(DEFAULT_CAPACITY);
+        return this;
+    }
+
+    /**
+     * Flushes the internal state of the list, setting the capacity of
+     * the empty list to <tt>capacity</tt>.
+     *
+     * @param capacity an <code>int</code> value
+     */
+    public IntSequence clear(int capacity) {
+        data = new int[capacity];
+        pos = 0;
+        return this;
+    }
+
+    /**
+     * Sets the size of the list to 0, but does not change its
+     * capacity.  This method can be used as an alternative to the
+     * {@link #clear clear} method if you want to recyle a list without
+     * allocating new backing arrays.
+     *
+     * @see #clear
+     */
+    public IntSequence reset() {
+        pos = 0;
+        fill(0);
+        return this;
+    }
+
+    /**
+     * Sets the size of the list to 0, but does not change its
+     * capacity.  This method can be used as an alternative to the
+     * {@link #clear clear} method if you want to recyle a list
+     * without allocating new backing arrays.  This method differs
+     * from {@link #reset reset} in that it does not clear the old
+     * values in the backing array.  Thus, it is possible for {@link
+     * #getQuick getQuick} to return stale data if this method is used
+     * and the caller is careless about bounds checking.
+     *
+     * @see #reset
+     * @see #clear
+     * @see #getQuick
+     */
+    public IntSequence resetQuick() {
+        pos = 0;
+        return this;
+    }
+
+    /**
+     * Removes the value at <tt>offset</tt> from the list.
+     *
+     * @param offset an <code>int</code> value
+     * @return the value previously stored at offset.
+     */
+    public int remove(int offset) {
+        int old = get(offset);
+        remove(offset, 1);
+        return old;
+    }
+
+    /**
+     * Removes <tt>length</tt> values from the list, starting at
+     * <tt>offset</tt>
+     *
+     * @param offset an <code>int</code> value
+     * @param length an <code>int</code> value
+     */
+    public IntSequence remove(int offset, int length) {
+        if (offset < 0 || offset >= pos) {
+            throw new ArrayIndexOutOfBoundsException(offset);
+        }
+
+        if (offset == 0) {
+            // data at the front
+            System.arraycopy(data, length, data, 0, pos - length);
+        } else if (pos - length == offset) {
+            // no copy to make, decrementing pos "deletes" values at
+            // the end
+        } else {
+            // data in the middle
+            System.arraycopy(data, offset + length,
+                    data, offset, pos - (offset + length));
+        }
+        pos -= length;
+        // no need to clear old values beyond pos, because this is a
+        // primitive collection and 0 takes as much room as any other
+        // value
+        return this;
+    }
+
+    /**
+     * Reverse the order of the elements in the list.
+     */
+    public IntSequence reverse() {
+        reverse(0, pos);
+        return this;
+    }
+
+    /**
+     * Reverse the order of the elements in the range of the list.
+     *
+     * @param from the inclusive index at which to start reversing
+     * @param to   the exclusive index at which to stop reversing
+     */
+    public IntSequence reverse(int from, int to) {
+        if (from == to) {
+            return this;
+        }
+        if (from > to) {
+            throw new IllegalArgumentException("get cannot be greater than to");
+        }
+        for (int i = from, j = to - 1; i < j; i++, j--) {
+            swap(i, j);
+        }
+        return this;
+    }
+
+    /**
+     * Shuffle the elements of the list using the specified random
+     * number generator.
+     *
+     * @param rand a <code>Random</code> value
+     */
+    public IntSequence shuffle(Random rand) {
+        for (int i = pos; i-- > 1;) {
+            swap(i, rand.nextInt(i));
+        }
+        return this;
+    }
+
+    /**
+     * Swap the values at offsets <tt>i</tt> and <tt>j</tt>.
+     *
+     * @param i an offset into the data array
+     * @param j an offset into the data array
+     */
+    private void swap(int i, int j) {
+        int tmp = data[i];
+        data[i] = data[j];
+        data[j] = tmp;
+    }
+
+    // copying
+
+    /**
+     * Returns a clone of this list.  Since this is a primitive
+     * collection, this will be a deep clone.
+     *
+     * @return a deep clone of the list.
+     */
+    public Object clone() {
+        IntSequence list = null;
+        try {
+            list = (IntSequence) super.clone();
+            list.data = toNativeArray();
+        } catch (CloneNotSupportedException e) {
+            // it's supported
+        } // end get try-catch
+        return list;
+    }
+
+
+    /**
+     * Returns a sublist of this list.
+     *
+     * @param begin low endpoint (inclusive) of the subList.
+     * @param end   high endpoint (exclusive) of the subList.
+     * @return sublist of this list from begin, inclusive to end, exclusive.
+     * @throws IndexOutOfBoundsException - endpoint out of range
+     * @throws IllegalArgumentException  - endpoints out of order (end > begin)
+     */
+    public IntSequence subList(int begin, int end) {
+        if (end < begin) throw new IllegalArgumentException("end index " + end + " greater than begin index " + begin);
+        if (begin < 0) throw new IndexOutOfBoundsException("begin index can not be < 0");
+        if (end > data.length) throw new IndexOutOfBoundsException("end index < " + data.length);
+        IntSequence list = new IntSequence(end - begin);
+        for (int i = begin; i < end; i++) {
+            list.add(data[i]);
+        }
+        return list;
+    }
+
+
+    /**
+     * Copies the contents of the list into a native array.
+     *
+     * @return an <code>int[]</code> value
+     */
+    public int[] toNativeArray() {
+        return toNativeArray(0, pos);
+    }
+
+    /**
+     * Copies a slice of the list into a native array.
+     *
+     * @param offset the offset at which to start copying
+     * @param len    the number of values to copy.
+     * @return an <code>int[]</code> value
+     */
+    public int[] toNativeArray(int offset, int len) {
+        int[] rv = new int[len];
+        toNativeArray(rv, offset, len);
+        return rv;
+    }
+
+    /**
+     * Copies a slice of the list into a native array.
+     *
+     * @param dest   the array to copy into.
+     * @param offset the offset of the first value to copy
+     * @param len    the number of values to copy.
+     */
+    public IntSequence toNativeArray(int[] dest, int offset, int len) {
+        if (len == 0) {
+            return this;
+        }
+        if (offset < 0 || offset >= pos) {
+            throw new ArrayIndexOutOfBoundsException(offset);
+        }
+        System.arraycopy(data, offset, dest, 0, len);
+        return this;
+    }
+
+    public IntSequence copyInto(int[] dest, int offset) {
+        System.arraycopy(data, 0, dest, offset, pos);
+        return this;
+    }
+
+    // comparing
+
+    /**
+     * Compares this list to another list, value by value.
+     *
+     * @param other the object to compare against
+     * @return true if other is a intArrayList and has exactly the
+     *         same values.
      */
     @Override
-    public Object deserializeWithType(JsonParser jp, DeserializationContext ctxt,
-            TypeDeserializer typeDeserializer)
-        throws IOException, JsonProcessingException
-    {
-        return typeDeserializer.deserializeTypedFromAny(jp, ctxt);
-    }
-    
-    /*
-    /**********************************************************
-    /* Helper methods for sub-classes, parsing
-    /**********************************************************
-     */
-
-    protected final boolean _parseBooleanPrimitive(JsonParser jp, DeserializationContext ctxt)
-        throws IOException, JsonProcessingException
-    {
-        JsonToken t = jp.getCurrentToken();
-        if (t == JsonToken.VALUE_TRUE) {
+    public boolean equals(Object other) {
+        if (other == this) {
             return true;
-        }
-        if (t == JsonToken.VALUE_FALSE) {
-            return false;
-        }
-        if (t == JsonToken.VALUE_NULL) {
-            return false;
-        }
-        // [JACKSON-78]: should accept ints too, (0 == false, otherwise true)
-        if (t == JsonToken.VALUE_NUMBER_INT) {
-            // 11-Jan-2012, tatus: May be outside of int...
-            if (jp.getNumberType() == NumberType.INT) {
-                return (jp.getIntValue() != 0);
-            }
-            return _parseBooleanFromNumber(jp, ctxt);
-        }
-        // And finally, let's allow Strings to be converted too
-        if (t == JsonToken.VALUE_STRING) {
-            String text = jp.getText().trim();
-            if ("true".equals(text)) {
+        } else if (other instanceof IntSequence) {
+            IntSequence that = (IntSequence) other;
+            if (that.size() != this.size()) {
+                return false;
+            } else {
+                for (int i = pos; i-- > 0;) {
+                    if (this.data[i] != that.data[i]) {
+                        return false;
+                    }
+                }
                 return true;
             }
-            if ("false".equals(text) || text.length() == 0) {
-                return Boolean.FALSE;
-            }
-            throw ctxt.weirdStringException(_valueClass, "only \"true\" or \"false\" recognized");
+        } else {
+            return false;
         }
-        // Otherwise, no can do:
-        throw ctxt.mappingException(_valueClass, t);
     }
 
-    protected final Boolean _parseBoolean(JsonParser jp, DeserializationContext ctxt)
-        throws IOException, JsonProcessingException
-    {
-        JsonToken t = jp.getCurrentToken();
-        if (t == JsonToken.VALUE_TRUE) {
-            return Boolean.TRUE;
-        }
-        if (t == JsonToken.VALUE_FALSE) {
-            return Boolean.FALSE;
-        }
-        // [JACKSON-78]: should accept ints too, (0 == false, otherwise true)
-        if (t == JsonToken.VALUE_NUMBER_INT) {
-            // 11-Jan-2012, tatus: May be outside of int...
-            if (jp.getNumberType() == NumberType.INT) {
-                return (jp.getIntValue() == 0) ? Boolean.FALSE : Boolean.TRUE;
-            }
-            return Boolean.valueOf(_parseBooleanFromNumber(jp, ctxt));
-        }
-        if (t == JsonToken.VALUE_NULL) {
-            return (Boolean) getNullValue();
-        }
-        // And finally, let's allow Strings to be converted too
-        if (t == JsonToken.VALUE_STRING) {
-            String text = jp.getText().trim();
-            if ("true".equals(text)) {
-                return Boolean.TRUE;
-            }
-            if ("false".equals(text)) {
-                return Boolean.FALSE;
-            }
-            if (text.length() == 0) {
-                return (Boolean) getEmptyValue();
-            }
-            throw ctxt.weirdStringException(_valueClass, "only \"true\" or \"false\" recognized");
-        }
-        // Otherwise, no can do:
-        throw ctxt.mappingException(_valueClass, t);
+    @Override
+    public int hashCode() {
+        int h = 0;
+        for (int i = pos; i-- > 0;)
+            h = 37 * h + 31 * data[i];
+        return h;
     }
 
-    protected final boolean _parseBooleanFromNumber(JsonParser jp, DeserializationContext ctxt)
-            throws IOException, JsonProcessingException
-    {
-        if (jp.getNumberType() == NumberType.LONG) {
-            return (jp.getLongValue() == 0L) ? Boolean.FALSE : Boolean.TRUE;
-        }
-        // no really good logic; let's actually resort to textual comparison
-        String str = jp.getText();
-        if ("0.0".equals(str) || "0".equals(str)) {
-            return Boolean.FALSE;
-        }
-        return Boolean.TRUE;
-    }
-    
-    protected Byte _parseByte(JsonParser jp, DeserializationContext ctxt)
-        throws IOException, JsonProcessingException
-    {
-        JsonToken t = jp.getCurrentToken();
-        if (t == JsonToken.VALUE_NUMBER_INT || t == JsonToken.VALUE_NUMBER_FLOAT) { // coercing should work too
-            return jp.getByteValue();
-        }
-        if (t == JsonToken.VALUE_STRING) { // let's do implicit re-parse
-            String text = jp.getText().trim();
-            int value;
-            try {
-                int len = text.length();
-                if (len == 0) {
-                    return (Byte) getEmptyValue();
-                }
-                value = NumberInput.parseInt(text);
-            } catch (IllegalArgumentException iae) {
-                throw ctxt.weirdStringException(_valueClass, "not a valid Byte value");
-            }
-            // So far so good: but does it fit?
-            if (value < Byte.MIN_VALUE || value > Byte.MAX_VALUE) {
-                throw ctxt.weirdStringException(_valueClass, "overflow, value can not be represented as 8-bit value");
-            }
-            return Byte.valueOf((byte) value);
-        }
-        if (t == JsonToken.VALUE_NULL) {
-            return (Byte) getNullValue();
-        }
-        throw ctxt.mappingException(_valueClass, t);
-    }
-    
-    protected Short _parseShort(JsonParser jp, DeserializationContext ctxt)
-        throws IOException, JsonProcessingException
-    {
-        JsonToken t = jp.getCurrentToken();
-        if (t == JsonToken.VALUE_NUMBER_INT || t == JsonToken.VALUE_NUMBER_FLOAT) { // coercing should work too
-            return jp.getShortValue();
-        }
-        if (t == JsonToken.VALUE_STRING) { // let's do implicit re-parse
-            String text = jp.getText().trim();
-            int value;
-            try {
-                int len = text.length();
-                if (len == 0) {
-                    return (Short) getEmptyValue();
-                }
-                value = NumberInput.parseInt(text);
-            } catch (IllegalArgumentException iae) {
-                throw ctxt.weirdStringException(_valueClass, "not a valid Short value");
-            }
-            // So far so good: but does it fit?
-            if (value < Short.MIN_VALUE || value > Short.MAX_VALUE) {
-                throw ctxt.weirdStringException(_valueClass, "overflow, value can not be represented as 16-bit value");
-            }
-            return Short.valueOf((short) value);
-        }
-        if (t == JsonToken.VALUE_NULL) {
-            return (Short) getNullValue();
-        }
-        throw ctxt.mappingException(_valueClass, t);
-    }
-
-    protected final short _parseShortPrimitive(JsonParser jp, DeserializationContext ctxt)
-        throws IOException, JsonProcessingException
-    {
-        int value = _parseIntPrimitive(jp, ctxt);
-        // So far so good: but does it fit?
-        if (value < Short.MIN_VALUE || value > Short.MAX_VALUE) {
-            throw ctxt.weirdStringException(_valueClass, "overflow, value can not be represented as 16-bit value");
-        }
-        return (short) value;
-    }
-    
-    protected final int _parseIntPrimitive(JsonParser jp, DeserializationContext ctxt)
-        throws IOException, JsonProcessingException
-    {
-        JsonToken t = jp.getCurrentToken();
-
-        // Int works as is, coercing fine as well
-        if (t == JsonToken.VALUE_NUMBER_INT || t == JsonToken.VALUE_NUMBER_FLOAT) { // coercing should work too
-            return jp.getIntValue();
-        }
-        if (t == JsonToken.VALUE_STRING) { // let's do implicit re-parse
-            /* 31-Dec-2009, tatus: Should improve handling of overflow
-             *   values... but this'll have to do for now
-             */
-            String text = jp.getText().trim();
-            try {
-                int len = text.length();
-                if (len > 9) {
-                    long l = Long.parseLong(text);
-                    if (l < Integer.MIN_VALUE || l > Integer.MAX_VALUE) {
-                        throw ctxt.weirdStringException(_valueClass,
-                            "Overflow: numeric value ("+text+") out of range of int ("+Integer.MIN_VALUE+" - "+Integer.MAX_VALUE+")");
-                    }
-                    return (int) l;
-                }
-                if (len == 0) {
-                    return 0;
-                }
-                return NumberInput.parseInt(text);
-            } catch (IllegalArgumentException iae) {
-                throw ctxt.weirdStringException(_valueClass, "not a valid int value");
-            }
-        }
-        if (t == JsonToken.VALUE_NULL) {
-            return 0;
-        }
-        // Otherwise, no can do:
-        throw ctxt.mappingException(_valueClass, t);
-    }
-
-    protected final Integer _parseInteger(JsonParser jp, DeserializationContext ctxt)
-        throws IOException, JsonProcessingException
-    {
-        JsonToken t = jp.getCurrentToken();
-        if (t == JsonToken.VALUE_NUMBER_INT || t == JsonToken.VALUE_NUMBER_FLOAT) { // coercing should work too
-            return Integer.valueOf(jp.getIntValue());
-        }
-        if (t == JsonToken.VALUE_STRING) { // let's do implicit re-parse
-            String text = jp.getText().trim();
-            try {
-                int len = text.length();
-                if (len > 9) {
-                    long l = Long.parseLong(text);
-                    if (l < Integer.MIN_VALUE || l > Integer.MAX_VALUE) {
-                        throw ctxt.weirdStringException(_valueClass,
-                            "Overflow: numeric value ("+text+") out of range of Integer ("+Integer.MIN_VALUE+" - "+Integer.MAX_VALUE+")");
-                    }
-                    return Integer.valueOf((int) l);
-                }
-                if (len == 0) {
-                    return (Integer) getEmptyValue();
-                }
-                return Integer.valueOf(NumberInput.parseInt(text));
-            } catch (IllegalArgumentException iae) {
-                throw ctxt.weirdStringException(_valueClass, "not a valid Integer value");
-            }
-        }
-        if (t == JsonToken.VALUE_NULL) {
-            return (Integer) getNullValue();
-        }
-        // Otherwise, no can do:
-        throw ctxt.mappingException(_valueClass, t);
-    }
-
-    protected final Long _parseLong(JsonParser jp, DeserializationContext ctxt)
-        throws IOException, JsonProcessingException
-    {
-        JsonToken t = jp.getCurrentToken();
-    
-        // it should be ok to coerce (although may fail, too)
-        if (t == JsonToken.VALUE_NUMBER_INT || t == JsonToken.VALUE_NUMBER_FLOAT) {
-            return jp.getLongValue();
-        }
-        // let's allow Strings to be converted too
-        if (t == JsonToken.VALUE_STRING) {
-            // !!! 05-Jan-2009, tatu: Should we try to limit value space, JDK is too lenient?
-            String text = jp.getText().trim();
-            if (text.length() == 0) {
-                return (Long) getEmptyValue();
-            }
-            try {
-                return Long.valueOf(NumberInput.parseLong(text));
-            } catch (IllegalArgumentException iae) { }
-            throw ctxt.weirdStringException(_valueClass, "not a valid Long value");
-        }
-        if (t == JsonToken.VALUE_NULL) {
-            return (Long) getNullValue();
-        }
-        // Otherwise, no can do:
-        throw ctxt.mappingException(_valueClass, t);
-    }
-
-    protected final long _parseLongPrimitive(JsonParser jp, DeserializationContext ctxt)
-        throws IOException, JsonProcessingException
-    {
-        JsonToken t = jp.getCurrentToken();
-        if (t == JsonToken.VALUE_NUMBER_INT || t == JsonToken.VALUE_NUMBER_FLOAT) {
-            return jp.getLongValue();
-        }
-        if (t == JsonToken.VALUE_STRING) {
-            String text = jp.getText().trim();
-            if (text.length() == 0) {
-                return 0L;
-            }
-            try {
-                return NumberInput.parseLong(text);
-            } catch (IllegalArgumentException iae) { }
-            throw ctxt.weirdStringException(_valueClass, "not a valid long value");
-        }
-        if (t == JsonToken.VALUE_NULL) {
-            return 0L;
-        }
-        throw ctxt.mappingException(_valueClass, t);
-    }
-    
-    protected final Float _parseFloat(JsonParser jp, DeserializationContext ctxt)
-        throws IOException, JsonProcessingException
-    {
-        // We accept couple of different types; obvious ones first:
-        JsonToken t = jp.getCurrentToken();
-        
-        if (t == JsonToken.VALUE_NUMBER_INT || t == JsonToken.VALUE_NUMBER_FLOAT) { // coercing should work too
-            return jp.getFloatValue();
-        }
-        // And finally, let's allow Strings to be converted too
-        if (t == JsonToken.VALUE_STRING) {
-            String text = jp.getText().trim();
-            if (text.length() == 0) {
-                return (Float) getEmptyValue();
-            }
-            switch (text.charAt(0)) {
-            case 'I':
-                if ("Infinity".equals(text) || "INF".equals(text)) {
-                    return Float.POSITIVE_INFINITY;
-                }
-                break;
-            case 'N':
-                if ("NaN".equals(text)) {
-                    return Float.NaN;
-                }
-                break;
-            case '-':
-                if ("-Infinity".equals(text) || "-INF".equals(text)) {
-                    return Float.NEGATIVE_INFINITY;
-                }
-                break;
-            }
-            try {
-                return Float.parseFloat(text);
-            } catch (IllegalArgumentException iae) { }
-            throw ctxt.weirdStringException(_valueClass, "not a valid Float value");
-        }
-        if (t == JsonToken.VALUE_NULL) {
-            return (Float) getNullValue();
-        }
-        // Otherwise, no can do:
-        throw ctxt.mappingException(_valueClass, t);
-    }
-
-    protected final float _parseFloatPrimitive(JsonParser jp, DeserializationContext ctxt)
-        throws IOException, JsonProcessingException
-    {
-        JsonToken t = jp.getCurrentToken();
-        
-        if (t == JsonToken.VALUE_NUMBER_INT || t == JsonToken.VALUE_NUMBER_FLOAT) { // coercing should work too
-            return jp.getFloatValue();
-        }
-        if (t == JsonToken.VALUE_STRING) {
-            String text = jp.getText().trim();
-            if (text.length() == 0) {
-                return 0.0f;
-            }
-            switch (text.charAt(0)) {
-            case 'I':
-                if ("Infinity".equals(text) || "INF".equals(text)) {
-                    return Float.POSITIVE_INFINITY;
-                }
-                break;
-            case 'N':
-                if ("NaN".equals(text)) {
-                    return Float.NaN;
-                }
-                break;
-            case '-':
-                if ("-Infinity".equals(text) || "-INF".equals(text)) {
-                    return Float.NEGATIVE_INFINITY;
-                }
-                break;
-            }
-            try {
-                return Float.parseFloat(text);
-            } catch (IllegalArgumentException iae) { }
-            throw ctxt.weirdStringException(_valueClass, "not a valid float value");
-        }
-        if (t == JsonToken.VALUE_NULL) {
-            return 0.0f;
-        }
-        // Otherwise, no can do:
-        throw ctxt.mappingException(_valueClass, t);
-    }
-
-    protected final Double _parseDouble(JsonParser jp, DeserializationContext ctxt)
-        throws IOException, JsonProcessingException
-    {
-        JsonToken t = jp.getCurrentToken();
-        
-        if (t == JsonToken.VALUE_NUMBER_INT || t == JsonToken.VALUE_NUMBER_FLOAT) { // coercing should work too
-            return jp.getDoubleValue();
-        }
-        if (t == JsonToken.VALUE_STRING) {
-            String text = jp.getText().trim();
-            if (text.length() == 0) {
-                return (Double) getEmptyValue();
-            }
-            switch (text.charAt(0)) {
-            case 'I':
-                if ("Infinity".equals(text) || "INF".equals(text)) {
-                    return Double.POSITIVE_INFINITY;
-                }
-                break;
-            case 'N':
-                if ("NaN".equals(text)) {
-                    return Double.NaN;
-                }
-                break;
-            case '-':
-                if ("-Infinity".equals(text) || "-INF".equals(text)) {
-                    return Double.NEGATIVE_INFINITY;
-                }
-                break;
-            }
-            try {
-                return parseDouble(text);
-            } catch (IllegalArgumentException iae) { }
-            throw ctxt.weirdStringException(_valueClass, "not a valid Double value");
-        }
-        if (t == JsonToken.VALUE_NULL) {
-            return (Double) getNullValue();
-        }
-            // Otherwise, no can do:
-        throw ctxt.mappingException(_valueClass, t);
-    }
-
-    protected final double _parseDoublePrimitive(JsonParser jp, DeserializationContext ctxt)
-        throws IOException, JsonProcessingException
-    {
-        // We accept couple of different types; obvious ones first:
-        JsonToken t = jp.getCurrentToken();
-        
-        if (t == JsonToken.VALUE_NUMBER_INT || t == JsonToken.VALUE_NUMBER_FLOAT) { // coercing should work too
-            return jp.getDoubleValue();
-        }
-        // And finally, let's allow Strings to be converted too
-        if (t == JsonToken.VALUE_STRING) {
-            String text = jp.getText().trim();
-            if (text.length() == 0) {
-                return 0.0;
-            }
-            switch (text.charAt(0)) {
-            case 'I':
-                if ("Infinity".equals(text) || "INF".equals(text)) {
-                    return Double.POSITIVE_INFINITY;
-                }
-                break;
-            case 'N':
-                if ("NaN".equals(text)) {
-                    return Double.NaN;
-                }
-                break;
-            case '-':
-                if ("-Infinity".equals(text) || "-INF".equals(text)) {
-                    return Double.NEGATIVE_INFINITY;
-                }
-                break;
-            }
-            try {
-                return parseDouble(text);
-            } catch (IllegalArgumentException iae) { }
-            throw ctxt.weirdStringException(_valueClass, "not a valid double value");
-        }
-        if (t == JsonToken.VALUE_NULL) {
-            return 0.0;
-        }
-            // Otherwise, no can do:
-        throw ctxt.mappingException(_valueClass, t);
-    }
-
-    
-    protected java.util.Date _parseDate(JsonParser jp, DeserializationContext ctxt)
-        throws IOException, JsonProcessingException
-    {
-        JsonToken t = jp.getCurrentToken();
-        if (t == JsonToken.VALUE_NUMBER_INT) {
-            return new java.util.Date(jp.getLongValue());
-        }
-        if (t == JsonToken.VALUE_NULL) {
-            return (java.util.Date) getNullValue();
-        }
-        if (t == JsonToken.VALUE_STRING) {
-            try {
-                /* As per [JACKSON-203], take empty Strings to mean
-                 * null
-                 */
-                String str = jp.getText().trim();
-                if (str.length() == 0) {
-                    return (Date) getEmptyValue();
-                }
-                return ctxt.parseDate(str);
-            } catch (IllegalArgumentException iae) {
-                throw ctxt.weirdStringException(_valueClass, "not a valid representation (error: "+iae.getMessage()+")");
-            }
-        }
-        throw ctxt.mappingException(_valueClass, t);
-    }
+    // procedures
 
     /**
-     * Helper method for encapsulating calls to low-level double value parsing; single place
-     * just because we need a work-around that must be applied to all calls.
-     *<p>
-     * Note: copied from <code>sh.calaba.org.codehaus.jackson.io.NumberUtil</code> (to avoid dependency to
-     * version 1.8; except for String constants, but that gets compiled in bytecode here)
-     */
-    protected final static double parseDouble(String numStr) throws NumberFormatException
-    {
-        // [JACKSON-486]: avoid some nasty float representations... but should it be MIN_NORMAL or MIN_VALUE?
-        if (NumberInput.NASTY_SMALL_DOUBLE.equals(numStr)) {
-            return 0x1.0p-1022; //Double.MIN_NORMAL; Hardcoded since MIN_NORMAL is not available until SDK level 10
-        }
-        return Double.parseDouble(numStr);
-    }
-    
-    /*
-    /****************************************************
-    /* Helper methods for sub-classes, resolving dependencies
-    /****************************************************
-    */
-
-    /**
-     * Helper method used to locate deserializers for properties the
-     * type this deserializer handles contains (usually for properties of
-     * bean types)
-     * 
-     * @param config Active deserialization configuration 
-     * @param provider Deserializer provider to use for actually finding deserializer(s)
-     * @param type Type of property to deserialize
-     * @param property Actual property object (field, method, constuctor parameter) used
-     *     for passing deserialized values; provided so deserializer can be contextualized if necessary (since 1.7)
-     */
-    protected JsonDeserializer<Object> findDeserializer(DeserializationConfig config, DeserializerProvider provider,
-                                                        JavaType type, BeanProperty property)
-        throws JsonMappingException
-    {
-        JsonDeserializer<Object> deser = provider.findValueDeserializer(config, type, property);
-        return deser;
-    }
-
-    /*
-    /**********************************************************
-    /* Helper methods for sub-classes, problem reporting
-    /**********************************************************
-     */
-
-    /**
-     * Method called to deal with a property that did not map to a known
-     * Bean property. Method can deal with the problem as it sees fit (ignore,
-     * throw exception); but if it does return, it has to skip the matching
-     * Json content parser has.
-     *<p>
-     * NOTE: method signature was changed in version 1.5; explicit JsonParser
-     * <b>must</b> be passed since it may be something other than what
-     * context has. Prior versions did not include the first parameter.
+     * Applies the procedure to each value in the list in ascending
+     * (front to back) order.
      *
-     * @param jp Parser that points to value of the unknown property
-     * @param ctxt Context for deserialization; allows access to the parser,
-     *    error reporting functionality
-     * @param instanceOrClass Instance that is being populated by this
-     *   deserializer, or if not known, Class that would be instantiated.
-     *   If null, will assume type is what {@link #getValueClass} returns.
-     * @param propName Name of the property that can not be mapped
+     * @param procedure a <code>IntProcedure</code> value
+     * @return true if the procedure did not terminate prematurely.
      */
-    protected void handleUnknownProperty(JsonParser jp, DeserializationContext ctxt, Object instanceOrClass, String propName)
-        throws IOException, JsonProcessingException
-    {
-        if (instanceOrClass == null) {
-            instanceOrClass = getValueClass();
-        }
-        // Maybe we have configured handler(s) to take care of it?
-        if (ctxt.handleUnknownProperty(jp, this, instanceOrClass, propName)) {
-            return;
-        }
-        // Nope, not handled. Potentially that's a problem...
-        reportUnknownProperty(ctxt, instanceOrClass, propName);
-
-        /* If we get this far, need to skip now; we point to first token of
-         * value (START_xxx for structured, or the value token for others)
-         */
-        jp.skipChildren();
-    }
-        
-    protected void reportUnknownProperty(DeserializationContext ctxt,
-                                         Object instanceOrClass, String fieldName)
-        throws IOException, JsonProcessingException
-    {
-        // throw exception if that's what we are expected to do
-        if (ctxt.isEnabled(DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES)) {
-            throw ctxt.unknownFieldException(instanceOrClass, fieldName);
-        }
-        // ... or if not, just ignore
-    }
-
-
-    /*
-    /**********************************************************
-    /* Then one intermediate base class for things that have
-    /* both primitive and wrapper types
-    /**********************************************************
-     */
-
-    protected abstract static class PrimitiveOrWrapperDeserializer<T>
-        extends StdScalarDeserializer<T>
-    {
-        final T _nullValue;
-        
-        protected PrimitiveOrWrapperDeserializer(Class<T> vc, T nvl)
-        {
-            super(vc);
-            _nullValue = nvl;
-        }
-        
-        @Override
-        public final T getNullValue() {
-            return _nullValue;
-        }
-    }
-    
-    /*
-    /**********************************************************
-    /* Then primitive/wrapper types
-    /**********************************************************
-     */
-
-    @JacksonStdImpl
-    public final static class BooleanDeserializer
-        extends PrimitiveOrWrapperDeserializer<Boolean>
-    {
-        public BooleanDeserializer(Class<Boolean> cls, Boolean nvl)
-        {
-            super(cls, nvl);
-        }
-        
-        @Override
-	public Boolean deserialize(JsonParser jp, DeserializationContext ctxt)
-            throws IOException, JsonProcessingException
-        {
-            return _parseBoolean(jp, ctxt);
-        }
-
-        // 1.6: since we can never have type info ("natural type"; String, Boolean, Integer, Double):
-        // (is it an error to even call this version?)
-        @Override
-        public Boolean deserializeWithType(JsonParser jp, DeserializationContext ctxt,
-                TypeDeserializer typeDeserializer)
-            throws IOException, JsonProcessingException
-        {
-            return _parseBoolean(jp, ctxt);
-        }
-    }
-
-    @JacksonStdImpl
-    public final static class ByteDeserializer
-        extends PrimitiveOrWrapperDeserializer<Byte>
-    {
-        public ByteDeserializer(Class<Byte> cls, Byte nvl)
-        {
-            super(cls, nvl);
-        }
-
-        @Override
-        public Byte deserialize(JsonParser jp, DeserializationContext ctxt)
-            throws IOException, JsonProcessingException
-        {
-            return _parseByte(jp, ctxt);
-        }
-    }
-
-    @JacksonStdImpl
-    public final static class ShortDeserializer
-        extends PrimitiveOrWrapperDeserializer<Short>
-    {
-        public ShortDeserializer(Class<Short> cls, Short nvl)
-        {
-            super(cls, nvl);
-        }
-
-        @Override
-        public Short deserialize(JsonParser jp, DeserializationContext ctxt)
-            throws IOException, JsonProcessingException
-        {
-            return _parseShort(jp, ctxt);
-        }
-    }
-
-    @JacksonStdImpl
-    public final static class CharacterDeserializer
-        extends PrimitiveOrWrapperDeserializer<Character>
-    {
-        public CharacterDeserializer(Class<Character> cls, Character nvl)
-        {
-            super(cls, nvl);
-        }
-
-        @Override
-        public Character deserialize(JsonParser jp, DeserializationContext ctxt)
-            throws IOException, JsonProcessingException
-        {
-            JsonToken t = jp.getCurrentToken();
-            int value;
-
-            if (t == JsonToken.VALUE_NUMBER_INT) { // ok iff ascii value
-                value = jp.getIntValue();
-                if (value >= 0 && value <= 0xFFFF) {
-                    return Character.valueOf((char) value);
-                }
-            } else if (t == JsonToken.VALUE_STRING) { // this is the usual type
-                // But does it have to be exactly one char?
-                String text = jp.getText();
-                if (text.length() == 1) {
-                    return Character.valueOf(text.charAt(0));
-                }
-                // actually, empty should become null?
-                if (text.length() == 0) {
-                    return (Character) getEmptyValue();
-                }
-            }
-            throw ctxt.mappingException(_valueClass, t);
-        }
-    }
-
-    @JacksonStdImpl
-    public final static class IntegerDeserializer
-        extends PrimitiveOrWrapperDeserializer<Integer>
-    {
-        public IntegerDeserializer(Class<Integer> cls, Integer nvl)
-        {
-            super(cls, nvl);
-        }
-
-        @Override
-        public Integer deserialize(JsonParser jp, DeserializationContext ctxt)
-            throws IOException, JsonProcessingException
-        {
-            return _parseInteger(jp, ctxt);
-        }
-
-        // 1.6: since we can never have type info ("natural type"; String, Boolean, Integer, Double):
-        // (is it an error to even call this version?)
-        @Override
-        public Integer deserializeWithType(JsonParser jp, DeserializationContext ctxt,
-                TypeDeserializer typeDeserializer)
-            throws IOException, JsonProcessingException
-        {
-            return _parseInteger(jp, ctxt);
-        }
-    }
-
-    @JacksonStdImpl
-    public final static class LongDeserializer
-        extends PrimitiveOrWrapperDeserializer<Long>
-    {
-        public LongDeserializer(Class<Long> cls, Long nvl)
-        {
-            super(cls, nvl);
-        }
-
-        @Override
-        public Long deserialize(JsonParser jp, DeserializationContext ctxt)
-            throws IOException, JsonProcessingException
-        {
-            return _parseLong(jp, ctxt);
-        }
-    }
-
-    @JacksonStdImpl
-    public final static class FloatDeserializer
-        extends PrimitiveOrWrapperDeserializer<Float>
-    {
-        public FloatDeserializer(Class<Float> cls, Float nvl)
-        {
-            super(cls, nvl);
-        }
-
-        @Override
-        public Float deserialize(JsonParser jp, DeserializationContext ctxt)
-            throws IOException, JsonProcessingException
-        {
-            /* 22-Jan-2009, tatu: Bounds/range checks would be tricky
-             *   here, so let's not bother even trying...
-             */
-            return _parseFloat(jp, ctxt);
-        }
-    }
-
-    @JacksonStdImpl
-    public final static class DoubleDeserializer
-        extends PrimitiveOrWrapperDeserializer<Double>
-    {
-        public DoubleDeserializer(Class<Double> cls, Double nvl)
-        {
-            super(cls, nvl);
-        }
-
-        @Override
-        public Double deserialize(JsonParser jp, DeserializationContext ctxt)
-            throws IOException, JsonProcessingException
-        {
-            return _parseDouble(jp, ctxt);
-        }
-
-        // 1.6: since we can never have type info ("natural type"; String, Boolean, Integer, Double):
-        // (is it an error to even call this version?)
-        @Override
-        public Double deserializeWithType(JsonParser jp, DeserializationContext ctxt,
-                TypeDeserializer typeDeserializer)
-            throws IOException, JsonProcessingException
-        {
-            return _parseDouble(jp, ctxt);
-        }
+    public boolean forEach(IntProcedure procedure) {
+        for (int i = 0; i < pos; i++)
+            if (!procedure.execute(data[i]))
+                return false;
+        return true;
     }
 
     /**
-     * For type <code>Number.class</code>, we can just rely on type
-     * mappings that plain {@link JsonParser#getNumberValue} returns.
-     *<p>
-     * Since 1.5, there is one additional complication: some numeric
-     * types (specifically, int/Integer and double/Double) are "non-typed";
-     * meaning that they will NEVER be output with type information.
-     * But other numeric types may need such type information.
-     * This is why {@link #deserializeWithType} must be overridden.
+     * Applies the procedure to each value in the list in descending
+     * (back to front) order.
+     *
+     * @param procedure a <code>IntProcedure</code> value
+     * @return true if the procedure did not terminate prematurely.
      */
-    @JacksonStdImpl
-    public final static class NumberDeserializer
-        extends StdScalarDeserializer<Number>
-    {
-        public NumberDeserializer() { super(Number.class); }
-
-        @Override
-        public Number deserialize(JsonParser jp, DeserializationContext ctxt)
-            throws IOException, JsonProcessingException
-        {
-            JsonToken t = jp.getCurrentToken();
-            if (t == JsonToken.VALUE_NUMBER_INT) {
-                if (ctxt.isEnabled(DeserializationConfig.Feature.USE_BIG_INTEGER_FOR_INTS)) {
-                    return jp.getBigIntegerValue();
-                }
-                return jp.getNumberValue();
-            } else if (t == JsonToken.VALUE_NUMBER_FLOAT) {
-                /* [JACKSON-72]: need to allow overriding the behavior
-                 * regarding which type to use
-                 */
-                if (ctxt.isEnabled(DeserializationConfig.Feature.USE_BIG_DECIMAL_FOR_FLOATS)) {
-                    return jp.getDecimalValue();
-                }
-                return Double.valueOf(jp.getDoubleValue());
-            }
-
-            /* Textual values are more difficult... not parsing itself, but figuring
-             * out 'minimal' type to use 
-             */
-            if (t == JsonToken.VALUE_STRING) { // let's do implicit re-parse
-                String text = jp.getText().trim();
-                try {
-                    if (text.indexOf('.') >= 0) { // floating point
-                        // as per [JACKSON-72]:
-                        if (ctxt.isEnabled(DeserializationConfig.Feature.USE_BIG_DECIMAL_FOR_FLOATS)) {
-                            return new BigDecimal(text);
-                        }
-                        return new Double(text);
-                    }
-                    // as per [JACKSON-100]:
-                    if (ctxt.isEnabled(DeserializationConfig.Feature.USE_BIG_INTEGER_FOR_INTS)) {
-                        return new BigInteger(text);
-                    }
-                    long value = Long.parseLong(text);
-                    if (value <= Integer.MAX_VALUE && value >= Integer.MIN_VALUE) {
-                        return Integer.valueOf((int) value);
-                    }
-                    return Long.valueOf(value);
-                } catch (IllegalArgumentException iae) {
-                    throw ctxt.weirdStringException(_valueClass, "not a valid number");
-                }
-            }
-            // Otherwise, no can do:
-            throw ctxt.mappingException(_valueClass, t);
-        }
-
-        /**
-         * As mentioned in class Javadoc, there is additional complexity in
-         * handling potentially mixed type information here. Because of this,
-         * we must actually check for "raw" integers and doubles first, before
-         * calling type deserializer.
-         */
-        @Override
-        public Object deserializeWithType(JsonParser jp, DeserializationContext ctxt,
-                                          TypeDeserializer typeDeserializer)
-            throws IOException, JsonProcessingException
-        {
-            switch (jp.getCurrentToken()) {
-            case VALUE_NUMBER_INT:
-            case VALUE_NUMBER_FLOAT:
-            case VALUE_STRING:
-                // can not point to type information: hence must be non-typed (int/double)
-                return deserialize(jp, ctxt);
-            }
-            return typeDeserializer.deserializeTypedFromScalar(jp, ctxt);
-        }
+    public boolean forEachDescending(IntProcedure procedure) {
+        for (int i = pos; i-- > 0;)
+            if (!procedure.execute(data[i]))
+                return false;
+        return true;
     }
-    
-    /*
-    /**********************************************************
-    /* And then bit more complicated (but non-structured) number
-    /* types
-    /**********************************************************
+
+    // sorting
+
+    /**
+     * Sort the values in the list (ascending) using the Sun quicksort
+     * implementation.
+     *
+     * @see java.util.Arrays#sort
      */
-
-    @JacksonStdImpl
-    public static class BigDecimalDeserializer
-        extends StdScalarDeserializer<BigDecimal>
-    {
-        public BigDecimalDeserializer() { super(BigDecimal.class); }
-
-        @Override
-	public BigDecimal deserialize(JsonParser jp, DeserializationContext ctxt)
-            throws IOException, JsonProcessingException
-        {
-            JsonToken t = jp.getCurrentToken();
-            if (t == JsonToken.VALUE_NUMBER_INT || t == JsonToken.VALUE_NUMBER_FLOAT) {
-                return jp.getDecimalValue();
-            }
-            // String is ok too, can easily convert
-            if (t == JsonToken.VALUE_STRING) { // let's do implicit re-parse
-                String text = jp.getText().trim();
-                if (text.length() == 0) {
-                    return null;
-                }
-                try {
-                    return new BigDecimal(text);
-                } catch (IllegalArgumentException iae) {
-                    throw ctxt.weirdStringException(_valueClass, "not a valid representation");
-                }
-            }
-            // Otherwise, no can do:
-            throw ctxt.mappingException(_valueClass, t);
-        }
+    public IntSequence sort() {
+        Arrays.sort(data, 0, pos);
+        return this;
     }
 
     /**
-     * This is bit trickier to implement efficiently, while avoiding
-     * overflow problems.
+     * Sort a slice of the list (ascending) using the Sun quicksort
+     * implementation.
+     *
+     * @param fromIndex the index at which to start sorting (inclusive)
+     * @param toIndex   the index at which to stop sorting (exclusive)
+     * @see java.util.Arrays#sort
      */
-    @JacksonStdImpl
-    public static class BigIntegerDeserializer
-        extends StdScalarDeserializer<BigInteger>
-    {
-        public BigIntegerDeserializer() { super(BigInteger.class); }
-
-        @Override
-		public BigInteger deserialize(JsonParser jp, DeserializationContext ctxt)
-            throws IOException, JsonProcessingException
-        {
-            JsonToken t = jp.getCurrentToken();
-            String text;
-
-            if (t == JsonToken.VALUE_NUMBER_INT) {
-                switch (jp.getNumberType()) {
-                case INT:
-                case LONG:
-                    return BigInteger.valueOf(jp.getLongValue());
-                }
-            } else if (t == JsonToken.VALUE_NUMBER_FLOAT) {
-                /* Whether to fail if there's non-integer part?
-                 * Could do by calling BigDecimal.toBigIntegerExact()
-                 */
-                return jp.getDecimalValue().toBigInteger();
-            } else if (t != JsonToken.VALUE_STRING) { // let's do implicit re-parse
-                // String is ok too, can easily convert; otherwise, no can do:
-                throw ctxt.mappingException(_valueClass, t);
-            }
-            text = jp.getText().trim();
-            if (text.length() == 0) {
-                return null;
-            }
-            try {
-                return new BigInteger(text);
-            } catch (IllegalArgumentException iae) {
-                throw ctxt.weirdStringException(_valueClass, "not a valid representation");
-            }
-        }
+    public IntSequence sort(int fromIndex, int toIndex) {
+        Arrays.sort(data, fromIndex, toIndex);
+        return this;
     }
 
-    /*
-    /****************************************************
-    /* Then trickier things: Date/Calendar types
-    /****************************************************
-     */
+    // filling
 
     /**
-     * Compared to plain old {@link java.util.Date}, SQL version is easier
-     * to deal with: mostly because it is more limited.
+     * Fills every slot in the list with the specified value.
+     *
+     * @param val the value to use when filling
      */
-    public static class SqlDateDeserializer
-        extends StdScalarDeserializer<java.sql.Date>
-    {
-        public SqlDateDeserializer() { super(java.sql.Date.class); }
-
-        @Override
-        public java.sql.Date deserialize(JsonParser jp, DeserializationContext ctxt)
-            throws IOException, JsonProcessingException
-        {
-            Date d = _parseDate(jp, ctxt);
-            return (d == null) ? null : new java.sql.Date(d.getTime());
-        }
+    public IntSequence fill(int val) {
+        Arrays.fill(data, 0, pos, val);
+        return this;
     }
 
-    /*
-    /****************************************************
-    /* And other oddities
-    /****************************************************
-    */
+    /**
+     * Fills a range in the list with the specified value.
+     *
+     * @param fromIndex the offset at which to start filling (inclusive)
+     * @param toIndex   the offset at which to stop filling (exclusive)
+     * @param val       the value to use when filling
+     */
+    public IntSequence fill(int fromIndex, int toIndex, int val) {
+        if (toIndex > pos) {
+            ensureCapacity(toIndex);
+            pos = toIndex;
+        }
+        Arrays.fill(data, fromIndex, toIndex, val);
+        return this;
+    }
 
-    public static class StackTraceElementDeserializer
-        extends StdScalarDeserializer<StackTraceElement>
-    {
-        public StackTraceElementDeserializer() { super(StackTraceElement.class); }
+    // searching
 
-        @Override
-        public StackTraceElement deserialize(JsonParser jp, DeserializationContext ctxt)
-            throws IOException, JsonProcessingException
-        {
-            JsonToken t = jp.getCurrentToken();
-            // Must get an Object
-            if (t == JsonToken.START_OBJECT) {
-                String className = "", methodName = "", fileName = "";
-                int lineNumber = -1;
+    /**
+     * Performs a binary search for <tt>value</tt> in the entire list.
+     * Note that you <b>must</b> @{link #sort sort} the list before
+     * doing a search.
+     *
+     * @param value the value to search for
+     * @return the absolute offset in the list of the value, or its
+     *         negative insertion point into the sorted list.
+     */
+    public int binarySearch(int value) {
+        return binarySearch(value, 0, pos);
+    }
 
-                while ((t = jp.nextValue()) != JsonToken.END_OBJECT) {
-                    String propName = jp.getCurrentName();
-                    if ("className".equals(propName)) {
-                        className = jp.getText();
-                    } else if ("fileName".equals(propName)) {
-                        fileName = jp.getText();
-                    } else if ("lineNumber".equals(propName)) {
-                        if (t.isNumeric()) {
-                            lineNumber = jp.getIntValue();
-                        } else {
-                            throw JsonMappingException.from(jp, "Non-numeric token ("+t+") for property 'lineNumber'");
-                        }
-                    } else if ("methodName".equals(propName)) {
-                        methodName = jp.getText();
-                    } else if ("nativeMethod".equals(propName)) {
-                        // no setter, not passed via constructor: ignore
-                    } else {
-                        handleUnknownProperty(jp, ctxt, _valueClass, propName);
-                    }
-                }
-                return new StackTraceElement(className, methodName, fileName, lineNumber);
+    /**
+     * Performs a binary search for <tt>value</tt> in the specified
+     * range.  Note that you <b>must</b> @{link #sort sort} the list
+     * or the range before doing a search.
+     *
+     * @param value     the value to search for
+     * @param fromIndex the lower boundary of the range (inclusive)
+     * @param toIndex   the upper boundary of the range (exclusive)
+     * @return the absolute offset in the list of the value, or its
+     *         negative insertion point into the sorted list.
+     */
+    public int binarySearch(int value, int fromIndex, int toIndex) {
+        if (fromIndex < 0) {
+            throw new ArrayIndexOutOfBoundsException(fromIndex);
+        }
+        if (toIndex > pos) {
+            throw new ArrayIndexOutOfBoundsException(toIndex);
+        }
+        int low = fromIndex;
+        int high = toIndex - 1;
+        while (low <= high) {
+            int mid = (low + high) >>> 1;
+            int midVal = data[mid];
+
+            if (midVal < value) {
+                low = mid + 1;
+            } else if (midVal > value) {
+                high = mid - 1;
+            } else {
+                return mid; // value found
             }
-            throw ctxt.mappingException(_valueClass, t);
         }
+        return -(low + 1);  // value not found.
     }
+
+    /**
+     * Searches the list front to back for the index of
+     * <tt>value</tt>.
+     *
+     * @param value an <code>int</code> value
+     * @return the first offset of the value, or -1 if it is not in
+     *         the list.
+     * @see #binarySearch for faster searches on sorted lists
+     */
+    public int indexOf(int value) {
+        return indexOf(0, value);
+    }
+
+    /**
+     * Searches the list front to back for the index of
+     * <tt>value</tt>, starting at <tt>offset</tt>.
+     *
+     * @param offset the offset at which to start the linear search
+     *               (inclusive)
+     * @param value  an <code>int</code> value
+     * @return the first offset of the value, or -1 if it is not in
+     *         the list.
+     * @see #binarySearch for faster searches on sorted lists
+     */
+    public int indexOf(int offset, int value) {
+        for (int i = offset; i < pos; i++) {
+            if (data[i] == value) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Searches the list back to front for the last index of
+     * <tt>value</tt>.
+     *
+     * @param value an <code>int</code> value
+     * @return the last offset of the value, or -1 if it is not in
+     *         the list.
+     * @see #binarySearch for faster searches on sorted lists
+     */
+    public int lastIndexOf(int value) {
+        return lastIndexOf(pos, value);
+    }
+
+    /**
+     * Searches the list back to front for the last index of
+     * <tt>value</tt>, starting at <tt>offset</tt>.
+     *
+     * @param offset the offset at which to start the linear search
+     *               (exclusive)
+     * @param value  an <code>int</code> value
+     * @return the last offset of the value, or -1 if it is not in
+     *         the list.
+     * @see #binarySearch for faster searches on sorted lists
+     */
+    public int lastIndexOf(int offset, int value) {
+        for (int i = offset; i-- > 0;) {
+            if (data[i] == value) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Searches the list for <tt>value</tt>
+     *
+     * @param value an <code>int</code> value
+     * @return true if value is in the list.
+     */
+    public boolean contains(int value) {
+        return lastIndexOf(value) >= 0;
+    }
+
+    /**
+     * Finds the maximum value in the list.
+     *
+     * @return the largest value in the list.
+     * @throws IllegalStateException if the list is empty
+     */
+    public int max() {
+        if (size() == 0) {
+            throw new IllegalStateException("cannot find maximum get an empty list");
+        }
+        int max = Integer.MIN_VALUE;
+        for (int i = 0; i < pos; i++) {
+            if (data[i] > max) {
+                max = data[i];
+            }
+        }
+        return max;
+    }
+
+    /**
+     * Finds the minimum value in the list.
+     *
+     * @return the smallest value in the list.
+     * @throws IllegalStateException if the list is empty
+     */
+    public int min() {
+        if (size() == 0) {
+            throw new IllegalStateException("cannot find minimum get an empty list");
+        }
+        int min = Integer.MAX_VALUE;
+        for (int i = 0; i < pos; i++) {
+            if (data[i] < min) {
+                min = data[i];
+            }
+        }
+        return min;
+    }
+
+    // stringification
+
+    /**
+     * Returns a String representation of the list, front to back.
+     *
+     * @return a <code>String</code> value
+     */
+    @Override
+    public String toString() {
+        final StringBuilder buf = new StringBuilder("{");
+        for (int i = 0, end = pos - 1; i < end; i++) {
+            buf.append(data[i]);
+            buf.append(", ");
+        }
+        if (size() > 0) {
+            buf.append(data[pos - 1]);
+        }
+        buf.append("}");
+        return buf.toString();
+    }
+
+    public int sum() {
+        int sum = 0;
+        for (int i = 0; i < pos; i++) sum += data[i];
+        return sum;
+    }
+
+    public IntSequence appendFrom(int[] src, int srcOffset, int srcLen) {
+        ensureCapacity(pos + srcLen);
+        System.arraycopy(src, srcOffset, data, pos, srcLen);
+        pos = pos + srcLen;
+        return this;
+    }
+
+    public static IntSequence from(int... array) {
+        IntSequence seq = new IntSequence(0);
+        seq.data = array;
+        seq.pos = array.length;
+        return seq;
+    }
+
 }
-

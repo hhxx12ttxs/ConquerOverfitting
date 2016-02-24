@@ -1,344 +1,359 @@
-/*
- * Copyright 1999-2011 Alibaba Group.
- *  
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *  
- *      http://www.apache.org/licenses/LICENSE-2.0
- *  
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.alibaba.dubbo.common.serialize.support.dubbo;
-
-import java.io.IOException;
-import java.io.OutputStream;
-
-import com.alibaba.dubbo.common.serialize.DataOutput;
 
 /**
- * Default data output impl.
- * Not thread-safe.
- * 
- * @author qian.lei
+ * This file originally comes from the Apache Hadoop project. Changes have been made to the file.
+ *
  */
 
-public class GenericDataOutput implements DataOutput, GenericDataFlags
-{
-	private static final int CHAR_BUF_SIZE = 256;
+package backtype.storm.utils;
 
-	private final byte[] mBuffer, mTemp = new byte[9];
+import java.io.*;
 
-	private final char[] mCharBuf = new char[CHAR_BUF_SIZE];
 
-	private final OutputStream mOutput;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
-	private final int mLimit;
+public final class WritableUtils  {
 
-	private int mPosition = 0;
+  public static byte[] readCompressedByteArray(DataInput in) throws IOException {
+    int length = in.readInt();
+    if (length == -1) return null;
+    byte[] buffer = new byte[length];
+    in.readFully(buffer);      // could/should use readFully(buffer,0,length)?
+    GZIPInputStream gzi = new GZIPInputStream(new ByteArrayInputStream(buffer, 0, buffer.length));
+    byte[] outbuf = new byte[length];
+    ByteArrayOutputStream bos =  new ByteArrayOutputStream();
+    int len;
+    while((len=gzi.read(outbuf, 0, outbuf.length)) != -1){
+      bos.write(outbuf, 0, len);
+    }
+    byte[] decompressed =  bos.toByteArray();
+    bos.close();
+    gzi.close();
+    return decompressed;
+  }
 
-	public GenericDataOutput(OutputStream out)
-	{
-		this(out, 1024);
-	}
+  public static void skipCompressedByteArray(DataInput in) throws IOException {
+    int length = in.readInt();
+    if (length != -1) {
+      skipFully(in, length);
+    }
+  }
 
-	public GenericDataOutput(OutputStream out, int buffSize)
-	{
-		mOutput = out;
-		mLimit = buffSize;
-		mBuffer = new byte[buffSize];
-	}
+  public static int  writeCompressedByteArray(DataOutput out, byte[] bytes) throws IOException {
+    if (bytes != null) {
+      ByteArrayOutputStream bos =  new ByteArrayOutputStream();
+      GZIPOutputStream gzout = new GZIPOutputStream(bos);
+      gzout.write(bytes, 0, bytes.length);
+      gzout.close();
+      byte[] buffer = bos.toByteArray();
+      int len = buffer.length;
+      out.writeInt(len);
+      out.write(buffer, 0, len);
+      /* debug only! Once we have confidence, can lose this. */
+      return ((bytes.length != 0) ? (100*buffer.length)/bytes.length : 0);
+    } else {
+      out.writeInt(-1);
+      return -1;
+    }
+  }
 
-	public void writeBool(boolean v) throws IOException
-	{
-		write0( v ? VARINT_1 : VARINT_0 );
-	}
 
-	public void writeByte(byte v) throws IOException
-	{
-		switch( v )
-		{
-			case 0: write0(VARINT_0); break; case 1: write0(VARINT_1); break; case 2: write0(VARINT_2); break; case 3: write0(VARINT_3); break;
-			case 4: write0(VARINT_4); break; case 5: write0(VARINT_5); break; case 6: write0(VARINT_6); break; case 7: write0(VARINT_7); break;
-			case 8: write0(VARINT_8); break; case 9: write0(VARINT_9); break; case 10: write0(VARINT_A); break; case 11: write0(VARINT_B); break;
-			case 12: write0(VARINT_C); break; case 13: write0(VARINT_D); break; case 14: write0(VARINT_E); break; case 15: write0(VARINT_F); break;
-			case 16: write0(VARINT_10); break; case 17: write0(VARINT_11); break; case 18: write0(VARINT_12); break; case 19: write0(VARINT_13); break;
-			case 20: write0(VARINT_14); break; case 21: write0(VARINT_15); break; case 22: write0(VARINT_16); break; case 23: write0(VARINT_17); break;
-			case 24: write0(VARINT_18); break; case 25: write0(VARINT_19); break; case 26: write0(VARINT_1A); break; case 27: write0(VARINT_1B); break;
-			case 28: write0(VARINT_1C); break; case 29: write0(VARINT_1D); break; case 30: write0(VARINT_1E); break; case 31: write0(VARINT_1F); break;
-			default:
-				write0(VARINT8);
-				write0(v);
-		}
-	}
+  /* Ugly utility, maybe someone else can do this better  */
+  public static String readCompressedString(DataInput in) throws IOException {
+    byte[] bytes = readCompressedByteArray(in);
+    if (bytes == null) return null;
+    return new String(bytes, "UTF-8");
+  }
 
-	public void writeShort(short v) throws IOException
-	{
-		writeVarint32(v);
-	}
 
-	public void writeInt(int v) throws IOException
-	{
-		writeVarint32(v);
-	}
+  public static int  writeCompressedString(DataOutput out, String s) throws IOException {
+    return writeCompressedByteArray(out, (s != null) ? s.getBytes("UTF-8") : null);
+  }
 
-	public void writeLong(long v) throws IOException
-	{
-		writeVarint64(v);
-	}
+  /*
+   *
+   * Write a String as a Network Int n, followed by n Bytes
+   * Alternative to 16 bit read/writeUTF.
+   * Encoding standard is... ?
+   *
+   */
+  public static void writeString(DataOutput out, String s) throws IOException {
+    if (s != null) {
+      byte[] buffer = s.getBytes("UTF-8");
+      int len = buffer.length;
+      out.writeInt(len);
+      out.write(buffer, 0, len);
+    } else {
+      out.writeInt(-1);
+    }
+  }
 
-	public void writeFloat(float v) throws IOException
-	{
-		writeVarint32(Float.floatToRawIntBits(v));
-	}
+  /*
+   * Read a String as a Network Int n, followed by n Bytes
+   * Alternative to 16 bit read/writeUTF.
+   * Encoding standard is... ?
+   *
+   */
+  public static String readString(DataInput in) throws IOException{
+    int length = in.readInt();
+    if (length == -1) return null;
+    byte[] buffer = new byte[length];
+    in.readFully(buffer);      // could/should use readFully(buffer,0,length)?
+    return new String(buffer,"UTF-8");
+  }
 
-	public void writeDouble(double v) throws IOException
-	{
-		writeVarint64(Double.doubleToRawLongBits(v));
-	}
 
-	public void writeUTF(String v) throws IOException
-	{
-		if( v == null )
-		{
-			write0(OBJECT_NULL);
-		}
-		else
-		{
-			int len = v.length();
-			if( len == 0 )
-			{
-				write0(OBJECT_DUMMY);
-			}
-			else
-			{
-				write0(OBJECT_BYTES);
-				writeUInt(len);
+  /*
+   * Write a String array as a Nework Int N, followed by Int N Byte Array Strings.
+   * Could be generalised using introspection.
+   *
+   */
+  public static void writeStringArray(DataOutput out, String[] s) throws IOException{
+    out.writeInt(s.length);
+    for(int i = 0; i < s.length; i++) {
+      writeString(out, s[i]);
+    }
+  }
 
-				int off = 0, limit = mLimit - 3, size;
-				char[] buf = mCharBuf;
-				do
-				{
-					size = Math.min(len-off, CHAR_BUF_SIZE);
-					v.getChars(off, off+size, buf, 0);
+  /*
+   * Write a String array as a Nework Int N, followed by Int N Byte Array of
+   * compressed Strings. Handles also null arrays and null values.
+   * Could be generalised using introspection.
+   *
+   */
+  public static void writeCompressedStringArray(DataOutput out, String[] s) throws IOException{
+    if (s == null) {
+      out.writeInt(-1);
+      return;
+    }
+    out.writeInt(s.length);
+    for(int i = 0; i < s.length; i++) {
+      writeCompressedString(out, s[i]);
+    }
+  }
 
-					for(int i=0;i<size;i++)
-					{
-						char c = buf[i];
-						if( mPosition > limit )
-						{
-							if( c < 0x80 )
-							{
-								write0((byte)c);
-							}
-							else if( c < 0x800 )
-							{
-								write0((byte)(0xC0 | ((c >> 6) & 0x1F)));
-								write0((byte)(0x80 | (c & 0x3F)));
-							}
-							else
-							{
-								write0((byte)(0xE0 | ((c >> 12) & 0x0F)));
-								write0((byte)(0x80 | ((c >> 6) & 0x3F)));
-								write0((byte)(0x80 | (c & 0x3F)));
-							}
-						}
-						else
-						{
-							if( c < 0x80 )
-							{
-								mBuffer[mPosition++] = (byte)c;
-							}
-							else if( c < 0x800 )
-							{
-								mBuffer[mPosition++] = (byte)(0xC0 | ((c >> 6) & 0x1F));
-								mBuffer[mPosition++] = (byte)(0x80 | (c & 0x3F));
-							}
-							else
-							{
-								mBuffer[mPosition++] = (byte)(0xE0 | ((c >> 12) & 0x0F));
-								mBuffer[mPosition++] = (byte)(0x80 | ((c >> 6) & 0x3F));
-								mBuffer[mPosition++] = (byte)(0x80 | (c & 0x3F));
-							}
-						}
-					}
-					off += size;
-				}
-				while( off < len );
-			}
-		}
-	}
+  /*
+   * Write a String array as a Nework Int N, followed by Int N Byte Array Strings.
+   * Could be generalised using introspection. Actually this bit couldn't...
+   *
+   */
+  public static String[] readStringArray(DataInput in) throws IOException {
+    int len = in.readInt();
+    if (len == -1) return null;
+    String[] s = new String[len];
+    for(int i = 0; i < len; i++) {
+      s[i] = readString(in);
+    }
+    return s;
+  }
 
-	public void writeBytes(byte[] b) throws IOException
-	{
-		if( b == null )
-			write0(OBJECT_NULL);
-		else
-			writeBytes(b, 0, b.length);
-	}
 
-	public void writeBytes(byte[] b, int off, int len) throws IOException
-	{
-		if( len == 0 )
-		{
-			write0(OBJECT_DUMMY);
-		}
-		else
-		{
-			write0(OBJECT_BYTES);
-			writeUInt(len);
-			write0(b, off, len);
-		}
-	}
+  /*
+   * Write a String array as a Nework Int N, followed by Int N Byte Array Strings.
+   * Could be generalised using introspection. Handles null arrays and null values.
+   *
+   */
+  public static  String[] readCompressedStringArray(DataInput in) throws IOException {
+    int len = in.readInt();
+    if (len == -1) return null;
+    String[] s = new String[len];
+    for(int i = 0; i < len; i++) {
+      s[i] = readCompressedString(in);
+    }
+    return s;
+  }
 
-	public void flushBuffer() throws IOException
-	{
-		if( mPosition > 0 )
-		{
-			mOutput.write(mBuffer, 0, mPosition);
-			mPosition = 0;
-		}
-	}
 
-	public void writeUInt(int v) throws IOException
-	{
-		byte tmp;
-		while( true )
-		{
-			tmp = (byte)( v & 0x7f );
-			if( ( v >>>= 7 ) == 0 )
-			{
-				write0( (byte)( tmp | 0x80 ) );
-				return;
-			}
-			else
-			{
-				write0(tmp);
-			}
-		}
-	}
+  /*
+   *
+   * Test Utility Method Display Byte Array.
+   *
+   */
+  public static void displayByteArray(byte[] record){
+    int i;
+    for(i=0;i < record.length -1; i++){
+      if (i % 16 == 0) { System.out.println(); }
+      System.out.print(Integer.toHexString(record[i]  >> 4 & 0x0F));
+      System.out.print(Integer.toHexString(record[i] & 0x0F));
+      System.out.print(",");
+    }
+    System.out.print(Integer.toHexString(record[i]  >> 4 & 0x0F));
+    System.out.print(Integer.toHexString(record[i] & 0x0F));
+    System.out.println();
+  }
 
-	protected void write0(byte b) throws IOException
-	{
-		if( mPosition == mLimit )
-			flushBuffer();
 
-		mBuffer[mPosition++] = b;
-	}
+  /**
+   * Serializes an integer to a binary stream with zero-compressed encoding.
+   * For -120 <= i <= 127, only one byte is used with the actual value.
+   * For other values of i, the first byte value indicates whether the
+   * integer is positive or negative, and the number of bytes that follow.
+   * If the first byte value v is between -121 and -124, the following integer
+   * is positive, with number of bytes that follow are -(v+120).
+   * If the first byte value v is between -125 and -128, the following integer
+   * is negative, with number of bytes that follow are -(v+124). Bytes are
+   * stored in the high-non-zero-byte-first order.
+   *
+   * @param stream Binary output stream
+   * @param i Integer to be serialized
+   * @throws java.io.IOException
+   */
+  public static void writeVInt(DataOutput stream, int i) throws IOException {
+    writeVLong(stream, i);
+  }
 
-	protected void write0(byte[] b, int off, int len) throws IOException
-	{
-		int rem = mLimit - mPosition;
-		if( rem > len )
-		{
-			System.arraycopy(b, off, mBuffer, mPosition, len);
-			mPosition += len;
-		}
-		else
-		{
-			System.arraycopy(b, off, mBuffer, mPosition, rem);
-			mPosition = mLimit;
-			flushBuffer();
+  /**
+   * Serializes a long to a binary stream with zero-compressed encoding.
+   * For -112 <= i <= 127, only one byte is used with the actual value.
+   * For other values of i, the first byte value indicates whether the
+   * long is positive or negative, and the number of bytes that follow.
+   * If the first byte value v is between -113 and -120, the following long
+   * is positive, with number of bytes that follow are -(v+112).
+   * If the first byte value v is between -121 and -128, the following long
+   * is negative, with number of bytes that follow are -(v+120). Bytes are
+   * stored in the high-non-zero-byte-first order.
+   *
+   * @param stream Binary output stream
+   * @param i Long to be serialized
+   * @throws java.io.IOException
+   */
+  public static void writeVLong(DataOutput stream, long i) throws IOException {
+    if (i >= -112 && i <= 127) {
+      stream.writeByte((byte)i);
+      return;
+    }
 
-			off += rem;
-			len -= rem;
+    int len = -112;
+    if (i < 0) {
+      i ^= -1L; // take one's complement'
+      len = -120;
+    }
 
-			if( mLimit > len )
-			{
-				System.arraycopy(b, off, mBuffer, 0, len);
-				mPosition = len;
-			}
-			else
-			{
-				mOutput.write(b, off, len);
-			}
-		}
-	}
+    long tmp = i;
+    while (tmp != 0) {
+      tmp = tmp >> 8;
+      len--;
+    }
 
-	private void writeVarint32(int v) throws IOException
-	{
-		switch( v )
-		{
-			case -15: write0(VARINT_NF); break; case -14: write0(VARINT_NE); break; case -13: write0(VARINT_ND); break;
-			case -12: write0(VARINT_NC); break; case -11: write0(VARINT_NB); break; case -10: write0(VARINT_NA); break; case -9: write0(VARINT_N9); break;
-			case -8: write0(VARINT_N8); break; case -7: write0(VARINT_N7); break; case -6: write0(VARINT_N6); break; case -5: write0(VARINT_N5); break;
-			case -4: write0(VARINT_N4); break; case -3: write0(VARINT_N3); break; case -2: write0(VARINT_N2); break; case -1: write0(VARINT_N1); break;
-			case 0: write0(VARINT_0); break; case 1: write0(VARINT_1); break; case 2: write0(VARINT_2); break; case 3: write0(VARINT_3); break;
-			case 4: write0(VARINT_4); break; case 5: write0(VARINT_5); break; case 6: write0(VARINT_6); break; case 7: write0(VARINT_7); break;
-			case 8: write0(VARINT_8); break; case 9: write0(VARINT_9); break; case 10: write0(VARINT_A); break; case 11: write0(VARINT_B); break;
-			case 12: write0(VARINT_C); break; case 13: write0(VARINT_D); break; case 14: write0(VARINT_E); break; case 15: write0(VARINT_F); break;
-			case 16: write0(VARINT_10); break; case 17: write0(VARINT_11); break; case 18: write0(VARINT_12); break; case 19: write0(VARINT_13); break;
-			case 20: write0(VARINT_14); break; case 21: write0(VARINT_15); break; case 22: write0(VARINT_16); break; case 23: write0(VARINT_17); break;
-			case 24: write0(VARINT_18); break; case 25: write0(VARINT_19); break; case 26: write0(VARINT_1A); break; case 27: write0(VARINT_1B); break;
-			case 28: write0(VARINT_1C); break; case 29: write0(VARINT_1D); break; case 30: write0(VARINT_1E); break; case 31: write0(VARINT_1F); break;
-			default:
-				int t = v, ix = 0;
-				byte[] b = mTemp;
+    stream.writeByte((byte)len);
 
-				while( true )
-				{
-					b[++ix] = (byte)( v & 0xff );
-					if( ( v >>>= 8 ) == 0 )
-						break;
-				}
+    len = (len < -120) ? -(len + 120) : -(len + 112);
 
-				if( t > 0 )
-				{
-					// [ 0a e2 => 0a e2 00 ] [ 92 => 92 00 ]
-					if( b[ix] < 0 )
-						b[++ix] = 0;
-				}
-				else
-				{
-					// [ 01 ff ff ff => 01 ff ] [ e0 ff ff ff => e0 ]
-					while( b[ix] == (byte)0xff && b[ix-1] < 0 )
-						ix--;
-				}
+    for (int idx = len; idx != 0; idx--) {
+      int shiftbits = (idx - 1) * 8;
+      long mask = 0xFFL << shiftbits;
+      stream.writeByte((byte)((i & mask) >> shiftbits));
+    }
+  }
 
-				b[0] = (byte)( VARINT + ix - 1 );
-				write0(b, 0, ix+1);
-		}
-	}
 
-	private void writeVarint64(long v) throws IOException
-	{
-		int i = (int)v;
-		if( v == i )
-		{
-			writeVarint32(i);
-		}
-		else
-		{
-			long t = v;
-			int ix = 0;
-			byte[] b = mTemp;
+  /**
+   * Reads a zero-compressed encoded long from input stream and returns it.
+   * @param stream Binary input stream
+   * @throws java.io.IOException
+   * @return deserialized long from stream.
+   */
+  public static long readVLong(DataInput stream) throws IOException {
+    byte firstByte = stream.readByte();
+    int len = decodeVIntSize(firstByte);
+    if (len == 1) {
+      return firstByte;
+    }
+    long i = 0;
+    for (int idx = 0; idx < len-1; idx++) {
+      byte b = stream.readByte();
+      i = i << 8;
+      i = i | (b & 0xFF);
+    }
+    return (isNegativeVInt(firstByte) ? (i ^ -1L) : i);
+  }
 
-			while( true )
-			{
-				b[++ix] = (byte)( v & 0xff );
-				if( ( v >>>= 8 ) == 0 )
-					break;
-			}
+  /**
+   * Reads a zero-compressed encoded integer from input stream and returns it.
+   * @param stream Binary input stream
+   * @throws java.io.IOException
+   * @return deserialized integer from stream.
+   */
+  public static int readVInt(DataInput stream) throws IOException {
+    return (int) readVLong(stream);
+  }
 
-			if( t > 0 )
-			{
-				// [ 0a e2 => 0a e2 00 ] [ 92 => 92 00 ]
-				if( b[ix] < 0 )
-					b[++ix] = 0;
-			}
-			else
-			{
-				// [ 01 ff ff ff => 01 ff ] [ e0 ff ff ff => e0 ]
-				while( b[ix] == (byte)0xff && b[ix-1] < 0 )
-					ix--;
-			}
+  /**
+   * Given the first byte of a vint/vlong, determine the sign
+   * @param value the first byte
+   * @return is the value negative
+   */
+  public static boolean isNegativeVInt(byte value) {
+    return value < -120 || (value >= -112 && value < 0);
+  }
 
-			b[0] = (byte)( VARINT + ix - 1 );
-			write0(b, 0, ix+1);
-		}
-	}
+  /**
+   * Parse the first byte of a vint/vlong to determine the number of bytes
+   * @param value the first byte of the vint/vlong
+   * @return the total number of bytes (1 to 9)
+   */
+  public static int decodeVIntSize(byte value) {
+    if (value >= -112) {
+      return 1;
+    } else if (value < -120) {
+      return -119 - value;
+    }
+    return -111 - value;
+  }
+
+  /**
+   * Get the encoded length if an integer is stored in a variable-length format
+   * @return the encoded length
+   */
+  public static int getVIntSize(long i) {
+    if (i >= -112 && i <= 127) {
+      return 1;
+    }
+
+    if (i < 0) {
+      i ^= -1L; // take one's complement'
+    }
+    // find the number of bytes with non-leading zeros
+    int dataBits = Long.SIZE - Long.numberOfLeadingZeros(i);
+    // find the number of data bytes + length byte
+    return (dataBits + 7) / 8 + 1;
+  }
+
+  /**
+   * Skip <i>len</i> number of bytes in input stream<i>in</i>
+   * @param in input stream
+   * @param len number of bytes to skip
+   * @throws IOException when skipped less number of bytes
+   */
+  public static void skipFully(DataInput in, int len) throws IOException {
+    int total = 0;
+    int cur = 0;
+
+    while ((total<len) && ((cur = in.skipBytes(len-total)) > 0)) {
+        total += cur;
+    }
+
+    if (total<len) {
+      throw new IOException("Not able to skip " + len + " bytes, possibly " +
+                            "due to end of input.");
+    }
+  }
 }
+

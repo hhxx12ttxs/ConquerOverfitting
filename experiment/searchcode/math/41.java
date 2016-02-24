@@ -21,11 +21,10 @@
 package whitespace;
 
 
-import javax.swing.text.BadLocationException;
-import javax.swing.text.Document;
-import javax.swing.text.Element;
 import javax.swing.text.Segment;
+import org.gjt.sp.jedit.buffer.JEditBuffer;
 
+import org.gjt.sp.jedit.Buffer;
 import org.gjt.sp.jedit.MiscUtilities;
 
 import org.gjt.sp.util.Log;
@@ -35,99 +34,69 @@ public class DocumentUtilities {
     private DocumentUtilities() {}
 
 
-    public static void untabifyLeading(Document buffer, int tabSize) {
-        Element map = buffer.getDefaultRootElement();
+    public static void untabifyLeading(JEditBuffer buffer, int tabSize) {
         WhiteSpaceInfo whiteSpaceInfo = new WhiteSpaceInfo();
 
-        for (int i = map.getElementCount() - 1; i >= 0; i--) {
-            Element line = map.getElement(i);
-            int start = line.getStartOffset();
-            int end   = line.getEndOffset();
+        for (int i = buffer.getLineCount() - 1; i >= 0; i--) {
+            int start = buffer.getLineStartOffset(i);
+            int end   = buffer.getLineEndOffset(i);
 
             // We get the line i without the line separator (always \n)
             int len = (end - 1) - start;
             if (len == 0) { continue; }
 
             Segment s = new Segment();
-            try {
-                buffer.getText(start, len, s);
-            } catch (BadLocationException ble) {
-                Log.log(Log.ERROR, DocumentUtilities.class, ble);
-                continue;
-            }
+            buffer.getText(start, len, s);
 
             getLeadingWhiteSpaceInfo(s.array, s.offset, s.count, tabSize, whiteSpaceInfo);
 
             if (whiteSpaceInfo.hasTabs && whiteSpaceInfo.len > 0) {
                 String textOut = MiscUtilities.createWhiteSpace(whiteSpaceInfo.expandedLen, 0);
 
-                try {
-                    buffer.remove(start, whiteSpaceInfo.len);
-                    buffer.insertString(start, textOut, null);
-                } catch (BadLocationException ble) {
-                    Log.log(Log.ERROR, DocumentUtilities.class, ble);
-                }
+                buffer.remove(start, whiteSpaceInfo.len);
+                buffer.insert(start, textOut);
             }
         }
     }
 
 
-    public static void tabifyLeading(Document buffer, int tabSize) {
-        Element map = buffer.getDefaultRootElement();
+    public static void tabifyLeading(JEditBuffer buffer, int tabSize) {
         WhiteSpaceInfo whiteSpaceInfo = new WhiteSpaceInfo();
 
-        for (int i = map.getElementCount() - 1; i >= 0; i--) {
-            Element line = map.getElement(i);
-            int start = line.getStartOffset();
-            int end   = line.getEndOffset();
+        for (int i = buffer.getLineCount() - 1; i >= 0; i--) {
+            int start = buffer.getLineStartOffset(i);
+            int end   = buffer.getLineEndOffset(i);
 
             // We get the line i without the line separator (always \n)
             int len = (end - 1) - start;
             if (len == 0) { continue; }
 
             Segment s = new Segment();
-            try {
-                buffer.getText(start, len, s);
-            } catch (BadLocationException ble) {
-                Log.log(Log.ERROR, DocumentUtilities.class, ble);
-                continue;
-            }
+            buffer.getText(start, len, s);
 
             getLeadingWhiteSpaceInfo(s.array, s.offset, s.count, tabSize, whiteSpaceInfo);
 
             if (whiteSpaceInfo.hasSpaces && whiteSpaceInfo.len > 0) {
                 String textOut = MiscUtilities.createWhiteSpace(whiteSpaceInfo.expandedLen, tabSize);
 
-                try {
-                    buffer.remove(start, whiteSpaceInfo.len);
-                    buffer.insertString(start, textOut, null);
-                } catch (BadLocationException ble) {
-                    Log.log(Log.ERROR, DocumentUtilities.class, ble);
-                }
+                buffer.remove(start, whiteSpaceInfo.len);
+                buffer.insert(start, textOut);
             }
         }
     }
 
 
-    public static void removeTrailingWhiteSpace(Document buffer, String escapeChars) {
-        Element map = buffer.getDefaultRootElement();
-
-        for (int i = map.getElementCount() - 1; i >= 0; i--) {
-            Element line = map.getElement(i);
-            int start = line.getStartOffset();
-            int end   = line.getEndOffset();
+    public static void removeTrailingWhiteSpace(JEditBuffer buffer, String escapeChars) {
+        for (int i = buffer.getLineCount() - 1; i >= 0; i--) {
+            int start = buffer.getLineStartOffset(i);
+            int end   = buffer.getLineEndOffset(i);
 
             // We get the line i without the line separator (always \n)
             int len = (end - 1) - start;
             if (len == 0) { continue; }
 
             Segment s = new Segment();
-            try {
-                buffer.getText(start, len, s);
-            } catch (BadLocationException ble) {
-                Log.log(Log.ERROR, DocumentUtilities.class, ble);
-                continue;
-            }
+            buffer.getText(start, len, s);
 
             int off = s.offset + s.count - 1;
             int cnt = 0;
@@ -138,22 +107,14 @@ public class DocumentUtilities {
                         if (cnt > 0) { off++; cnt--; }
                     }
                     if (cnt > 0) {
-                        try {
-                            buffer.remove((end - 1) - cnt, cnt);
-                        } catch (BadLocationException ble) {
-                            Log.log(Log.ERROR, DocumentUtilities.class, ble);
-                        }
+                        buffer.remove((end - 1) - cnt, cnt);
                     }
                     break;
                 }
 
                 if (off == s.offset) {
-                    try {
-                        // The line contains only whitespaces
-                        buffer.remove(start, len);
-                    } catch (BadLocationException ble) {
-                        Log.log(Log.ERROR, DocumentUtilities.class, ble);
-                    }
+                    // The line contains only whitespaces
+                    buffer.remove(start, len);
                     break;
                 }
             }

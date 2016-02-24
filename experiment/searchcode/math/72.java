@@ -7,147 +7,95 @@
 package com.hyk.proxy.common.rpc.extension.compress.lzf;
 
 import java.io.IOException;
-import java.io.InputStream;
+import java.io.OutputStream;
 
 /**
- * An input stream to read from an LZF stream.
- * The data is automatically expanded.
+ * An output stream to write an LZF stream.
+ * The data is automatically compressed.
  */
-public class LZFInputStream extends InputStream {
+public class LZFOutputStream extends OutputStream {
 
-    private final InputStream in;
-    private CompressLZF decompress = new CompressLZF();
-    private int pos;
-    private int bufferLength;
-    private byte[] inBuffer;
-    private byte[] buffer;
-    
+	
+	public static final int IO_BUFFER_SIZE_COMPRESS = 128 * 1024;
+	
     /**
-     * Copied from org.h2.util.Utils --- Start
-     * 
-     * Create an array of bytes with the given size. If this is not possible
-     * because not enough memory is available, an OutOfMemoryError with the
-     * requested size in the message is thrown.
-     *
-     * @param len the number of bytes requested
-     * @return the byte array
-     * @throws OutOfMemoryError
+     * The file header of a LZF file.
      */
-    
-    public static final byte[] EMPTY_BYTES = {};
-    
-    public static byte[] newBytes(int len) {
-        try {
-            if (len == 0) {
-                return EMPTY_BYTES;
+    static final int MAGIC = ('H' << 24) | ('2' << 16) | ('I' << 8) | 'S';
+
+    private final OutputStream out;
+    private final CompressLZF compress = new CompressLZF();
+    private final byte[] buffer;
+    private int pos;
+    private byte[] outBuffer;
+
+    public LZFOutputStream(OutputStream out) throws IOException {
+        this.out = out;
+        int len = IO_BUFFER_SIZE_COMPRESS;
+        buffer = new byte[len];
+        ensureOutput(len);
+        writeInt(MAGIC);
+    }
+
+    private void ensureOutput(int len) {
+        // TODO calculate the maximum overhead (worst case) for the output
+        // buffer
+        int outputLen = (len < 100 ? len + 100 : len) * 2;
+        if (outBuffer == null || outBuffer.length < outputLen) {
+            outBuffer = new byte[outputLen];
+        }
+    }
+
+    public void write(int b) throws IOException {
+        if (pos >= buffer.length) {
+            flush();
+        }
+        buffer[pos++] = (byte) b;
+    }
+
+    private void compressAndWrite(byte[] buff, int len) throws IOException {
+        if (len > 0) {
+            ensureOutput(len);
+            int compressed = compress.compress(buff, len, outBuffer, 0);
+            if (compressed > len) {
+                writeInt(-len);
+                out.write(buff, 0, len);
+            } else {
+                writeInt(compressed);
+                writeInt(len);
+                out.write(outBuffer, 0, compressed);
             }
-            return new byte[len];
-        } catch (OutOfMemoryError e) {
-            Error e2 = new OutOfMemoryError("Requested memory: " + len);
-            e2.initCause(e);
-            throw e2;
-        }
-    }
-    // org.h2.util.Utils.Java --- END
-
-    
-    public LZFInputStream(InputStream in) throws IOException {
-        this.in = in;
-        if (readInt() != LZFOutputStream.MAGIC) {
-            throw new IOException("Not an LZFInputStream");
         }
     }
 
-    private byte[] ensureSize(byte[] buff, int len) {
-        return buff == null || buff.length < len ? newBytes(len) : buff;
+    private void writeInt(int x) throws IOException {
+        out.write((byte) (x >> 24));
+        out.write((byte) (x >> 16));
+        out.write((byte) (x >> 8));
+        out.write((byte) x);
     }
 
-    private void fillBuffer() throws IOException {
-        if (buffer != null && pos < bufferLength) {
-            return;
+    public void write(byte[] buff, int off, int len) throws IOException {
+        while (len > 0) {
+            int copy = Math.min(buffer.length - pos, len);
+            System.arraycopy(buff, off, buffer, pos, copy);
+            pos += copy;
+            if (pos >= buffer.length) {
+                flush();
+            }
+            off += copy;
+            len -= copy;
         }
-        int len = readInt();
-        if (decompress == null) {
-            // EOF
-            this.bufferLength = 0;
-        } else if (len < 0) {
-            len = -len;
-            buffer = ensureSize(buffer, len);
-            readFully(buffer, len);
-            this.bufferLength = len;
-        } else {
-            inBuffer = ensureSize(inBuffer, len);
-            int size = readInt();
-            readFully(inBuffer, len);
-            buffer = ensureSize(buffer, size);
-            decompress.expand(inBuffer, 0, len, buffer, 0, size);
-            this.bufferLength = size;
-        }
+    }
+
+    public void flush() throws IOException {
+        compressAndWrite(buffer, pos);
         pos = 0;
     }
 
-    private void readFully(byte[] buff, int len) throws IOException {
-        int off = 0;
-        while (len > 0) {
-            int l = in.read(buff, off, len);
-            len -= l;
-            off += l;
-        }
-    }
-
-    private int readInt() throws IOException {
-        int x = in.read();
-        if (x < 0) {
-            decompress = null;
-            return 0;
-        }
-        x = (x << 24) + (in.read() << 16) + (in.read() << 8) + in.read();
-        return x;
-    }
-
-    public int read() throws IOException {
-        fillBuffer();
-        if (pos >= bufferLength) {
-            return -1;
-        }
-        return buffer[pos++] & 255;
-    }
-
-    public int read(byte[] b) throws IOException {
-        return read(b, 0, b.length);
-    }
-
-    public int read(byte[] b, int off, int len) throws IOException {
-        if (len == 0) {
-            return 0;
-        }
-        int read = 0;
-        while (len > 0) {
-            int r = readBlock(b, off, len);
-            if (r < 0) {
-                break;
-            }
-            read += r;
-            off += r;
-            len -= r;
-        }
-        return read == 0 ? -1 : read;
-    }
-
-    private int readBlock(byte[] b, int off, int len) throws IOException {
-        fillBuffer();
-        if (pos >= bufferLength) {
-            return -1;
-        }
-        int max = Math.min(len, bufferLength - pos);
-        max = Math.min(max, b.length - off);
-        System.arraycopy(buffer, pos, b, off, max);
-        pos += max;
-        return max;
-    }
-
     public void close() throws IOException {
-        in.close();
+        flush();
+        out.close();
     }
 
 }

@@ -1,381 +1,209 @@
-/*
- * This file is part of Vanilla.
+package org.apache.lucene.store;
+
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
- * Copyright (c) 2011-2012, Spout LLC <http://www.spout.org/>
- * Vanilla is licensed under the Spout License Version 1.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Vanilla is free software: you can redistribute it and/or modify it under
- * the terms of the GNU Lesser General Public License as published by the Free
- * Software Foundation, either version 3 of the License, or (at your option)
- * any later version.
- *
- * In addition, 180 days after any changes are published, you can use the
- * software, incorporating those changes, under the terms of the MIT license,
- * as described in the Spout License Version 1.
- *
- * Vanilla is distributed in the hope that it will be useful, but WITHOUT ANY
- * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for
- * more details.
- *
- * You should have received a copy of the GNU Lesser General Public License,
- * the MIT license and the Spout License Version 1 along with this program.
- * If not, see <http://www.gnu.org/licenses/> for the GNU Lesser General Public
- * License and see <http://spout.in/licensev1> for the full license, including
- * the MIT license.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
-package org.spout.vanilla.protocol;
 
-import java.awt.Color;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.util.ArrayList;
-import java.util.List;
 
-import org.jboss.netty.buffer.ChannelBuffer;
-import org.jboss.netty.util.CharsetUtil;
+/** Base implementation class for buffered {@link IndexInput}. */
+public abstract class BufferedIndexInput extends IndexInput {
 
-import org.spout.api.inventory.ItemStack;
-import org.spout.api.material.Material;
-import org.spout.api.material.block.BlockFace;
-import org.spout.api.math.GenericMath;
-import org.spout.api.math.Vector2;
-import org.spout.api.math.Vector3;
-import org.spout.api.util.Parameter;
+  /** Default buffer size */
+  public static final int BUFFER_SIZE = 1024;
 
-import org.spout.nbt.CompoundMap;
-import org.spout.nbt.CompoundTag;
-import org.spout.nbt.Tag;
-import org.spout.nbt.stream.NBTInputStream;
-import org.spout.nbt.stream.NBTOutputStream;
-import org.spout.vanilla.material.VanillaMaterials;
+  private int bufferSize = BUFFER_SIZE;
 
-public final class ChannelBufferUtils {
-	/**
-	 * Writes a list of parameters (e.g. mob metadata) to the buffer.
-	 * @param buf The buffer.
-	 * @param parameters The parameters.
-	 */
-	@SuppressWarnings("unchecked")
-	public static void writeParameters(ChannelBuffer buf, List<Parameter<?>> parameters) throws IOException {
-		for (Parameter<?> parameter : parameters) {
-			int type = parameter.getType();
-			int index = parameter.getIndex();
-			if (index > 0x1F) {
-				throw new IllegalArgumentException("Index has a maximum of 0x1F!");
-			}
+  protected byte[] buffer;
 
-			buf.writeByte(type << 5 | index & 0x1F);
+  private long bufferStart = 0;			  // position in file of buffer
+  private int bufferLength = 0;			  // end of valid bytes
+  private int bufferPosition = 0;		  // next byte to read
 
-			switch (type) {
-				case Parameter.TYPE_BYTE:
-					buf.writeByte(((Parameter<Byte>) parameter).getValue());
-					break;
-				case Parameter.TYPE_SHORT:
-					buf.writeShort(((Parameter<Short>) parameter).getValue());
-					break;
-				case Parameter.TYPE_INT:
-					buf.writeInt(((Parameter<Integer>) parameter).getValue());
-					break;
-				case Parameter.TYPE_FLOAT:
-					buf.writeFloat(((Parameter<Float>) parameter).getValue());
-					break;
-				case Parameter.TYPE_STRING:
-					writeString(buf, ((Parameter<String>) parameter).getValue());
-					break;
-				case Parameter.TYPE_ITEM:
-					ItemStack item = ((Parameter<ItemStack>) parameter).getValue();
-					writeItemStack(buf, item);
-					break;
-			}
-		}
+  @Override
+  public byte readByte() throws IOException {
+    if (bufferPosition >= bufferLength)
+      refill();
+    return buffer[bufferPosition++];
+  }
 
-		buf.writeByte(127);
-	}
+  public BufferedIndexInput() {}
 
-	/**
-	 * Reads a list of parameters from the buffer.
-	 * @param buf The buffer.
-	 * @return The parameters.
-	 */
-	public static List<Parameter<?>> readParameters(ChannelBuffer buf) throws IOException {
-		List<Parameter<?>> parameters = new ArrayList<Parameter<?>>();
+  /** Inits BufferedIndexInput with a specific bufferSize */
+  public BufferedIndexInput(int bufferSize) {
+    checkBufferSize(bufferSize);
+    this.bufferSize = bufferSize;
+  }
 
-		for (int b = buf.readUnsignedByte(); b != 127; b = buf.readUnsignedByte()) {
-			int type = (b & 0xE0) >> 5;
-			int index = b & 0x1F;
+  /** Change the buffer size used by this IndexInput */
+  public void setBufferSize(int newSize) {
+    assert buffer == null || bufferSize == buffer.length: "buffer=" + buffer + " bufferSize=" + bufferSize + " buffer.length=" + (buffer != null ? buffer.length : 0);
+    if (newSize != bufferSize) {
+      checkBufferSize(newSize);
+      bufferSize = newSize;
+      if (buffer != null) {
+        // Resize the existing buffer and carefully save as
+        // many bytes as possible starting from the current
+        // bufferPosition
+        byte[] newBuffer = new byte[newSize];
+        final int leftInBuffer = bufferLength-bufferPosition;
+        final int numToCopy;
+        if (leftInBuffer > newSize)
+          numToCopy = newSize;
+        else
+          numToCopy = leftInBuffer;
+        System.arraycopy(buffer, bufferPosition, newBuffer, 0, numToCopy);
+        bufferStart += bufferPosition;
+        bufferPosition = 0;
+        bufferLength = numToCopy;
+        newBuffer(newBuffer);
+      }
+    }
+  }
 
-			switch (type) {
-				case Parameter.TYPE_BYTE:
-					parameters.add(new Parameter<Byte>(type, index, buf.readByte()));
-					break;
-				case Parameter.TYPE_SHORT:
-					parameters.add(new Parameter<Short>(type, index, buf.readShort()));
-					break;
-				case Parameter.TYPE_INT:
-					parameters.add(new Parameter<Integer>(type, index, buf.readInt()));
-					break;
-				case Parameter.TYPE_FLOAT:
-					parameters.add(new Parameter<Float>(type, index, buf.readFloat()));
-					break;
-				case Parameter.TYPE_STRING:
-					parameters.add(new Parameter<String>(type, index, readString(buf)));
-					break;
-				case Parameter.TYPE_ITEM:
-					parameters.add(new Parameter<ItemStack>(type, index, readItemStack(buf)));
-					break;
-			}
-		}
+  protected void newBuffer(byte[] newBuffer) {
+    // Subclasses can do something here
+    buffer = newBuffer;
+  }
 
-		return parameters;
-	}
+  /** Returns buffer size.  @see #setBufferSize */
+  public int getBufferSize() {
+    return bufferSize;
+  }
 
-	/**
-	 * Writes a string to the buffer.
-	 * @param buf The buffer.
-	 * @param str The string.
-	 * @throws IllegalArgumentException if the string is too long <em>after</em> it is encoded.
-	 */
-	public static void writeString(ChannelBuffer buf, String str) {
-		int len = str.length();
-		if (len >= 65536) {
-			throw new IllegalArgumentException("String too long.");
-		}
-		buf.writeShort(len);
-		for (int i = 0; i < len; ++i) {
-			buf.writeChar(str.charAt(i));
-		}
-	}
+  private void checkBufferSize(int bufferSize) {
+    if (bufferSize <= 0)
+      throw new IllegalArgumentException("bufferSize must be greater than 0 (got " + bufferSize + ")");
+  }
 
-	/**
-	 * Writes a UTF-8 string to the buffer.
-	 * @param buf The buffer.
-	 * @param str The string.
-	 * @throws UnsupportedEncodingException if the encoding isn't supported.
-	 * @throws IllegalArgumentException if the string is too long <em>after</em> it is encoded.
-	 */
-	public static void writeUtf8String(ChannelBuffer buf, String str) {
-		byte[] bytes = str.getBytes(CharsetUtil.UTF_8);
-		if (bytes.length >= 65536) {
-			throw new IllegalArgumentException("Encoded UTF-8 string too long.");
-		}
+  @Override
+  public void readBytes(byte[] b, int offset, int len) throws IOException {
+    readBytes(b, offset, len, true);
+  }
 
-		buf.writeShort(bytes.length);
-		buf.writeBytes(bytes);
-	}
+  @Override
+  public void readBytes(byte[] b, int offset, int len, boolean useBuffer) throws IOException {
 
-	/**
-	 * Reads a string from the buffer.
-	 * @param buf The buffer.
-	 * @return The string.
-	 */
-	public static String readString(ChannelBuffer buf) {
-		int len = buf.readUnsignedShort();
+    if(len <= (bufferLength-bufferPosition)){
+      // the buffer contains enough data to satisfy this request
+      if(len>0) // to allow b to be null if len is 0...
+        System.arraycopy(buffer, bufferPosition, b, offset, len);
+      bufferPosition+=len;
+    } else {
+      // the buffer does not have enough data. First serve all we've got.
+      int available = bufferLength - bufferPosition;
+      if(available > 0){
+        System.arraycopy(buffer, bufferPosition, b, offset, available);
+        offset += available;
+        len -= available;
+        bufferPosition += available;
+      }
+      // and now, read the remaining 'len' bytes:
+      if (useBuffer && len<bufferSize){
+        // If the amount left to read is small enough, and
+        // we are allowed to use our buffer, do it in the usual
+        // buffered way: fill the buffer and copy from it:
+        refill();
+        if(bufferLength<len){
+          // Throw an exception when refill() could not read len bytes:
+          System.arraycopy(buffer, 0, b, offset, bufferLength);
+          throw new IOException("read past EOF");
+        } else {
+          System.arraycopy(buffer, 0, b, offset, len);
+          bufferPosition=len;
+        }
+      } else {
+        // The amount left to read is larger than the buffer
+        // or we've been asked to not use our buffer -
+        // there's no performance reason not to read it all
+        // at once. Note that unlike the previous code of
+        // this function, there is no need to do a seek
+        // here, because there's no need to reread what we
+        // had in the buffer.
+        long after = bufferStart+bufferPosition+len;
+        if(after > length())
+          throw new IOException("read past EOF");
+        readInternal(b, offset, len);
+        bufferStart = after;
+        bufferPosition = 0;
+        bufferLength = 0;                    // trigger refill() on read
+      }
+    }
+  }
 
-		char[] characters = new char[len];
-		for (int i = 0; i < len; i++) {
-			characters[i] = buf.readChar();
-		}
+  private void refill() throws IOException {
+    long start = bufferStart + bufferPosition;
+    long end = start + bufferSize;
+    if (end > length())				  // don't read past EOF
+      end = length();
+    int newLength = (int)(end - start);
+    if (newLength <= 0)
+      throw new IOException("read past EOF");
 
-		return new String(characters);
-	}
+    if (buffer == null) {
+      newBuffer(new byte[bufferSize]);  // allocate buffer lazily
+      seekInternal(bufferStart);
+    }
+    readInternal(buffer, 0, newLength);
+    bufferLength = newLength;
+    bufferStart = start;
+    bufferPosition = 0;
+  }
 
-	/**
-	 * Reads a UTF-8 encoded string from the buffer.
-	 * @param buf The buffer.
-	 * @return The string.
-	 * @throws UnsupportedEncodingException if the encoding isn't supported.
-	 */
-	public static String readUtf8String(ChannelBuffer buf) {
-		int len = buf.readUnsignedShort();
+  /** Expert: implements buffer refill.  Reads bytes from the current position
+   * in the input.
+   * @param b the array to read bytes into
+   * @param offset the offset in the array to start storing bytes
+   * @param length the number of bytes to read
+   */
+  protected abstract void readInternal(byte[] b, int offset, int length)
+          throws IOException;
 
-		byte[] bytes = new byte[len];
-		buf.readBytes(bytes);
+  @Override
+  public long getFilePointer() { return bufferStart + bufferPosition; }
 
-		return new String(bytes, CharsetUtil.UTF_8);
-	}
+  @Override
+  public void seek(long pos) throws IOException {
+    if (pos >= bufferStart && pos < (bufferStart + bufferLength))
+      bufferPosition = (int)(pos - bufferStart);  // seek within buffer
+    else {
+      bufferStart = pos;
+      bufferPosition = 0;
+      bufferLength = 0;				  // trigger refill() on read()
+      seekInternal(pos);
+    }
+  }
 
-	public static CompoundMap readCompound(ChannelBuffer buf) {
-		int len = buf.readShort();
-		if (len > 0) {
-			byte[] bytes = new byte[len];
-			buf.readBytes(bytes);
-			NBTInputStream str = null;
-			try {
-				str = new NBTInputStream(new ByteArrayInputStream(bytes));
-				Tag tag = str.readTag();
-				if (tag instanceof CompoundTag) {
-					return ((CompoundTag) tag).getValue();
-				}
-			} catch (IOException e) {
-			} finally {
-				if (str != null) {
-					try {
-						str.close();
-					} catch (IOException e) {
-					}
-				}
-			}
-		}
-		return null;
-	}
+  /** Expert: implements seek.  Sets current position in this file, where the
+   * next {@link #readInternal(byte[],int,int)} will occur.
+   * @see #readInternal(byte[],int,int)
+   */
+  protected abstract void seekInternal(long pos) throws IOException;
 
-	public static void writeCompound(ChannelBuffer buf, CompoundMap data) {
-		if (data == null) {
-			buf.writeShort(-1);
-			return;
-		}
-		ByteArrayOutputStream out = new ByteArrayOutputStream();
-		NBTOutputStream str = null;
-		try {
-			str = new NBTOutputStream(out);
-			str.writeTag(new CompoundTag("", data));
-			str.close();
-			str = null;
-			buf.writeShort(out.size());
-			buf.writeBytes(out.toByteArray());
-		} catch (IOException e) {
-		} finally {
-			if (str != null) {
-				try {
-					str.close();
-				} catch (IOException e) {
-				}
-			}
-		}
-	}
+  @Override
+  public Object clone() {
+    BufferedIndexInput clone = (BufferedIndexInput)super.clone();
 
-	public static ItemStack readItemStack(ChannelBuffer buffer) throws IOException {
-		short id = buffer.readShort();
-		if (id < 0) {
-			return null;
-		} else {
-			Material material = VanillaMaterials.getMaterial(id);
-			if (material == null) {
-				throw new IOException("Unknown material with id of " + id);
-			}
-			int count = buffer.readUnsignedByte();
-			int damage = buffer.readUnsignedShort();
-			CompoundMap nbtData = readCompound(buffer);
-			return new ItemStack(material, damage, count).setNBTData(nbtData);
-		}
-	}
+    clone.buffer = null;
+    clone.bufferLength = 0;
+    clone.bufferPosition = 0;
+    clone.bufferStart = getFilePointer();
 
-	public static void writeItemStack(ChannelBuffer buffer, ItemStack item) {
-		short id = item == null ? (short) -1 : VanillaMaterials.getMinecraftId(item.getMaterial());
-		buffer.writeShort(id);
-		if (id != -1) {
-			buffer.writeByte(item.getAmount());
-			buffer.writeShort(item.getData());
-			writeCompound(buffer, item.getNBTData());
-		}
-	}
+    return clone;
+  }
 
-	public static int getShifts(int height) {
-		if (height == 0) {
-			return 0;
-		}
-		int shifts = 0;
-		int tempVal = height;
-		while (tempVal != 1) {
-			tempVal >>= 1;
-			++shifts;
-		}
-		return shifts;
-	}
-
-	public static int getExpandedHeight(int shift) {
-		if (shift > 0 && shift < 12) {
-			return 2 << shift;
-		} else if (shift >= 32) {
-			return shift;
-		}
-		return 256;
-	}
-
-	public static Vector3 readVector3(ChannelBuffer buf) {
-		float x = buf.readFloat();
-		float y = buf.readFloat();
-		float z = buf.readFloat();
-		return new Vector3(x, y, z);
-	}
-
-	public static void writeVector3(Vector3 vec, ChannelBuffer buf) {
-		buf.writeFloat(vec.getX());
-		buf.writeFloat(vec.getY());
-		buf.writeFloat(vec.getZ());
-	}
-
-	public static Vector2 readVector2(ChannelBuffer buf) {
-		float x = buf.readFloat();
-		float z = buf.readFloat();
-		return new Vector2(x, z);
-	}
-
-	public static void writeVector2(Vector2 vec, ChannelBuffer buf) {
-		buf.writeFloat(vec.getX());
-		buf.writeFloat(vec.getY());
-	}
-
-	public static Color readColor(ChannelBuffer buf) {
-		int argb = buf.readInt();
-		return new Color(argb);
-	}
-
-	public static void writeColor(Color color, ChannelBuffer buf) {
-		buf.writeInt(color.getRGB());
-	}
-
-	public static byte getNativeDirection(BlockFace face) {
-		switch (face) {
-			case SOUTH:
-				return 3;
-			case WEST:
-				return 0;
-			case NORTH:
-				return 1;
-			case EAST:
-				return 2;
-			default:
-				return -1;
-		}
-	}
-
-	public static int protocolifyPosition(float pos) {
-		return GenericMath.floor(pos * 32);
-	}
-
-	public static float deProtocolifyPosition(int pos) {
-		return pos / 32F;
-	}
-
-	public static int protocolifyPitch(float pitch) {
-		return GenericMath.wrapByte(GenericMath.floor((pitch / 360) * 256));
-	}
-
-	public static float deProtocolifyPitch(int pitch) {
-		return 360f * (pitch / 256f);
-	}
-
-	public static int protocolifyYaw(float yaw) {
-		return protocolifyPitch(-yaw);
-	}
-
-	public static float deProtocolifyYaw(int yaw) {
-		return -deProtocolifyPitch(yaw);
-	}
-
-	/**
-	 * Create a SlotData stucture
-	 * @param buf The buffer to decode the Slot field
-	 * @return The according SlotData
-	 */
-	/**
-	 * Default private constructor to prevent instantiation.
-	 */
-	private ChannelBufferUtils() {
-	}
 }
 

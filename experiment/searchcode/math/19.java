@@ -1,279 +1,128 @@
 /*
- * Copyright (c) 2005-2006 Makoto YUI
- * Copyright (c) 2004-2006 H2 Group. Licensed under the H2 License, Version 1.0 (http://h2database.com/html/license.html).
- * Copyright (c) 2000-2005 Marc Alexander Lehmann <schmorp@schmorp.de>
- * Copyright (c) 2005 Oren J. Maurice <oymaurice@hazorea.org.il>
- * 
- * Redistribution and use in source and binary forms, with or without modifica-
- * tion, are permitted provided that the following conditions are met:
- * 
- *   1.  Redistributions of source code must retain the above copyright notice,
- *       this list of conditions and the following disclaimer.
- * 
- *   2.  Redistributions in binary form must reproduce the above copyright
- *       notice, this list of conditions and the following disclaimer in the
- *       documentation and/or other materials provided with the distribution.
- * 
- *   3.  The name of the author may not be used to endorse or promote products
- *       derived from this software without specific prior written permission.
- * 
- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MER-
- * CHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO
- * EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPE-
- * CIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
- * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTH-
- * ERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
- * OF THE POSSIBILITY OF SUCH DAMAGE.
- * 
- * Contributors:
- *     Makoto YUI - some modification and bug fixes
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements. See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership. The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License. You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
-package xbird.util.compress;
 
-import xbird.util.primitive.Primitives;
+package org.apache.thrift.protocol;
 
 /**
- * 
- * <DIV lang="en"></DIV>
- * <DIV lang="ja"></DIV>
- * 
- * @author Makoto YUI (yuin405+xbird@gmail.com)
- * @link http://www.goof.com/pcg/marc/liblzf.html
+ * Class for encoding and decoding Base64 data.
+ *
+ * This class is kept at package level because the interface does no input
+ * validation and is therefore too low-level for generalized reuse.
+ *
+ * Note also that the encoding does not pad with equal signs , as discussed in
+ * section 2.2 of the RFC (http://www.faqs.org/rfcs/rfc3548.html). Furthermore,
+ * bad data encountered when decoding is neither rejected or ignored but simply
+ * results in bad decoded data -- this is not in compliance with the RFC but is
+ * done in the interest of performance.
+ *
  */
-public final class LZFCodec implements CompressionCodec {
+class TBase64Utils {
 
-    private static final int HASH_SIZE = (1 << 14);
-    private static final int MAX_LITERAL = (1 << 5);
-    private static final int MAX_OFF = (1 << 13);
-    private static final int MAX_REF = ((1 << 8) + (1 << 3));
+  private static final String ENCODE_TABLE =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-    public LZFCodec() {}
-
-    public byte[] compress(final byte[] in) {
-        return compress(in, in.length);
+  /**
+   * Encode len bytes of data in src at offset srcOff, storing the result into
+   * dst at offset dstOff. len must be 1, 2, or 3. dst must have at least len+1
+   * bytes of space at dstOff. src and dst should not be the same object. This
+   * method does no validation of the input values in the interest of
+   * performance.
+   *
+   * @param src  the source of bytes to encode
+   * @param srcOff  the offset into the source to read the unencoded bytes
+   * @param len  the number of bytes to encode (must be 1, 2, or 3).
+   * @param dst  the destination for the encoding
+   * @param dstOff  the offset into the destination to place the encoded bytes
+   */
+  static final void encode(byte[] src, int srcOff, int len,  byte[] dst,
+                           int dstOff) {
+    dst[dstOff] = (byte)ENCODE_TABLE.charAt((src[srcOff] >> 2) & 0x3F);
+    if (len == 3) {
+      dst[dstOff + 1] =
+        (byte)ENCODE_TABLE.charAt(
+                         ((src[srcOff] << 4) & 0x30) | ((src[srcOff+1] >> 4) & 0x0F));
+      dst[dstOff + 2] =
+        (byte)ENCODE_TABLE.charAt(
+                         ((src[srcOff+1] << 2) & 0x3C) | ((src[srcOff+2] >> 6) & 0x03));
+      dst[dstOff + 3] =
+        (byte)ENCODE_TABLE.charAt(src[srcOff+2] & 0x3F);
     }
-
-    public byte[] compress(final byte[] in, final int inLength) {
-        final byte[] out = new byte[inLength * 3 >> 1];
-        final int size = compress(in, inLength, out, 0);
-        final byte[] dst = new byte[size + 3];
-        dst[0] = (byte) inLength;
-        dst[1] = (byte) (inLength >> 8);
-        dst[2] = (byte) (inLength >> 16);
-        System.arraycopy(out, 0, dst, 3, size);
-        return dst;
+    else if (len == 2) {
+      dst[dstOff+1] =
+        (byte)ENCODE_TABLE.charAt(
+                          ((src[srcOff] << 4) & 0x30) | ((src[srcOff+1] >> 4) & 0x0F));
+      dst[dstOff + 2] =
+        (byte)ENCODE_TABLE.charAt((src[srcOff+1] << 2) & 0x3C);
     }
-
-    public static int compress(final byte[] in, final int inLen, final byte[] out, int outPos) {
-        int inPos = 0;
-        final int[] hashTab = new int[HASH_SIZE];
-        int literals = 0;
-        int hval = first(in, inPos);
-        while(true) {
-            if(inPos < inLen - 4) {
-                hval = next(hval, in, inPos);
-                int off = hash(hval);
-                int ref = hashTab[off];
-                hashTab[off] = inPos;
-                off = inPos - ref - 1;
-                if(off < MAX_OFF && ref > 0 && in[ref + 2] == in[inPos + 2]
-                        && in[ref + 1] == in[inPos + 1] && in[ref] == in[inPos]) {
-                    int maxlen = inLen - inPos - 2;
-                    maxlen = maxlen > MAX_REF ? MAX_REF : maxlen;
-                    int len = 3;
-                    while(len < maxlen && in[ref + len] == in[inPos + len]) {
-                        len++;
-                    }
-                    len -= 2;
-                    if(literals != 0) {
-                        out[outPos++] = (byte) (literals - 1);
-                        literals = -literals;
-                        do {
-                            out[outPos++] = in[inPos + literals++];
-                        } while(literals != 0);
-                    }
-                    if(len < 7) {
-                        out[outPos++] = (byte) ((off >> 8) + (len << 5));
-                    } else {
-                        out[outPos++] = (byte) ((off >> 8) + (7 << 5));
-                        out[outPos++] = (byte) (len - 7);
-                    }
-                    out[outPos++] = (byte) off;
-                    inPos += len;
-                    hval = first(in, inPos);
-                    hval = next(hval, in, inPos);
-                    hashTab[hash(hval)] = inPos++;
-                    hval = next(hval, in, inPos);
-                    hashTab[hash(hval)] = inPos++;
-                    continue;
-                }
-            } else if(inPos == inLen) {
-                break;
-            }
-            inPos++;
-            literals++;
-            if(literals == MAX_LITERAL) {
-                out[outPos++] = (byte) (literals - 1);
-                literals = -literals;
-                do {
-                    out[outPos++] = in[inPos + literals++];
-                } while(literals != 0);
-            }
-        }
-        if(literals != 0) {
-            out[outPos++] = (byte) (literals - 1);
-            for(int i = inPos - literals; i != inPos; i++) {
-                out[outPos++] = in[i];
-            }
-        }
-        return outPos;
+    else { // len == 1) {
+      dst[dstOff + 1] =
+        (byte)ENCODE_TABLE.charAt((src[srcOff] << 4) & 0x30);
     }
+  }
 
-    public byte[] decompress(final byte[] in) {
-        final int size = ((in[2] & 0xff) << 16) + ((in[1] & 0xff) << 8) + (in[0] & 0xff);
-        final byte[] dst = new byte[size];
-        decompress(in, 3, dst, 0, size);
-        return dst;
+  private static final byte[] DECODE_TABLE = {
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,62,-1,-1,-1,63,
+    52,53,54,55,56,57,58,59,60,61,-1,-1,-1,-1,-1,-1,
+    -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,
+    15,16,17,18,19,20,21,22,23,24,25,-1,-1,-1,-1,-1,
+    -1,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,
+    41,42,43,44,45,46,47,48,49,50,51,-1,-1,-1,-1,-1,
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+  };
+
+  /**
+   * Decode len bytes of data in src at offset srcOff, storing the result into
+   * dst at offset dstOff. len must be 2, 3, or 4. dst must have at least len-1
+   * bytes of space at dstOff. src and dst may be the same object as long as
+   * dstoff <= srcOff. This method does no validation of the input values in
+   * the interest of performance.
+   *
+   * @param src  the source of bytes to decode
+   * @param srcOff  the offset into the source to read the encoded bytes
+   * @param len  the number of bytes to decode (must be 2, 3, or 4)
+   * @param dst  the destination for the decoding
+   * @param dstOff  the offset into the destination to place the decoded bytes
+   */
+  static final void decode(byte[] src, int srcOff, int len,  byte[] dst,
+                           int dstOff) {
+    dst[dstOff] = (byte)
+      ((DECODE_TABLE[src[srcOff] & 0x0FF] << 2) |
+       (DECODE_TABLE[src[srcOff+1] & 0x0FF] >> 4));
+    if (len > 2) {
+      dst[dstOff+1] = (byte)
+        (((DECODE_TABLE[src[srcOff+1] & 0x0FF] << 4) & 0xF0) |
+         (DECODE_TABLE[src[srcOff+2] & 0x0FF] >> 2));
+      if (len > 3) {
+        dst[dstOff+2] = (byte)
+          (((DECODE_TABLE[src[srcOff+2] & 0x0FF] << 6) & 0xC0) |
+           DECODE_TABLE[src[srcOff+3] & 0x0FF]);
+      }
     }
-
-    public char[] decompressAsChars(final byte[] in) {
-        final int size = ((in[2] & 0xff) << 16) + ((in[1] & 0xff) << 8) + (in[0] & 0xff);
-        final byte[] dst = new byte[size];
-        decompress(in, 3, dst, 0, size);
-        return Primitives.toChars(dst, 0, size);
-    }
-
-    public static void decompress(final byte[] in, int inPos, final byte[] out, int outPos, final int outLength) {
-        do {
-            final int ctrl = in[inPos++] & 255;
-            if(ctrl < MAX_LITERAL) {
-                // literal run
-                for(int i = 0; i <= ctrl; i++) {
-                    out[outPos++] = in[inPos++];
-                }
-            } else {
-                // back reference
-                int len = ctrl >> 5;
-                int ref = outPos - ((ctrl & 0x1f) << 8) - 1;
-                if(len == 7) {
-                    len += in[inPos++] & 255;
-                }
-                ref -= in[inPos++] & 255;
-                len += outPos + 2;
-                out[outPos++] = out[ref++];
-                out[outPos++] = out[ref++];
-                while(outPos < len) {
-                    out[outPos++] = out[ref++];
-                }
-            }
-        } while(outPos < outLength);
-    }
-
-    @Deprecated
-    public static void decompress2(final byte[] in, final int inPos_, final byte[] out, final int outPos_, final int outLength) {
-        int inPos = inPos_;
-        int outPos = outPos_;
-        do {
-            final int ctrl = in[inPos++] & 255;
-            if(ctrl < MAX_LITERAL) {
-                // literal run
-                final int rounds = ctrl + 1;
-                for(int i = 0; i < rounds; i++) {
-                    out[outPos + i] = in[inPos + i];
-                }
-                outPos += rounds;
-                inPos += rounds;
-            } else {
-                // back reference
-                int len = ctrl >> 5;
-                int ref = outPos - ((ctrl & 0x1f) << 8) - 1;
-                if(len == 7) {
-                    len += in[inPos++] & 255;
-                }
-                ref -= in[inPos++] & 255;
-                out[outPos] = out[ref];
-                out[outPos + 1] = out[ref + 1];
-                final int rounds = len + 2;
-                for(int i = 2; i < rounds; i++) {
-                    out[outPos + i] = out[ref + i];
-                }
-                outPos += rounds;
-                ref += rounds;
-            }
-        } while(outPos < outLength);
-    }
-
-    @Deprecated
-    public static void decompressVectorized(final byte[] in, int inPos, final byte[] out, int outPos, final int outLength) {
-        do {
-            final int ctrl = in[inPos++] & 255;
-            if(ctrl < MAX_LITERAL) {
-                // literal run
-                int i = 0;
-                final int limit = ctrl - 7;
-                while(i < limit) {
-                    out[outPos] = in[inPos];
-                    out[outPos + 1] = in[inPos + 1];
-                    out[outPos + 2] = in[inPos + 2];
-                    out[outPos + 3] = in[inPos + 3];
-                    out[outPos + 4] = in[inPos + 4];
-                    out[outPos + 5] = in[inPos + 5];
-                    out[outPos + 6] = in[inPos + 6];
-                    out[outPos + 7] = in[inPos + 7];
-                    outPos += 8;
-                    inPos += 8;
-                    i += 8;
-                }
-                for(; i <= ctrl; i++) {
-                    out[outPos++] = in[inPos++];
-                }
-            } else {
-                // back reference
-                int len = ctrl >> 5;
-                int ref = outPos - ((ctrl & 0x1f) << 8) - 1;
-                if(len == 7) {
-                    len += in[inPos++] & 255;
-                }
-                ref -= in[inPos++] & 255;
-                len += outPos + 2;
-                out[outPos++] = out[ref++];
-                out[outPos++] = out[ref++];
-                final int rounds = len - outPos;
-                final int limit = rounds - 7;
-                int j = 0;
-                while(j < limit) {
-                    out[outPos] = out[ref];
-                    out[outPos + 1] = out[ref + 1];
-                    out[outPos + 2] = out[ref + 2];
-                    out[outPos + 3] = out[ref + 3];
-                    out[outPos + 4] = out[ref + 4];
-                    out[outPos + 5] = out[ref + 5];
-                    out[outPos + 6] = out[ref + 6];
-                    out[outPos + 7] = out[ref + 7];
-                    outPos += 8;
-                    ref += 8;
-                    j += 8;
-                }
-                for(; j < rounds; j++) {
-                    out[outPos++] = out[ref++];
-                }
-            }
-        } while(outPos < outLength);
-    }
-
-    private static int first(final byte[] in, final int inPos) {
-        return (in[inPos] << 8) + (in[inPos + 1] & 255);
-    }
-
-    private static int next(final int v, final byte[] in, final int inPos) {
-        return (v << 8) + (in[inPos + 2] & 255);
-    }
-
-    private static int hash(final int h) {
-        return ((h * 184117) >> 9) & (HASH_SIZE - 1);
-    }
-
+  }
 }
+

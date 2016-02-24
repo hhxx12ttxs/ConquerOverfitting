@@ -1,421 +1,279 @@
 /*
- * @(#)$Id: IOUtils.java 3619 2008-03-26 07:23:03Z yui $
- *
- * Copyright 2006-2008 Makoto YUI
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Copyright (c) 2005-2006 Makoto YUI
+ * Copyright (c) 2004-2006 H2 Group. Licensed under the H2 License, Version 1.0 (http://h2database.com/html/license.html).
+ * Copyright (c) 2000-2005 Marc Alexander Lehmann <schmorp@schmorp.de>
+ * Copyright (c) 2005 Oren J. Maurice <oymaurice@hazorea.org.il>
+ * 
+ * Redistribution and use in source and binary forms, with or without modifica-
+ * tion, are permitted provided that the following conditions are met:
+ * 
+ *   1.  Redistributions of source code must retain the above copyright notice,
+ *       this list of conditions and the following disclaimer.
+ * 
+ *   2.  Redistributions in binary form must reproduce the above copyright
+ *       notice, this list of conditions and the following disclaimer in the
+ *       documentation and/or other materials provided with the distribution.
+ * 
+ *   3.  The name of the author may not be used to endorse or promote products
+ *       derived from this software without specific prior written permission.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MER-
+ * CHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO
+ * EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPE-
+ * CIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+ * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTH-
+ * ERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+ * OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * Contributors:
- *     Makoto YUI - ported from jakarta commons io
+ *     Makoto YUI - some modification and bug fixes
  */
-/*
- * Copyright 2001-2004 The Apache Software Foundation
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-package xbird.util.io;
+package xbird.util.compress;
 
-import java.io.*;
-import java.util.List;
-import java.util.Timer;
-import java.util.TimerTask;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-
-import xbird.util.lang.CancelAwareTimer;
+import xbird.util.primitive.Primitives;
 
 /**
- * IO related utilities.
- * <DIV lang="en">
- * This code is ported from Jakarta's <a href="http://jakarta.apache.org/commons/io/">Commons-IO</a>.
- * </DIV>
+ * 
+ * <DIV lang="en"></DIV>
  * <DIV lang="ja"></DIV>
  * 
  * @author Makoto YUI (yuin405+xbird@gmail.com)
- * @link http://jakarta.apache.org/commons/io/
+ * @link http://www.goof.com/pcg/marc/liblzf.html
  */
-public final class IOUtils {
+public final class LZFCodec implements CompressionCodec {
 
-    private static final int DEFAULT_BUFFER_SIZE = 1024 * 4;
+    private static final int HASH_SIZE = (1 << 14);
+    private static final int MAX_LITERAL = (1 << 5);
+    private static final int MAX_OFF = (1 << 13);
+    private static final int MAX_REF = ((1 << 8) + (1 << 3));
 
-    private IOUtils() {}
+    public LZFCodec() {}
 
-    public static void writeInt(final int v, final OutputStream out) throws IOException {
-        out.write((v >>> 24) & 0xFF);
-        out.write((v >>> 16) & 0xFF);
-        out.write((v >>> 8) & 0xFF);
-        out.write((v >>> 0) & 0xFF);
+    public byte[] compress(final byte[] in) {
+        return compress(in, in.length);
     }
 
-    /**
-     * @return may be negative value when EOF is detected.
-     */
-    public static int readInt(final InputStream in) throws IOException {
-        final int ch1 = in.read();
-        final int ch2 = in.read();
-        final int ch3 = in.read();
-        final int ch4 = in.read();
-        return ((ch1 << 24) + (ch2 << 16) + (ch3 << 8) + (ch4 << 0));
+    public byte[] compress(final byte[] in, final int inLength) {
+        final byte[] out = new byte[inLength * 3 >> 1];
+        final int size = compress(in, inLength, out, 0);
+        final byte[] dst = new byte[size + 3];
+        dst[0] = (byte) inLength;
+        dst[1] = (byte) (inLength >> 8);
+        dst[2] = (byte) (inLength >> 16);
+        System.arraycopy(out, 0, dst, 3, size);
+        return dst;
     }
 
-    public static int readUnsignedIntOrEOF(final InputStream in) throws IOException {
-        final int ch1 = in.read();
-        if(ch1 == -1) {
-            return -1;
-        }
-        final int ch2 = in.read();
-        final int ch3 = in.read();
-        final int ch4 = in.read();
-        return ((ch1 << 24) + (ch2 << 16) + (ch3 << 8) + (ch4 << 0));
-    }
-
-    public static void writeChar(final char v, final OutputStream out) throws IOException {
-        out.write(0xff & (v >> 8));
-        out.write(0xff & v);
-    }
-
-    public static void writeChar(final char v, final FastByteArrayOutputStream out) {
-        out.write(0xff & (v >> 8));
-        out.write(0xff & v);
-    }
-
-    public static char readChar(final InputStream in) throws IOException {
-        final int a = in.read();
-        final int b = in.read();
-        return (char) ((a << 8) | (b & 0xff));
-    }
-
-    public static void readFully(final InputStream in, final byte[] b, int offset, int len)
-            throws IOException {
-        do {
-            final int bytesRead = in.read(b, offset, len);
-            if(bytesRead < 0) {
-                throw new EOFException();
+    public static int compress(final byte[] in, final int inLen, final byte[] out, int outPos) {
+        int inPos = 0;
+        final int[] hashTab = new int[HASH_SIZE];
+        int literals = 0;
+        int hval = first(in, inPos);
+        while(true) {
+            if(inPos < inLen - 4) {
+                hval = next(hval, in, inPos);
+                int off = hash(hval);
+                int ref = hashTab[off];
+                hashTab[off] = inPos;
+                off = inPos - ref - 1;
+                if(off < MAX_OFF && ref > 0 && in[ref + 2] == in[inPos + 2]
+                        && in[ref + 1] == in[inPos + 1] && in[ref] == in[inPos]) {
+                    int maxlen = inLen - inPos - 2;
+                    maxlen = maxlen > MAX_REF ? MAX_REF : maxlen;
+                    int len = 3;
+                    while(len < maxlen && in[ref + len] == in[inPos + len]) {
+                        len++;
+                    }
+                    len -= 2;
+                    if(literals != 0) {
+                        out[outPos++] = (byte) (literals - 1);
+                        literals = -literals;
+                        do {
+                            out[outPos++] = in[inPos + literals++];
+                        } while(literals != 0);
+                    }
+                    if(len < 7) {
+                        out[outPos++] = (byte) ((off >> 8) + (len << 5));
+                    } else {
+                        out[outPos++] = (byte) ((off >> 8) + (7 << 5));
+                        out[outPos++] = (byte) (len - 7);
+                    }
+                    out[outPos++] = (byte) off;
+                    inPos += len;
+                    hval = first(in, inPos);
+                    hval = next(hval, in, inPos);
+                    hashTab[hash(hval)] = inPos++;
+                    hval = next(hval, in, inPos);
+                    hashTab[hash(hval)] = inPos++;
+                    continue;
+                }
+            } else if(inPos == inLen) {
+                break;
             }
-            len -= bytesRead;
-            offset += bytesRead;
-        } while(len != 0);
+            inPos++;
+            literals++;
+            if(literals == MAX_LITERAL) {
+                out[outPos++] = (byte) (literals - 1);
+                literals = -literals;
+                do {
+                    out[outPos++] = in[inPos + literals++];
+                } while(literals != 0);
+            }
+        }
+        if(literals != 0) {
+            out[outPos++] = (byte) (literals - 1);
+            for(int i = inPos - literals; i != inPos; i++) {
+                out[outPos++] = in[i];
+            }
+        }
+        return outPos;
     }
 
-    public static void readFully(final InputStream in, final byte[] b) throws IOException {
-        readFully(in, b, 0, b.length);
+    public byte[] decompress(final byte[] in) {
+        final int size = ((in[2] & 0xff) << 16) + ((in[1] & 0xff) << 8) + (in[0] & 0xff);
+        final byte[] dst = new byte[size];
+        decompress(in, 3, dst, 0, size);
+        return dst;
     }
 
-    public static int readLoop(final InputStream in, final byte[] b, final int off, final int len)
-            throws IOException {
-        int total = 0;
-        for(;;) {
-            final int got = in.read(b, off + total, len - total);
-            if(got < 0) {
-                return (total == 0) ? -1 : total;
+    public char[] decompressAsChars(final byte[] in) {
+        final int size = ((in[2] & 0xff) << 16) + ((in[1] & 0xff) << 8) + (in[0] & 0xff);
+        final byte[] dst = new byte[size];
+        decompress(in, 3, dst, 0, size);
+        return Primitives.toChars(dst, 0, size);
+    }
+
+    public static void decompress(final byte[] in, int inPos, final byte[] out, int outPos, final int outLength) {
+        do {
+            final int ctrl = in[inPos++] & 255;
+            if(ctrl < MAX_LITERAL) {
+                // literal run
+                for(int i = 0; i <= ctrl; i++) {
+                    out[outPos++] = in[inPos++];
+                }
             } else {
-                total += got;
-                if(total == len) {
-                    return total;
+                // back reference
+                int len = ctrl >> 5;
+                int ref = outPos - ((ctrl & 0x1f) << 8) - 1;
+                if(len == 7) {
+                    len += in[inPos++] & 255;
+                }
+                ref -= in[inPos++] & 255;
+                len += outPos + 2;
+                out[outPos++] = out[ref++];
+                out[outPos++] = out[ref++];
+                while(outPos < len) {
+                    out[outPos++] = out[ref++];
                 }
             }
-        }
-    }
-
-    /**
-     * InputStream -> OutputStream
-     */
-    public static int copy(InputStream input, OutputStream output) throws IOException {
-        final byte[] buffer = new byte[DEFAULT_BUFFER_SIZE];
-        int count = 0;
-        int n = 0;
-        while(-1 != (n = input.read(buffer))) {
-            output.write(buffer, 0, n);
-            count += n;
-        }
-        return count;
-    }
-
-    /**
-     * Reader -> Writer.
-     */
-    public static int copy(Reader input, Writer output) throws IOException {
-        final char[] buffer = new char[DEFAULT_BUFFER_SIZE];
-        int count = 0;
-        int n = 0;
-        while(-1 != (n = input.read(buffer))) {
-            output.write(buffer, 0, n);
-            count += n;
-        }
-        return count;
-    }
-
-    /**
-     * String -> OutputStream.
-     */
-    public static void copy(String input, OutputStream output) throws IOException {
-        final StringReader in = new StringReader(input);
-        final OutputStreamWriter out = new OutputStreamWriter(output);
-        copy(in, out);
-        // Unless anyone is planning on rewriting OutputStreamWriter, we have to flush here.
-        out.flush();
-    }
-
-    /**
-     * Serialize given InputStream as String.
-     */
-    public static String toString(InputStream input) throws IOException {
-        final FastMultiByteArrayOutputStream output = new FastMultiByteArrayOutputStream();
-        copy(input, output);
-        return output.toString();
-    }
-
-    public static String toString(InputStream input, String cs) throws IOException {
-        final FastMultiByteArrayOutputStream output = new FastMultiByteArrayOutputStream();
-        copy(input, output);
-        return output.toString(cs);
-    }
-
-    public static String toString(Reader input) throws IOException {
-        final StringWriter sw = new StringWriter();
-        copy(input, sw);
-        return sw.toString();
+        } while(outPos < outLength);
     }
 
     @Deprecated
-    public static void getBytes(final List<byte[]> srcLst, final byte[] dest) {
-        int pos = 0;
-        for(byte[] bytes : srcLst) {
-            final int len = bytes.length;
-            System.arraycopy(bytes, 0, dest, pos, len);
-            pos += len;
-        }
-    }
-
-    public static byte[] getBytes(final InputStream in) throws IOException {
-        FastByteArrayOutputStream out = new FastByteArrayOutputStream(4096);
-        copy(in, out);
-        return out.toByteArray();
-    }
-
-    public static void closeQuietly(final Closeable channel) {
-        if(channel != null) {
-            try {
-                channel.close();
-            } catch (IOException e) {
-                ;
+    public static void decompress2(final byte[] in, final int inPos_, final byte[] out, final int outPos_, final int outLength) {
+        int inPos = inPos_;
+        int outPos = outPos_;
+        do {
+            final int ctrl = in[inPos++] & 255;
+            if(ctrl < MAX_LITERAL) {
+                // literal run
+                final int rounds = ctrl + 1;
+                for(int i = 0; i < rounds; i++) {
+                    out[outPos + i] = in[inPos + i];
+                }
+                outPos += rounds;
+                inPos += rounds;
+            } else {
+                // back reference
+                int len = ctrl >> 5;
+                int ref = outPos - ((ctrl & 0x1f) << 8) - 1;
+                if(len == 7) {
+                    len += in[inPos++] & 255;
+                }
+                ref -= in[inPos++] & 255;
+                out[outPos] = out[ref];
+                out[outPos + 1] = out[ref + 1];
+                final int rounds = len + 2;
+                for(int i = 2; i < rounds; i++) {
+                    out[outPos + i] = out[ref + i];
+                }
+                outPos += rounds;
+                ref += rounds;
             }
-        }
+        } while(outPos < outLength);
     }
 
-    public static void closeQuietly(final Closeable... channels) {
-        for(Closeable c : channels) {
-            if(c != null) {
-                try {
-                    c.close();
-                } catch (IOException e) {
-                    ;
+    @Deprecated
+    public static void decompressVectorized(final byte[] in, int inPos, final byte[] out, int outPos, final int outLength) {
+        do {
+            final int ctrl = in[inPos++] & 255;
+            if(ctrl < MAX_LITERAL) {
+                // literal run
+                int i = 0;
+                final int limit = ctrl - 7;
+                while(i < limit) {
+                    out[outPos] = in[inPos];
+                    out[outPos + 1] = in[inPos + 1];
+                    out[outPos + 2] = in[inPos + 2];
+                    out[outPos + 3] = in[inPos + 3];
+                    out[outPos + 4] = in[inPos + 4];
+                    out[outPos + 5] = in[inPos + 5];
+                    out[outPos + 6] = in[inPos + 6];
+                    out[outPos + 7] = in[inPos + 7];
+                    outPos += 8;
+                    inPos += 8;
+                    i += 8;
+                }
+                for(; i <= ctrl; i++) {
+                    out[outPos++] = in[inPos++];
+                }
+            } else {
+                // back reference
+                int len = ctrl >> 5;
+                int ref = outPos - ((ctrl & 0x1f) << 8) - 1;
+                if(len == 7) {
+                    len += in[inPos++] & 255;
+                }
+                ref -= in[inPos++] & 255;
+                len += outPos + 2;
+                out[outPos++] = out[ref++];
+                out[outPos++] = out[ref++];
+                final int rounds = len - outPos;
+                final int limit = rounds - 7;
+                int j = 0;
+                while(j < limit) {
+                    out[outPos] = out[ref];
+                    out[outPos + 1] = out[ref + 1];
+                    out[outPos + 2] = out[ref + 2];
+                    out[outPos + 3] = out[ref + 3];
+                    out[outPos + 4] = out[ref + 4];
+                    out[outPos + 5] = out[ref + 5];
+                    out[outPos + 6] = out[ref + 6];
+                    out[outPos + 7] = out[ref + 7];
+                    outPos += 8;
+                    ref += 8;
+                    j += 8;
+                }
+                for(; j < rounds; j++) {
+                    out[outPos++] = out[ref++];
                 }
             }
-        }
+        } while(outPos < outLength);
     }
 
-    public static void closeAndRethrow(final Exception e, final Closeable... channels)
-            throws IllegalStateException {
-        closeQuietly(channels);
-        throw new IllegalStateException(e);
+    private static int first(final byte[] in, final int inPos) {
+        return (in[inPos] << 8) + (in[inPos + 1] & 255);
     }
 
-    /**
-     * @param delay delay in milliseconds before task is to be executed.
-     */
-    public static void schduleCloseQuietly(final Timer timer, final long delay, final Closeable... channels) {
-        if(delay == 0) {
-            closeQuietly(channels);
-            return;
-        }
-        final TimerTask cancel = new TimerTask() {
-            @Override
-            public void run() {
-                closeQuietly(channels);
-            }
-        };
-        timer.schedule(cancel, delay);
+    private static int next(final int v, final byte[] in, final int inPos) {
+        return (v << 8) + (in[inPos + 2] & 255);
     }
 
-    /**
-     * @param delay delay in milliseconds before task is to be executed.
-     */
-    public static boolean schduleCloseQuietly(final CancelAwareTimer timer, final long delay, final AtomicInteger activeCount, final int limitSched, final Closeable... channels) {
-        if(delay == 0) {
-            closeQuietly(channels);
-            return true;
-        }
-        if(timer.getNumberOfScheduled() >= limitSched) {
-            return false;
-        }
-        final TimerTask cancel = new TimerTask() {
-            public void run() {
-                if(activeCount.get() < 1) {
-                    closeQuietly(channels);
-                }
-            }
-        };
-        timer.schedule(cancel, delay);
-        return true;
-    }
-
-    public static void schduleCloseQuietly(final ScheduledExecutorService sched, final int delay, final AtomicInteger activeCount, final Closeable... channels) {
-        if(delay == 0) {
-            closeQuietly(channels);
-            return;
-        }
-        final Runnable cancel = new Runnable() {
-            public void run() {
-                if(activeCount.get() < 1) {
-                    closeQuietly(channels);
-                }
-            }
-        };
-        sched.schedule(cancel, delay, TimeUnit.MILLISECONDS);
-    }
-
-    public static void writeBytes(@Nullable final byte[] b, final DataOutput out)
-            throws IOException {
-        if(b == null) {
-            out.writeInt(-1);
-            return;
-        }
-        final int len = b.length;
-        out.writeInt(len);
-        out.write(b, 0, len);
-    }
-
-    public static void writeBytes(@Nullable final byte[] b, final FastBufferedOutputStream out)
-            throws IOException {
-        if(b == null) {
-            writeInt(-1, out);
-            return;
-        }
-        final int len = b.length;
-        writeInt(len, out);
-        out.write(b, 0, len);
-    }
-
-    @Nullable
-    public static byte[] readBytes(final DataInput in) throws IOException {
-        final int len = in.readInt();
-        if(len == -1) {
-            return null;
-        }
-        final byte[] b = new byte[len];
-        in.readFully(b, 0, len);
-        return b;
-    }
-
-    @Nullable
-    public static byte[] readBytes(final FastBufferedInputStream in) throws IOException {
-        final int len = readInt(in);
-        if(len == -1) {
-            return null;
-        }
-        final byte[] b = new byte[len];
-        in.read(b, 0, len);
-        return b;
-    }
-
-    public static void writeString(@Nullable final String s, final ObjectOutputStream out)
-            throws IOException {
-        writeString(s, (DataOutput) out);
-    }
-
-    public static void writeString(@Nullable final String s, final DataOutputStream out)
-            throws IOException {
-        writeString(s, (DataOutput) out);
-    }
-
-    public static void writeString(@Nullable final String s, final DataOutput out)
-            throws IOException {
-        if(s == null) {
-            out.writeInt(-1);
-            return;
-        }
-        final int len = s.length();
-        out.writeInt(len);
-        for(int i = 0; i < len; i++) {
-            int v = s.charAt(i);
-            out.writeChar(v);
-        }
-    }
-
-    public static void writeString(@Nullable final String s, final OutputStream out)
-            throws IOException {
-        if(s == null) {
-            writeInt(-1, out);
-            return;
-        }
-        final int len = s.length();
-        writeInt(len, out);
-        for(int i = 0; i < len; i++) {
-            char c = s.charAt(i);
-            writeChar(c, out);
-        }
-    }
-
-    @Nullable
-    public static String readString(@Nonnull final ObjectInputStream in) throws IOException {
-        return readString((DataInput) in);
-    }
-
-    @Nullable
-    public static String readString(@Nonnull final DataInputStream in) throws IOException {
-        return readString((DataInput) in);
-    }
-
-    @Nullable
-    public static String readString(@Nonnull final DataInput in) throws IOException {
-        final int len = in.readInt();
-        if(len == -1) {
-            return null;
-        }
-        final char[] ch = new char[len];
-        for(int i = 0; i < len; i++) {
-            ch[i] = in.readChar();
-        }
-        return new String(ch);
-    }
-
-    @Nullable
-    public static String readString(@Nonnull final InputStream in) throws IOException {
-        final int len = readInt(in);
-        if(len == -1) {
-            return null;
-        }
-        final char[] ch = new char[len];
-        for(int i = 0; i < len; i++) {
-            ch[i] = readChar(in);
-        }
-        return new String(ch);
+    private static int hash(final int h) {
+        return ((h * 184117) >> 9) & (HASH_SIZE - 1);
     }
 
 }
-

@@ -16,9 +16,9 @@ public class VariableCollectTest {
 
 	private final String projectPath = "filesfortest";
 	private final String suspiciousFilePath = new File(
-			"filesfortest\\FileForTestVariableCollect.java").getAbsolutePath();
+			"filesfortest//FileForTestVariableCollect.java").getAbsolutePath();
 	private final String otherFilePath = new File(
-			"filesfortest\\FileForTestVariableCollect2.java")
+			"filesfortest//FileForTestVariableCollect2.java")
 			.getAbsolutePath();
 	private final int suspiciousLineNum = 22;
     

@@ -1,4 +1,4 @@
-package org.apache.lucene.analysis.de;
+package org.apache.lucene.analysis.pt;
 
 /**
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -52,44 +52,155 @@ package org.apache.lucene.analysis.de;
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+import static org.apache.lucene.analysis.util.StemmerUtil.*;
+
 /**
- * Minimal Stemmer for German.
+ * Light Stemmer for Portuguese
  * <p>
- * This stemmer implements the following algorithm:
- * <i>Morphologie et recherche d'information</i>
- * Jacques Savoy.
+ * This stemmer implements the "UniNE" algorithm in:
+ * <i>Light Stemming Approaches for the French, Portuguese, German and Hungarian Languages</i>
+ * Jacques Savoy
  */
-public class GermanMinimalStemmer {
+public class PortugueseLightStemmer {
   
   public int stem(char s[], int len) {
-    if (len < 5)
+    if (len < 4)
       return len;
+    
+    len = removeSuffix(s, len);
+    
+    if (len > 3 && s[len-1] == 'a')
+      len = normFeminine(s, len);
+    
+    if (len > 4)
+      switch(s[len-1]) {
+        case 'e':
+        case 'a':
+        case 'o': len--; break;
+      }
     
     for (int i = 0; i < len; i++)
       switch(s[i]) {
-        case 'ä': s[i] = 'a'; break;
-        case 'ö': s[i] = 'o'; break;
+        case 'ŕ': 
+        case 'á':
+        case 'â':
+        case 'ä': 
+        case 'ă': s[i] = 'a'; break;
+        case 'ň':
+        case 'ó':
+        case 'ô':
+        case 'ö': 
+        case 'ő': s[i] = 'o'; break;
+        case 'č':
+        case 'é':
+        case 'ę':
+        case 'ë': s[i] = 'e'; break;
+        case 'ů':
+        case 'ú':
+        case 'ű':
         case 'ü': s[i] = 'u'; break;
+        case 'ě':
+        case 'í':
+        case 'î':
+        case 'ď': s[i] = 'i'; break;
+        case 'ç': s[i] = 'c'; break;
+      }
+
+    return len;
+  }
+  
+  private int removeSuffix(char s[], int len) {
+    if (len > 4 && endsWith(s, len, "es"))
+      switch(s[len-3]) {
+        case 'r':
+        case 's':
+        case 'l':
+        case 'z': return len - 2;
       }
     
-    if (len > 6 && s[len-3] == 'n' && s[len-2] == 'e' && s[len-1] == 'n')
-        return len - 3;
-    
-    if (len > 5)
-      switch(s[len-1]) {
-        case 'n': if (s[len-2] == 'e') return len - 2; else break;
-        case 'e': if (s[len-2] == 's') return len - 2; else break;
-        case 's': if (s[len-2] == 'e') return len - 2; else break;
-        case 'r': if (s[len-2] == 'e') return len - 2; else break;
-      }
-    
-    switch(s[len-1]) {
-      case 'n': 
-      case 'e':
-      case 's':
-      case 'r': return len - 1;
+    if (len > 3 && endsWith(s, len, "ns")) {
+      s[len - 2] = 'm';
+      return len - 1;
     }
     
+    if (len > 4 && (endsWith(s, len, "eis") || endsWith(s, len, "éis"))) {
+      s[len - 3] = 'e';
+      s[len - 2] = 'l';
+      return len - 1;
+    }
+    
+    if (len > 4 && endsWith(s, len, "ais")) {
+      s[len - 2] = 'l';
+      return len - 1;
+    }
+    
+    if (len > 4 && endsWith(s, len, "óis")) {
+      s[len - 3] = 'o';
+      s[len - 2] = 'l';
+      return len - 1;
+    }
+    
+    if (len > 4 && endsWith(s, len, "is")) {
+      s[len - 1] = 'l';
+      return len;
+    }
+    
+    if (len > 3 &&
+        (endsWith(s, len, "őes") ||
+         endsWith(s, len, "ăes"))) {
+      len--;
+      s[len - 2] = 'ă';
+      s[len - 1] = 'o';
+      return len;
+    }
+    
+    if (len > 6 && endsWith(s, len, "mente"))
+      return len - 5;
+    
+    if (len > 3 && s[len-1] == 's')
+      return len - 1;
+    return len;
+  }
+
+  private int normFeminine(char s[], int len) {
+    if (len > 7 && 
+        (endsWith(s, len, "inha") ||
+         endsWith(s, len, "iaca") ||
+         endsWith(s, len, "eira"))) {
+      s[len - 1] = 'o';
+      return len;
+    }
+    
+    if (len > 6) {
+      if (endsWith(s, len, "osa") ||
+          endsWith(s, len, "ica") ||
+          endsWith(s, len, "ida") ||
+          endsWith(s, len, "ada") ||
+          endsWith(s, len, "iva") ||
+          endsWith(s, len, "ama")) {
+        s[len - 1] = 'o';
+        return len;
+      }
+      
+      if (endsWith(s, len, "ona")) {
+        s[len - 3] = 'ă';
+        s[len - 2] = 'o';
+        return len - 1;
+      }
+      
+      if (endsWith(s, len, "ora"))
+        return len - 1;
+      
+      if (endsWith(s, len, "esa")) {
+        s[len - 3] = 'ę';
+        return len - 1;
+      }
+      
+      if (endsWith(s, len, "na")) {
+        s[len - 1] = 'o';
+        return len;
+      }
+    }
     return len;
   }
 }

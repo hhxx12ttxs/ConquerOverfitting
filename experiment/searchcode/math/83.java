@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 The Android Open Source Project
+ * Copyright (C) 2007 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,729 +14,876 @@
  * limitations under the License.
  */
 
-package android.util;
+package android.text;
 
-import java.io.UnsupportedEncodingException;
+import com.android.internal.util.ArrayUtils;
+import org.ccil.cowan.tagsoup.HTMLSchema;
+import org.ccil.cowan.tagsoup.Parser;
+import org.xml.sax.Attributes;
+import org.xml.sax.ContentHandler;
+import org.xml.sax.InputSource;
+import org.xml.sax.Locator;
+import org.xml.sax.SAXException;
+import org.xml.sax.XMLReader;
+
+import android.content.res.ColorStateList;
+import android.content.res.Resources;
+import android.graphics.Typeface;
+import android.graphics.drawable.Drawable;
+import android.text.style.AbsoluteSizeSpan;
+import android.text.style.AlignmentSpan;
+import android.text.style.CharacterStyle;
+import android.text.style.ForegroundColorSpan;
+import android.text.style.ImageSpan;
+import android.text.style.ParagraphStyle;
+import android.text.style.QuoteSpan;
+import android.text.style.RelativeSizeSpan;
+import android.text.style.StrikethroughSpan;
+import android.text.style.StyleSpan;
+import android.text.style.SubscriptSpan;
+import android.text.style.SuperscriptSpan;
+import android.text.style.TextAppearanceSpan;
+import android.text.style.TypefaceSpan;
+import android.text.style.URLSpan;
+import android.text.style.UnderlineSpan;
+
+import com.android.internal.util.XmlUtils;
+
+import java.io.IOException;
+import java.io.StringReader;
+import java.util.HashMap;
 
 /**
- * Utilities for encoding and decoding the Base64 representation of
- * binary data.  See RFCs <a
- * href="http://www.ietf.org/rfc/rfc2045.txt">2045</a> and <a
- * href="http://www.ietf.org/rfc/rfc3548.txt">3548</a>.
+ * This class processes HTML strings into displayable styled text.
+ * Not all HTML tags are supported.
  */
-public class Base64 {
+public class Html {
     /**
-     * Default values for encoder/decoder flags.
+     * Retrieves images for HTML &lt;img&gt; tags.
      */
-    public static final int DEFAULT = 0;
-
-    /**
-     * Encoder flag bit to omit the padding '=' characters at the end
-     * of the output (if any).
-     */
-    public static final int NO_PADDING = 1;
-
-    /**
-     * Encoder flag bit to omit all line terminators (i.e., the output
-     * will be on one long line).
-     */
-    public static final int NO_WRAP = 2;
-
-    /**
-     * Encoder flag bit to indicate lines should be terminated with a
-     * CRLF pair instead of just an LF.  Has no effect if {@code
-     * NO_WRAP} is specified as well.
-     */
-    public static final int CRLF = 4;
-
-    /**
-     * Encoder/decoder flag bit to indicate using the "URL and
-     * filename safe" variant of Base64 (see RFC 3548 section 4) where
-     * {@code -} and {@code _} are used in place of {@code +} and
-     * {@code /}.
-     */
-    public static final int URL_SAFE = 8;
-
-    /**
-     * Flag to pass to {@link Base64OutputStream} to indicate that it
-     * should not close the output stream it is wrapping when it
-     * itself is closed.
-     */
-    public static final int NO_CLOSE = 16;
-
-    //  --------------------------------------------------------
-    //  shared code
-    //  --------------------------------------------------------
-
-    /* package */ static abstract class Coder {
-        public byte[] output;
-        public int op;
-
+    public static interface ImageGetter {
         /**
-         * Encode/decode another block of input data.  this.output is
-         * provided by the caller, and must be big enough to hold all
-         * the coded data.  On exit, this.opwill be set to the length
-         * of the coded data.
-         *
-         * @param finish true if this is the final call to process for
-         *        this object.  Will finalize the coder state and
-         *        include any final bytes in the output.
-         *
-         * @return true if the input so far is good; false if some
-         *         error has been detected in the input stream..
+         * This methos is called when the HTML parser encounters an
+         * &lt;img&gt; tag.  The <code>source</code> argument is the
+         * string from the "src" attribute; the return value should be
+         * a Drawable representation of the image or <code>null</code>
+         * for a generic replacement image.  Make sure you call
+         * setBounds() on your Drawable if it doesn't already have
+         * its bounds set.
          */
-        public abstract boolean process(byte[] input, int offset, int len, boolean finish);
-
-        /**
-         * @return the maximum number of bytes a call to process()
-         * could produce for the given number of input bytes.  This may
-         * be an overestimate.
-         */
-        public abstract int maxOutputSize(int len);
-    }
-
-    //  --------------------------------------------------------
-    //  decoding
-    //  --------------------------------------------------------
-
-    /**
-     * Decode the Base64-encoded data in input and return the data in
-     * a new byte array.
-     *
-     * <p>The padding '=' characters at the end are considered optional, but
-     * if any are present, there must be the correct number of them.
-     *
-     * @param str    the input String to decode, which is converted to
-     *               bytes using the default charset
-     * @param flags  controls certain features of the decoded output.
-     *               Pass {@code DEFAULT} to decode standard Base64.
-     *
-     * @throws IllegalArgumentException if the input contains
-     * incorrect padding
-     */
-    public static byte[] decode(String str, int flags) {
-        return decode(str.getBytes(), flags);
+        public Drawable getDrawable(String source);
     }
 
     /**
-     * Decode the Base64-encoded data in input and return the data in
-     * a new byte array.
-     *
-     * <p>The padding '=' characters at the end are considered optional, but
-     * if any are present, there must be the correct number of them.
-     *
-     * @param input the input array to decode
-     * @param flags  controls certain features of the decoded output.
-     *               Pass {@code DEFAULT} to decode standard Base64.
-     *
-     * @throws IllegalArgumentException if the input contains
-     * incorrect padding
+     * Is notified when HTML tags are encountered that the parser does
+     * not know how to interpret.
      */
-    public static byte[] decode(byte[] input, int flags) {
-        return decode(input, 0, input.length, flags);
+    public static interface TagHandler {
+        /**
+         * This method will be called whenn the HTML parser encounters
+         * a tag that it does not know how to interpret.
+         */
+        public void handleTag(boolean opening, String tag,
+                                 Editable output, XMLReader xmlReader);
+    }
+
+    private Html() { }
+
+    /**
+     * Returns displayable styled text from the provided HTML string.
+     * Any &lt;img&gt; tags in the HTML will display as a generic
+     * replacement image which your program can then go through and
+     * replace with real images.
+     *
+     * <p>This uses TagSoup to handle real HTML, including all of the brokenness found in the wild.
+     */
+    public static Spanned fromHtml(String source) {
+        return fromHtml(source, null, null);
     }
 
     /**
-     * Decode the Base64-encoded data in input and return the data in
-     * a new byte array.
-     *
-     * <p>The padding '=' characters at the end are considered optional, but
-     * if any are present, there must be the correct number of them.
-     *
-     * @param input  the data to decode
-     * @param offset the position within the input array at which to start
-     * @param len    the number of bytes of input to decode
-     * @param flags  controls certain features of the decoded output.
-     *               Pass {@code DEFAULT} to decode standard Base64.
-     *
-     * @throws IllegalArgumentException if the input contains
-     * incorrect padding
+     * Lazy initialization holder for HTML parser. This class will
+     * a) be preloaded by the zygote, or b) not loaded until absolutely
+     * necessary.
      */
-    public static byte[] decode(byte[] input, int offset, int len, int flags) {
-        // Allocate space for the most data the input could represent.
-        // (It could contain less if it contains whitespace, etc.)
-        Decoder decoder = new Decoder(flags, new byte[len*3/4]);
-
-        if (!decoder.process(input, offset, len, true)) {
-            throw new IllegalArgumentException("bad base-64");
-        }
-
-        // Maybe we got lucky and allocated exactly enough output space.
-        if (decoder.op == decoder.output.length) {
-            return decoder.output;
-        }
-
-        // Need to shorten the array, so allocate a new one of the
-        // right size and copy.
-        byte[] temp = new byte[decoder.op];
-        System.arraycopy(decoder.output, 0, temp, 0, decoder.op);
-        return temp;
+    private static class HtmlParser {
+        private static final HTMLSchema schema = new HTMLSchema();
     }
 
-    /* package */ static class Decoder extends Coder {
-        /**
-         * Lookup table for turning bytes into their position in the
-         * Base64 alphabet.
-         */
-        private static final int DECODE[] = {
-            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 62, -1, -1, -1, 63,
-            52, 53, 54, 55, 56, 57, 58, 59, 60, 61, -1, -1, -1, -2, -1, -1,
-            -1,  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14,
-            15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, -1, -1, -1, -1, -1,
-            -1, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
-            41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, -1, -1, -1, -1, -1,
-            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-        };
-
-        /**
-         * Decode lookup table for the "web safe" variant (RFC 3548
-         * sec. 4) where - and _ replace + and /.
-         */
-        private static final int DECODE_WEBSAFE[] = {
-            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 62, -1, -1,
-            52, 53, 54, 55, 56, 57, 58, 59, 60, 61, -1, -1, -1, -2, -1, -1,
-            -1,  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14,
-            15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, -1, -1, -1, -1, 63,
-            -1, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
-            41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, -1, -1, -1, -1, -1,
-            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-        };
-
-        /** Non-data values in the DECODE arrays. */
-        private static final int SKIP = -1;
-        private static final int EQUALS = -2;
-
-        /**
-         * States 0-3 are reading through the next input tuple.
-         * State 4 is having read one '=' and expecting exactly
-         * one more.
-         * State 5 is expecting no more data or padding characters
-         * in the input.
-         * State 6 is the error state; an error has been detected
-         * in the input and no future input can "fix" it.
-         */
-        private int state;   // state number (0 to 6)
-        private int value;
-
-        final private int[] alphabet;
-
-        public Decoder(int flags, byte[] output) {
-            this.output = output;
-
-            alphabet = ((flags & URL_SAFE) == 0) ? DECODE : DECODE_WEBSAFE;
-            state = 0;
-            value = 0;
+    /**
+     * Returns displayable styled text from the provided HTML string.
+     * Any &lt;img&gt; tags in the HTML will use the specified ImageGetter
+     * to request a representation of the image (use null if you don't
+     * want this) and the specified TagHandler to handle unknown tags
+     * (specify null if you don't want this).
+     *
+     * <p>This uses TagSoup to handle real HTML, including all of the brokenness found in the wild.
+     */
+    public static Spanned fromHtml(String source, ImageGetter imageGetter,
+                                   TagHandler tagHandler) {
+        Parser parser = new Parser();
+        try {
+            parser.setProperty(Parser.schemaProperty, HtmlParser.schema);
+        } catch (org.xml.sax.SAXNotRecognizedException e) {
+            // Should not happen.
+            throw new RuntimeException(e);
+        } catch (org.xml.sax.SAXNotSupportedException e) {
+            // Should not happen.
+            throw new RuntimeException(e);
         }
 
-        /**
-         * @return an overestimate for the number of bytes {@code
-         * len} bytes could decode to.
-         */
-        public int maxOutputSize(int len) {
-            return len * 3/4 + 10;
-        }
+        HtmlToSpannedConverter converter =
+                new HtmlToSpannedConverter(source, imageGetter, tagHandler,
+                        parser);
+        return converter.convert();
+    }
 
-        /**
-         * Decode another block of input data.
-         *
-         * @return true if the state machine is still healthy.  false if
-         *         bad base-64 data has been detected in the input stream.
-         */
-        public boolean process(byte[] input, int offset, int len, boolean finish) {
-            if (this.state == 6) return false;
+    /**
+     * Returns an HTML representation of the provided Spanned text.
+     */
+    public static String toHtml(Spanned text) {
+        StringBuilder out = new StringBuilder();
+        withinHtml(out, text);
+        return out.toString();
+    }
 
-            int p = offset;
-            len += offset;
+    /**
+     * Returns an HTML escaped representation of the given plain text.
+     */
+    public static String escapeHtml(CharSequence text) {
+        StringBuilder out = new StringBuilder();
+        withinStyle(out, text, 0, text.length());
+        return out.toString();
+    }
 
-            // Using local variables makes the decoder about 12%
-            // faster than if we manipulate the member variables in
-            // the loop.  (Even alphabet makes a measurable
-            // difference, which is somewhat surprising to me since
-            // the member variable is final.)
-            int state = this.state;
-            int value = this.value;
-            int op = 0;
-            final byte[] output = this.output;
-            final int[] alphabet = this.alphabet;
+    private static void withinHtml(StringBuilder out, Spanned text) {
+        int len = text.length();
 
-            while (p < len) {
-                // Try the fast path:  we're starting a new tuple and the
-                // next four bytes of the input stream are all data
-                // bytes.  This corresponds to going through states
-                // 0-1-2-3-0.  We expect to use this method for most of
-                // the data.
-                //
-                // If any of the next four bytes of input are non-data
-                // (whitespace, etc.), value will end up negative.  (All
-                // the non-data values in decode are small negative
-                // numbers, so shifting any of them up and or'ing them
-                // together will result in a value with its top bit set.)
-                //
-                // You can remove this whole block and the output should
-                // be the same, just slower.
-                if (state == 0) {
-                    while (p+4 <= len &&
-                           (value = ((alphabet[input[p] & 0xff] << 18) |
-                                     (alphabet[input[p+1] & 0xff] << 12) |
-                                     (alphabet[input[p+2] & 0xff] << 6) |
-                                     (alphabet[input[p+3] & 0xff]))) >= 0) {
-                        output[op+2] = (byte) value;
-                        output[op+1] = (byte) (value >> 8);
-                        output[op] = (byte) (value >> 16);
-                        op += 3;
-                        p += 4;
+        int next;
+        for (int i = 0; i < text.length(); i = next) {
+            next = text.nextSpanTransition(i, len, ParagraphStyle.class);
+            ParagraphStyle[] style = text.getSpans(i, next, ParagraphStyle.class);
+            String elements = " ";
+            boolean needDiv = false;
+
+            for(int j = 0; j < style.length; j++) {
+                if (style[j] instanceof AlignmentSpan) {
+                    Layout.Alignment align = 
+                        ((AlignmentSpan) style[j]).getAlignment();
+                    needDiv = true;
+                    if (align == Layout.Alignment.ALIGN_CENTER) {
+                        elements = "align=\"center\" " + elements;
+                    } else if (align == Layout.Alignment.ALIGN_OPPOSITE) {
+                        elements = "align=\"right\" " + elements;
+                    } else {
+                        elements = "align=\"left\" " + elements;
                     }
-                    if (p >= len) break;
                 }
+            }
+            if (needDiv) {
+                out.append("<div " + elements + ">");
+            }
 
-                // The fast path isn't available -- either we've read a
-                // partial tuple, or the next four input bytes aren't all
-                // data, or whatever.  Fall back to the slower state
-                // machine implementation.
+            withinDiv(out, text, i, next);
 
-                int d = alphabet[input[p++] & 0xff];
+            if (needDiv) {
+                out.append("</div>");
+            }
+        }
+    }
 
-                switch (state) {
-                case 0:
-                    if (d >= 0) {
-                        value = d;
-                        ++state;
-                    } else if (d != SKIP) {
-                        this.state = 6;
-                        return false;
+    private static void withinDiv(StringBuilder out, Spanned text,
+            int start, int end) {
+        int next;
+        for (int i = start; i < end; i = next) {
+            next = text.nextSpanTransition(i, end, QuoteSpan.class);
+            QuoteSpan[] quotes = text.getSpans(i, next, QuoteSpan.class);
+
+            for (QuoteSpan quote: quotes) {
+                out.append("<blockquote>");
+            }
+
+            withinBlockquote(out, text, i, next);
+
+            for (QuoteSpan quote: quotes) {
+                out.append("</blockquote>\n");
+            }
+        }
+    }
+
+    private static String getOpenParaTagWithDirection(Spanned text, int start, int end) {
+        final int len = end - start;
+        final byte[] levels = new byte[ArrayUtils.idealByteArraySize(len)];
+        final char[] buffer = TextUtils.obtain(len);
+        TextUtils.getChars(text, start, end, buffer, 0);
+
+        int paraDir = AndroidBidi.bidi(Layout.DIR_REQUEST_DEFAULT_LTR, buffer, levels, len,
+                false /* no info */);
+        switch(paraDir) {
+            case Layout.DIR_RIGHT_TO_LEFT:
+                return "<p dir=\"rtl\">";
+            case Layout.DIR_LEFT_TO_RIGHT:
+            default:
+                return "<p dir=\"ltr\">";
+        }
+    }
+
+    private static void withinBlockquote(StringBuilder out, Spanned text,
+                                         int start, int end) {
+        out.append(getOpenParaTagWithDirection(text, start, end));
+
+        int next;
+        for (int i = start; i < end; i = next) {
+            next = TextUtils.indexOf(text, '\n', i, end);
+            if (next < 0) {
+                next = end;
+            }
+
+            int nl = 0;
+
+            while (next < end && text.charAt(next) == '\n') {
+                nl++;
+                next++;
+            }
+
+            withinParagraph(out, text, i, next - nl, nl, next == end);
+        }
+
+        out.append("</p>\n");
+    }
+
+    private static void withinParagraph(StringBuilder out, Spanned text,
+                                        int start, int end, int nl,
+                                        boolean last) {
+        int next;
+        for (int i = start; i < end; i = next) {
+            next = text.nextSpanTransition(i, end, CharacterStyle.class);
+            CharacterStyle[] style = text.getSpans(i, next,
+                                                   CharacterStyle.class);
+
+            for (int j = 0; j < style.length; j++) {
+                if (style[j] instanceof StyleSpan) {
+                    int s = ((StyleSpan) style[j]).getStyle();
+
+                    if ((s & Typeface.BOLD) != 0) {
+                        out.append("<b>");
                     }
-                    break;
-
-                case 1:
-                    if (d >= 0) {
-                        value = (value << 6) | d;
-                        ++state;
-                    } else if (d != SKIP) {
-                        this.state = 6;
-                        return false;
+                    if ((s & Typeface.ITALIC) != 0) {
+                        out.append("<i>");
                     }
-                    break;
+                }
+                if (style[j] instanceof TypefaceSpan) {
+                    String s = ((TypefaceSpan) style[j]).getFamily();
 
-                case 2:
-                    if (d >= 0) {
-                        value = (value << 6) | d;
-                        ++state;
-                    } else if (d == EQUALS) {
-                        // Emit the last (partial) output tuple;
-                        // expect exactly one more padding character.
-                        output[op++] = (byte) (value >> 4);
-                        state = 4;
-                    } else if (d != SKIP) {
-                        this.state = 6;
-                        return false;
+                    if (s.equals("monospace")) {
+                        out.append("<tt>");
                     }
-                    break;
+                }
+                if (style[j] instanceof SuperscriptSpan) {
+                    out.append("<sup>");
+                }
+                if (style[j] instanceof SubscriptSpan) {
+                    out.append("<sub>");
+                }
+                if (style[j] instanceof UnderlineSpan) {
+                    out.append("<u>");
+                }
+                if (style[j] instanceof StrikethroughSpan) {
+                    out.append("<strike>");
+                }
+                if (style[j] instanceof URLSpan) {
+                    out.append("<a href=\"");
+                    out.append(((URLSpan) style[j]).getURL());
+                    out.append("\">");
+                }
+                if (style[j] instanceof ImageSpan) {
+                    out.append("<img src=\"");
+                    out.append(((ImageSpan) style[j]).getSource());
+                    out.append("\">");
 
-                case 3:
-                    if (d >= 0) {
-                        // Emit the output triple and return to state 0.
-                        value = (value << 6) | d;
-                        output[op+2] = (byte) value;
-                        output[op+1] = (byte) (value >> 8);
-                        output[op] = (byte) (value >> 16);
-                        op += 3;
-                        state = 0;
-                    } else if (d == EQUALS) {
-                        // Emit the last (partial) output tuple;
-                        // expect no further data or padding characters.
-                        output[op+1] = (byte) (value >> 2);
-                        output[op] = (byte) (value >> 10);
-                        op += 2;
-                        state = 5;
-                    } else if (d != SKIP) {
-                        this.state = 6;
-                        return false;
+                    // Don't output the dummy character underlying the image.
+                    i = next;
+                }
+                if (style[j] instanceof AbsoluteSizeSpan) {
+                    out.append("<font size =\"");
+                    out.append(((AbsoluteSizeSpan) style[j]).getSize() / 6);
+                    out.append("\">");
+                }
+                if (style[j] instanceof ForegroundColorSpan) {
+                    out.append("<font color =\"#");
+                    String color = Integer.toHexString(((ForegroundColorSpan)
+                            style[j]).getForegroundColor() + 0x01000000);
+                    while (color.length() < 6) {
+                        color = "0" + color;
                     }
-                    break;
-
-                case 4:
-                    if (d == EQUALS) {
-                        ++state;
-                    } else if (d != SKIP) {
-                        this.state = 6;
-                        return false;
-                    }
-                    break;
-
-                case 5:
-                    if (d != SKIP) {
-                        this.state = 6;
-                        return false;
-                    }
-                    break;
+                    out.append(color);
+                    out.append("\">");
                 }
             }
 
-            if (!finish) {
-                // We're out of input, but a future call could provide
-                // more.
-                this.state = state;
-                this.value = value;
-                this.op = op;
-                return true;
+            withinStyle(out, text, i, next);
+
+            for (int j = style.length - 1; j >= 0; j--) {
+                if (style[j] instanceof ForegroundColorSpan) {
+                    out.append("</font>");
+                }
+                if (style[j] instanceof AbsoluteSizeSpan) {
+                    out.append("</font>");
+                }
+                if (style[j] instanceof URLSpan) {
+                    out.append("</a>");
+                }
+                if (style[j] instanceof StrikethroughSpan) {
+                    out.append("</strike>");
+                }
+                if (style[j] instanceof UnderlineSpan) {
+                    out.append("</u>");
+                }
+                if (style[j] instanceof SubscriptSpan) {
+                    out.append("</sub>");
+                }
+                if (style[j] instanceof SuperscriptSpan) {
+                    out.append("</sup>");
+                }
+                if (style[j] instanceof TypefaceSpan) {
+                    String s = ((TypefaceSpan) style[j]).getFamily();
+
+                    if (s.equals("monospace")) {
+                        out.append("</tt>");
+                    }
+                }
+                if (style[j] instanceof StyleSpan) {
+                    int s = ((StyleSpan) style[j]).getStyle();
+
+                    if ((s & Typeface.BOLD) != 0) {
+                        out.append("</b>");
+                    }
+                    if ((s & Typeface.ITALIC) != 0) {
+                        out.append("</i>");
+                    }
+                }
             }
-
-            // Done reading input.  Now figure out where we are left in
-            // the state machine and finish up.
-
-            switch (state) {
-            case 0:
-                // Output length is a multiple of three.  Fine.
-                break;
-            case 1:
-                // Read one extra input byte, which isn't enough to
-                // make another output byte.  Illegal.
-                this.state = 6;
-                return false;
-            case 2:
-                // Read two extra input bytes, enough to emit 1 more
-                // output byte.  Fine.
-                output[op++] = (byte) (value >> 4);
-                break;
-            case 3:
-                // Read three extra input bytes, enough to emit 2 more
-                // output bytes.  Fine.
-                output[op++] = (byte) (value >> 10);
-                output[op++] = (byte) (value >> 2);
-                break;
-            case 4:
-                // Read one padding '=' when we expected 2.  Illegal.
-                this.state = 6;
-                return false;
-            case 5:
-                // Read all the padding '='s we expected and no more.
-                // Fine.
-                break;
-            }
-
-            this.state = state;
-            this.op = op;
-            return true;
         }
-    }
 
-    //  --------------------------------------------------------
-    //  encoding
-    //  --------------------------------------------------------
+        String p = last ? "" : "</p>\n" + getOpenParaTagWithDirection(text, start, end);
 
-    /**
-     * Base64-encode the given data and return a newly allocated
-     * String with the result.
-     *
-     * @param input  the data to encode
-     * @param flags  controls certain features of the encoded output.
-     *               Passing {@code DEFAULT} results in output that
-     *               adheres to RFC 2045.
-     */
-    public static String encodeToString(byte[] input, int flags) {
-        try {
-            return new String(encode(input, flags), "US-ASCII");
-        } catch (UnsupportedEncodingException e) {
-            // US-ASCII is guaranteed to be available.
-            throw new AssertionError(e);
-        }
-    }
-
-    /**
-     * Base64-encode the given data and return a newly allocated
-     * String with the result.
-     *
-     * @param input  the data to encode
-     * @param offset the position within the input array at which to
-     *               start
-     * @param len    the number of bytes of input to encode
-     * @param flags  controls certain features of the encoded output.
-     *               Passing {@code DEFAULT} results in output that
-     *               adheres to RFC 2045.
-     */
-    public static String encodeToString(byte[] input, int offset, int len, int flags) {
-        try {
-            return new String(encode(input, offset, len, flags), "US-ASCII");
-        } catch (UnsupportedEncodingException e) {
-            // US-ASCII is guaranteed to be available.
-            throw new AssertionError(e);
-        }
-    }
-
-    /**
-     * Base64-encode the given data and return a newly allocated
-     * byte[] with the result.
-     *
-     * @param input  the data to encode
-     * @param flags  controls certain features of the encoded output.
-     *               Passing {@code DEFAULT} results in output that
-     *               adheres to RFC 2045.
-     */
-    public static byte[] encode(byte[] input, int flags) {
-        return encode(input, 0, input.length, flags);
-    }
-
-    /**
-     * Base64-encode the given data and return a newly allocated
-     * byte[] with the result.
-     *
-     * @param input  the data to encode
-     * @param offset the position within the input array at which to
-     *               start
-     * @param len    the number of bytes of input to encode
-     * @param flags  controls certain features of the encoded output.
-     *               Passing {@code DEFAULT} results in output that
-     *               adheres to RFC 2045.
-     */
-    public static byte[] encode(byte[] input, int offset, int len, int flags) {
-        Encoder encoder = new Encoder(flags, null);
-
-        // Compute the exact length of the array we will produce.
-        int output_len = len / 3 * 4;
-
-        // Account for the tail of the data and the padding bytes, if any.
-        if (encoder.do_padding) {
-            if (len % 3 > 0) {
-                output_len += 4;
-            }
+        if (nl == 1) {
+            out.append("<br>\n");
+        } else if (nl == 2) {
+            out.append(p);
         } else {
-            switch (len % 3) {
-                case 0: break;
-                case 1: output_len += 2; break;
-                case 2: output_len += 3; break;
+            for (int i = 2; i < nl; i++) {
+                out.append("<br>");
             }
+            out.append(p);
         }
-
-        // Account for the newlines, if any.
-        if (encoder.do_newline && len > 0) {
-            output_len += (((len-1) / (3 * Encoder.LINE_GROUPS)) + 1) *
-                (encoder.do_cr ? 2 : 1);
-        }
-
-        encoder.output = new byte[output_len];
-        encoder.process(input, offset, len, true);
-
-        assert encoder.op == output_len;
-
-        return encoder.output;
     }
 
-    /* package */ static class Encoder extends Coder {
-        /**
-         * Emit a new line every this many output tuples.  Corresponds to
-         * a 76-character line length (the maximum allowable according to
-         * <a href="http://www.ietf.org/rfc/rfc2045.txt">RFC 2045</a>).
-         */
-        public static final int LINE_GROUPS = 19;
+    private static void withinStyle(StringBuilder out, CharSequence text,
+                                    int start, int end) {
+        for (int i = start; i < end; i++) {
+            char c = text.charAt(i);
 
-        /**
-         * Lookup table for turning Base64 alphabet positions (6 bits)
-         * into output bytes.
-         */
-        private static final byte ENCODE[] = {
-            'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
-            'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f',
-            'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v',
-            'w', 'x', 'y', 'z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '/',
-        };
-
-        /**
-         * Lookup table for turning Base64 alphabet positions (6 bits)
-         * into output bytes.
-         */
-        private static final byte ENCODE_WEBSAFE[] = {
-            'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
-            'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f',
-            'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v',
-            'w', 'x', 'y', 'z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-', '_',
-        };
-
-        final private byte[] tail;
-        /* package */ int tailLen;
-        private int count;
-
-        final public boolean do_padding;
-        final public boolean do_newline;
-        final public boolean do_cr;
-        final private byte[] alphabet;
-
-        public Encoder(int flags, byte[] output) {
-            this.output = output;
-
-            do_padding = (flags & NO_PADDING) == 0;
-            do_newline = (flags & NO_WRAP) == 0;
-            do_cr = (flags & CRLF) != 0;
-            alphabet = ((flags & URL_SAFE) == 0) ? ENCODE : ENCODE_WEBSAFE;
-
-            tail = new byte[2];
-            tailLen = 0;
-
-            count = do_newline ? LINE_GROUPS : -1;
-        }
-
-        /**
-         * @return an overestimate for the number of bytes {@code
-         * len} bytes could encode to.
-         */
-        public int maxOutputSize(int len) {
-            return len * 8/5 + 10;
-        }
-
-        public boolean process(byte[] input, int offset, int len, boolean finish) {
-            // Using local variables makes the encoder about 9% faster.
-            final byte[] alphabet = this.alphabet;
-            final byte[] output = this.output;
-            int op = 0;
-            int count = this.count;
-
-            int p = offset;
-            len += offset;
-            int v = -1;
-
-            // First we need to concatenate the tail of the previous call
-            // with any input bytes available now and see if we can empty
-            // the tail.
-
-            switch (tailLen) {
-                case 0:
-                    // There was no tail.
-                    break;
-
-                case 1:
-                    if (p+2 <= len) {
-                        // A 1-byte tail with at least 2 bytes of
-                        // input available now.
-                        v = ((tail[0] & 0xff) << 16) |
-                            ((input[p++] & 0xff) << 8) |
-                            (input[p++] & 0xff);
-                        tailLen = 0;
-                    };
-                    break;
-
-                case 2:
-                    if (p+1 <= len) {
-                        // A 2-byte tail with at least 1 byte of input.
-                        v = ((tail[0] & 0xff) << 16) |
-                            ((tail[1] & 0xff) << 8) |
-                            (input[p++] & 0xff);
-                        tailLen = 0;
-                    }
-                    break;
-            }
-
-            if (v != -1) {
-                output[op++] = alphabet[(v >> 18) & 0x3f];
-                output[op++] = alphabet[(v >> 12) & 0x3f];
-                output[op++] = alphabet[(v >> 6) & 0x3f];
-                output[op++] = alphabet[v & 0x3f];
-                if (--count == 0) {
-                    if (do_cr) output[op++] = '\r';
-                    output[op++] = '\n';
-                    count = LINE_GROUPS;
-                }
-            }
-
-            // At this point either there is no tail, or there are fewer
-            // than 3 bytes of input available.
-
-            // The main loop, turning 3 input bytes into 4 output bytes on
-            // each iteration.
-            while (p+3 <= len) {
-                v = ((input[p] & 0xff) << 16) |
-                    ((input[p+1] & 0xff) << 8) |
-                    (input[p+2] & 0xff);
-                output[op] = alphabet[(v >> 18) & 0x3f];
-                output[op+1] = alphabet[(v >> 12) & 0x3f];
-                output[op+2] = alphabet[(v >> 6) & 0x3f];
-                output[op+3] = alphabet[v & 0x3f];
-                p += 3;
-                op += 4;
-                if (--count == 0) {
-                    if (do_cr) output[op++] = '\r';
-                    output[op++] = '\n';
-                    count = LINE_GROUPS;
-                }
-            }
-
-            if (finish) {
-                // Finish up the tail of the input.  Note that we need to
-                // consume any bytes in tail before any bytes
-                // remaining in input; there should be at most two bytes
-                // total.
-
-                if (p-tailLen == len-1) {
-                    int t = 0;
-                    v = ((tailLen > 0 ? tail[t++] : input[p++]) & 0xff) << 4;
-                    tailLen -= t;
-                    output[op++] = alphabet[(v >> 6) & 0x3f];
-                    output[op++] = alphabet[v & 0x3f];
-                    if (do_padding) {
-                        output[op++] = '=';
-                        output[op++] = '=';
-                    }
-                    if (do_newline) {
-                        if (do_cr) output[op++] = '\r';
-                        output[op++] = '\n';
-                    }
-                } else if (p-tailLen == len-2) {
-                    int t = 0;
-                    v = (((tailLen > 1 ? tail[t++] : input[p++]) & 0xff) << 10) |
-                        (((tailLen > 0 ? tail[t++] : input[p++]) & 0xff) << 2);
-                    tailLen -= t;
-                    output[op++] = alphabet[(v >> 12) & 0x3f];
-                    output[op++] = alphabet[(v >> 6) & 0x3f];
-                    output[op++] = alphabet[v & 0x3f];
-                    if (do_padding) {
-                        output[op++] = '=';
-                    }
-                    if (do_newline) {
-                        if (do_cr) output[op++] = '\r';
-                        output[op++] = '\n';
-                    }
-                } else if (do_newline && op > 0 && count != LINE_GROUPS) {
-                    if (do_cr) output[op++] = '\r';
-                    output[op++] = '\n';
+            if (c == '<') {
+                out.append("&lt;");
+            } else if (c == '>') {
+                out.append("&gt;");
+            } else if (c == '&') {
+                out.append("&amp;");
+            } else if (c > 0x7E || c < ' ') {
+                out.append("&#" + ((int) c) + ";");
+            } else if (c == ' ') {
+                while (i + 1 < end && text.charAt(i + 1) == ' ') {
+                    out.append("&nbsp;");
+                    i++;
                 }
 
-                assert tailLen == 0;
-                assert p == len;
+                out.append(' ');
             } else {
-                // Save the leftovers in tail to be consumed on the next
-                // call to encodeInternal.
+                out.append(c);
+            }
+        }
+    }
+}
 
-                if (p == len-1) {
-                    tail[tailLen++] = input[p];
-                } else if (p == len-2) {
-                    tail[tailLen++] = input[p];
-                    tail[tailLen++] = input[p+1];
+class HtmlToSpannedConverter implements ContentHandler {
+
+    private static final float[] HEADER_SIZES = {
+        1.5f, 1.4f, 1.3f, 1.2f, 1.1f, 1f,
+    };
+
+    private String mSource;
+    private XMLReader mReader;
+    private SpannableStringBuilder mSpannableStringBuilder;
+    private Html.ImageGetter mImageGetter;
+    private Html.TagHandler mTagHandler;
+
+    public HtmlToSpannedConverter(
+            String source, Html.ImageGetter imageGetter, Html.TagHandler tagHandler,
+            Parser parser) {
+        mSource = source;
+        mSpannableStringBuilder = new SpannableStringBuilder();
+        mImageGetter = imageGetter;
+        mTagHandler = tagHandler;
+        mReader = parser;
+    }
+
+    public Spanned convert() {
+
+        mReader.setContentHandler(this);
+        try {
+            mReader.parse(new InputSource(new StringReader(mSource)));
+        } catch (IOException e) {
+            // We are reading from a string. There should not be IO problems.
+            throw new RuntimeException(e);
+        } catch (SAXException e) {
+            // TagSoup doesn't throw parse exceptions.
+            throw new RuntimeException(e);
+        }
+
+        // Fix flags and range for paragraph-type markup.
+        Object[] obj = mSpannableStringBuilder.getSpans(0, mSpannableStringBuilder.length(), ParagraphStyle.class);
+        for (int i = 0; i < obj.length; i++) {
+            int start = mSpannableStringBuilder.getSpanStart(obj[i]);
+            int end = mSpannableStringBuilder.getSpanEnd(obj[i]);
+
+            // If the last line of the range is blank, back off by one.
+            if (end - 2 >= 0) {
+                if (mSpannableStringBuilder.charAt(end - 1) == '\n' &&
+                    mSpannableStringBuilder.charAt(end - 2) == '\n') {
+                    end--;
                 }
             }
 
-            this.op = op;
-            this.count = count;
+            if (end == start) {
+                mSpannableStringBuilder.removeSpan(obj[i]);
+            } else {
+                mSpannableStringBuilder.setSpan(obj[i], start, end, Spannable.SPAN_PARAGRAPH);
+            }
+        }
 
-            return true;
+        return mSpannableStringBuilder;
+    }
+
+    private void handleStartTag(String tag, Attributes attributes) {
+        if (tag.equalsIgnoreCase("br")) {
+            // We don't need to handle this. TagSoup will ensure that there's a </br> for each <br>
+            // so we can safely emite the linebreaks when we handle the close tag.
+        } else if (tag.equalsIgnoreCase("p")) {
+            handleP(mSpannableStringBuilder);
+        } else if (tag.equalsIgnoreCase("div")) {
+            handleP(mSpannableStringBuilder);
+        } else if (tag.equalsIgnoreCase("strong")) {
+            start(mSpannableStringBuilder, new Bold());
+        } else if (tag.equalsIgnoreCase("b")) {
+            start(mSpannableStringBuilder, new Bold());
+        } else if (tag.equalsIgnoreCase("em")) {
+            start(mSpannableStringBuilder, new Italic());
+        } else if (tag.equalsIgnoreCase("cite")) {
+            start(mSpannableStringBuilder, new Italic());
+        } else if (tag.equalsIgnoreCase("dfn")) {
+            start(mSpannableStringBuilder, new Italic());
+        } else if (tag.equalsIgnoreCase("i")) {
+            start(mSpannableStringBuilder, new Italic());
+        } else if (tag.equalsIgnoreCase("big")) {
+            start(mSpannableStringBuilder, new Big());
+        } else if (tag.equalsIgnoreCase("small")) {
+            start(mSpannableStringBuilder, new Small());
+        } else if (tag.equalsIgnoreCase("font")) {
+            startFont(mSpannableStringBuilder, attributes);
+        } else if (tag.equalsIgnoreCase("blockquote")) {
+            handleP(mSpannableStringBuilder);
+            start(mSpannableStringBuilder, new Blockquote());
+        } else if (tag.equalsIgnoreCase("tt")) {
+            start(mSpannableStringBuilder, new Monospace());
+        } else if (tag.equalsIgnoreCase("a")) {
+            startA(mSpannableStringBuilder, attributes);
+        } else if (tag.equalsIgnoreCase("u")) {
+            start(mSpannableStringBuilder, new Underline());
+        } else if (tag.equalsIgnoreCase("sup")) {
+            start(mSpannableStringBuilder, new Super());
+        } else if (tag.equalsIgnoreCase("sub")) {
+            start(mSpannableStringBuilder, new Sub());
+        } else if (tag.length() == 2 &&
+                   Character.toLowerCase(tag.charAt(0)) == 'h' &&
+                   tag.charAt(1) >= '1' && tag.charAt(1) <= '6') {
+            handleP(mSpannableStringBuilder);
+            start(mSpannableStringBuilder, new Header(tag.charAt(1) - '1'));
+        } else if (tag.equalsIgnoreCase("img")) {
+            startImg(mSpannableStringBuilder, attributes, mImageGetter);
+        } else if (mTagHandler != null) {
+            mTagHandler.handleTag(true, tag, mSpannableStringBuilder, mReader);
         }
     }
 
-    private Base64() { }   // don't instantiate
+    private void handleEndTag(String tag) {
+        if (tag.equalsIgnoreCase("br")) {
+            handleBr(mSpannableStringBuilder);
+        } else if (tag.equalsIgnoreCase("p")) {
+            handleP(mSpannableStringBuilder);
+        } else if (tag.equalsIgnoreCase("div")) {
+            handleP(mSpannableStringBuilder);
+        } else if (tag.equalsIgnoreCase("strong")) {
+            end(mSpannableStringBuilder, Bold.class, new StyleSpan(Typeface.BOLD));
+        } else if (tag.equalsIgnoreCase("b")) {
+            end(mSpannableStringBuilder, Bold.class, new StyleSpan(Typeface.BOLD));
+        } else if (tag.equalsIgnoreCase("em")) {
+            end(mSpannableStringBuilder, Italic.class, new StyleSpan(Typeface.ITALIC));
+        } else if (tag.equalsIgnoreCase("cite")) {
+            end(mSpannableStringBuilder, Italic.class, new StyleSpan(Typeface.ITALIC));
+        } else if (tag.equalsIgnoreCase("dfn")) {
+            end(mSpannableStringBuilder, Italic.class, new StyleSpan(Typeface.ITALIC));
+        } else if (tag.equalsIgnoreCase("i")) {
+            end(mSpannableStringBuilder, Italic.class, new StyleSpan(Typeface.ITALIC));
+        } else if (tag.equalsIgnoreCase("big")) {
+            end(mSpannableStringBuilder, Big.class, new RelativeSizeSpan(1.25f));
+        } else if (tag.equalsIgnoreCase("small")) {
+            end(mSpannableStringBuilder, Small.class, new RelativeSizeSpan(0.8f));
+        } else if (tag.equalsIgnoreCase("font")) {
+            endFont(mSpannableStringBuilder);
+        } else if (tag.equalsIgnoreCase("blockquote")) {
+            handleP(mSpannableStringBuilder);
+            end(mSpannableStringBuilder, Blockquote.class, new QuoteSpan());
+        } else if (tag.equalsIgnoreCase("tt")) {
+            end(mSpannableStringBuilder, Monospace.class,
+                    new TypefaceSpan("monospace"));
+        } else if (tag.equalsIgnoreCase("a")) {
+            endA(mSpannableStringBuilder);
+        } else if (tag.equalsIgnoreCase("u")) {
+            end(mSpannableStringBuilder, Underline.class, new UnderlineSpan());
+        } else if (tag.equalsIgnoreCase("sup")) {
+            end(mSpannableStringBuilder, Super.class, new SuperscriptSpan());
+        } else if (tag.equalsIgnoreCase("sub")) {
+            end(mSpannableStringBuilder, Sub.class, new SubscriptSpan());
+        } else if (tag.length() == 2 &&
+                Character.toLowerCase(tag.charAt(0)) == 'h' &&
+                tag.charAt(1) >= '1' && tag.charAt(1) <= '6') {
+            handleP(mSpannableStringBuilder);
+            endHeader(mSpannableStringBuilder);
+        } else if (mTagHandler != null) {
+            mTagHandler.handleTag(false, tag, mSpannableStringBuilder, mReader);
+        }
+    }
+
+    private static void handleP(SpannableStringBuilder text) {
+        int len = text.length();
+
+        if (len >= 1 && text.charAt(len - 1) == '\n') {
+            if (len >= 2 && text.charAt(len - 2) == '\n') {
+                return;
+            }
+
+            text.append("\n");
+            return;
+        }
+
+        if (len != 0) {
+            text.append("\n\n");
+        }
+    }
+
+    private static void handleBr(SpannableStringBuilder text) {
+        text.append("\n");
+    }
+
+    private static Object getLast(Spanned text, Class kind) {
+        /*
+         * This knows that the last returned object from getSpans()
+         * will be the most recently added.
+         */
+        Object[] objs = text.getSpans(0, text.length(), kind);
+
+        if (objs.length == 0) {
+            return null;
+        } else {
+            return objs[objs.length - 1];
+        }
+    }
+
+    private static void start(SpannableStringBuilder text, Object mark) {
+        int len = text.length();
+        text.setSpan(mark, len, len, Spannable.SPAN_MARK_MARK);
+    }
+
+    private static void end(SpannableStringBuilder text, Class kind,
+                            Object repl) {
+        int len = text.length();
+        Object obj = getLast(text, kind);
+        int where = text.getSpanStart(obj);
+
+        text.removeSpan(obj);
+
+        if (where != len) {
+            text.setSpan(repl, where, len, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+
+        return;
+    }
+
+    private static void startImg(SpannableStringBuilder text,
+                                 Attributes attributes, Html.ImageGetter img) {
+        String src = attributes.getValue("", "src");
+        Drawable d = null;
+
+        if (img != null) {
+            d = img.getDrawable(src);
+        }
+
+        if (d == null) {
+            d = Resources.getSystem().
+                    getDrawable(com.android.internal.R.drawable.unknown_image);
+            d.setBounds(0, 0, d.getIntrinsicWidth(), d.getIntrinsicHeight());
+        }
+
+        int len = text.length();
+        text.append("\uFFFC");
+
+        text.setSpan(new ImageSpan(d, src), len, text.length(),
+                     Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+    }
+
+    private static void startFont(SpannableStringBuilder text,
+                                  Attributes attributes) {
+        String color = attributes.getValue("", "color");
+        String face = attributes.getValue("", "face");
+
+        int len = text.length();
+        text.setSpan(new Font(color, face), len, len, Spannable.SPAN_MARK_MARK);
+    }
+
+    private static void endFont(SpannableStringBuilder text) {
+        int len = text.length();
+        Object obj = getLast(text, Font.class);
+        int where = text.getSpanStart(obj);
+
+        text.removeSpan(obj);
+
+        if (where != len) {
+            Font f = (Font) obj;
+
+            if (!TextUtils.isEmpty(f.mColor)) {
+                if (f.mColor.startsWith("@")) {
+                    Resources res = Resources.getSystem();
+                    String name = f.mColor.substring(1);
+                    int colorRes = res.getIdentifier(name, "color", "android");
+                    if (colorRes != 0) {
+                        ColorStateList colors = res.getColorStateList(colorRes);
+                        text.setSpan(new TextAppearanceSpan(null, 0, 0, colors, null),
+                                where, len,
+                                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                    }
+                } else {
+                    int c = getHtmlColor(f.mColor);
+                    if (c != -1) {
+                        text.setSpan(new ForegroundColorSpan(c | 0xFF000000),
+                                where, len,
+                                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                    }
+                }
+            }
+
+            if (f.mFace != null) {
+                text.setSpan(new TypefaceSpan(f.mFace), where, len,
+                             Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            }
+        }
+    }
+
+    private static void startA(SpannableStringBuilder text, Attributes attributes) {
+        String href = attributes.getValue("", "href");
+
+        int len = text.length();
+        text.setSpan(new Href(href), len, len, Spannable.SPAN_MARK_MARK);
+    }
+
+    private static void endA(SpannableStringBuilder text) {
+        int len = text.length();
+        Object obj = getLast(text, Href.class);
+        int where = text.getSpanStart(obj);
+
+        text.removeSpan(obj);
+
+        if (where != len) {
+            Href h = (Href) obj;
+
+            if (h.mHref != null) {
+                text.setSpan(new URLSpan(h.mHref), where, len,
+                             Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            }
+        }
+    }
+
+    private static void endHeader(SpannableStringBuilder text) {
+        int len = text.length();
+        Object obj = getLast(text, Header.class);
+
+        int where = text.getSpanStart(obj);
+
+        text.removeSpan(obj);
+
+        // Back off not to change only the text, not the blank line.
+        while (len > where && text.charAt(len - 1) == '\n') {
+            len--;
+        }
+
+        if (where != len) {
+            Header h = (Header) obj;
+
+            text.setSpan(new RelativeSizeSpan(HEADER_SIZES[h.mLevel]),
+                         where, len, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            text.setSpan(new StyleSpan(Typeface.BOLD),
+                         where, len, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+    }
+
+    public void setDocumentLocator(Locator locator) {
+    }
+
+    public void startDocument() throws SAXException {
+    }
+
+    public void endDocument() throws SAXException {
+    }
+
+    public void startPrefixMapping(String prefix, String uri) throws SAXException {
+    }
+
+    public void endPrefixMapping(String prefix) throws SAXException {
+    }
+
+    public void startElement(String uri, String localName, String qName, Attributes attributes)
+            throws SAXException {
+        handleStartTag(localName, attributes);
+    }
+
+    public void endElement(String uri, String localName, String qName) throws SAXException {
+        handleEndTag(localName);
+    }
+
+    public void characters(char ch[], int start, int length) throws SAXException {
+        StringBuilder sb = new StringBuilder();
+
+        /*
+         * Ignore whitespace that immediately follows other whitespace;
+         * newlines count as spaces.
+         */
+
+        for (int i = 0; i < length; i++) {
+            char c = ch[i + start];
+
+            if (c == ' ' || c == '\n') {
+                char pred;
+                int len = sb.length();
+
+                if (len == 0) {
+                    len = mSpannableStringBuilder.length();
+
+                    if (len == 0) {
+                        pred = '\n';
+                    } else {
+                        pred = mSpannableStringBuilder.charAt(len - 1);
+                    }
+                } else {
+                    pred = sb.charAt(len - 1);
+                }
+
+                if (pred != ' ' && pred != '\n') {
+                    sb.append(' ');
+                }
+            } else {
+                sb.append(c);
+            }
+        }
+
+        mSpannableStringBuilder.append(sb);
+    }
+
+    public void ignorableWhitespace(char ch[], int start, int length) throws SAXException {
+    }
+
+    public void processingInstruction(String target, String data) throws SAXException {
+    }
+
+    public void skippedEntity(String name) throws SAXException {
+    }
+
+    private static class Bold { }
+    private static class Italic { }
+    private static class Underline { }
+    private static class Big { }
+    private static class Small { }
+    private static class Monospace { }
+    private static class Blockquote { }
+    private static class Super { }
+    private static class Sub { }
+
+    private static class Font {
+        public String mColor;
+        public String mFace;
+
+        public Font(String color, String face) {
+            mColor = color;
+            mFace = face;
+        }
+    }
+
+    private static class Href {
+        public String mHref;
+
+        public Href(String href) {
+            mHref = href;
+        }
+    }
+
+    private static class Header {
+        private int mLevel;
+
+        public Header(int level) {
+            mLevel = level;
+        }
+    }
+
+    private static HashMap<String,Integer> COLORS = buildColorMap();
+
+    private static HashMap<String,Integer> buildColorMap() {
+        HashMap<String,Integer> map = new HashMap<String,Integer>();
+        map.put("aqua", 0x00FFFF);
+        map.put("black", 0x000000);
+        map.put("blue", 0x0000FF);
+        map.put("fuchsia", 0xFF00FF);
+        map.put("green", 0x008000);
+        map.put("grey", 0x808080);
+        map.put("lime", 0x00FF00);
+        map.put("maroon", 0x800000);
+        map.put("navy", 0x000080);
+        map.put("olive", 0x808000);
+        map.put("purple", 0x800080);
+        map.put("red", 0xFF0000);
+        map.put("silver", 0xC0C0C0);
+        map.put("teal", 0x008080);
+        map.put("white", 0xFFFFFF);
+        map.put("yellow", 0xFFFF00);
+        return map;
+    }
+
+    /**
+     * Converts an HTML color (named or numeric) to an integer RGB value.
+     *
+     * @param color Non-null color string.
+     * @return A color value, or {@code -1} if the color string could not be interpreted.
+     */
+    private static int getHtmlColor(String color) {
+        Integer i = COLORS.get(color.toLowerCase());
+        if (i != null) {
+            return i;
+        } else {
+            try {
+                return XmlUtils.convertValueToInt(color, -1);
+            } catch (NumberFormatException nfe) {
+                return -1;
+            }
+        }
+      }
+
 }
 

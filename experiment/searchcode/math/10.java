@@ -1,9 +1,4 @@
-package org.apache.lucene.analysis.el;
-
-import org.apache.lucene.analysis.util.CharArraySet;
-import org.apache.lucene.util.Version;
-
-import java.util.Arrays;
+package org.apache.lucene.analysis.ru;
 
 /**
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -22,799 +17,138 @@ import java.util.Arrays;
  * limitations under the License.
  */
 
-/**
- * A stemmer for Greek words, according to: <i>Development of a Stemmer for the
- * Greek Language.</i> Georgios Ntais
- * <p>
- * NOTE: Input is expected to be casefolded for Greek (including folding of final
- * sigma to sigma), and with diacritics removed. This can be achieved with 
- * either {@link GreekLowerCaseFilter} or ICUFoldingFilter.
- * @lucene.experimental
+/* 
+ * This algorithm is updated based on code located at:
+ * http://members.unine.ch/jacques.savoy/clef/
+ * 
+ * Full copyright for that code follows:
  */
-public class GreekStemmer {
+
+/*
+ * Copyright (c) 2005, Jacques Savoy
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without 
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * Redistributions of source code must retain the above copyright notice, this 
+ * list of conditions and the following disclaimer. Redistributions in binary 
+ * form must reproduce the above copyright notice, this list of conditions and
+ * the following disclaimer in the documentation and/or other materials 
+ * provided with the distribution. Neither the name of the author nor the names 
+ * of its contributors may be used to endorse or promote products derived from 
+ * this software without specific prior written permission.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" 
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE 
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE 
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE 
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF 
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN 
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
+
+import static org.apache.lucene.analysis.util.StemmerUtil.*;
+
+/**
+ * Light Stemmer for Russian.
+ * <p>
+ * This stemmer implements the following algorithm:
+ * <i>Indexing and Searching Strategies for the Russian Language.</i>
+ * Ljiljana Dolamic and Jacques Savoy.
+ */
+public class RussianLightStemmer {
+
   public int stem(char s[], int len) {
-    if (len < 4) // too short
-      return len;
-    
-    final int origLen = len;
-    // "short rules": if it hits one of these, it skips the "long list"
-    len = rule0(s, len);
-    len = rule1(s, len);
-    len = rule2(s, len);
-    len = rule3(s, len);
-    len = rule4(s, len);
-    len = rule5(s, len);
-    len = rule6(s, len);
-    len = rule7(s, len);
-    len = rule8(s, len);
-    len = rule9(s, len);
-    len = rule10(s, len);
-    len = rule11(s, len);
-    len = rule12(s, len);
-    len = rule13(s, len);
-    len = rule14(s, len);
-    len = rule15(s, len);
-    len = rule16(s, len);
-    len = rule17(s, len);
-    len = rule18(s, len);
-    len = rule19(s, len);
-    len = rule20(s, len);
-    // "long list"
-    if (len == origLen)
-      len = rule21(s, len);
-    
-    return rule22(s, len);
+    len = removeCase(s, len);
+    return normalize(s, len);
+  }
+  
+  private int normalize(char s[], int len) {
+    if (len > 3)
+      switch(s[len-1]) { 
+        case '?':
+        case '?': return len - 1;
+        case '?': if (s[len-2] == '?') return len - 1;
+      }
+    return len;
   }
 
-  private int rule0(char s[], int len) {
-    if (len > 9 && (endsWith(s, len, "??????????")
-        || endsWith(s, len, "??????????")))
+  private int removeCase(char s[], int len) {
+    if (len > 6 && 
+        (endsWith(s, len, "????") ||
+         endsWith(s, len, "????")))
       return len - 4;
     
-    if (len > 8 && (endsWith(s, len, "?????????")
-        || endsWith(s, len, "?????????")))
-      return len - 4;
-    
-    if (len > 8 && endsWith(s, len, "?????????"))
+    if (len > 5 && 
+        (endsWith(s, len, "???") ||
+         endsWith(s, len, "???") ||
+         endsWith(s, len, "???") ||
+         endsWith(s, len, "???") ||
+         endsWith(s, len, "???") ||
+         endsWith(s, len, "???") ||
+         endsWith(s, len, "???") ||
+         endsWith(s, len, "???") ||
+         endsWith(s, len, "???") ||
+         endsWith(s, len, "???") ||
+         endsWith(s, len, "???") ||
+         endsWith(s, len, "???") ||
+         endsWith(s, len, "???") ||
+         endsWith(s, len, "???") ||
+         endsWith(s, len, "???")))
       return len - 3;
     
-    if (len > 7 && (endsWith(s, len, "????????")
-        || endsWith(s, len, "????????")))
-      return len - 4;
-    
-    if (len > 7 && endsWith(s, len, "????????"))
-      return len - 3;
-    
-    if (len > 7 && endsWith(s, len, "????????"))
+    if (len > 4 &&
+        (endsWith(s, len, "??") ||
+         endsWith(s, len, "??") ||
+         endsWith(s, len, "??") ||
+         endsWith(s, len, "??") ||
+         endsWith(s, len, "??") ||
+         endsWith(s, len, "??") ||
+         endsWith(s, len, "??") ||
+         endsWith(s, len, "??") ||
+         endsWith(s, len, "??") ||
+         endsWith(s, len, "??") ||
+         endsWith(s, len, "??") ||
+         endsWith(s, len, "??") ||
+         endsWith(s, len, "??") ||
+         endsWith(s, len, "??") ||
+         endsWith(s, len, "??") ||
+         endsWith(s, len, "??") ||
+         endsWith(s, len, "??") ||
+         endsWith(s, len, "??") ||
+         endsWith(s, len, "??") ||
+         endsWith(s, len, "??") ||
+         endsWith(s, len, "??") ||
+         endsWith(s, len, "??") ||
+         endsWith(s, len, "??") ||
+         endsWith(s, len, "??") ||
+         endsWith(s, len, "??") ||
+         endsWith(s, len, "??") ||
+         endsWith(s, len, "??") ||
+         endsWith(s, len, "??") ||
+         endsWith(s, len, "??") ||
+         endsWith(s, len, "??")))
       return len - 2;
     
-    if (len > 6 && (endsWith(s, len, "???????"))
-        || endsWith(s, len, "???????")
-        || endsWith(s, len, "???????")
-        || endsWith(s, len, "???????")
-        || endsWith(s, len, "???????")
-        || endsWith(s, len, "???????")
-        || endsWith(s, len, "???????")
-        || endsWith(s, len, "???????")
-        || endsWith(s, len, "???????")
-        || endsWith(s, len, "???????"))
-      return len - 4;
-    
-    if (len > 6 && endsWith(s, len, "???????"))
-      return len - 3;
-    
-    if (len > 6 && endsWith(s, len, "???????"))
-      return len - 2;
-    
-    if (len > 5 && (endsWith(s, len, "??????")
-        || endsWith(s, len, "??????")
-        || endsWith(s, len, "??????")
-        || endsWith(s, len, "??????")))
-      return len - 4;
-    
-    if (len > 5 && (endsWith(s, len, "??????")
-        || endsWith(s, len, "??????")
-        || endsWith(s, len, "??????")
-        || endsWith(s, len, "??????")
-        || endsWith(s, len, "??????")))
-      return len - 3;
-    
-    if (len > 4 && (endsWith(s, len, "?????")
-        || endsWith(s, len, "?????")
-        || endsWith(s, len, "?????")
-        || endsWith(s, len, "?????")))
-      return len - 3;
-    
-    if (len > 4 && (endsWith(s, len, "?????")
-        || endsWith(s, len, "?????")
-        || endsWith(s, len, "?????")))
-      return len - 2;
-    
-    if (len > 3 && endsWith(s, len, "????"))
-      return len - 2;
-    
-    if (len > 2 && endsWith(s, len, "???"))
-      return len - 1;
-    
-    return len;
-  }
-
-  private int rule1(char s[], int len) {
-    if (len > 4 && (endsWith(s, len, "????") || endsWith(s, len, "????"))) {
-      len -= 4;
-      if (!(endsWith(s, len, "??") ||
-          endsWith(s, len, "???") ||
-          endsWith(s, len, "???") ||
-          endsWith(s, len, "?????") ||
-          endsWith(s, len, "?????") ||
-          endsWith(s, len, "?????") ||
-          endsWith(s, len, "?????") ||
-          endsWith(s, len, "???") ||
-          endsWith(s, len, "???") ||
-          endsWith(s, len, "?????")))
-        len += 2; // add back -??
-    }
-    return len;
-  }
-  
-  private int rule2(char s[], int len) {
-    if (len > 4 && (endsWith(s, len, "????") || endsWith(s, len, "????"))) {
-      len -= 4;
-      if (endsWith(s, len, "??") ||
-          endsWith(s, len, "??") ||
-          endsWith(s, len, "???") ||
-          endsWith(s, len, "??") ||
-          endsWith(s, len, "???") ||
-          endsWith(s, len, "???") ||
-          endsWith(s, len, "?????") ||
-          endsWith(s, len, "???"))
-        len += 2; // add back -??
-    }
-    return len;
-  }
-  
-  private int rule3(char s[], int len) {
-    if (len > 5 && (endsWith(s, len, "?????") || endsWith(s, len, "?????"))) {
-      len -= 5;
-      if (endsWith(s, len, "???") ||
-          endsWith(s, len, "??????") ||
-          endsWith(s, len, "?????") ||
-          endsWith(s, len, "???") ||
-          endsWith(s, len, "????") ||
-          endsWith(s, len, "??") ||
-          endsWith(s, len, "?") ||
-          endsWith(s, len, "??") ||
-          endsWith(s, len, "??") ||
-          endsWith(s, len, "???") ||
-          endsWith(s, len, "????") ||
-          endsWith(s, len, "??") ||
-          endsWith(s, len, "??") ||
-          endsWith(s, len, "????") ||
-          endsWith(s, len, "??"))
-        len += 3; // add back -???
-    }
-    return len;
-  }
-  
-  private static final CharArraySet exc4 = new CharArraySet(Version.LUCENE_31,
-      Arrays.asList("?", "?", "??", "???", "?", "?", "??", "???"),
-      false);
-  
-  private int rule4(char s[], int len) {   
-    if (len > 3 && (endsWith(s, len, "???") || endsWith(s, len, "???"))) {
-      len -= 3;
-      if (exc4.contains(s, 0, len))
-        len++; // add back -?
-    }
-    return len;
-  }
-  
-  private int rule5(char s[], int len) {
-    if (len > 2 && endsWith(s, len, "??")) {
-      len -= 2;
-      if (endsWithVowel(s, len))
-        len++; // add back -?
-    } else if (len > 3 && (endsWith(s, len, "???") || endsWith(s, len, "???"))) {
-      len -= 3;
-      if (endsWithVowel(s, len))
-        len++; // add back -?
-    }
-    return len;
-  }
-
-  private static final CharArraySet exc6 = new CharArraySet(Version.LUCENE_31,
-      Arrays.asList("??", "??", "???", "????", "???????", "??", "????",
-          "?????", "???", "????", "???", "????", "????", "??????", "?????",
-          "????", "????", "???????", "????", "????", "???", "???", "???????",
-          "????", "????", "??????", "??????", "???????", "??????", "????",
-          "?????", "????", "????", "?????", "?????", "???"), 
-       false);
-
-  private int rule6(char s[], int len) {
-    boolean removed = false;
-    if (len > 3 && (endsWith(s, len, "???") || endsWith(s, len, "???"))) {
-      len -= 3;
-      removed = true;
-    } else if (len > 4 && (endsWith(s, len, "????") || endsWith(s, len, "????"))) {
-      len -= 4;
-      removed = true;
-    }
-    
-    if (removed) {
-      if (endsWithVowel(s, len) || exc6.contains(s, 0, len))
-        len += 2; // add back -??
-    }
-    return len;
-  }
-  
-  private static final CharArraySet exc7 = new CharArraySet(Version.LUCENE_31,
-      Arrays.asList("????", "????", "????", "?????", "????", "???", "???",
-          "???", "????", "???", "???", "?"), 
-      false);
-  
-  private int rule7(char s[], int len) {
-    if (len == 5 && endsWith(s, len, "?????"))
-      return len - 1;
-    
-    if (len > 7 && endsWith(s, len, "???????"))
-      len -= 7;
-    else if (len > 6 && endsWith(s, len, "??????"))
-      len -= 6;
-    else if (len > 5 && (endsWith(s, len, "?????") ||
-             endsWith(s, len, "?????") ||
-             endsWith(s, len, "?????")))
-      len -= 5;
-    
-    if (len > 3 && endsWith(s, len, "???")) {
-      len -= 3;
-      if (exc7.contains(s, 0, len))
-        len += 2; // add back -??
-    }
-
-    return len;
-  }
-
-  private static final CharArraySet exc8a = new CharArraySet(Version.LUCENE_31,
-      Arrays.asList("??", "??"),
-      false);
-
-  private static final CharArraySet exc8b = new CharArraySet(Version.LUCENE_31,
-      Arrays.asList("?????", "?????", "?????", "?", "???????", "?", "???????",
-          "??????", "??????", "?????", "??????", "?", "????????", "?", "???",
-          "?", "?????", "??", "?????", "??????", "????????", "?????",
-          "???????", "???", "?????", "????", "????????", "?", "??????", "??",
-          "???", "???", "???", "???", "????", "????????", "???", "???",
-          "??????", "?", "????", "??", "????", "???", "???", "??????", "?????",
-          "???", "???", "??", "????", "????", "????", "?", "??", "????",
-          "?????", "????", "????", "?????", "????", "????", "??????", "???",
-          "????", "???????", "??????", "??????", "????", "????", "?????",
-          "???", "???????????", "???????", "????", "???????", "???",
-          "???????????", "???????????", "????", "????????", "????????",
-          "??????", "???????", "?????", "??????", "????", "???????", "???????",
-          "????", "???", "???", "??????", "??????", "?????????", "???????"),
-      false);
-  
-  private int rule8(char s[], int len) {
-    boolean removed = false;
-    
-    if (len > 8 && endsWith(s, len, "????????")) {
-      len -= 8;
-      removed = true;
-    } else if (len > 7 && endsWith(s, len, "???????") ||
-        endsWith(s, len, "???????") ||
-        endsWith(s, len, "???????")) {
-      len -= 7;
-      removed = true;
-    } else if (len > 6 && endsWith(s, len, "??????") ||
-        endsWith(s, len, "??????") ||
-        endsWith(s, len, "??????")) {
-      len -= 6;
-      removed = true;
-    } else if (len > 5 && endsWith(s, len, "?????") ||
-        endsWith(s, len, "?????") ||
-        endsWith(s, len, "?????") ||
-        endsWith(s, len, "?????")) {
-      len -= 5;
-      removed = true;
-    }
-    
-    if (removed && exc8a.contains(s, 0, len)) {
-      // add -???? (we removed > 4 chars so its safe)
-      len += 4;
-      s[len - 4] = '?';
-      s[len - 3] = '?';
-      s[len - 2] = '?';
-      s[len - 1] = '?';
-    }
-    
-    if (len > 3 && endsWith(s, len, "???")) {
-      len -= 3;
-      if (endsWithVowelNoY(s, len) || exc8b.contains(s, 0, len)) {
-        len += 2; // add back -??
+    if (len > 3)
+      switch(s[len-1]) {
+        case '?':
+        case '?':
+        case '?':
+        case '?':
+        case '?':
+        case '?':
+        case '?':
+        case '?':
+        case '?': return len - 1;
       }
-    }
     
     return len;
-  }
-  
-  private static final CharArraySet exc9 = new CharArraySet(Version.LUCENE_31,
-      Arrays.asList("????", "???", "????", "???", "??", "??", "??", "???",
-          "?????", "???", "??", "???", "????", "???", "???", "???????", "????",
-          "????", "????", "???", "?", "?", "??", "????", "?"), 
-      false);
-  
-  private int rule9(char s[], int len) {
-    if (len > 5 && endsWith(s, len, "?????"))
-      len -= 5;
-    
-    if (len > 3 && endsWith(s, len, "???")) {
-      len -= 3;
-      if (exc9.contains(s, 0, len) ||
-          endsWithVowelNoY(s, len) ||
-          endsWith(s, len, "??") ||
-          endsWith(s, len, "???") ||
-          endsWith(s, len, "???") ||
-          endsWith(s, len, "???") ||
-          endsWith(s, len, "????") ||
-          endsWith(s, len, "??") ||
-          endsWith(s, len, "???") ||
-          endsWith(s, len, "???") ||
-          endsWith(s, len, "???") ||
-          endsWith(s, len, "?????") ||
-          endsWith(s, len, "???") ||
-          endsWith(s, len, "???") ||
-          endsWith(s, len, "???") ||
-          endsWith(s, len, "??") ||
-          endsWith(s, len, "???") ||
-          endsWith(s, len, "???") ||
-          endsWith(s, len, "????") ||
-          endsWith(s, len, "???") ||
-          endsWith(s, len, "????") ||
-          endsWith(s, len, "???") ||
-          endsWith(s, len, "???") ||
-          endsWith(s, len, "??") ||
-          endsWith(s, len, "???") ||
-          endsWith(s, len, "???") ||
-          endsWith(s, len, "???") ||
-          endsWith(s, len, "???") ||
-          endsWith(s, len, "???") ||
-          endsWith(s, len, "???") ||
-          endsWith(s, len, "???") ||
-          endsWith(s, len, "???") ||
-          endsWith(s, len, "????")) {
-        len += 2; // add back -??
-      }
-    }
-    
-    return len;
-  }
-
-  private int rule10(char s[], int len) {
-    if (len > 5 && (endsWith(s, len, "?????") || endsWith(s, len, "?????"))) {
-      len -= 5;
-      if (len == 3 && endsWith(s, len, "???")) {
-        len += 3; // add back *??
-        s[len - 3] = '?';
-      }
-      if (endsWith(s, len, "???")) {
-        len += 3; // add back *??
-        s[len - 3] = '?';
-      }
-    }
-    
-    return len;
-  }
-  
-  private int rule11(char s[], int len) {
-    if (len > 6 && endsWith(s, len, "??????")) {
-      len -= 6;
-      if (len == 2 && endsWith(s, len, "??")) {
-        len += 5; // add back -?????
-      }
-    } else if (len > 7 && endsWith(s, len, "???????")) {
-      len -= 7;
-      if (len == 2 && endsWith(s, len, "??")) {
-        len += 5;
-        s[len - 5] = '?';
-        s[len - 4] = '?';
-        s[len - 3] = '?';
-        s[len - 2] = '?';
-        s[len - 1] = '?';
-      }
-    }
-    return len;
-  }
-
-  private static final CharArraySet exc12a = new CharArraySet(Version.LUCENE_31,
-      Arrays.asList("?", "??", "????", "?????", "??????", "???????"),
-      false);
-
-  private static final CharArraySet exc12b = new CharArraySet(Version.LUCENE_31,
-      Arrays.asList("??", "??", "?????", "?", "?", "?", "???????", "??", "???", "???"),
-      false);
-  
-  private int rule12(char s[], int len) {
-    if (len > 5 && endsWith(s, len, "?????")) {
-      len -= 5;
-      if (exc12a.contains(s, 0, len))   
-        len += 4; // add back -????
-    }
-    
-    if (len > 4 && endsWith(s, len, "????")) {
-      len -= 4;
-      if (exc12b.contains(s, 0, len))
-        len += 3; // add back -???
-    }
-    
-    return len;
-  }
-  
-  private static final CharArraySet exc13 = new CharArraySet(Version.LUCENE_31,
-      Arrays.asList("????", "?", "?????????", "?????", "????"),
-      false);
-  
-  private int rule13(char s[], int len) {
-    if (len > 6 && endsWith(s, len, "??????")) {
-      len -= 6;
-    } else if (len > 5 && (endsWith(s, len, "?????") || endsWith(s, len, "?????"))) {
-      len -= 5;
-    }
-    
-    boolean removed = false;
-    
-    if (len > 4 && endsWith(s, len, "????")) {
-      len -= 4;
-      removed = true;
-    } else if (len > 3 && (endsWith(s, len, "???") || endsWith(s, len, "???"))) {
-      len -= 3;
-      removed = true;
-    }
-
-    if (removed && (exc13.contains(s, 0, len) 
-        || endsWith(s, len, "????")
-        || endsWith(s, len, "?????")
-        || endsWith(s, len, "????")
-        || endsWith(s, len, "??")
-        || endsWith(s, len, "??")
-        || endsWith(s, len, "???"))) { 
-      len += 2; // add back the -??
-    }
-    
-    return len;
-  }
-  
-  private static final CharArraySet exc14 = new CharArraySet(Version.LUCENE_31,
-      Arrays.asList("??????", "???", "???", "?????", "????", "?????", "??????",
-          "???", "?", "???", "?", "?", "???", "?????", "???????", "??", "???",
-          "????", "??????", "????????", "??", "????????", "???????", "???",
-          "???"), 
-      false);
-
-  private int rule14(char s[], int len) {
-    boolean removed = false;
-    
-    if (len > 5 && endsWith(s, len, "?????")) {
-      len -= 5;
-      removed = true;
-    } else if (len > 4 && (endsWith(s, len, "????") || endsWith(s, len, "????"))) {
-      len -= 4;
-      removed = true;
-    }
-    
-    if (removed && (exc14.contains(s, 0, len) 
-        || endsWithVowel(s, len)
-        || endsWith(s, len, "?????")
-        || endsWith(s, len, "????")
-        || endsWith(s, len, "??????")
-        || endsWith(s, len, "????") 
-        || endsWith(s, len, "??????")
-        || endsWith(s, len, "????")
-        || endsWith(s, len, "?????")
-        || endsWith(s, len, "???")
-        || endsWith(s, len, "???")
-        || endsWith(s, len, "???")
-        || endsWith(s, len, "??")
-        || endsWith(s, len, "????"))) {
-      len += 3; // add back -???
-    }
-
-   return len;
-  }
-  
-  private static final CharArraySet exc15a = new CharArraySet(Version.LUCENE_31,
-      Arrays.asList("?????", "?????", "????", "????", "?", "???", "??", "????",
-          "??????", "?????", "????", "?????", "????", "??????", "??????",
-          "???", "????", "?????", "????", "????", "?????", "????????", "????",
-          "????", "?", "????", "???", "????", "??????", "????", "????",
-          "?????", "????", "??", "????", "????????", "???????", "?", "???",
-          "?????", "???", "?", "??", "?"), 
-      false);
-  
-  private static final CharArraySet exc15b = new CharArraySet(Version.LUCENE_31,
-      Arrays.asList("???", "??????"),
-      false);
-  
-  private int rule15(char s[], int len) {
-    boolean removed = false;
-    if (len > 4 && endsWith(s, len, "????")) {
-      len -= 4;
-      removed = true;
-    } else if (len > 3 && (endsWith(s, len, "???") || endsWith(s, len, "???"))) {
-      len -= 3;
-      removed = true;
-    }
-    
-    if (removed) {
-      final boolean cond1 = exc15a.contains(s, 0, len) 
-        || endsWith(s, len, "??")
-        || endsWith(s, len, "???")
-        || endsWith(s, len, "????")
-        || endsWith(s, len, "??")
-        || endsWith(s, len, "??")
-        || endsWith(s, len, "??")
-        || endsWith(s, len, "??")
-        || endsWith(s, len, "??")
-        || endsWith(s, len, "???")
-        || endsWith(s, len, "????");
-      
-      final boolean cond2 = exc15b.contains(s, 0, len)
-        || endsWith(s, len, "????");
-      
-      if (cond1 && !cond2)
-        len += 2; // add back -??  
-    }
-    
-    return len;
-  }
-  
-  private static final CharArraySet exc16 = new CharArraySet(Version.LUCENE_31,
-      Arrays.asList("?", "??????", "???????", "??????", "???????", "?????"),
-      false);
-  
-  private int rule16(char s[], int len) {
-    boolean removed = false;
-    if (len > 4 && endsWith(s, len, "????")) {
-      len -= 4;
-      removed = true;
-    } else if (len > 3 && (endsWith(s, len, "???") || endsWith(s, len, "???"))) {
-      len -= 3;
-      removed = true;
-    }
-    
-    if (removed && exc16.contains(s, 0, len))
-      len += 2; // add back -??
-    
-    return len;
-  }
-  
-  private static final CharArraySet exc17 = new CharArraySet(Version.LUCENE_31,
-      Arrays.asList("???", "??", "???", "??", "???", "?????", "?????", "????", "???????", "??????"),
-      false);
-  
-  private int rule17(char s[], int len) {
-    if (len > 4 && endsWith(s, len, "????")) {
-      len -= 4;
-      if (exc17.contains(s, 0, len))
-        len += 3; // add back the -???
-    }
-    
-    return len;
-  }
-  
-  private static final CharArraySet exc18 = new CharArraySet(Version.LUCENE_31,
-      Arrays.asList("?", "?", "???", "???????????", "?????????", "????"),
-      false);
-  
-  private int rule18(char s[], int len) {
-    boolean removed = false;
-    
-    if (len > 6 && (endsWith(s, len, "??????") || endsWith(s, len, "??????"))) {
-      len -= 6;
-      removed = true;
-    } else if (len > 4 && endsWith(s, len, "????")) {
-      len -= 4;
-      removed = true;
-    }
-    
-    if (removed && exc18.contains(s, 0, len)) {
-      len += 3;
-      s[len - 3] = '?';
-      s[len - 2] = '?';
-      s[len - 1] = '?';
-    }
-    return len;
-  }
-  
-  private static final CharArraySet exc19 = new CharArraySet(Version.LUCENE_31,
-      Arrays.asList("????????", "?", "?", "??????", "??", "????????", "?????"),
-      false);
-  
-  private int rule19(char s[], int len) {
-    boolean removed = false;
-    
-    if (len > 6 && (endsWith(s, len, "??????") || endsWith(s, len, "??????"))) {
-      len -= 6;
-      removed = true;
-    } else if (len > 4 && endsWith(s, len, "????")) {
-      len -= 4;
-      removed = true;
-    }
-    
-    if (removed && exc19.contains(s, 0, len)) {
-      len += 3;
-      s[len - 3] = '?';
-      s[len - 2] = '?';
-      s[len - 1] = '?';
-    }
-    return len;
-  }
-  
-  private int rule20(char s[], int len) {
-    if (len > 5 && (endsWith(s, len, "?????") || endsWith(s, len, "?????")))
-      len -= 3;
-    else if (len > 4 && endsWith(s, len, "????"))
-      len -= 2;
-    return len;
-  }
-
-  private int rule21(char s[], int len) {
-    if (len > 9 && endsWith(s, len, "?????????"))
-      return len - 9;
-    
-    if (len > 8 && (endsWith(s, len, "????????") ||
-        endsWith(s, len, "????????") ||
-        endsWith(s, len, "????????") ||
-        endsWith(s, len, "????????")))
-      return len - 8;
-    
-    if (len > 7 && (endsWith(s, len, "???????") ||
-        endsWith(s, len, "???????") ||
-        endsWith(s, len, "???????") ||
-        endsWith(s, len, "???????") ||
-        endsWith(s, len, "???????") ||
-        endsWith(s, len, "???????") ||
-        endsWith(s, len, "???????") ||
-        endsWith(s, len, "???????") ||
-        endsWith(s, len, "???????") ||
-        endsWith(s, len, "???????") ||
-        endsWith(s, len, "???????")))
-      return len - 7;
-    
-    if (len > 6 && (endsWith(s, len, "??????") ||
-        endsWith(s, len, "??????") ||
-        endsWith(s, len, "??????") ||
-        endsWith(s, len, "??????") ||
-        endsWith(s, len, "??????") ||
-        endsWith(s, len, "??????") ||
-        endsWith(s, len, "??????") ||
-        endsWith(s, len, "??????") ||
-        endsWith(s, len, "??????") ||
-        endsWith(s, len, "??????") ||
-        endsWith(s, len, "??????")))
-      return len - 6;
-    
-    if (len > 5 && (endsWith(s, len, "?????") ||
-        endsWith(s, len, "?????") ||
-        endsWith(s, len, "?????") ||
-        endsWith(s, len, "?????") ||
-        endsWith(s, len, "?????") ||
-        endsWith(s, len, "?????") ||
-        endsWith(s, len, "?????") ||
-        endsWith(s, len, "?????") ||
-        endsWith(s, len, "?????") ||
-        endsWith(s, len, "?????") ||
-        endsWith(s, len, "?????") ||
-        endsWith(s, len, "?????") ||
-        endsWith(s, len, "?????") ||
-        endsWith(s, len, "?????") ||
-        endsWith(s, len, "?????") ||
-        endsWith(s, len, "?????") ||
-        endsWith(s, len, "?????")))
-      return len - 5;
-    
-    if (len > 4 && (endsWith(s, len, "????") ||
-        endsWith(s, len, "????") ||
-        endsWith(s, len, "????") ||
-        endsWith(s, len, "????") ||
-        endsWith(s, len, "????") ||
-        endsWith(s, len, "????") ||
-        endsWith(s, len, "????") ||
-        endsWith(s, len, "????") ||
-        endsWith(s, len, "????") ||
-        endsWith(s, len, "????") ||
-        endsWith(s, len, "????") ||
-        endsWith(s, len, "????") ||
-        endsWith(s, len, "????") ||
-        endsWith(s, len, "????") ||
-        endsWith(s, len, "????") ||
-        endsWith(s, len, "????")))
-      return len - 4;
-    
-    if (len > 3 && (endsWith(s, len, "???") ||
-        endsWith(s, len, "???") ||
-        endsWith(s, len, "???") ||
-        endsWith(s, len, "???") ||
-        endsWith(s, len, "???") ||
-        endsWith(s, len, "???")))
-      return len - 3;
-    
-    if (len > 2 && (endsWith(s, len, "??") ||
-        endsWith(s, len, "??") ||
-        endsWith(s, len, "??") ||
-        endsWith(s, len, "??") ||
-        endsWith(s, len, "??") ||
-        endsWith(s, len, "??") ||
-        endsWith(s, len, "??") ||
-        endsWith(s, len, "??") ||
-        endsWith(s, len, "??") ||
-        endsWith(s, len, "??") ||
-        endsWith(s, len, "??")))
-      return len - 2;
-    
-    if (len > 1 && endsWithVowel(s, len))
-      return len - 1;
-
-    return len;
-  }
-  
-  private int rule22(char s[], int len) {
-    if (endsWith(s, len, "?????") ||
-        endsWith(s, len, "?????"))
-      return len - 5;
-    
-    if (endsWith(s, len, "????") ||
-        endsWith(s, len, "????") ||
-        endsWith(s, len, "????") ||
-        endsWith(s, len, "????") ||
-        endsWith(s, len, "????") ||
-        endsWith(s, len, "????"))
-      return len - 4;
-
-    return len;
-  }
-
-  private boolean endsWith(char s[], int len, String suffix) {
-    final int suffixLen = suffix.length();
-    if (suffixLen > len)
-      return false;
-    for (int i = suffixLen - 1; i >= 0; i--)
-      if (s[len -(suffixLen - i)] != suffix.charAt(i))
-        return false;
-    
-    return true;
-  }
-  
-  private boolean endsWithVowel(char s[], int len) {
-    if (len == 0)
-      return false;
-    switch(s[len - 1]) {
-      case '?':
-      case '?':
-      case '?':
-      case '?':
-      case '?':
-      case '?':
-      case '?':
-        return true;
-      default:
-        return false;
-    }
-  }
-  
-  private boolean endsWithVowelNoY(char s[], int len) {
-    if (len == 0)
-      return false;
-    switch(s[len - 1]) {
-      case '?':
-      case '?':
-      case '?':
-      case '?':
-      case '?':
-      case '?':
-        return true;
-      default:
-        return false;
-    }
   }
 }
 

@@ -1,2634 +1,2751 @@
 /*
- * Copyright 2003-2005 by Paulo Soares.
- *
- * The contents of this file are subject to the Mozilla Public License Version 1.1
- * (the "License"); you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at http://www.mozilla.org/MPL/
- *
- * Software distributed under the License is distributed on an "AS IS" basis,
- * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
- * for the specific language governing rights and limitations under the License.
- *
- * The Original Code is 'iText, a free JAVA-PDF library'.
- *
- * The Initial Developer of the Original Code is Bruno Lowagie. Portions created by
- * the Initial Developer are Copyright (C) 1999, 2000, 2001, 2002 by Bruno Lowagie.
- * All Rights Reserved.
- * Co-Developer of the code is Paulo Soares. Portions created by the Co-Developer
- * are Copyright (C) 2000, 2001, 2002 by Paulo Soares. All Rights Reserved.
- *
- * Contributor(s): all the names of the contributors are added in the source code
- * where applicable.
- *
- * Alternatively, the contents of this file may be used under the terms of the
- * LGPL license (the "GNU LIBRARY GENERAL PUBLIC LICENSE"), in which case the
- * provisions of LGPL are applicable instead of those above.  If you wish to
- * allow use of your version of this file only under the terms of the LGPL
- * License and not to allow others to use your version of this file under
- * the MPL, indicate your decision by deleting the provisions above and
- * replace them with the notice and other provisions required by the LGPL.
- * If you do not delete the provisions above, a recipient may use your version
- * of this file under either the MPL or the GNU LIBRARY GENERAL PUBLIC LICENSE.
- *
- * This library is free software; you can redistribute it and/or modify it
- * under the terms of the MPL as stated above or under the terms of the GNU
- * Library General Public License as published by the Free Software Foundation;
- * either version 2 of the License, or any later version.
- *
- * This library is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE. See the GNU Library general Public License for more
- * details.
- *
- * If you didn't download this code from the following link, you should check if
- * you aren't using an obsolete version:
- * http://www.lowagie.com/iText/
- */
-package com.lowagie.text.pdf;
+  (c) Copyright 2003, 2004, 2005, 2006, 2007, 2008, 2009 Hewlett-Packard Development Company, LP
+  [See end of file]
+*/
 
-import java.awt.Color;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import com.lowagie.text.error_messages.MessageLocalization;
+package com.hp.hpl.jena.db.impl;
 
-import org.w3c.dom.Node;
+import java.sql.*;
+import java.util.*;
+import java.util.zip.CRC32;
+import java.io.UnsupportedEncodingException;
+import java.lang.Thread;
 
-import com.lowagie.text.DocumentException;
-import com.lowagie.text.Element;
-import com.lowagie.text.ExceptionConverter;
-import com.lowagie.text.Image;
-import com.lowagie.text.Rectangle;
-import com.lowagie.text.pdf.codec.Base64;
 
+
+import com.hp.hpl.jena.datatypes.RDFDatatype;
+import com.hp.hpl.jena.datatypes.TypeMapper;
+import com.hp.hpl.jena.db.GraphRDB;
+import com.hp.hpl.jena.db.IDBConnection;
+import com.hp.hpl.jena.db.RDFRDBException;
+import com.hp.hpl.jena.graph.*;
+import com.hp.hpl.jena.graph.query.ExpressionFunctionURIs; 
+
+import com.hp.hpl.jena.rdf.model.AnonId;
+import com.hp.hpl.jena.shared.*;
+
+import com.hp.hpl.jena.vocabulary.RDF;
+import com.hp.hpl.jena.vocabulary.DB;
+
+import org.apache.xerces.util.XMLChar;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+//=======================================================================
 /**
- * Query and change fields in existing documents either by method
- * calls or by FDF merging.
- * 
- * @author Paulo Soares (psoares@consiste.pt)
- */
-public class AcroFields {
+* Base database driver for implementing SpecializedGraphs.
+* Different drivers are needed for different databases and different
+* layout schemes.
+* <p>
+* This driver is a base implemention from which database-specific
+* drivers can inherit. It is not generic in the sense that it will work
+* on any minimal SQL store and so should be treated as if it were
+* an abstract class.
+* <p>The SQL statements which implement each of the functions are
+* loaded in a separate file etc/[layout]_[database].sql from the classpath.
+*
+* @author hkuno modification of Jena1 code by Dave Reynolds (der)
+* @version $Revision: 1.1 $ on $Date: 2009/06/29 08:55:37 $
+*/
 
-    PdfReader reader;
-    PdfWriter writer;
-    HashMap fields;
-    private int topFirst;
-    private HashMap sigNames;
-    private boolean append;
-    public static final int DA_FONT = 0;
-    public static final int DA_SIZE = 1;
-    public static final int DA_COLOR = 2;
-    private HashMap extensionFonts = new HashMap();
-    private XfaForm xfa;
+public abstract class DriverRDB implements IRDBDriver {
+
+//=======================================================================
+// Cutomization variables
+// =======================================================================
+   /**
+    * This Graph's db properties
+    */
+   protected DBPropDatabase m_dbProps;
     
-    /**
-     * A field type invalid or not found.
-     */
-    public static final int FIELD_TYPE_NONE = 0;
+   /**
+   * Name of this class's PSet_TripleStore_XXX class
+   */
+  protected String m_psetClassName;
+
+  /**
+  * Name of this class's PSet_TripleStore_XXX class
+  */
+ protected String m_psetReifierClassName;
+
+   /**
+	* Cached name of this class's SpecializedGraph_XXX class
+	*/
+   protected String m_lsetClassName;
+   
+   /**
+	* Cached name of this class's SpecializedGraphReifer_XXX class
+	*/
+   protected String m_lsetReifierClassName;
+   
+   /** The class name of the database driver (e.g. jdbc.sql.class)*/
+   protected  String DRIVER_NAME;     
+   // Dummy - needs replacing when instantiated?
+
+   /** The name of the database type this driver supports */
+   protected String DATABASE_TYPE;
+
+   /** The maximum size of index key (or a component of a key) */
+   protected int INDEX_KEY_LENGTH;
+
+   /** The maximum possible value for INDEX_KEY_LENGTH (db-dependent) */
+   protected int INDEX_KEY_LENGTH_MAX;
+
+   /** true if graphs using this database instance supports transactions.
+    * this is a user settable parameter. the underlying db engine may support
+    * transactions but an application may prefer to run without transactions
+    * for better performance. this can only be set before the db is formatted.
+    */
+   protected boolean IS_XACT_DB;
+
+   
+   protected boolean STRINGS_TRIMMED;
+   /** true if the database engine will trim trailing spaces in strings. to
+    *  prevent this, append EOS to strings that should not be trimmed.
+    */
+   
+   protected String EOS = "";
+   protected char	EOS_CHAR = ':';
+   protected int	EOS_LEN = 0;
+   /** EOS is appended to most RDB strings to deal with string trimming. if
+    *  STRINGS_TRIMMED is false, EOS is null. otherwise, EOS is EOS_CHAR.
+    *  EOS_LEN is the length of EOS (0 or 1).
+    */
+   
+   protected char	QUOTE_CHAR = '\"';
+   /** the quote character used to delimit characters and strings.
+    */
+   
+   /**
+    * Indicates whether search pattern used to select system objects by name should be upper-case.
+    */
+   protected  boolean DB_NAMES_TO_UPPER = false;
+  
+
+   /** true if URI's are to be compressed by storing prefixes (an approximation
+    *  of a namespace) in the JENA_PREFIX table. note that "short" prefixes are
+    *  not stored, i.e., the prefix length not more than URI_COMPRESS_LENGTH.
+    */
+   protected boolean URI_COMPRESS;
+
+   
+   protected int URI_COMPRESS_LENGTH = 100;
+   /** if URI_COMPRESS is true, compress prefixes that are longer than this.
+
+   /** The maximum size of an object that can be stored in a Statement table */
+   protected int LONG_OBJECT_LENGTH;
+   
+   /** The maximum possible value for LONG_OBJECT_LENGTH (db-dependent) */
+   protected int LONG_OBJECT_LENGTH_MAX;
+
+   /** The SQL type to use for storing ids (compatible with wrapDBID) */
+   protected String ID_SQL_TYPE;
+   
+   /** Set to true if the insert operations already check for duplications */
+   protected boolean SKIP_DUPLICATE_CHECK;
+
+   /** Set to true if IDs are allocated prior to insert */
+   protected boolean PRE_ALLOCATE_ID;
+	
+   /** The name of the sql definition file for this database/layout combo */
+   protected String SQL_FILE;
+   
+   /** The name of the sql definition file for this database/layout combo */
+   protected String DEFAULT_SQL_FILE = "etc/generic_generic.sql";
+      
+   
+// =======================================================================
+//	Common variables
+// =======================================================================
+   /**
+	* Holds prefix for names of Jena database tables.
+	*/
+   protected String TABLE_NAME_PREFIX = "jena_";
+   
+   /**
+	* Holds maximum length of table and index names in database.
+	*/
+   protected int TABLE_NAME_LENGTH_MAX;
+      
+   /** Suffixes for asserted and reified table names. */
+   protected String STMT_TABLE_NAME_SUFFIX = "_stmt";
+   protected String REIF_TABLE_NAME_SUFFIX = "_reif";
+   
+   /** Maximum number of index columns. can be changed. */
+   protected int MAXIMUM_INDEX_COLUMNS = 3;
+  
+   /** Number of required system tables. */
+   protected int SYSTEM_TABLE_CNT = 0;
+   
+   /** Names of jena system tables. */
+   public String [] SYSTEM_TABLE_NAME;
+  
+   /** Set to true to enable cache of pre-prepared statements */
+   protected boolean CACHE_PREPARED_STATEMENTS = true;
+
+   /** The name of the layout type this driver supports */
+   protected String LAYOUT_TYPE = "TripleStore";
+
+   /** Default name of the table that holds system property graph asserted statements **/
+   protected String SYSTEM_STMT_TABLE;
+   
+   /** Name of the long literal table **/
+   protected String LONG_LIT_TABLE;
+   
+   /** Name of the long URI table **/
+   protected String LONG_URI_TABLE;
+
+   /** Name of the prefix table **/
+   protected String PREFIX_TABLE;
+
+      /** Name of the graph table **/
+   protected String GRAPH_TABLE;
     
-    /**
-     * A field type.
-     */
-    public static final int FIELD_TYPE_PUSHBUTTON = 1;
+   /** Name of the mutex table **/
+   protected String MUTEX_TABLE;
     
-    /**
-     * A field type.
-     */
-    public static final int FIELD_TYPE_CHECKBOX = 2;
+	/** If not null, newly-created graphs share tables with the identified graph **/
+   protected String STORE_WITH_MODEL = null;
     
-    /**
-     * A field type.
-     */
-    public static final int FIELD_TYPE_RADIOBUTTON = 3;
-    
-    /**
-     * A field type.
-     */
-    public static final int FIELD_TYPE_TEXT = 4;
-    
-    /**
-     * A field type.
-     */
-    public static final int FIELD_TYPE_LIST = 5;
-    
-    /**
-     * A field type.
-     */
-    public static final int FIELD_TYPE_COMBO = 6;
-    
-    /**
-     * A field type.
-     */
-    public static final int FIELD_TYPE_SIGNATURE = 7;
+   /** Name of the graph holding default properties (the one's that a newly-created
+	*  graph will have by default **/
+   protected final String DEFAULT_PROPS = "JENA_DEFAULT_GRAPH_PROPERTIES";
+   
+   /** Unique numeric identifier of the graph holding default properties **/
+   protected final int DEFAULT_ID = 0;
 
-    private boolean lastWasString;
-
-    /** Holds value of property generateAppearances. */
-    private boolean generateAppearances = true;
-
-    private HashMap localFonts = new HashMap();
-
-    private float extraMarginLeft;
-    private float extraMarginTop;
-    private ArrayList substitutionFonts;
-
-    AcroFields(PdfReader reader, PdfWriter writer) {
-        this.reader = reader;
-        this.writer = writer;
-        try {
-            xfa = new XfaForm(reader);
-        }
-        catch (Exception e) {
-            throw new ExceptionConverter(e);
-        }
-        if (writer instanceof PdfStamperImp) {
-            append = ((PdfStamperImp)writer).isAppend();
-        }
-        fill();
-    }
-
-    void fill() {
-        fields = new HashMap();
-        PdfDictionary top = (PdfDictionary)PdfReader.getPdfObjectRelease(reader.getCatalog().get(PdfName.ACROFORM));
-        if (top == null)
-            return;
-        PdfArray arrfds = (PdfArray)PdfReader.getPdfObjectRelease(top.get(PdfName.FIELDS));
-        if (arrfds == null || arrfds.size() == 0)
-            return;
-        for (int k = 1; k <= reader.getNumberOfPages(); ++k) {
-            PdfDictionary page = reader.getPageNRelease(k);
-            PdfArray annots = (PdfArray)PdfReader.getPdfObjectRelease(page.get(PdfName.ANNOTS), page);
-            if (annots == null)
-                continue;
-            for (int j = 0; j < annots.size(); ++j) {
-                PdfDictionary annot = annots.getAsDict(j);
-                if (annot == null) {
-                    PdfReader.releaseLastXrefPartial(annots.getAsIndirectObject(j));
-                    continue;
-                }
-                if (!PdfName.WIDGET.equals(annot.getAsName(PdfName.SUBTYPE))) {
-                    PdfReader.releaseLastXrefPartial(annots.getAsIndirectObject(j));
-                    continue;
-                }
-                PdfDictionary widget = annot;
-                PdfDictionary dic = new PdfDictionary();
-                dic.putAll(annot);
-                String name = "";
-                PdfDictionary value = null;
-                PdfObject lastV = null;
-                while (annot != null) {
-                    dic.mergeDifferent(annot);
-                    PdfString t = annot.getAsString(PdfName.T);
-                    if (t != null)
-                        name = t.toUnicodeString() + "." + name;
-                    if (lastV == null && annot.get(PdfName.V) != null)
-                        lastV = PdfReader.getPdfObjectRelease(annot.get(PdfName.V));
-                    if (value == null &&  t != null) {
-                        value = annot;
-                        if (annot.get(PdfName.V) == null && lastV  != null)
-                            value.put(PdfName.V, lastV);
-                    }
-                    annot = annot.getAsDict(PdfName.PARENT);
-                }
-                if (name.length() > 0)
-                    name = name.substring(0, name.length() - 1);
-                Item item = (Item)fields.get(name);
-                if (item == null) {
-                    item = new Item();
-                    fields.put(name, item);
-                }
-                if (value == null)
-                    item.addValue(widget);
-                else
-                    item.addValue(value);
-                item.addWidget(widget);
-                item.addWidgetRef(annots.getAsIndirectObject(j)); // must be a reference
-                if (top != null)
-                    dic.mergeDifferent(top);
-                item.addMerged(dic);
-                item.addPage(k);
-                item.addTabOrder(j);
-            }
-        }
-        // some tools produce invisible signatures without an entry in the page annotation array
-        // look for a single level annotation
-        PdfNumber sigFlags = top.getAsNumber(PdfName.SIGFLAGS);
-        if (sigFlags == null || (sigFlags.intValue() & 1) != 1)
-            return;
-        for (int j = 0; j < arrfds.size(); ++j) {
-            PdfDictionary annot = arrfds.getAsDict(j);
-            if (annot == null) {
-                PdfReader.releaseLastXrefPartial(arrfds.getAsIndirectObject(j));
-                continue;
-            }
-            if (!PdfName.WIDGET.equals(annot.getAsName(PdfName.SUBTYPE))) {
-                PdfReader.releaseLastXrefPartial(arrfds.getAsIndirectObject(j));
-                continue;
-            }
-            PdfArray kids = (PdfArray)PdfReader.getPdfObjectRelease(annot.get(PdfName.KIDS));
-            if (kids != null)
-                continue;
-            PdfDictionary dic = new PdfDictionary();
-            dic.putAll(annot);
-            PdfString t = annot.getAsString(PdfName.T);
-            if (t == null)
-                continue;
-            String name = t.toUnicodeString();
-            if (fields.containsKey(name))
-                continue;
-            Item item = new Item();
-            fields.put(name, item);
-            item.addValue(dic);
-            item.addWidget(dic);
-            item.addWidgetRef(arrfds.getAsIndirectObject(j)); // must be a reference
-            item.addMerged(dic);
-            item.addPage(-1);
-            item.addTabOrder(-1);
-        }
-    }
-
-    /**
-     * Gets the list of appearance names. Use it to get the names allowed
-     * with radio and checkbox fields. If the /Opt key exists the values will
-     * also be included. The name 'Off' may also be valid
-     * even if not returned in the list.
-     * 
-     * @param fieldName the fully qualified field name
-     * @return the list of names or <CODE>null</CODE> if the field does not exist
-     */
-    public String[] getAppearanceStates(String fieldName) {
-        Item fd = (Item)fields.get(fieldName);
-        if (fd == null)
-            return null;
-        HashMap names = new HashMap();
-        PdfDictionary vals = fd.getValue(0);
-        PdfString stringOpt = vals.getAsString( PdfName.OPT );
-        if (stringOpt != null) {
-        	names.put(stringOpt.toUnicodeString(), null);
-        }
-        else {
-            PdfArray arrayOpt = vals.getAsArray(PdfName.OPT);
-            if (arrayOpt != null) {
-            	for (int k = 0; k < arrayOpt.size(); ++k) {
-            		PdfString valStr = arrayOpt.getAsString( k );
-            		if (valStr != null)
-            			names.put(valStr.toUnicodeString(), null);
-            	}
-            }
-        }
-        for (int k = 0; k < fd.size(); ++k) {
-            PdfDictionary dic = fd.getWidget( k );
-            dic = dic.getAsDict(PdfName.AP);
-            if (dic == null)
-                continue;
-            dic = dic.getAsDict(PdfName.N);
-            if (dic == null)
-                continue;
-            for (Iterator it = dic.getKeys().iterator(); it.hasNext();) {
-                String name = PdfName.decodeName(((PdfName)it.next()).toString());
-                names.put(name, null);
-            }
-        }
-        String out[] = new String[names.size()];
-        return (String[])names.keySet().toArray(out);
-    }
-
-    private String[] getListOption(String fieldName, int idx) {
-        Item fd = getFieldItem(fieldName);
-        if (fd == null)
-            return null;
-        PdfArray ar = fd.getMerged(0).getAsArray(PdfName.OPT);
-        if (ar == null)
-            return null;
-        String[] ret = new String[ar.size()];
-        for (int k = 0; k < ar.size(); ++k) {
-            PdfObject obj = ar.getDirectObject( k );
-            try {
-                if (obj.isArray()) {
-                    obj = ((PdfArray)obj).getDirectObject(idx);
-                }
-                if (obj.isString())
-                    ret[k] = ((PdfString)obj).toUnicodeString();
-                else
-                    ret[k] = obj.toString();
-            }
-            catch (Exception e) {
-                ret[k] = "";
-            }
-        }
-        return ret;
-    }
-
-    /**
-     * Gets the list of export option values from fields of type list or combo.
-     * If the field doesn't exist or the field type is not list or combo it will return
-     * <CODE>null</CODE>.
-     * 
-     * @param fieldName the field name
-     * @return the list of export option values from fields of type list or combo
-     */
-    public String[] getListOptionExport(String fieldName) {
-        return getListOption(fieldName, 0);
-    }
-
-    /**
-     * Gets the list of display option values from fields of type list or combo.
-     * If the field doesn't exist or the field type is not list or combo it will return
-     * <CODE>null</CODE>.
-     * 
-     * @param fieldName the field name
-     * @return the list of export option values from fields of type list or combo
-     */
-    public String[] getListOptionDisplay(String fieldName) {
-        return getListOption(fieldName, 1);
-    }
-
-    /**
-     * Sets the option list for fields of type list or combo. One of <CODE>exportValues</CODE>
-     * or <CODE>displayValues</CODE> may be <CODE>null</CODE> but not both. This method will only
-     * set the list but will not set the value or appearance. For that, calling <CODE>setField()</CODE>
-     * is required.
-     * <p>
-     * An example:
-     * <p>
-     * <PRE>
-     * PdfReader pdf = new PdfReader("input.pdf");
-     * PdfStamper stp = new PdfStamper(pdf, new FileOutputStream("output.pdf"));
-     * AcroFields af = stp.getAcroFields();
-     * af.setListOption("ComboBox", new String[]{"a", "b", "c"}, new String[]{"first", "second", "third"});
-     * af.setField("ComboBox", "b");
-     * stp.close();
-     * </PRE>
-     * 
-     * @param fieldName the field name
-     * @param exportValues the export values
-     * @param displayValues the display values
-     * @return <CODE>true</CODE> if the operation succeeded, <CODE>false</CODE> otherwise
-     */
-    public boolean setListOption(String fieldName, String[] exportValues, String[] displayValues) {
-        if (exportValues == null && displayValues == null)
-            return false;
-        if (exportValues != null && displayValues != null && exportValues.length != displayValues.length)
-            throw new IllegalArgumentException(MessageLocalization.getComposedMessage("the.export.and.the.display.array.must.have.the.same.size"));
-        int ftype = getFieldType(fieldName);
-        if (ftype != FIELD_TYPE_COMBO && ftype != FIELD_TYPE_LIST)
-            return false;
-        Item fd = (Item)fields.get(fieldName);
-        String[] sing = null;
-        if (exportValues == null && displayValues != null)
-            sing = displayValues;
-        else if (exportValues != null && displayValues == null)
-            sing = exportValues;
-        PdfArray opt = new PdfArray();
-        if (sing != null) {
-            for (int k = 0; k < sing.length; ++k)
-                opt.add(new PdfString(sing[k], PdfObject.TEXT_UNICODE));
-        }
-        else {
-            for (int k = 0; k < exportValues.length; ++k) {
-                PdfArray a = new PdfArray();
-                a.add(new PdfString(exportValues[k], PdfObject.TEXT_UNICODE));
-                a.add(new PdfString(displayValues[k], PdfObject.TEXT_UNICODE));
-                opt.add(a);
-            }
-        }
-        fd.writeToAll( PdfName.OPT, opt, Item.WRITE_VALUE | Item.WRITE_MERGED );
-        return true;
-    }
-
-    /**
-     * Gets the field type. The type can be one of: <CODE>FIELD_TYPE_PUSHBUTTON</CODE>,
-     * <CODE>FIELD_TYPE_CHECKBOX</CODE>, <CODE>FIELD_TYPE_RADIOBUTTON</CODE>,
-     * <CODE>FIELD_TYPE_TEXT</CODE>, <CODE>FIELD_TYPE_LIST</CODE>,
-     * <CODE>FIELD_TYPE_COMBO</CODE> or <CODE>FIELD_TYPE_SIGNATURE</CODE>.
-     * <p>
-     * If the field does not exist or is invalid it returns
-     * <CODE>FIELD_TYPE_NONE</CODE>.
-     * 
-     * @param fieldName the field name
-     * @return the field type
-     */
-    public int getFieldType(String fieldName) {
-        Item fd = getFieldItem(fieldName);
-        if (fd == null)
-            return FIELD_TYPE_NONE;
-        PdfDictionary merged = fd.getMerged( 0 );
-        PdfName type = merged.getAsName(PdfName.FT);
-        if (type == null)
-            return FIELD_TYPE_NONE;
-        int ff = 0;
-        PdfNumber ffo = merged.getAsNumber(PdfName.FF);
-        if (ffo != null) {
-            ff = ffo.intValue();
-        }
-        if (PdfName.BTN.equals(type)) {
-            if ((ff & PdfFormField.FF_PUSHBUTTON) != 0)
-                return FIELD_TYPE_PUSHBUTTON;
-            if ((ff & PdfFormField.FF_RADIO) != 0)
-                return FIELD_TYPE_RADIOBUTTON;
-            else
-                return FIELD_TYPE_CHECKBOX;
-        }
-        else if (PdfName.TX.equals(type)) {
-            return FIELD_TYPE_TEXT;
-        }
-        else if (PdfName.CH.equals(type)) {
-            if ((ff & PdfFormField.FF_COMBO) != 0)
-                return FIELD_TYPE_COMBO;
-            else
-                return FIELD_TYPE_LIST;
-        }
-        else if (PdfName.SIG.equals(type)) {
-            return FIELD_TYPE_SIGNATURE;
-        }
-        return FIELD_TYPE_NONE;
-    }
-
-    /**
-     * Export the fields as a FDF.
-     * 
-     * @param writer the FDF writer
-     */
-    public void exportAsFdf(FdfWriter writer) {
-        for (Iterator it = fields.entrySet().iterator(); it.hasNext();) {
-            Map.Entry entry = (Map.Entry)it.next();
-            Item item = (Item)entry.getValue();
-            String name = (String)entry.getKey();
-            PdfObject v = item.getMerged(0).get(PdfName.V);
-            if (v == null)
-                continue;
-            String value = getField(name);
-            if (lastWasString)
-                writer.setFieldAsString(name, value);
-            else
-                writer.setFieldAsName(name, value);
-        }
-    }
-
-    /**
-     * Renames a field. Only the last part of the name can be renamed. For example,
-     * if the original field is "ab.cd.ef" only the "ef" part can be renamed.
-     * 
-     * @param oldName the old field name
-     * @param newName the new field name
-     * @return <CODE>true</CODE> if the renaming was successful, <CODE>false</CODE>
-     * otherwise
-     */
-    public boolean renameField(String oldName, String newName) {
-        int idx1 = oldName.lastIndexOf('.') + 1;
-        int idx2 = newName.lastIndexOf('.') + 1;
-        if (idx1 != idx2)
-            return false;
-        if (!oldName.substring(0, idx1).equals(newName.substring(0, idx2)))
-            return false;
-        if (fields.containsKey(newName))
-            return false;
-        Item item = (Item)fields.get(oldName);
-        if (item == null)
-            return false;
-        newName = newName.substring(idx2);
-        PdfString ss = new PdfString(newName, PdfObject.TEXT_UNICODE);
-
-        item.writeToAll( PdfName.T, ss, Item.WRITE_VALUE | Item.WRITE_MERGED);
-        item.markUsed( this, Item.WRITE_VALUE );
-
-        fields.remove(oldName);
-        fields.put(newName, item);
-
-        return true;
-    }
-
-    public static Object[] splitDAelements(String da) {
-        try {
-            PRTokeniser tk = new PRTokeniser(PdfEncodings.convertToBytes(da, null));
-            ArrayList stack = new ArrayList();
-            Object ret[] = new Object[3];
-            while (tk.nextToken()) {
-                if (tk.getTokenType() == PRTokeniser.TK_COMMENT)
-                    continue;
-                if (tk.getTokenType() == PRTokeniser.TK_OTHER) {
-                    String operator = tk.getStringValue();
-                    if (operator.equals("Tf")) {
-                        if (stack.size() >= 2) {
-                            ret[DA_FONT] = stack.get(stack.size() - 2);
-                            ret[DA_SIZE] = new Float((String)stack.get(stack.size() - 1));
-                        }
-                    }
-                    else if (operator.equals("g")) {
-                        if (stack.size() >= 1) {
-                            float gray = new Float((String)stack.get(stack.size() - 1)).floatValue();
-                            if (gray != 0)
-                                ret[DA_COLOR] = new GrayColor(gray);
-                        }
-                    }
-                    else if (operator.equals("rg")) {
-                        if (stack.size() >= 3) {
-                            float red = new Float((String)stack.get(stack.size() - 3)).floatValue();
-                            float green = new Float((String)stack.get(stack.size() - 2)).floatValue();
-                            float blue = new Float((String)stack.get(stack.size() - 1)).floatValue();
-                            ret[DA_COLOR] = new Color(red, green, blue);
-                        }
-                    }
-                    else if (operator.equals("k")) {
-                        if (stack.size() >= 4) {
-                            float cyan = new Float((String)stack.get(stack.size() - 4)).floatValue();
-                            float magenta = new Float((String)stack.get(stack.size() - 3)).floatValue();
-                            float yellow = new Float((String)stack.get(stack.size() - 2)).floatValue();
-                            float black = new Float((String)stack.get(stack.size() - 1)).floatValue();
-                            ret[DA_COLOR] = new CMYKColor(cyan, magenta, yellow, black);
-                        }
-                    }
-                    stack.clear();
-                }
-                else
-                    stack.add(tk.getStringValue());
-            }
-            return ret;
-        }
-        catch (IOException ioe) {
-            throw new ExceptionConverter(ioe);
-        }
-    }
-
-    public void decodeGenericDictionary(PdfDictionary merged, BaseField tx) throws IOException, DocumentException {
-        int flags = 0;
-        // the text size and color
-        PdfString da = merged.getAsString(PdfName.DA);
-        if (da != null) {
-            Object dab[] = splitDAelements(da.toUnicodeString());
-            if (dab[DA_SIZE] != null)
-                tx.setFontSize(((Float)dab[DA_SIZE]).floatValue());
-            if (dab[DA_COLOR] != null)
-                tx.setTextColor((Color)dab[DA_COLOR]);
-            if (dab[DA_FONT] != null) {
-                PdfDictionary font = merged.getAsDict(PdfName.DR);
-                if (font != null) {
-                    font = font.getAsDict(PdfName.FONT);
-                    if (font != null) {
-                        PdfObject po = font.get(new PdfName((String)dab[DA_FONT]));
-                        if (po != null && po.type() == PdfObject.INDIRECT) {
-                            PRIndirectReference por = (PRIndirectReference)po;
-                            BaseFont bp = new DocumentFont((PRIndirectReference)po);
-                            tx.setFont(bp);
-                            Integer porkey = new Integer(por.getNumber());
-                            BaseFont porf = (BaseFont)extensionFonts.get(porkey);
-                            if (porf == null) {
-                                if (!extensionFonts.containsKey(porkey)) {
-                                    PdfDictionary fo = (PdfDictionary)PdfReader.getPdfObject(po);
-                                    PdfDictionary fd = fo.getAsDict(PdfName.FONTDESCRIPTOR);
-                                    if (fd != null) {
-                                        PRStream prs = (PRStream)PdfReader.getPdfObject(fd.get(PdfName.FONTFILE2));
-                                        if (prs == null)
-                                            prs = (PRStream)PdfReader.getPdfObject(fd.get(PdfName.FONTFILE3));
-                                        if (prs == null) {
-                                            extensionFonts.put(porkey, null);
-                                        }
-                                        else {
-                                            try {
-                                                porf = BaseFont.createFont("font.ttf", BaseFont.IDENTITY_H, true, false, PdfReader.getStreamBytes(prs), null);
-                                            }
-                                            catch (Exception e) {
-                                            }
-                                            extensionFonts.put(porkey, porf);
-                                        }
-                                    }
-                                }
-                            }
-                            if (tx instanceof TextField)
-                                ((TextField)tx).setExtensionFont(porf);
-                        }
-                        else {
-                            BaseFont bf = (BaseFont)localFonts.get(dab[DA_FONT]);
-                            if (bf == null) {
-                                String fn[] = (String[])stdFieldFontNames.get(dab[DA_FONT]);
-                                if (fn != null) {
-                                    try {
-                                        String enc = "winansi";
-                                        if (fn.length > 1)
-                                            enc = fn[1];
-                                        bf = BaseFont.createFont(fn[0], enc, false);
-                                        tx.setFont(bf);
-                                    }
-                                    catch (Exception e) {
-                                        // empty
-                                    }
-                                }
-                            }
-                            else
-                                tx.setFont(bf);
-                        }
-                    }
-                }
-            }
-        }
-        //rotation, border and background color
-        PdfDictionary mk = merged.getAsDict(PdfName.MK);
-        if (mk != null) {
-            PdfArray ar = mk.getAsArray(PdfName.BC);
-            Color border = getMKColor(ar);
-            tx.setBorderColor(border);
-            if (border != null)
-                tx.setBorderWidth(1);
-            ar = mk.getAsArray(PdfName.BG);
-            tx.setBackgroundColor(getMKColor(ar));
-            PdfNumber rotation = mk.getAsNumber(PdfName.R);
-            if (rotation != null)
-                tx.setRotation(rotation.intValue());
-        }
-        //flags
-        PdfNumber nfl = merged.getAsNumber(PdfName.F);
-        flags = 0;
-        tx.setVisibility(BaseField.VISIBLE_BUT_DOES_NOT_PRINT);
-        if (nfl != null) {
-            flags = nfl.intValue();
-            if ((flags & PdfFormField.FLAGS_PRINT) != 0 && (flags & PdfFormField.FLAGS_HIDDEN) != 0)
-                tx.setVisibility(BaseField.HIDDEN);
-            else if ((flags & PdfFormField.FLAGS_PRINT) != 0 && (flags & PdfFormField.FLAGS_NOVIEW) != 0)
-                tx.setVisibility(BaseField.HIDDEN_BUT_PRINTABLE);
-            else if ((flags & PdfFormField.FLAGS_PRINT) != 0)
-                tx.setVisibility(BaseField.VISIBLE);
-        }
-        //multiline
-        nfl = merged.getAsNumber(PdfName.FF);
-        flags = 0;
-        if (nfl != null)
-            flags = nfl.intValue();
-        tx.setOptions(flags);
-        if ((flags & PdfFormField.FF_COMB) != 0) {
-            PdfNumber maxLen = merged.getAsNumber(PdfName.MAXLEN);
-            int len = 0;
-            if (maxLen != null)
-                len = maxLen.intValue();
-            tx.setMaxCharacterLength(len);
-        }
-        //alignment
-        nfl = merged.getAsNumber(PdfName.Q);
-        if (nfl != null) {
-            if (nfl.intValue() == PdfFormField.Q_CENTER)
-                tx.setAlignment(Element.ALIGN_CENTER);
-            else if (nfl.intValue() == PdfFormField.Q_RIGHT)
-                tx.setAlignment(Element.ALIGN_RIGHT);
-        }
-        //border styles
-        PdfDictionary bs = merged.getAsDict(PdfName.BS);
-        if (bs != null) {
-            PdfNumber w = bs.getAsNumber(PdfName.W);
-            if (w != null)
-                tx.setBorderWidth(w.floatValue());
-            PdfName s = bs.getAsName(PdfName.S);
-            if (PdfName.D.equals(s))
-                tx.setBorderStyle(PdfBorderDictionary.STYLE_DASHED);
-            else if (PdfName.B.equals(s))
-                tx.setBorderStyle(PdfBorderDictionary.STYLE_BEVELED);
-            else if (PdfName.I.equals(s))
-                tx.setBorderStyle(PdfBorderDictionary.STYLE_INSET);
-            else if (PdfName.U.equals(s))
-                tx.setBorderStyle(PdfBorderDictionary.STYLE_UNDERLINE);
-        }
-        else {
-            PdfArray bd = merged.getAsArray(PdfName.BORDER);
-            if (bd != null) {
-                if (bd.size() >= 3)
-                    tx.setBorderWidth(bd.getAsNumber(2).floatValue());
-                if (bd.size() >= 4)
-                    tx.setBorderStyle(PdfBorderDictionary.STYLE_DASHED);
-            }
-        }
-    }
-
-    PdfAppearance getAppearance(PdfDictionary merged, String values[], String fieldName) throws IOException, DocumentException {
-        topFirst = 0;
-        String text = (values.length > 0) ? values[0] : null;
         
-        TextField tx = null;
-        if (fieldCache == null || !fieldCache.containsKey(fieldName)) {
-            tx = new TextField(writer, null, null);
-            tx.setExtraMargin(extraMarginLeft, extraMarginTop);
-            tx.setBorderWidth(0);
-            tx.setSubstitutionFonts(substitutionFonts);
-            decodeGenericDictionary(merged, tx);
-            //rect
-            PdfArray rect = merged.getAsArray(PdfName.RECT);
-            Rectangle box = PdfReader.getNormalizedRectangle(rect);
-            if (tx.getRotation() == 90 || tx.getRotation() == 270)
-                box = box.rotate();
-            tx.setBox(box);
-            if (fieldCache != null)
-                fieldCache.put(fieldName, tx);
-        }
-        else {
-            tx = (TextField)fieldCache.get(fieldName);
-            tx.setWriter(writer);
-        }
-        PdfName fieldType = merged.getAsName(PdfName.FT);
-        if (PdfName.TX.equals(fieldType)) {
-            if (values.length > 0 && values[0] != null) {
-                tx.setText(values[0]);
-            }
-            return tx.getAppearance();
-        }
-        if (!PdfName.CH.equals(fieldType))
-            throw new DocumentException(MessageLocalization.getComposedMessage("an.appearance.was.requested.without.a.variable.text.field"));
-        PdfArray opt = merged.getAsArray(PdfName.OPT);
-        int flags = 0;
-        PdfNumber nfl = merged.getAsNumber(PdfName.FF);
-        if (nfl != null)
-            flags = nfl.intValue();
-        if ((flags & PdfFormField.FF_COMBO) != 0 && opt == null) {
-            tx.setText(text);
-            return tx.getAppearance();
-        }
-        if (opt != null) {
-            String choices[] = new String[opt.size()];
-            String choicesExp[] = new String[opt.size()];
-            for (int k = 0; k < opt.size(); ++k) {
-                PdfObject obj = opt.getPdfObject(k);
-                if (obj.isString()) {
-                    choices[k] = choicesExp[k] = ((PdfString)obj).toUnicodeString();
-                }
-                else {
-                    PdfArray a = (PdfArray) obj;
-                    choicesExp[k] = a.getAsString(0).toUnicodeString();
-                    choices[k] = a.getAsString(1).toUnicodeString();
-                }
-            }
-            if ((flags & PdfFormField.FF_COMBO) != 0) {
-                for (int k = 0; k < choices.length; ++k) {
-                    if (text.equals(choicesExp[k])) {
-                        text = choices[k];
-                        break;
-                    }
-                }
-                tx.setText(text);
-                return tx.getAppearance();
-            }
-            ArrayList indexes = new ArrayList();
-            for (int k = 0; k < choicesExp.length; ++k) {
-            	for (int j = 0; j < values.length; ++j) {
-            		String val = values[j];
-            		if (val != null && val.equals(choicesExp[k])) {
-            			indexes.add( new Integer( k ) );
-            			break;
-            		}
-            	}
-            }
-            tx.setChoices(choices);
-            tx.setChoiceExports(choicesExp);
-            tx.setChoiceSelections( indexes );
-        }
-        PdfAppearance app = tx.getListAppearance();
-        topFirst = tx.getTopFirst();
-        return app;
-    }
+   /** Driver version number */
+   protected final String VERSION = "2.0alpha";
+   
+   /** Database layout version */
+   protected String LAYOUT_VERSION = "2.0";
+   
+   protected static Logger logger = LoggerFactory.getLogger( DriverRDB.class );
+    
+// =======================================================================
+//	Instance variables
+// =======================================================================
 
-    PdfAppearance getAppearance(PdfDictionary merged, String text, String fieldName) throws IOException, DocumentException {
-      String valueArr[] = new String[1];
-      valueArr[0] = text;
-      return getAppearance( merged, valueArr, fieldName );
-    }
+	/**
+	 * Instance of SQLCache used by Driver for hard-coded db commands
+	 */
+	protected SQLCache m_sql = null;
 
-    Color getMKColor(PdfArray ar) {
-        if (ar == null)
-            return null;
-        switch (ar.size()) {
-            case 1:
-                return new GrayColor(ar.getAsNumber(0).floatValue());
-            case 3:
-                return new Color(ExtendedColor.normalize(ar.getAsNumber(0).floatValue()), ExtendedColor.normalize(ar.getAsNumber(1).floatValue()), ExtendedColor.normalize(ar.getAsNumber(2).floatValue()));
-            case 4:
-                return new CMYKColor(ar.getAsNumber(0).floatValue(), ar.getAsNumber(1).floatValue(), ar.getAsNumber(2).floatValue(), ar.getAsNumber(3).floatValue());
-            default:
-                return null;
-        }
-    }
+    /** Cache a reference to the system property graph (java) **/
+    protected SpecializedGraph m_sysProperties = null;
+    
+    protected IDBConnection m_dbcon = null;
+    
+    protected LRUCache<DBIDInt, String> prefixCache = null;
+    
+    public static final int PREFIX_CACHE_SIZE = 50;
+    
+    //===================================
+    // for transaction support
+    //===================================
+    
+    
+    // caches whether or not underlying connection supports transactions
+    private Boolean m_transactionsSupported;
+    
+	/** flag to indicate that there is a transaction active on the associated connection */
+	private boolean inTransaction = false;
+
+
+
+//	=======================================================================
+//	 Constructor
+//	=======================================================================
+
 
     /**
-     * Gets the field value.
-     * 
-     * @param name the fully qualified field name
-     * @return the field value
+     * Create a bare instance of the driver. It is not functional until a
+     * database connection has been supplied via setConnection.
      */
-    public String getField(String name) {
-        if (xfa.isXfaPresent()) {
-            name = xfa.findFieldName(name, this);
-            if (name == null)
-                return null;
-            name = XfaForm.Xml2Som.getShortName(name);
-            return XfaForm.getNodeText(xfa.findDatasetsNode(name));
-        }
-        Item item = (Item)fields.get(name);
-        if (item == null)
-            return null;
-        lastWasString = false;
-        PdfDictionary mergedDict = item.getMerged( 0 );
+    public DriverRDB() {
+    }
+    
+//	=======================================================================
+//	 Methods
+//	=======================================================================
+	
+	/**
+	 * Return the connection
+	 */
+	public IDBConnection getConnection() {
+		return m_dbcon;
+	}
+	
+	/**
+	 * Return the specialized graph used to store system properties.
+	 * (Constuct a new one if necessary). if the database is not
+	 * properly formatted, then if doInit is true, the database will
+	 * be formatted, else null is returned and the (unformatted
+	 * database is unchanged).
+	 */
+	public SpecializedGraph getSystemSpecializedGraph(boolean doInit) {
 
-        // Jose A. Rodriguez posted a fix to the mailing list (May 11, 2009)
-        // explaining that the value can also be a stream value
-        // the fix was made against an old iText version. Bruno adapted it.
-        PdfObject v = PdfReader.getPdfObject(mergedDict.get(PdfName.V));
-        if (v == null)
-        	return "";
-        if (v instanceof PRStream) {
-                byte[] valBytes;
-				try {
-					valBytes = PdfReader.getStreamBytes((PRStream)v);
-	                return new String(valBytes);
-				} catch (IOException e) {
-					throw new ExceptionConverter(e);
+		SpecializedGraph res = null;
+		
+		if (m_sysProperties != null) {
+			return m_sysProperties;
+		}
+
+		if (!isDBFormatOK()) {
+			// another thread could be formatting database
+			// so get the mutex and try again
+			lockDB();
+			if (!isDBFormatOK()) {
+				if (doInit) {
+					try {
+						// Format the DB
+						// throw new JenaException("The database is not
+						// formatted.\n");
+						doCleanDB(false);
+						prefixCache = new LRUCache<DBIDInt, String>(PREFIX_CACHE_SIZE); 
+						res = formatAndConstructSystemSpecializedGraph();
+					} catch (Exception e) {
+						unlockDB();
+						// We see an error during format testing, might be
+						// a dead connection rather than an unformated
+						// database so abort
+						throw new JenaException(
+						"The database appears to be unformatted or corrupted and\n"
+						+ "an attempt to automatically format the database has failed\n", e);
+					}
 				}
-        }
-        
-        PdfName type = mergedDict.getAsName(PdfName.FT);
-        if (PdfName.BTN.equals(type)) {
-            PdfNumber ff = mergedDict.getAsNumber(PdfName.FF);
-            int flags = 0;
-            if (ff != null)
-                flags = ff.intValue();
-            if ((flags & PdfFormField.FF_PUSHBUTTON) != 0)
-                return "";
-            String value = "";
-            if (v instanceof PdfName)
-                value = PdfName.decodeName(v.toString());
-            else if (v instanceof PdfString)
-                value = ((PdfString)v).toUnicodeString();
-            PdfArray opts = item.getValue(0).getAsArray(PdfName.OPT);
-            if (opts != null) {
-                int idx = 0;
-                try {
-                    idx = Integer.parseInt(value);
-                    PdfString ps = opts.getAsString(idx);
-                    value = ps.toUnicodeString();
-                    lastWasString = true;
-                }
-                catch (Exception e) {
-                }
-            }
-            return value;
-        }
-        if (v instanceof PdfString) {
-            lastWasString = true;
-            return ((PdfString)v).toUnicodeString();
-        } else if (v instanceof PdfName) {
-            return PdfName.decodeName(v.toString());
-        } else
-            return "";
-    }
+				unlockDB();
+				return res;
+			}
+			// after second try, DB is found to be correctly formatted.
+			unlockDB();
+		}
 
-    /**
-     * Gets the field values of a Choice field.
-     * 
-     * @param name the fully qualified field name
-     * @return the field value
-     * @since 2.1.3
-     */
-    public String[] getListSelection(String name) {
-    	String[] ret;
-    	String s = getField(name);
-    	if (s == null) {
-    		ret = new String[]{};
-    	}
-    	else {
-    		ret = new String[]{ s };
-    	}
-        Item item = (Item)fields.get(name);
-        if (item == null)
-            return ret;
-        //PdfName type = (PdfName)PdfReader.getPdfObject(((PdfDictionary)item.merged.get(0)).get(PdfName.FT));
-        //if (!PdfName.CH.equals(type)) {
-        //	return ret;
-        //}
-        PdfArray values = item.getMerged(0).getAsArray(PdfName.I);
-        if (values == null)
-            return ret;
-        ret = new String[values.size()];
-        String[] options = getListOptionExport(name);
-        PdfNumber n;
-        int idx = 0;
-        for (Iterator i = values.listIterator(); i.hasNext(); ) {
-        	n = (PdfNumber)i.next();
-        	ret[idx++] = options[n.intValue()];
-        }
-        return ret;
-    }
+		prefixCache = new LRUCache<DBIDInt, String>(PREFIX_CACHE_SIZE);
+		getDbInitTablesParams(); //this call is a hack. it's needed because
+		// it has the side effect of initializing some vars (e.g., EOS).
+		IPSet pSet = createIPSetInstanceFromName(m_psetClassName,
+				SYSTEM_STMT_TABLE);
+		m_sysProperties = createLSetInstanceFromName(m_lsetClassName, pSet,
+				DEFAULT_ID);
+		m_dbProps = new DBPropDatabase(m_sysProperties);
+		
+		// need to get initial values for encoding parameters
+		String longObjLen = m_dbProps.getInitLongObjectLength();
+		String indexKeyLen = m_dbProps.getInitIndexKeyLength();
+		String compURI = m_dbProps.getInitDoCompressURI();
+		String compURILen = m_dbProps.getInitCompressURILength();
 
+		if (longObjLen == null)
+			throwBadFormat("long object length");
+		else
+			LONG_OBJECT_LENGTH = Integer.parseInt(longObjLen);
+		if (indexKeyLen == null)
+			throwBadFormat("index key length");
+		else
+			INDEX_KEY_LENGTH = Integer.parseInt(indexKeyLen);
+		if (compURI == null)
+			throwBadFormat("compress URIs");
+		else
+			URI_COMPRESS = Boolean.valueOf(compURI).booleanValue();
+		if (compURILen == null)
+			throwBadFormat("URI compress length");
+		else
+			URI_COMPRESS_LENGTH = Integer.parseInt(compURILen);
 
-    /**
-     * Sets a field property. Valid property names are:
-     * <p>
-     * <ul>
-     * <li>textfont - sets the text font. The value for this entry is a <CODE>BaseFont</CODE>.<br>
-     * <li>textcolor - sets the text color. The value for this entry is a <CODE>java.awt.Color</CODE>.<br>
-     * <li>textsize - sets the text size. The value for this entry is a <CODE>Float</CODE>.
-     * <li>bgcolor - sets the background color. The value for this entry is a <CODE>java.awt.Color</CODE>.
-     *     If <code>null</code> removes the background.<br>
-     * <li>bordercolor - sets the border color. The value for this entry is a <CODE>java.awt.Color</CODE>.
-     *     If <code>null</code> removes the border.<br>
-     * </ul>
-     * 
-     * @param field the field name
-     * @param name the property name
-     * @param value the property value
-     * @param inst an array of <CODE>int</CODE> indexing into <CODE>AcroField.Item.merged</CODE> elements to process.
-     * Set to <CODE>null</CODE> to process all
-     * @return <CODE>true</CODE> if the property exists, <CODE>false</CODE> otherwise
-     */
-    public boolean setFieldProperty(String field, String name, Object value, int inst[]) {
-        if (writer == null)
-            throw new RuntimeException(MessageLocalization.getComposedMessage("this.acrofields.instance.is.read.only"));
-        try {
-            Item item = (Item)fields.get(field);
-            if (item == null)
-                return false;
-            InstHit hit = new InstHit(inst);
-            PdfDictionary merged;
-            PdfString da;
-            if (name.equalsIgnoreCase("textfont")) {
-                for (int k = 0; k < item.size(); ++k) {
-                    if (hit.isHit(k)) {
-                        merged = item.getMerged( k );
-                        da = merged.getAsString(PdfName.DA);
-                        PdfDictionary dr = merged.getAsDict(PdfName.DR);
-                        if (da != null && dr != null) {
-                            Object dao[] = splitDAelements(da.toUnicodeString());
-                            PdfAppearance cb = new PdfAppearance();
-                            if (dao[DA_FONT] != null) {
-                                BaseFont bf = (BaseFont)value;
-                                PdfName psn = (PdfName)PdfAppearance.stdFieldFontNames.get(bf.getPostscriptFontName());
-                                if (psn == null) {
-                                    psn = new PdfName(bf.getPostscriptFontName());
-                                }
-                                PdfDictionary fonts = dr.getAsDict(PdfName.FONT);
-                                if (fonts == null) {
-                                    fonts = new PdfDictionary();
-                                    dr.put(PdfName.FONT, fonts);
-                                }
-                                PdfIndirectReference fref = (PdfIndirectReference)fonts.get(psn);
-                                PdfDictionary top = reader.getCatalog().getAsDict(PdfName.ACROFORM);
-                                markUsed(top);
-                                dr = top.getAsDict(PdfName.DR);
-                                if (dr == null) {
-                                    dr = new PdfDictionary();
-                                    top.put(PdfName.DR, dr);
-                                }
-                                markUsed(dr);
-                                PdfDictionary fontsTop = dr.getAsDict(PdfName.FONT);
-                                if (fontsTop == null) {
-                                    fontsTop = new PdfDictionary();
-                                    dr.put(PdfName.FONT, fontsTop);
-                                }
-                                markUsed(fontsTop);
-                                PdfIndirectReference frefTop = (PdfIndirectReference)fontsTop.get(psn);
-                                if (frefTop != null) {
-                                    if (fref == null)
-                                        fonts.put(psn, frefTop);
-                                }
-                                else if (fref == null) {
-                                    FontDetails fd;
-                                    if (bf.getFontType() == BaseFont.FONT_TYPE_DOCUMENT) {
-                                        fd = new FontDetails(null, ((DocumentFont)bf).getIndirectReference(), bf);
-                                    }
-                                    else {
-                                        bf.setSubset(false);
-                                        fd = writer.addSimple(bf);
-                                        localFonts.put(psn.toString().substring(1), bf);
-                                    }
-                                    fontsTop.put(psn, fd.getIndirectReference());
-                                    fonts.put(psn, fd.getIndirectReference());
-                                }
-                                ByteBuffer buf = cb.getInternalBuffer();
-                                buf.append(psn.getBytes()).append(' ').append(((Float)dao[DA_SIZE]).floatValue()).append(" Tf ");
-                                if (dao[DA_COLOR] != null)
-                                    cb.setColorFill((Color)dao[DA_COLOR]);
-                                PdfString s = new PdfString(cb.toString());
-                                item.getMerged(k).put(PdfName.DA, s);
-                                item.getWidget(k).put(PdfName.DA, s);
-                                markUsed(item.getWidget(k));
-                            }
-                        }
-                    }
-                }
-            }
-            else if (name.equalsIgnoreCase("textcolor")) {
-                for (int k = 0; k < item.size(); ++k) {
-                    if (hit.isHit(k)) {
-                        merged = item.getMerged( k );
-                        da = merged.getAsString(PdfName.DA);
-                        if (da != null) {
-                            Object dao[] = splitDAelements(da.toUnicodeString());
-                            PdfAppearance cb = new PdfAppearance();
-                            if (dao[DA_FONT] != null) {
-                                ByteBuffer buf = cb.getInternalBuffer();
-                                buf.append(new PdfName((String)dao[DA_FONT]).getBytes()).append(' ').append(((Float)dao[DA_SIZE]).floatValue()).append(" Tf ");
-                                cb.setColorFill((Color)value);
-                                PdfString s = new PdfString(cb.toString());
-                                item.getMerged(k).put(PdfName.DA, s);
-                                item.getWidget(k).put(PdfName.DA, s);
-                                markUsed(item.getWidget(k));
-                            }
-                        }
-                    }
-                }
-            }
-            else if (name.equalsIgnoreCase("textsize")) {
-                for (int k = 0; k < item.size(); ++k) {
-                    if (hit.isHit(k)) {
-                        merged = item.getMerged( k );
-                        da = merged.getAsString(PdfName.DA);
-                        if (da != null) {
-                            Object dao[] = splitDAelements(da.toUnicodeString());
-                            PdfAppearance cb = new PdfAppearance();
-                            if (dao[DA_FONT] != null) {
-                                ByteBuffer buf = cb.getInternalBuffer();
-                                buf.append(new PdfName((String)dao[DA_FONT]).getBytes()).append(' ').append(((Float)value).floatValue()).append(" Tf ");
-                                if (dao[DA_COLOR] != null)
-                                    cb.setColorFill((Color)dao[DA_COLOR]);
-                                PdfString s = new PdfString(cb.toString());
-                                item.getMerged(k).put(PdfName.DA, s);
-                                item.getWidget(k).put(PdfName.DA, s);
-                                markUsed(item.getWidget(k));
-                            }
-                        }
-                    }
-                }
-            }
-            else if (name.equalsIgnoreCase("bgcolor") || name.equalsIgnoreCase("bordercolor")) {
-                PdfName dname = (name.equalsIgnoreCase("bgcolor") ? PdfName.BG : PdfName.BC);
-                for (int k = 0; k < item.size(); ++k) {
-                    if (hit.isHit(k)) {
-                        merged = item.getMerged( k );
-                        PdfDictionary mk = merged.getAsDict(PdfName.MK);
-                        if (mk == null) {
-                            if (value == null)
-                                return true;
-                            mk = new PdfDictionary();
-                            item.getMerged(k).put(PdfName.MK, mk);
-                            item.getWidget(k).put(PdfName.MK, mk);
-                            markUsed(item.getWidget(k));
-                        } else {
-                            markUsed( mk );
-                        }
-                        if (value == null)
-                            mk.remove(dname);
-                        else
-                            mk.put(dname, PdfFormField.getMKColor((Color)value));
-                    }
-                }
-            }
-            else
-                return false;
-            return true;
-        }
-        catch (Exception e) {
-            throw new ExceptionConverter(e);
-        }
-    }
+		// now reset the configuration parameters
+		checkEngine(m_dbProps);
+		checkDriverVersion(m_dbProps);
+		checkLayoutVersion(m_dbProps);
+		String val = null;
+		val = m_dbProps.getIsTransactionDb();
+		if (val == null)
+			throwBadFormat("database supports transactions");
+		else
+			IS_XACT_DB = Boolean.valueOf(val).booleanValue();
+		val = m_dbProps.getTableNamePrefix();
+		if (val == null)
+			throwBadFormat("table name prefix");
+		else
+			TABLE_NAME_PREFIX = val;
 
-    /**
-     * Sets a field property. Valid property names are:
-     * <p>
-     * <ul>
-     * <li>flags - a set of flags specifying various characteristics of the field's widget annotation.
-     * The value of this entry replaces that of the F entry in the form's corresponding annotation dictionary.<br>
-     * <li>setflags - a set of flags to be set (turned on) in the F entry of the form's corresponding
-     * widget annotation dictionary. Bits equal to 1 cause the corresponding bits in F to be set to 1.<br>
-     * <li>clrflags - a set of flags to be cleared (turned off) in the F entry of the form's corresponding
-     * widget annotation dictionary. Bits equal to 1 cause the corresponding
-     * bits in F to be set to 0.<br>
-     * <li>fflags - a set of flags specifying various characteristics of the field. The value
-     * of this entry replaces that of the Ff entry in the form's corresponding field dictionary.<br>
-     * <li>setfflags - a set of flags to be set (turned on) in the Ff entry of the form's corresponding
-     * field dictionary. Bits equal to 1 cause the corresponding bits in Ff to be set to 1.<br>
-     * <li>clrfflags - a set of flags to be cleared (turned off) in the Ff entry of the form's corresponding
-     * field dictionary. Bits equal to 1 cause the corresponding bits in Ff
-     * to be set to 0.<br>
-     * </ul>
-     * 
-     * @param field the field name
-     * @param name the property name
-     * @param value the property value
-     * @param inst an array of <CODE>int</CODE> indexing into <CODE>AcroField.Item.merged</CODE> elements to process.
-     * Set to <CODE>null</CODE> to process all
-     * @return <CODE>true</CODE> if the property exists, <CODE>false</CODE> otherwise
-     */
-    public boolean setFieldProperty(String field, String name, int value, int inst[]) {
-        if (writer == null)
-            throw new RuntimeException(MessageLocalization.getComposedMessage("this.acrofields.instance.is.read.only"));
-        Item item = (Item)fields.get(field);
-        if (item == null)
-            return false;
-        InstHit hit = new InstHit(inst);
-        if (name.equalsIgnoreCase("flags")) {
-            PdfNumber num = new PdfNumber(value);
-            for (int k = 0; k < item.size(); ++k) {
-                if (hit.isHit(k)) {
-                    item.getMerged(k).put(PdfName.F, num);
-                    item.getWidget(k).put(PdfName.F, num);
-                    markUsed(item.getWidget(k));
-                }
-            }
-        }
-        else if (name.equalsIgnoreCase("setflags")) {
-            for (int k = 0; k < item.size(); ++k) {
-                if (hit.isHit(k)) {
-                    PdfNumber num = item.getWidget(k).getAsNumber(PdfName.F);
-                    int val = 0;
-                    if (num != null)
-                        val = num.intValue();
-                    num = new PdfNumber(val | value);
-                    item.getMerged(k).put(PdfName.F, num);
-                    item.getWidget(k).put(PdfName.F, num);
-                    markUsed(item.getWidget(k));
-                }
-            }
-        }
-        else if (name.equalsIgnoreCase("clrflags")) {
-            for (int k = 0; k < item.size(); ++k) {
-                if (hit.isHit(k)) {
-                    PdfDictionary widget = item.getWidget( k );
-                    PdfNumber num = widget.getAsNumber(PdfName.F);
-                    int val = 0;
-                    if (num != null)
-                        val = num.intValue();
-                    num = new PdfNumber(val & (~value));
-                    item.getMerged(k).put(PdfName.F, num);
-                    widget.put(PdfName.F, num);
-                    markUsed(widget);
-                }
-            }
-        }
-        else if (name.equalsIgnoreCase("fflags")) {
-            PdfNumber num = new PdfNumber(value);
-            for (int k = 0; k < item.size(); ++k) {
-                if (hit.isHit(k)) {
-                    item.getMerged(k).put(PdfName.FF, num);
-                    item.getValue(k).put(PdfName.FF, num);
-                    markUsed(item.getValue(k));
-                }
-            }
-        }
-        else if (name.equalsIgnoreCase("setfflags")) {
-            for (int k = 0; k < item.size(); ++k) {
-                if (hit.isHit(k)) {
-                    PdfDictionary valDict = item.getValue( k );
-                    PdfNumber num = valDict.getAsNumber( PdfName.FF );
-                    int val = 0;
-                    if (num != null)
-                        val = num.intValue();
-                    num = new PdfNumber(val | value);
-                    item.getMerged(k).put(PdfName.FF, num);
-                    valDict.put(PdfName.FF, num);
-                    markUsed(valDict);
-                }
-            }
-        }
-        else if (name.equalsIgnoreCase("clrfflags")) {
-            for (int k = 0; k < item.size(); ++k) {
-                if (hit.isHit(k)) {
-                    PdfDictionary valDict = item.getValue( k );
-                    PdfNumber num = valDict.getAsNumber(PdfName.FF);
-                    int val = 0;
-                    if (num != null)
-                        val = num.intValue();
-                    num = new PdfNumber(val & (~value));
-                    item.getMerged(k).put(PdfName.FF, num);
-                    valDict.put(PdfName.FF, num);
-                    markUsed(valDict);
-                }
-            }
-        }
-        else
-            return false;
-        return true;
-    }
+		return m_sysProperties;
+	}
+	
+	private void checkEngine ( DBProp dbProps ) {
+		String dbtype = m_dbProps.getEngineType();
+		if ( dbtype == null ) throwBadFormat("database type");
+		if ( !dbtype.equals(DATABASE_TYPE) ) {
+			throw new JenaException(
+			"Database created with incompatible database type for this version of Jena: "
+			+ dbtype);
+		}
+	}
+	
+	private void checkDriverVersion ( DBProp dbProps ) {
+		String vers = m_dbProps.getDriverVersion();
+		if ( vers == null ) throwBadFormat("database version");
+		if ( !vers.equals(VERSION) ) {
+			throw new JenaException(
+			"Models in the database were created with an incompatible version of Jena: "
+			+ vers);
+		}
+	}
+	
+	private void checkLayoutVersion ( DBProp dbProps ) {
+		String layout = m_dbProps.getLayoutVersion();
+		if ( layout == null ) throwBadFormat("database layout");
+		if ( !layout.equals(LAYOUT_VERSION) ) {
+			throw new JenaException(
+			"The database layout cannot be processed by this version of Jena: "
+			+ layout);	
+		}
 
-    /**
-     * Merges an XML data structure into this form.
-     * 
-     * @param n the top node of the data structure
-     * @throws java.io.IOException on error
-     * @throws com.lowagie.text.DocumentException o error
-     */
-    public void mergeXfaData(Node n) throws IOException, DocumentException {
-        XfaForm.Xml2SomDatasets data = new XfaForm.Xml2SomDatasets(n);
-        for (Iterator it = data.getOrder().iterator(); it.hasNext();) {
-            String name = (String)it.next();
-            String text = XfaForm.getNodeText((Node)data.getName2Node().get(name));
-            setField(name, text);
-        }
-    }
-
-    /**
-     * Sets the fields by FDF merging.
-     * 
-     * @param fdf the FDF form
-     * @throws IOException on error
-     * @throws DocumentException on error
-     */
-    public void setFields(FdfReader fdf) throws IOException, DocumentException {
-        HashMap fd = fdf.getFields();
-        for (Iterator i = fd.keySet().iterator(); i.hasNext();) {
-            String f = (String)i.next();
-            String v = fdf.getFieldValue(f);
-            if (v != null)
-                setField(f, v);
-        }
-    }
-
-    /**
-     * Sets the fields by XFDF merging.
-     * 
-     * @param xfdf the XFDF form
-     * @throws IOException on error
-     * @throws DocumentException on error
-     */
-    public void setFields(XfdfReader xfdf) throws IOException, DocumentException {
-        HashMap fd = xfdf.getFields();
-        for (Iterator i = fd.keySet().iterator(); i.hasNext();) {
-            String f = (String)i.next();
-            String v = xfdf.getFieldValue(f);
-            if (v != null)
-                setField(f, v);
-            List l = xfdf.getListValues(f);
-            if (l != null)
-            	setListSelection(v, (String[])l.toArray(new String[l.size()]));
-        }
-    }
-
-    /**
-     * Regenerates the field appearance.
-     * This is useful when you change a field property, but not its value,
-     * for instance form.setFieldProperty("f", "bgcolor", Color.BLUE, null);
-     * This won't have any effect, unless you use regenerateField("f") after changing
-     * the property.
-     *
-     * @param name the fully qualified field name or the partial name in the case of XFA forms
-     * @throws IOException on error
-     * @throws DocumentException on error
-     * @return <CODE>true</CODE> if the field was found and changed,
-     * <CODE>false</CODE> otherwise
-     */
-    public boolean regenerateField(String name) throws IOException, DocumentException {
-    	String value = getField(name);
-        return setField(name, value, value);
-    }
-
-    /**
-     * Sets the field value.
-     * 
-     * @param name the fully qualified field name or the partial name in the case of XFA forms
-     * @param value the field value
-     * @throws IOException on error
-     * @throws DocumentException on error
-     * @return <CODE>true</CODE> if the field was found and changed,
-     * <CODE>false</CODE> otherwise
-     */
-    public boolean setField(String name, String value) throws IOException, DocumentException {
-        return setField(name, value, null);
-    }
-
-    /**
-     * Sets the field value and the display string. The display string
-     * is used to build the appearance in the cases where the value
-     * is modified by Acrobat with JavaScript and the algorithm is
-     * known.
-     * 
-     * @param name the fully qualified field name or the partial name in the case of XFA forms
-     * @param value the field value
-     * @param display the string that is used for the appearance. If <CODE>null</CODE>
-     * the <CODE>value</CODE> parameter will be used
-     * @return <CODE>true</CODE> if the field was found and changed,
-     * <CODE>false</CODE> otherwise
-     * @throws IOException on error
-     * @throws DocumentException on error
-     */
-    public boolean setField(String name, String value, String display) throws IOException, DocumentException {
-        if (writer == null)
-            throw new DocumentException(MessageLocalization.getComposedMessage("this.acrofields.instance.is.read.only"));
-        if (xfa.isXfaPresent()) {
-            name = xfa.findFieldName(name, this);
-            if (name == null)
-                return false;
-            String shortName = XfaForm.Xml2Som.getShortName(name);
-            Node xn = xfa.findDatasetsNode(shortName);
-            if (xn == null) {
-                xn = xfa.getDatasetsSom().insertNode(xfa.getDatasetsNode(), shortName);
-            }
-            xfa.setNodeText(xn, value);
-        }
-        Item item = (Item)fields.get(name);
-        if (item == null)
-            return false;
-        PdfDictionary merged = item.getMerged( 0 );
-        PdfName type = merged.getAsName(PdfName.FT);
-        if (PdfName.TX.equals(type)) {
-            PdfNumber maxLen = merged.getAsNumber(PdfName.MAXLEN);
-            int len = 0;
-            if (maxLen != null)
-                len = maxLen.intValue();
-            if (len > 0)
-                value = value.substring(0, Math.min(len, value.length()));
-        }
-        if (display == null)
-            display = value;
-        if (PdfName.TX.equals(type) || PdfName.CH.equals(type)) {
-            PdfString v = new PdfString(value, PdfObject.TEXT_UNICODE);
-            for (int idx = 0; idx < item.size(); ++idx) {
-                PdfDictionary valueDic = item.getValue(idx);
-                valueDic.put(PdfName.V, v);
-                valueDic.remove(PdfName.I);
-                markUsed(valueDic);
-                merged = item.getMerged(idx);
-                merged.remove(PdfName.I);
-                merged.put(PdfName.V, v);
-                PdfDictionary widget = item.getWidget(idx);
-                if (generateAppearances) {
-                    PdfAppearance app = getAppearance(merged, display, name);
-                    if (PdfName.CH.equals(type)) {
-                        PdfNumber n = new PdfNumber(topFirst);
-                        widget.put(PdfName.TI, n);
-                        merged.put(PdfName.TI, n);
-                    }
-                    PdfDictionary appDic = widget.getAsDict(PdfName.AP);
-                    if (appDic == null) {
-                        appDic = new PdfDictionary();
-                        widget.put(PdfName.AP, appDic);
-                        merged.put(PdfName.AP, appDic);
-                    }
-                    appDic.put(PdfName.N, app.getIndirectReference());
-                    writer.releaseTemplate(app);
-                }
-                else {
-                    widget.remove(PdfName.AP);
-                    merged.remove(PdfName.AP);
-                }
-                markUsed(widget);
-            }
-            return true;
-        }
-        else if (PdfName.BTN.equals(type)) {
-            PdfNumber ff = item.getMerged(0).getAsNumber(PdfName.FF);
-            int flags = 0;
-            if (ff != null)
-                flags = ff.intValue();
-            if ((flags & PdfFormField.FF_PUSHBUTTON) != 0) {
-                //we'll assume that the value is an image in base64
-                Image img;
-                try {
-                    img = Image.getInstance(Base64.decode(value));
-                }
-                catch (Exception e) {
-                    return false;
-                }
-                PushbuttonField pb = getNewPushbuttonFromField(name);
-                pb.setImage(img);
-                replacePushbuttonField(name, pb.getField());
-                return true;
-            }
-            PdfName v = new PdfName(value);
-            ArrayList lopt = new ArrayList();
-            PdfArray opts = item.getValue(0).getAsArray(PdfName.OPT);
-            if (opts != null) {
-                for (int k = 0; k < opts.size(); ++k) {
-                    PdfString valStr = opts.getAsString(k);
-                    if (valStr != null)
-                        lopt.add(valStr.toUnicodeString());
-                    else
-                        lopt.add(null);
-                }
-            }
-            int vidx = lopt.indexOf(value);
-            PdfName vt;
-            if (vidx >= 0)
-                vt = new PdfName(String.valueOf(vidx));
-            else
-                vt = v;
-            for (int idx = 0; idx < item.size(); ++idx) {
-                merged = item.getMerged(idx);
-                PdfDictionary widget = item.getWidget(idx);
-                PdfDictionary valDict = item.getValue(idx);
-                markUsed(item.getValue(idx));
-                valDict.put(PdfName.V, vt);
-                merged.put(PdfName.V, vt);
-                markUsed(widget);
-                if (isInAP(widget,  vt)) {
-                    merged.put(PdfName.AS, vt);
-                    widget.put(PdfName.AS, vt);
-                }
-                else {
-                    merged.put(PdfName.AS, PdfName.Off);
-                    widget.put(PdfName.AS, PdfName.Off);
-                }
-            }
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * Sets different values in a list selection.
-     * No appearance is generated yet; nor does the code check if multiple select is allowed.
-     * 
-     * @param	name	the name of the field
-     * @param	value	an array with values that need to be selected
-     * @return	true only if the field value was changed
-     * @since 2.1.4
-     */
-	public boolean setListSelection(String name, String[] value) throws IOException, DocumentException {
-        Item item = getFieldItem(name);
-        if (item == null)
-            return false;
-        PdfDictionary merged = item.getMerged( 0 );
-        PdfName type = merged.getAsName(PdfName.FT);
-        if (!PdfName.CH.equals(type)) {
-        	return false;
-        }
-        String[] options = getListOptionExport(name);
-        PdfArray array = new PdfArray();
-        for (int i = 0; i < value.length; i++) {
-        	for (int j = 0; j < options.length; j++) {
-        		if (options[j].equals(value[i])) {
-        			array.add(new PdfNumber(j));
-        			break;
-        		}
-        	}
-        }
-        item.writeToAll(PdfName.I, array, Item.WRITE_MERGED | Item.WRITE_VALUE);
-        
-        PdfArray vals = new PdfArray();
-        for (int i = 0; i < value.length; ++i) {
-        	vals.add( new PdfString( value[i] ) );
-        }
-        item.writeToAll(PdfName.V, vals, Item.WRITE_MERGED | Item.WRITE_VALUE);
-        
-        PdfAppearance app = getAppearance( merged, value, name ); 
-        
-        PdfDictionary apDic = new PdfDictionary();
-        apDic.put( PdfName.N, app.getIndirectReference() );
-        item.writeToAll(PdfName.AP, apDic, Item.WRITE_MERGED | Item.WRITE_WIDGET);
-        
-        writer.releaseTemplate( app );
-        
-        item.markUsed( this, Item.WRITE_VALUE | Item.WRITE_WIDGET );
-        return true;
+	}
+	
+	private void throwBadFormat ( String prop ) {
+		throw new JenaException(
+		"The database appears to be unformatted or corrupted - could not find value\n" +
+		" for \"" + prop + "\" in Jena system properties table.\n" + 
+		"If possible, call IDBConnection.cleanDB(). \n" +
+		"Warning: cleanDB will remove all Jena models from the databases.");
 	}
 
-    boolean isInAP(PdfDictionary dic, PdfName check) {
-        PdfDictionary appDic = dic.getAsDict(PdfName.AP);
-        if (appDic == null)
-            return false;
-        PdfDictionary NDic = appDic.getAsDict(PdfName.N);
-        return (NDic != null && NDic.get(check) != null);
+	
+	/**
+	 * Format the database and construct a brand new system specialized graph.
+	 */
+	protected SpecializedGraph formatAndConstructSystemSpecializedGraph() {
+		String errMsg = null;
+		if (xactOp(xactIsActive))
+			throw new RDFRDBException(
+					"Cannot intialize database while transaction is active.\n"
+							+ "Commit or abort transaction before intializing database.");
+
+		boolean autoIsOn = xactOp(xactAutoOff);
+		try {
+			String[] params = getDbInitTablesParams();
+			m_sql.runSQLGroup("initDBtables", params);
+			m_sql.runSQLGroup("initDBgenerators");//			m_sql.runSQLGroup("initDBprocedures");
+		} catch (SQLException e) {
+			logger.warn("Problem formatting database", e);
+			errMsg = e.toString();
+		}
+
+		if (errMsg == null)
+			try {
+				xactOp(xactCommit);
+				xactOp(xactBegin);
+
+				// Construct the system properties
+				IPSet pSet = createIPSetInstanceFromName(m_psetClassName,
+						SYSTEM_STMT_TABLE);
+				m_sysProperties = createLSetInstanceFromName(m_lsetClassName,
+						pSet, DEFAULT_ID);
+
+				// The following call constructs a new set of database
+				// properties and
+				// adds them to the m_sysProperties specialized graph.
+                
+                // Ugh: m_dbcon.getDatabaseType(), not this.getDatabaseType()
+				m_dbProps = new DBPropDatabase(m_sysProperties,
+                                               m_dbcon.getDatabaseType(),
+                                               VERSION, LAYOUT_VERSION,
+                                               String.valueOf(LONG_OBJECT_LENGTH),
+                                               String.valueOf(INDEX_KEY_LENGTH),
+                                               String.valueOf(IS_XACT_DB),
+                                               String.valueOf(URI_COMPRESS), 
+                                               String.valueOf(URI_COMPRESS_LENGTH),
+                                               TABLE_NAME_PREFIX);
+
+				// Now we also need to construct the parameters that will be the
+				// default settings for any graph added to this database
+				DBPropGraph def_prop = new DBPropGraph(m_sysProperties,
+						DEFAULT_PROPS, "generic");
+
+				def_prop.addGraphId(DEFAULT_ID);
+
+				xactOp(xactCommit);
+				if (autoIsOn)
+					xactOp(xactAutoOn);
+			} catch (Exception e) {
+				errMsg = e.toString();
+			}
+
+		if (errMsg != null) {
+			doCleanDB(false);
+			m_sysProperties = null;
+			throw new RDFRDBException(errMsg);
+		}
+
+		return m_sysProperties;
+	}
+	
+	abstract String[] getDbInitTablesParams();
+	
+	abstract String[] getCreateTableParams( int graphId, boolean isReif );
+	
+	abstract public int graphIdAlloc ( String graphName );	
+	
+	
+	
+	/**
+	 * Construct and return a new specialized graph.
+	 */
+	public List<SpecializedGraph> createSpecializedGraphs(String graphName,
+			Graph requestedProperties) {
+
+		/*
+		 * create the specialized graphs for the new graph. this includes
+		 * updating the database for the new graph (allocating a new graph
+		 * identifier, updating the jena system tables and creating tables, if
+		 * necessary. this should be done atomically to avoid corrupting the
+		 * database but a single transaction is not sufficient because some
+		 * database engines (e.g., oracle) require create table statements to
+		 * run as a separate transaction, i.e., a create table statement in the
+		 * middle of a group of updates will cause an automatic commit of the
+		 * updates prior to the create table statement.
+		 * 
+		 * fortunately, we can run most of the updates in a single transaction.
+		 * however, allocation of the graph indentifier must be done prior to
+		 * creating the statement tables. so, if any subsequent operation fails,
+		 * we must run a compensating transaction to deallocate the graph
+		 * identifier.
+		 * 
+		 * because of the above, we assume that there is no active transaction
+		 * when this routine is called.
+		 */
+
+		// String graphName = graphProperties.getName();
+		String stmtTbl = null;
+		String reifTbl = null;
+		String dbSchema = STORE_WITH_MODEL;
+		boolean didGraphIdAlloc = false;
+		boolean didTableCreate = false;
+		String errMsg = null;
+		DBPropGraph graphProperties = null;
+
+		SpecializedGraph sysGraph = getSystemSpecializedGraph(false);
+		// should have already create sys graph.
+
+		if (xactOp(xactIsActive))
+			throw new RDFRDBException(
+					"Cannot create graph while transaction is active.\n"
+							+ "Commit or abort transaction before creating graph");
+
+		boolean autoOn = xactOp(xactAutoOff);
+		int graphId = -1; // bogus initialization to make java happy
+
+		try {
+			xactOp(xactBegin);
+			graphId = graphIdAlloc(graphName);
+			didGraphIdAlloc = true;
+			xactOp(xactCommit);
+			xactOp(xactBegin);
+			boolean useDefault = false;
+
+			// dbSchema = graphProperties.getDBSchema();
+			// use the default schema if:
+			// 1) no schema is specified and we are creating the default
+			// (unnamed) graph
+			// 2) a schema is specified and it is the default (unnamed) graph
+			if (((dbSchema == null) && graphName.equals(GraphRDB.DEFAULT))) {
+				useDefault = true;
+				dbSchema = DEFAULT_PROPS; // default graph should use default
+				// tables
+			}
+			// else if ( ((dbSchema != null) &&
+			// dbSchema.equals(GraphRDB.DEFAULT)) ) {
+			// 	useDefault = true;
+			//	dbSchema = DEFAULT_PROPS; // default graph should use default
+			// tables
+			// }
+			if (dbSchema != null) {
+				DBPropGraph schProp = DBPropGraph.findPropGraphByName(sysGraph,
+						dbSchema);
+				if (schProp != null) {
+					reifTbl = schProp.getReifTable();
+					stmtTbl = schProp.getStmtTable();
+				}
+				if (((reifTbl == null) || (stmtTbl == null))
+						&& (useDefault == false))
+					// schema not found. this is ok ONLY IF it's the DEFAULT
+					// schema
+					throw new RDFRDBException("Creating graph " + graphName
+							+ ": referenced schema not found: " + dbSchema);
+			}
+			if ((reifTbl == null) || (stmtTbl == null)) {
+				didTableCreate = true;
+				reifTbl = createTable(graphId, true);
+				stmtTbl = createTable(graphId, false);
+				if ((reifTbl == null) || (stmtTbl == null))
+					throw new RDFRDBException("Creating graph " + graphName
+							+ ": cannot create tables");
+			}
+			xactOp(xactCommit);  // may not be needed but it doesn't hurt
+		} catch (Exception e) {
+			errMsg = e.toString();
+		}
+
+		// we can now start a new transaction and update the metadata.
+		// we should already be committed but we commit again just in case
+
+		if (errMsg == null)
+			try {
+				xactOp(xactBegin);
+
+				graphProperties = new DBPropGraph(sysGraph, graphName,
+						requestedProperties);
+				graphProperties.addGraphId(graphId);
+				graphProperties.addStmtTable(stmtTbl);
+				graphProperties.addReifTable(reifTbl);
+
+				DBPropDatabase dbprop = new DBPropDatabase(
+						getSystemSpecializedGraph(true));
+				dbprop.addGraph(graphProperties);
+
+				// Add the reifier first
+				DBPropPSet pSetReifier = new DBPropPSet(m_sysProperties,
+						m_psetReifierClassName, reifTbl);
+				DBPropLSet lSetReifier = new DBPropLSet(m_sysProperties,
+						"LSET_" + graphProperties.getName() + "_REIFIER",
+						m_lsetReifierClassName);
+				lSetReifier.setPSet(pSetReifier);
+				graphProperties.addLSet(lSetReifier);
+
+				// Now add support for all non-reified triples
+				DBPropPSet pSet = new DBPropPSet(m_sysProperties,
+						m_psetClassName, stmtTbl);
+				DBPropLSet lSet = new DBPropLSet(m_sysProperties, "LSET_"
+						+ graphProperties.getName(), m_lsetClassName);
+				lSet.setPSet(pSet);
+				graphProperties.addLSet(lSet);
+
+				xactOp(xactCommit);
+				if (autoOn) xactOp(xactAutoOn);
+			} catch (Exception e) {
+				errMsg = e.toString();
+			}
+
+		if (errMsg == null)
+			return recreateSpecializedGraphs(graphProperties);
+		else {
+			xactOp(xactCommit); // maybe not needed but doesn't hurt
+			xactOp(xactBegin);
+			try {
+			// clean-up
+			if (didGraphIdAlloc) {
+				graphIdDealloc(graphId);
+			}
+			} catch ( Exception e ) {
+			}
+			if (didTableCreate) {
+				// make sure the order below matches
+				// the order of creation above.
+				if (reifTbl != null)
+					try { deleteTable(reifTbl); }
+					catch ( Exception e ) {}
+				if (stmtTbl != null)
+					try { deleteTable(stmtTbl); }
+					catch ( Exception e ) {}
+			}
+			xactOp(xactCommit);
+			if (autoOn) xactOp(xactAutoOn);
+			return null;
+		}
+	}
+	
+	/**
+	 * Construct and return a list of specialized graphs to match those in the
+	 * store.
+	 * 
+	 * @param graphProperties
+	 *            A set of customization properties for the graph.
+	 */
+    public List<SpecializedGraph> recreateSpecializedGraphs(DBPropGraph graphProperties) {
+		
+		List<SpecializedGraph> result = new ArrayList<SpecializedGraph>();
+		int dbGraphId = graphProperties.getGraphId();
+
+		// to ensure that reifier graphs occur before stmt graphs, make two passes
+		String[] lsetTypes = {m_lsetClassName, m_lsetReifierClassName};
+		int i;
+		for(i=0;i<2;i++) {
+		    Iterator<DBPropLSet> it = graphProperties.getAllLSets();
+			while(it.hasNext() ) {
+				DBPropLSet lSetProps = it.next();
+				if ( lSetProps.getType().equals(lsetTypes[i]) ) continue;
+				DBPropPSet pSetProps = lSetProps.getPset();
+
+				IPSet pSet = createIPSetInstanceFromName(pSetProps.getType(), pSetProps.getTable());		
+				result.add( createLSetInstanceFromName( lSetProps.getType(), pSet, dbGraphId));		
+			}
+		}		
+		
+		return result;		
+	}
+	
+    /**
+     * Create a new IPSet instance of the named implementation class and set the db connection.
+     * 
+     * @param pName name of a class that implements IPSet.
+     * @return an instance of the named class with the db connection set.
+     */
+	private IPSet createIPSetInstanceFromName(String className, String tblName) {
+		IPSet pSet = null;		
+		try {
+			// get PSet
+			pSet = (IPSet) Class.forName(className).newInstance();
+			pSet.setDriver(this);
+			pSet.setSQLType(ID_SQL_TYPE);
+			pSet.setSkipDuplicateCheck(SKIP_DUPLICATE_CHECK);
+			pSet.setSQLCache(m_sql);
+			pSet.setCachePreparedStatements(CACHE_PREPARED_STATEMENTS);
+			pSet.setTblName(tblName);
+		} catch (Exception e) {
+			logger.warn("Unable to create IPSet instance ", e);
+		}
+		return pSet;
+	}	
+		
+	private SpecializedGraph createLSetInstanceFromName(String lSetName, IPSet pset, int dbGraphID) {
+		SpecializedGraph sg = null;		
+		try {
+			Class<?> cls = Class.forName(lSetName);
+			Class<?>[] params = {IPSet.class, Integer.class};
+			java.lang.reflect.Constructor<?> con = cls.getConstructor(params);
+			Object[] args = {pset, new Integer(dbGraphID)};
+			sg = (SpecializedGraph) con.newInstance(args);
+		} catch (Exception e) {
+			logger.error("Unable to create instance of SpecializedGraph ", e);
+		}
+		return sg;
+	}
+
+	/**
+	 * Remove the specialized graph, erasing all trace of a Graph.
+	 * @param graphId The identity of the Graph which these specialized graphs should hold
+	 * @param graphProperties The properties for the graph to be removed.
+	 */
+    public void removeSpecializedGraphs( DBPropGraph graphProperties, List<SpecializedGraph> specializedGraphs) {
+			
+		int graphId = graphProperties.getGraphId();
+		
+		if (xactOp(xactIsActive))
+			throw new RDFRDBException(
+					"Cannot remove graph while transaction is active.\n"
+					+ "Commit or abort transaction before removing graph");
+
+		boolean autoIsOn = xactOp(xactAutoOff);
+		xactOp(xactCommit);
+		xactOp(xactBegin);
+		
+		// remove graph metadata from jena sys table in a xact
+		String stmtTbl = graphProperties.getStmtTable();
+		String reifTbl = graphProperties.getReifTable();
+		
+		// remove from system properties table
+		// It is sufficient just to remove the lSet properties (it will
+		// take care of deleting any pset properties automatically).			
+		m_dbProps.removeGraph(graphProperties);
+		
+		if ( graphId != DEFAULT_ID ) graphIdDealloc(graphId);
+		
+		xactOp(xactCommit);
+		xactOp(xactBegin);
+		
+		/* now remove triples from statement tables.
+		*  if the graph is stored in its own tables, we
+		*  can simply delete those tables. else, the graph
+		*  shares tables with other graphs so we have to
+		*  remove each statement. */
+		
+		// check to see if statement tables for graph are shared
+		boolean stInUse = true;
+		boolean rtInUse = true;
+        
+		if ( graphId != DEFAULT_ID ) {
+			stInUse = false;
+			rtInUse = false;
+			Iterator<DBPropGraph> it =  m_dbProps.getAllGraphs();
+			while ( it.hasNext() ) {
+				DBPropGraph gp = it.next();
+				if ( gp.getStmtTable().equals(stmtTbl) ) stInUse = true;
+				if ( gp.getReifTable().equals(reifTbl) ) rtInUse = true;
+			}
+		}
+		// now remove the statement tables or else delete all triples.
+		if ( stInUse || rtInUse ) {
+			Iterator<SpecializedGraph> it = specializedGraphs.iterator();
+			while (it.hasNext()){
+			   SpecializedGraph sg = it.next();
+			   removeSpecializedGraph(sg);
+			}
+		} else {
+			deleteTable(stmtTbl);
+			deleteTable(reifTbl);
+		}
+		xactOp(xactCommit);
+		if ( autoIsOn ) xactOp(xactAutoOn);
+	}
+	
+	
+	/**
+	 * Remove specialized graph from the datastore.
+	 * @param graph is the graph to be removed.
+	 */
+	private void removeSpecializedGraph(SpecializedGraph graph) {
+		graph.clear();		
+	}
+
+	/**
+	 * Method setDatabaseProperties.
+	 * 
+	 * Sets the current properties for the database.
+	 * 
+	 * @param databaseProperties is a Graph containing a full set of database properties
+	 */
+	public void setDatabaseProperties(Graph databaseProperties) {
+		SpecializedGraph toGraph = getSystemSpecializedGraph(true);
+		// really need to start a transaction here
+
+		// Here add code to check if the database has been used - if so,
+		// it's too late to change the properties, so throw an exception
+
+		toGraph.clear();
+		SpecializedGraph.CompletionFlag complete = new SpecializedGraph.CompletionFlag();
+		toGraph.add(databaseProperties, complete);
+
+		// Now test the properties to see if it's a valid set - if not,
+		// throw an exception - it's okay to check some things later (there's
+		// no guarantee that every error will be caught here).
+
+		// end transaction here.
+	}
+
+		
+	/**
+	 * Method getDefaultModelProperties 
+	 * 
+	 * Return the default properties for a new model stored in this database.
+	 * If none are stored, then load default properties into the database.
+	 * @return Graph containg the default properties for a new model
+	 */
+	public DBPropGraph getDefaultModelProperties() {
+		SpecializedGraph sg = getSystemSpecializedGraph(true);
+		DBPropGraph result = DBPropGraph.findPropGraphByName(sg, DEFAULT_PROPS);
+		if (result == null) {
+			logger.error("No default Model Properties found");
+			// Construct the parameters that will be the
+			// default settings for any graph added to this database
+			//new DBPropGraph( m_sysProperties, "default", "generic");
+			//result = DBPropGraph.findPropGraph(sg, "default");	
+		}
+		return result;
+	}
+	
+	/**
+	 * Test if the database has previously been formatted.
+	 * 
+	 * @return boolean true if database is correctly formatted, false on any error.
+	 */
+	public boolean isDBFormatOK() throws RDFRDBException {
+		boolean result = true;
+		boolean[] found = new boolean[SYSTEM_TABLE_CNT];
+		int i = 0;
+		for (i = 0; i < SYSTEM_TABLE_CNT; i++) found[i] = false;
+		try {
+            for ( Iterator<String> iter = getAllTables().iterator() ; iter.hasNext(); )
+            {
+                String tblName = iter.next();
+                for (i = 0; i < SYSTEM_TABLE_CNT; i++)
+                    if (SYSTEM_TABLE_NAME[i].equals(tblName))
+                        found[i] = true;
+			}
+            
+			for (i = 0; i < SYSTEM_TABLE_CNT; i++) {
+				if (!found[i]) {
+					// mutex table is not required
+					if (SYSTEM_TABLE_NAME[i].equals(MUTEX_TABLE))
+						continue;
+					result = false;
+				}
+			}
+		} catch (Exception e1) {
+			// An exception might be an unformatted or corrupt
+			// db or a connection problem.
+			throw new RDFRDBException("Exception while checking db format - " + e1, e1);
+		}
+		return result;
+	}
+	
+	/**
+	 * Converts string to form accepted by database.
+	 */
+	public String stringToDBname(String aName) {
+		String result = (DB_NAMES_TO_UPPER) ? aName.toUpperCase() : aName;
+		return(result);
+	}
+	
+	private static final int lockTryMax = 5;  // max attempts to acquire/release lock
+	
+	
+    /**
+     * return true if the mutex is acquired, else false 
+     */
+
+    public boolean tryLockDB() {
+		boolean res = true;
+		try {
+			m_sql.runSQLGroup("lockDatabase", MUTEX_TABLE);
+		} catch (SQLException e) {
+			res = false;
+		}
+		return res;
     }
 
+	
+	public void lockDB() throws RDFRDBException {
+    	String err = "";
+    	int cnt = 0;
+    	while ( cnt++ < lockTryMax ) {
+    		if ( tryLockDB() )
+    			break;
+			try {
+				Thread.sleep(5000);
+			} catch (InterruptedException e) {
+				err = err + " lockDB sleep interrupted" + e;
+			}
+		}
+		if ( cnt >= lockTryMax ) {
+			err = "Failed to lock database after "+ lockTryMax + " attempts.\n"
+			+ err + "\n"
+			+ "Try later or else call DriverRDB.unlockDB() after ensuring\n" +
+			"that no other Jena applications are using the database.";
+			throw new RDFRDBException(err);
+		}
+    }
+    
     /**
-     * Gets all the fields. The fields are keyed by the fully qualified field name and
-     * the value is an instance of <CODE>AcroFields.Item</CODE>.
-     * 
-     * @return all the fields
+     * Release the mutex lock in the database.
      */
-    public HashMap getFields() {
-        return fields;
+    
+    public void unlockDB() throws RDFRDBException {
+    	String err;
+    	int cnt = 0;
+    	while ( cnt++ < lockTryMax ) {
+		try {
+			m_sql.runSQLGroup("unlockDatabase", MUTEX_TABLE);
+			break;
+		} catch (SQLException e) {
+			err = "Failed to unlock database after "+ lockTryMax + " attempts - " + e;
+			try {
+				Thread.sleep(5000);
+			} catch (InterruptedException e1) {
+				err = err + " sleep failed" + e;
+			}
+		}
+		if ( cnt >= lockTryMax )
+			throw new RDFRDBException(err);
+		}	
+    }
+    
+    
+    /* return true if the mutex is held. */
+    
+    public boolean DBisLocked() throws RDFRDBException {
+    	try {
+    		DatabaseMetaData dbmd = m_dbcon.getConnection().getMetaData();
+    		String[] tableTypes = { "TABLE" };
+    		String prefixMatch = stringToDBname(TABLE_NAME_PREFIX + "%");
+    		ResultSet iter = dbmd.getTables(null, null, MUTEX_TABLE, tableTypes);
+    		try { return iter.next(); } finally { iter.close(); }
+    	} catch (SQLException e1) {
+    		throw new RDFRDBException("Internal SQL error in driver" + e1);
+    	}
     }
 
-    /**
-     * Gets the field structure.
-     * 
-     * @param name the name of the field
-     * @return the field structure or <CODE>null</CODE> if the field
-     * does not exist
-     */
-    public Item getFieldItem(String name) {
-        if (xfa.isXfaPresent()) {
-            name = xfa.findFieldName(name, this);
-            if (name == null)
-                return null;
-        }
-        return (Item)fields.get(name);
-    }
+	/* (non-Javadoc)
+	 * @see com.hp.hpl.jena.graphRDB.IRDBDriver#cleanDB()
+	 */
+	public void cleanDB() {
 
-    /**
-     * Gets the long XFA translated name.
-     * 
-     * @param name the name of the field
-     * @return the long field name
-     */
-    public String getTranslatedFieldName(String name) {
-        if (xfa.isXfaPresent()) {
-            String namex = xfa.findFieldName(name, this);
-            if (namex != null)
-                name = namex;
-        }
-        return name;
-    }
-
-    /**
-     * Gets the field box positions in the document. The return is an array of <CODE>float</CODE>
-     * multiple of 5. For each of this groups the values are: [page, llx, lly, urx,
-     * ury]. The coordinates have the page rotation in consideration.
-     * 
-     * @param name the field name
-     * @return the positions or <CODE>null</CODE> if field does not exist
-     */
-    public float[] getFieldPositions(String name) {
-        Item item = getFieldItem(name);
-        if (item == null)
-            return null;
-        float ret[] = new float[item.size() * 5];
-        int ptr = 0;
-        for (int k = 0; k < item.size(); ++k) {
-            try {
-                PdfDictionary wd = item.getWidget(k);
-                PdfArray rect = wd.getAsArray(PdfName.RECT);
-                if (rect == null)
+		// assumes database lock is not held.
+		try {
+			lockDB();
+		} catch (RDFRDBException e) {
+			throw new RDFRDBException(
+					"DriverRDB.cleanDB() failed to acquire database lock:\n"
+							+ "("
+							+ e
+							+ ")\n."
+							+ "Try again or call DriverRDB.unlockDB() if necessary.");
+		}
+		// now clean the database
+		doCleanDB(true);
+	}
+	
+	/*
+	 * internal routine that does the actual work for cleanDB().
+	 * it assumes that the mutex is held and throws and exception
+	 * if not. it will optionally remove the mutex if dropMutex
+	 * is true.
+	 */
+	
+	protected void doCleanDB( boolean dropMutex ) throws RDFRDBException {
+		try {
+			if ( !DBisLocked() ) {
+				throw new RDFRDBException(
+				"Internal error in driver - database not locked for cleaning.\n");
+			}
+		} catch ( RDFRDBException e ) {
+			throw new RDFRDBException(
+			"Exception when checking for database lock - \n"
+			+ e);
+		}
+		//ResultSet alltables=null;
+		try {
+            List<String> tablesPresent = getAllTables() ; 
+            Iterator<String> it = tablesPresent.iterator();            
+            // Do the MUTEX clean after all other tables.
+            while (it.hasNext()) {
+                String tblName = it.next();
+                if ( tblName.equals(MUTEX_TABLE) )
                     continue;
-                Rectangle r = PdfReader.getNormalizedRectangle(rect);
-                int page = item.getPage(k).intValue();
-                int rotation = reader.getPageRotation(page);
-                ret[ptr++] = page;
-                if (rotation != 0) {
-                    Rectangle pageSize = reader.getPageSize(page);
-                    switch (rotation) {
-                        case 270:
-                            r = new Rectangle(
-                                pageSize.getTop() - r.getBottom(),
-                                r.getLeft(),
-                                pageSize.getTop() - r.getTop(),
-                                r.getRight());
-                            break;
-                        case 180:
-                            r = new Rectangle(
-                                pageSize.getRight() - r.getLeft(),
-                                pageSize.getTop() - r.getBottom(),
-                                pageSize.getRight() - r.getRight(),
-                                pageSize.getTop() - r.getTop());
-                            break;
-                        case 90:
-                            r = new Rectangle(
-                                r.getBottom(),
-                                pageSize.getRight() - r.getLeft(),
-                                r.getTop(),
-                                pageSize.getRight() - r.getRight());
-                            break;
-                    }
-                    r.normalize();
+                m_sql.runSQLGroup("dropTable", tblName);
+            }
+            
+            // Mutex to be removed as well?
+            if ( dropMutex && tablesPresent.contains(MUTEX_TABLE) )
+                m_sql.runSQLGroup("dropTable", MUTEX_TABLE);
+
+            if (PRE_ALLOCATE_ID)
+                clearSequences();
+            
+		} catch (SQLException e1) {
+			throw new RDFRDBException("Internal error in driver while cleaning database\n"
+					+ "(" + e1 + ").\n"
+					+ "Database may be corrupted. Try cleanDB() again.");
+		}
+		m_sysProperties = null;
+		if ( prefixCache != null ) prefixCache.clear();
+		prefixCache = null;
+	}	
+
+	protected List<String> getAllTables() {
+		try {
+			DatabaseMetaData dbmd = m_dbcon.getConnection().getMetaData();
+			String[] tableTypes = { "TABLE" };
+			String prefixMatch = stringToDBname(TABLE_NAME_PREFIX + "%");
+			ResultSet rs = dbmd.getTables(null, null, prefixMatch, tableTypes);
+            List<String> tables = new ArrayList<String>() ;
+            while(rs.next())
+                tables.add(rs.getString("TABLE_NAME"));
+            rs.close() ;
+            return tables ; 
+		} catch (SQLException e1) {
+			throw new RDFRDBException("Internal SQL error in driver - " + e1);
+		}
+	}
+	
+	/**
+	 * Drop all Jena-related sequences from database, if necessary.
+	 * Override in subclass if sequences must be explicitly deleted.
+	 */
+	public void clearSequences() {
+	}
+	
+	/**
+	 * Removes named sequence from the database, if it exists.
+	 * @param seqName
+	 */
+	public void removeSequence(String seqName) {
+		if (sequenceExists(seqName)) {
+			try {
+				m_sql.runSQLGroup("DropSequence",seqName);
+			} catch (Exception e) {
+				logger.warn("Unable to drop sequence " + seqName, e);
+			}
+		}
+	}
+
+	/**
+	 * Check database and see if named sequence exists.
+	 * @param seqName
+	 */
+	public boolean sequenceExists(String seqName) {
+		Object[] args = {seqName};
+		ResultSet rs = null;
+		boolean result = false;
+		PreparedStatement ps=null;
+		try {
+			String op = "SelectSequenceName";
+			ps = m_sql.getPreparedSQLStatement(op);
+			ps.setString(1,seqName);
+			rs = ps.executeQuery();
+			result = rs.next();
+		} catch (Exception e) {
+			logger.error("Unable to select sequence " + seqName, e);
+		} finally {
+			if (rs != null)
+				try {
+					rs.close();
+				} catch (SQLException e1) {
+					throw new RDFRDBException("Failed to get last inserted ID: " + e1);
+				}
+			if(ps!=null)m_sql.returnPreparedSQLStatement(ps);
+		}
+		return result;
+	}
+
+	/**
+	 * Check database and see if named sequence exists.
+	 * @param seqName
+	 */
+	public List<String> getSequences() {
+		List<String> results =  new ArrayList<String>(10);
+		Object[] args = {};
+		ResultSet rs = null;
+		PreparedStatement ps = null;
+		try {
+			String opname = "SelectJenaSequences";
+			ps = m_sql.getPreparedSQLStatement(opname, TABLE_NAME_PREFIX);
+		    rs = ps.executeQuery();
+		    while (rs.next()) results.add( rs.getString(1) );
+            //rs.close();   //Removed after jena 2.4. 
+		} catch (Exception e) {
+			logger.error("Unable to select Jena sequences: ", e);
+		} finally {
+			if(rs != null)
+                try {
+                    rs.close();
+                } catch (SQLException e1) {
+                	throw new RDFRDBException("Failed to get last inserted ID: " + e1);
                 }
-                ret[ptr++] = r.getLeft();
-                ret[ptr++] = r.getBottom();
-                ret[ptr++] = r.getRight();
-                ret[ptr++] = r.getTop();
-            }
-            catch (Exception e) {
-                // empty on purpose
-            }
-        }
-        if (ptr < ret.length) {
-            float ret2[] = new float[ptr];
-            System.arraycopy(ret, 0, ret2, 0, ptr);
-            return ret2;
-        }
+           if(ps!=null)m_sql.returnPreparedSQLStatement(ps);
+		}
+		return results;
+	}
+	
+	/**
+	 * Create a table for storing asserted or reified statements.
+	 * 
+	 * @param graphId the graph which the table is created.
+	 * @param isReif true if table stores reified statements.
+	 * @return the name of the new table 
+	 * 
+	 */
+	public String createTable( int graphId, boolean isReif) { 	
+		String opname = isReif ? "createReifStatementTable" : "createStatementTable";
+		int i = 0;
+		String params[];
+		while ( true ) {
+			params = getCreateTableParams(graphId, isReif);
+			try {
+				m_sql.runSQLGroup(opname, params);
+				break;
+			} catch (SQLException e) {
+				i++;
+				if ( i > 5 ) {
+					logger.warn("Problem creating table", e);
+					throw new RDFRDBException("Failed to create table: " + params[0], e);
+				}
+			}
+		}
+		return params[0];
+	}
+
+
+	/**
+	 * Delete a table.
+	 * 
+	 * @param tableName the name of the table to delete.	 * 
+	 */
+	public void deleteTable( String tableName ) {
+		
+		String opname = "dropTable";
+		PreparedStatement ps = null;
+		try {         			
+			ps = m_sql.getPreparedSQLStatement(opname, tableName);
+			ps.executeUpdate();
+			return;
+		} catch (Exception e1) {
+			throw new RDFRDBException("Failed to delete table ", e1);
+		}finally {
+			if(ps!=null)m_sql.returnPreparedSQLStatement(ps);
+		}
+	}
+
+
+
+	/**
+	 * Throws an UnsupportedOperation exception.
+	 * 
+	 * @param opName name of the operation that's not supported.
+	 */
+	private void notSupported(String opName)
+		{ throw new UnsupportedOperationException(opName); }
+		
+
+	protected static final int xactBegin = 0;
+	protected static final int xactCommit = 1;
+	protected static final int xactAbort = 2;
+	protected static final int xactIsActive = 3;
+	protected static final int xactAutoOff = 4;
+	protected static final int xactAutoOn = 5;
+    protected static final int xactBeginIfNone = 6;
+
+	
+	/**
+	 * Perform a transaction operation.  For begin/commit/abort,
+	 * return true if success, false if fail. for xactIsActive,
+	 * return true if this driver has an active transaction,
+	 * else return false.
+     * for beginIfNone, if there is a transaction running, return false, otherwise
+     * 
+	 */
+	protected synchronized boolean xactOp(int op) throws RDFRDBException {
+		try { return xaxtOpRaw( op ); }
+		catch (SQLException e) { throw new JenaException( "Transaction support failed: ", e );
+		}
+	}
+
+    private boolean xaxtOpRaw( int op ) throws SQLException
+        {
+        boolean ret = true;
+        if (op == xactBegin) {
+        	// start a transaction
+        	// always return true
+        	if (!inTransaction) {
+        		xactBegin();
+        		inTransaction = true;
+        	}
+        } else if (op == xactBeginIfNone) {
+            if (inTransaction)
+                ret = false;
+            else {
+                xactBegin();
+                inTransaction = true; }
+        } else if (op == xactCommit) {
+        	// commit a transaction
+        	// always return true
+        	if (inTransaction) {
+        		xactCommit();
+        		inTransaction = false;
+        	}
+        } else if (op == xactAbort) {
+        	// rollback a transaction
+        	// always return true
+        	if (inTransaction) {
+        		xactAbort();
+        		inTransaction = false;
+        	}
+        } else if (op == xactIsActive) {
+        	// return true if xact is active, else false
+        	ret = inTransaction;
+        } else if (op == xactAutoOff) {
+        	// disable autocommit
+        	// return true if autocommit is on, else false
+        	// begins a new transaction
+        	Connection c = m_sql.getConnection();
+        	ret = c.getAutoCommit();
+        	if ( ret )
+        		xactBegin();
+        	inTransaction = true;			
+        } else if (op == xactAutoOn) {
+        	// enable autocommit
+        	// always return true
+        	if ( inTransaction )
+        		throw new JenaException("Can't enable AutoCommit in middle of existing transaction");
+        	Connection c = m_sql.getConnection();
+        	c.setAutoCommit(true);
+        	ret = true;
+        } else
+        	throw new JenaException("Unknown transaction operation: " + op);
         return ret;
-    }
-
-    private int removeRefFromArray(PdfArray array, PdfObject refo) {
-        if (refo == null || !refo.isIndirect())
-            return array.size();
-        PdfIndirectReference ref = (PdfIndirectReference)refo;
-        for (int j = 0; j < array.size(); ++j) {
-            PdfObject obj = array.getPdfObject(j);
-            if (!obj.isIndirect())
-                continue;
-            if (((PdfIndirectReference)obj).getNumber() == ref.getNumber())
-                array.remove(j--);
         }
-        return array.size();
-    }
+
+	private void xactBegin() throws RDFRDBException {
+		try {
+			Connection c = m_sql.getConnection();
+			try {
+				if (c.getTransactionIsolation() != Connection.TRANSACTION_READ_COMMITTED) {
+					c.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
+				}
+				if (c.getAutoCommit()) {
+					c.setAutoCommit(false);
+				}
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+			// Starting a transaction could require us to lose any
+			// cached prepared statements
+			// for some jdbc drivers, currently I think all the drivers
+			// we use are safe and
+			// is a major performance hit so commented out for now.
+			//m_sql.flushPreparedStatementCache();
+		} catch (SQLException e) {
+			throw new JenaException("Transaction begin failed: ", e);
+		}
+	}
+	
+	private void xactAbort() throws RDFRDBException {
+		try {
+			Connection c = m_sql.getConnection();
+			c.rollback();
+			c.commit();
+			c.setAutoCommit(true);
+		} catch (SQLException e) {
+			throw new JenaException("Transaction rollback failed: ", e);
+		}
+	}
+	
+	private void xactCommit() throws RDFRDBException {
+		try {
+			Connection c = m_sql.getConnection();
+			c.commit();
+			try {
+				c.setAutoCommit(true);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+			// not sure why read_uncommitted is set, below. commented
+			// out by kw.
+			// c.setTransactionIsolation(Connection.TRANSACTION_READ_UNCOMMITTED);
+		} catch (SQLException e) {
+			throw new JenaException("Transaction commit failed: ", e);
+		}
+	}
+
+        
+	/**
+	 * If the underlying database connection supports transactions, turn
+	 * autocommit off, then begin a new transaction. Note that transactions are
+	 * associated with connections, not with Models. This
+	 */
+	public synchronized void begin() throws RDFRDBException {
+		if (transactionsSupported()) {
+			xactOp(xactBegin);
+		} else {
+			notSupported("begin transaction");
+		}
+	}
+
+	/**
+	 * If the underlying database connection supports transactions, call
+	 * commit(), then turn autocommit on.
+	 */
+	public void commit() throws RDFRDBException {
+		if (transactionsSupported()) {
+			xactOp(xactCommit);
+		} else {
+			notSupported("commit transaction");
+		}
+	}
+
+	/**
+	 * If underlying database connection supports transactions, call abort() on
+	 * the connection, then turn autocommit on.
+	 */
+	public synchronized void abort() throws RDFRDBException {
+		if (transactionsSupported()) {
+			xactOp(xactAbort);
+		} else {
+			notSupported("abort transaction");
+		}
+	}
+        
+
+        
+	/**
+	 * Return a string identifying underlying database type.
+	 *
+	 */
+	public String getDatabaseType() {
+		return(DATABASE_TYPE);
+	}
+
+	/**
+	 * Returns true if the underlying database supports transactions.
+	 */
+	public boolean transactionsSupported() { 
+		if (m_transactionsSupported != null) {
+			return(m_transactionsSupported.booleanValue());	
+		}
+		
+		if (m_dbcon != null) {
+			try {
+				Connection c = m_sql.getConnection();
+				if ( c != null) {
+					m_transactionsSupported = new Boolean(c.getMetaData().supportsMultipleTransactions());
+					return(m_transactionsSupported.booleanValue());
+				}
+			} catch (SQLException e) {
+				logger.error("SQL Exception caught ", e);
+			}
+		}
+		return (false);
+			
+		}
 
     /**
-     * Removes all the fields from <CODE>page</CODE>.
+     * Close the driver 
+     * Nothing to do for now.
      * 
-     * @param page the page to remove the fields from
-     * @return <CODE>true</CODE> if any field was removed, <CODE>false otherwise</CODE>
+     * @throws RDFDBException if there is an access problem
      */
-    public boolean removeFieldsFromPage(int page) {
-        if (page < 1)
-            return false;
-        String names[] = new String[fields.size()];
-        fields.keySet().toArray(names);
-        boolean found = false;
-        for (int k = 0; k < names.length; ++k) {
-            boolean fr = removeField(names[k], page);
-            found = (found || fr);
-        }
-        return found;
-    }
+
+    public void close() throws RDFRDBException
+    { }
+    
+ 	/*
+	 * The following routines are responsible for encoding nodes
+	 * as database structures. For each node type stored (currently,
+	 * literals, URI, blank), there are two possible encodings
+	 * depending on the node size. Small nodes may be stored
+	 * within a statement table. If the node is long (will not
+	 * fit within the statement table), it is be stored in a
+	 * separate table for that node type.
+	 * 
+	 * In addition, for resources (URI, blank nodes), the URI
+	 * may be optionally compressed. Below, the possibilites
+	 * are enumerated.
+	 * 
+	 * Literal Encoding in Statement Tables
+	 * 	Short Literal:	Lv:[langLen]:[datatypeLen]:[langString][datatypeString]value[:]
+	 * 	Long Literal:	Lr:dbid
+	 * Literal Encoding in Long Literal Table
+	 * 	Literal:		Lv:[langLen]:[datatypeLen]:[langString][datatypeString]head[:] hash tail
+	 * 
+	 * Comments:
+	 * 		L indicates a literal
+	 * 		v indicates a value
+	 * 		r indicates a reference to another table
+	 * 		: is used as a delimiter. note that MySQL trims trailing white space for
+	 * 			certain VARCHAR columns so an extra delimiter is appended when necessary
+	 * 			for those columns. it is not required for dbid, however. 
+	 * 		dbid references the long literal table
+	 * 		langLen is the length of the language identifier for the literal
+	 * 		langString is the language identifier
+	 * 		datatypeLen is the length of the datatype for the literal
+	 * 		datatypeString is the datatype for the literal
+	 * 		value is the lexical form of the string
+	 * 		head is a prefix of value that can be indexed
+	 * 		hash is the CRC32 hash value for the tail
+	 * 		tail is the remainder of the value that cannot be indexed
+	 * 		
+	 * 
+	 * 
+	 * URI Encoding in Statement Tables
+	 * 	Short URI:	Uv:[pfx_dbid]:URI[:]
+	 * 	Long URI:	Ur:[pfx_dbid]:dbid
+	 * URI Encoding in Long URI Table
+	 * 	URI:		Uv:head[:] hash tail
+	 * 
+	 * Comments:
+	 * 		U indicates a URI
+	 * 		pfx_dbid references the prefix table. if the prefix is too
+	 * 			short (i.e., the length of the prefix is less than
+	 * 			URI_COMPRESS_LENGTH), the URI is not compressed and
+	 * 			pfx_dbid is null.
+	 * 		URI is the complete URI
+	 * 		other notation same as for literal encoding
+	 * 
+	 * Blank Node Encoding in Statement Tables
+	 * 	Short URI:	Bv:[pfx_dbid]:bnid[:]
+	 * 	Long URI:	Br:[pfx_dbid]:dbid
+	 * Blank Encoding in Long URI Table
+	 * 	URI:		Bv:head[:] hash tail
+	 * 
+	 * Comments:
+	 * 		B indicates a blank node
+	 * 		bnid is the blank node identifier
+	 * 		other notation same as above
+	 * 		Note: currently, blank nodes are always stored uncompressed (pfix_dbid is null). 
+	 *
+	 * Variable Node Encoding in Statement Tables
+	 * 	Variable Node:	Vv:name
+	 * 
+	 * Comments:
+	 * 		V indicates a variable node
+	 * 		v indicates a value
+	 * 		name is the variable name
+	 * 		Note: the length must be less than LONG_OBJECT_LENGTH
+	 * 
+	 * ANY Node Encoding in Statement Tables
+	 * 	Variable Node:	Av:
+	 *  
+	 * Prefix Encoding in Prefix Table
+	 * 	Prefix:	Pv:val[:] [hash] [tail]
+	 * 
+	 * Comments:
+	 * 		P indicates a prefix
+	 * 		other notation same as above
+	 * 		hash and tail are only required for long prefixes.
+	 * 
+	 */
+	 
+	 
+	 
+	protected static String RDBCodeURI = "U";
+	protected static String RDBCodeBlank = "B";
+	protected static String RDBCodeLiteral = "L";
+	protected static String RDBCodeVariable = "V";
+	protected static String RDBCodeANY = "A";
+	protected static String RDBCodePrefix = "P";
+	protected static String	RDBCodeValue = "v";
+	protected static String RDBCodeRef = "r";
+	protected static String RDBCodeDelim = ":";
+	protected static char RDBCodeDelimChar = ':';
+	protected static String RDBCodeInvalid = "X";
+
+
+		
+    
+	/**
+	* Convert a node to a string to be stored in a statement table.
+	* @param Node The node to convert to a string. Must be a concrete node.
+	* @param addIfLong If the node is a long object and is not in the database, add it.
+	* @return the string or null if failure.
+	*/
+	public String nodeToRDBString ( Node node, boolean addIfLong ) throws RDFRDBException {
+		String res = null;
+		if ( node.isURI() ) {
+			String uri = new String(((Node_URI) node).getURI());
+			
+//			if ( uri.startsWith(RDBCodeURI) )
+//				throw new RDFRDBException ("URI Node looks like a blank node: " + uri );
+			
+			// TO DO: need to write special version of splitNamespace for rdb.
+			//		or else, need a guarantee that splitNamespace never changes.
+			//		the problem is that if the splitNamespace algorithm changes,
+			//		then URI's may be encoded differently. so, URI's in existing
+			//		databases may become inaccessible.
+			int pos = 0;
+			boolean noCompress;
+			String pfx;
+			String qname;
+			if ( URI_COMPRESS == true ) {
+				pos = dbSplitNamespace(uri);
+				if ( uri.startsWith(DB.uri) )
+					noCompress = true;
+				else
+					noCompress = (pos == uri.length()) || (pos <= URI_COMPRESS_LENGTH);
+			} else
+				noCompress = true;
+			if ( noCompress ) {
+				pfx = RDBCodeDelim + RDBCodeDelim;
+				qname = uri;
+			} else {
+				// see if it's cached
+				DBIDInt pfxid = URItoPrefix(uri, pos, addIfLong);
+				if ( pfxid == null ) return res;
+				pfx = RDBCodeDelim + (pfxid).getIntID() + RDBCodeDelim;
+				qname = uri.substring(pos);
+			}
+			int encodeLen = RDBCodeURI.length() + 1 + pfx.length() + EOS_LEN;
+			boolean URIisLong = objectIsLong(encodeLen,qname);
+			if ( URIisLong ) {
+				int	dbid;
+				// belongs in URI table
+				DBIDInt URIid = getURIID(qname,addIfLong);
+				if ( URIid == null ) return res;
+				dbid = URIid.getIntID();
+				res = new String(RDBCodeURI + RDBCodeRef + pfx + dbid);
+			} else {
+				res = RDBCodeURI + RDBCodeValue + pfx + qname + EOS;
+			}
+		} else if ( node.isLiteral() ){
+			Node_Literal litNode = (Node_Literal) node;
+			String lval = litNode.getLiteralLexicalForm();
+			String lang = litNode.getLiteralLanguage();
+			String dtype = litNode.getLiteralDatatypeURI();
+			String ld = litLangTypeToRDBString(lang,dtype);
+			int encodeLen = RDBCodeLiteral.length() + 2 + ld.length() + EOS_LEN;
+			boolean litIsLong = objectIsLong(encodeLen,lval);		
+            
+			if ( litIsLong ) {
+				int	dbid;
+                
+                //System.err.println("Long literal("+lval.length()+" => "+encodeLen+")") ;
+                
+				// belongs in literal table
+				DBIDInt lid = getLiteralID(litNode,addIfLong);
+				if ( lid == null ) return res;
+				dbid = lid.getIntID();
+				res = new String(RDBCodeLiteral + RDBCodeRef + RDBCodeDelim + dbid);
+			} else {
+				res = new String(RDBCodeLiteral + RDBCodeValue + RDBCodeDelim + ld + lval + EOS);
+			}    		
+		} else if ( node.isBlank() ) {
+			String bnid = node.getBlankNodeId().toString();
+			String delims = "::";
+			int encodeLen = RDBCodeBlank.length() + 1 + delims.length() + EOS_LEN;
+			boolean BisLong = objectIsLong(encodeLen,bnid);
+			if ( BisLong ) {
+				int	dbid;
+				// belongs in URI table
+				DBIDInt URIid = getBlankID(bnid,addIfLong);
+				if ( URIid == null ) return res;
+				dbid = URIid.getIntID();
+				res = new String(RDBCodeBlank + RDBCodeRef + delims + dbid);
+			} else {
+				res = new String(RDBCodeBlank + RDBCodeValue + delims + bnid + EOS);
+			}
+			
+		} else if ( node.isVariable() ){
+			String name = ((Node_Variable)node).getName();
+			int len = name.length();
+			if ( (len + 3 + EOS_LEN) > LONG_OBJECT_LENGTH )
+				throw new JenaException ("Variable name too long: " + name );
+			res = RDBCodeVariable + RDBCodeValue + RDBCodeDelim + name + EOS;
+		} else if ( node.equals(Node.ANY) ) {
+			res = RDBCodeANY +  RDBCodeValue + RDBCodeDelim;
+		} else {
+			throw new RDFRDBException ("Expected Concrete Node, got " + node.toString() );	
+		}
+		return res;
+	}
+	
+	/**
+	* Convert an RDB string to the node that it encodes. Return null if failure.
+	* @param RDBstring The string to convert to a node.
+	* @return The node or null if failure.
+	*/
+	public Node RDBStringToNode ( String RDBString ) throws RDFRDBException {	
+		Node res = null;
+		int len = RDBString.length();
+		if ( len < 3 ) 
+			throw new RDFRDBException("Bad RDBString Header: " + RDBString);
+		String nodeType = RDBString.substring(0,1);
+		String valType = RDBString.substring(1,2);
+		if ( (!(valType.equals(RDBCodeRef) || valType.equals(RDBCodeValue))) ||
+				(RDBString.charAt(2) != RDBCodeDelimChar) )
+				throw new RDFRDBException("Bad RDBString Header: " + RDBString);
+
+		int pos = 3;
+		int npos;
+		
+		if ( nodeType.equals(RDBCodeURI) ) {
+			ParseInt pi = new ParseInt(pos);
+			String prefix = "";
+			RDBStringParseInt(RDBString, pi, false);
+			if ( pi.val != null ) {
+				if ( URI_COMPRESS == false )
+					throw new RDFRDBException("Bad URI: Prefix Compression Disabled: " + RDBString);
+				prefix = IDtoPrefix(pi.val.intValue());
+				if ( prefix == null )
+					throw new RDFRDBException("Bad URI Prefix: " + RDBString);
+			}
+			pos = pi.pos + 1;
+			String qname;
+			if ( valType.equals(RDBCodeRef) ) {
+				qname = IDtoURI(RDBString.substring(pos));
+				if ( qname == null )
+					throw new RDFRDBException("Bad URI: " + RDBString);
+			} else
+				qname = RDBString.substring(pos,len - EOS_LEN);
+
+			res = Node.createURI(prefix + qname);
+			
+		} else if ( nodeType.equals(RDBCodeLiteral) ) {
+			res = RDBLiteralStringToLiteralNode( RDBString, len, valType, pos );	 
+			
+		} else if ( nodeType.equals(RDBCodeBlank) ) {
+			String bstr = null;
+			if ( valType.equals(RDBCodeValue) ) {
+				bstr = RDBString.substring(4,len-EOS_LEN);
+			} else {
+				bstr = IDtoBlank(RDBString.substring(4));
+				if ( bstr == null )
+					throw new RDFRDBException("Bad URI: " + RDBString);			
+			}
+			res = Node.createAnon( new AnonId (bstr) );
+						
+		} else if ( nodeType.equals(RDBCodeVariable) ) {
+			String vname = RDBString.substring(3,len-EOS_LEN);
+			res = Node.createVariable(vname);
+			
+		} else if ( nodeType.equals(RDBCodeANY) ) {
+			res = Node.ANY;
+			
+		} else
+			throw new RDFRDBException ("Invalid RDBString Prefix, " + RDBString );	
+		return res;
+	}
 
     /**
-     * Removes a field from the document. If page equals -1 all the fields with this
-     * <CODE>name</CODE> are removed from the document otherwise only the fields in
-     * that particular page are removed.
-     * 
-     * @param name the field name
-     * @param page the page to remove the field from or -1 to remove it from all the pages
-     * @return <CODE>true</CODE> if the field exists, <CODE>false otherwise</CODE>
-     */
-    public boolean removeField(String name, int page) {
-        Item item = getFieldItem(name);
-        if (item == null)
-            return false;
-        PdfDictionary acroForm = (PdfDictionary)PdfReader.getPdfObject(reader.getCatalog().get(PdfName.ACROFORM), reader.getCatalog());
+        Answer a literal Node constructed according to the RDB String.
+        
+     	@param RDBString
+     	@param len
+     	@param valType
+     	@param pos
+     	@return
+    */
+    protected Node RDBLiteralStringToLiteralNode( String RDBString, int len, String valType, int pos )
+        {
+        ParseInt pi = new ParseInt( pos );
+        String litString = null;
+        if ( valType.equals(RDBCodeRef) ) {
+        	RDBStringParseInt(RDBString,pi,true);
+        	if ( pi.val != null )
+        		litString = IDtoLiteral(pi.val.intValue());
+        	if ( litString == null )
+        		throw new RDFRDBException("Bad Literal Reference: " + RDBString);
+        } else
+        	litString = RDBString.substring(pos,len-EOS_LEN);
+        len = litString.length();
+        pi.pos = 0;
+        RDBStringParseInt(litString, pi, false);
+        int langLen = pi.val == null ? 0 : pi.val.intValue(); 
+        pi.pos = pi.pos + 1;
+        RDBStringParseInt(litString, pi, false);	
+        int dtypeLen = pi.val == null ? 0 : pi.val.intValue();
+        pos = pi.pos + 1;	
+        if ( (pos + langLen + dtypeLen) > len )
+        		throw new RDFRDBException("Malformed Literal: " + litString);	
+        String lang = litString.substring( pos, pos + langLen );
+        pos = pos + langLen;
+        String dtype = litString.substring( pos, pos + dtypeLen );        
+        String val = litString.substring( pos + dtypeLen );
+        return createLiteral( val, lang, dtype );
+        }
 
-        if (acroForm == null)
-            return false;
-        PdfArray arrayf = acroForm.getAsArray(PdfName.FIELDS);
-        if (arrayf == null)
-            return false;
-        for (int k = 0; k < item.size(); ++k) {
-            int pageV = item.getPage(k).intValue();
-            if (page != -1 && page != pageV)
-                continue;
-            PdfIndirectReference ref = item.getWidgetRef(k);
-            PdfDictionary wd = item.getWidget( k );
-            PdfDictionary pageDic = reader.getPageN(pageV);
-            PdfArray annots = pageDic.getAsArray(PdfName.ANNOTS);
-            if (annots != null) {
-                if (removeRefFromArray(annots, ref) == 0) {
-                    pageDic.remove(PdfName.ANNOTS);
-                    markUsed(pageDic);
+    /**
+        Answer a Node literal with the indicated lexical form, language,
+        and datatype. If the datatype is the empty string, there is no
+        datatype. If the language is the empty string, there is no language.
+        
+     	@param val
+     	@param lang
+     	@param dtype
+     	@return
+    */
+    protected Node createLiteral( String val, String lang, String dtype ) {
+        if (dtype.equals( "" )) {
+            return Node.createLiteral( val, lang, null );
+        } else {
+        	RDFDatatype dt = TypeMapper.getInstance().getSafeTypeByName(dtype);
+            return Node.createLiteral( val, lang, dt );
+        }
+    }
+	
+	/** This is cuurently a copy of Util.splitNamespace.  It was
+	 * copied rather than used directly for two reasons. 1) in the
+	 * future it may be desirable to use a different split algorithm
+	 * for persistence. 2) the util version could change at any time,
+	 * which would render existing databases inaccessible. having a
+	 * copy allows the db version to evolve in a controlled way.
+	 * 
+	 * Given an absolute URI, determine the split point between the namespace part
+	 * and the localname part.
+	 * If there is no valid localname part then the length of the
+	 * string is returned.
+	 * The algorithm tries to find the longest NCName at the end
+	 * of the uri, not immediately preceeded by the first colon
+	 * in the string.
+	 * @param uri
+	 * @return the index of the first character of the localname
+	 */
+	public static int dbSplitNamespace(String uri) {
+		char ch;
+		int lg = uri.length();
+		if (lg == 0)
+			return 0;
+		int j;
+		int i;
+		for (i = lg - 1; i >= 1; i--) {
+			ch = uri.charAt(i);
+			if (!XMLChar.isNCName(ch))
+				break;
+		}
+		for (j = i + 1; j < lg; j++) {
+			ch = uri.charAt(j);
+			if (XMLChar.isNCNameStart(ch)) {
+				if (uri.charAt(j - 1) == ':'
+					&& uri.lastIndexOf(':', j - 2) == -1)
+					continue; // split "mailto:me" as "mailto:m" and "e" !
+				else
+					break;
+			}
+		}
+		return j;
+	}
+
+	
+	class ParseInt {
+		int	pos;
+		Integer val;	
+		ParseInt(int p) {pos = p;}
+	}
+
+	protected void RDBStringParseInt ( String RDBString, ParseInt pi, boolean toEnd ) {
+		int npos = toEnd ? RDBString.length() : RDBString.indexOf(RDBCodeDelimChar,pi.pos);
+		if ( npos < 0 ) {
+			throw new RDFRDBException("Bad RDB String: " + RDBString);
+		}
+		String intStr = RDBString.substring(pi.pos,npos);
+		pi.pos = npos;
+		if ( intStr.equals("") )
+			pi.val = null;
+		else try {
+			pi.val = new Integer(intStr);
+		} catch (NumberFormatException e1) {
+			throw new RDFRDBException("Bad RDB String: " + RDBString);
+		} 
+		return;
+	}
+	
+	
+
+	DBIDInt URItoPrefix ( String uri, int pos, boolean add ) {
+		DBIDInt res;
+		Object key = prefixCache.getByValue(uri.substring(0,pos));
+		if ( key == null ) {
+			RDBLongObject	lobj = PrefixToLongObject(uri,pos);
+			res = getLongObjectID(lobj, PREFIX_TABLE, add);
+			if ( res != null )
+				prefixCache.put(res,uri.substring(0,pos));
+		} else
+			res = (DBIDInt) key;
+		return res;
+	}
+	
+	protected RDBLongObject PrefixToLongObject ( String prefix, int split ) {
+		RDBLongObject	res = new RDBLongObject();
+		int				headLen;
+		int				avail;
+
+		res.head = RDBCodePrefix + RDBCodeValue + RDBCodeDelim;
+		headLen = res.head.length();
+		avail = INDEX_KEY_LENGTH - (headLen + EOS_LEN);
+		if ( split > avail ) {
+			res.head = res.head + prefix.substring(0,avail);
+			res.tail = prefix.substring(avail,split);
+			res.hash = stringToHash(res.tail);
+		} else {
+			res.head = res.head + prefix.substring(0,split);
+			res.tail = "";
+		}
+		res.head = res.head + EOS;
+		return res;	
+	}
+
+	/**
+	* Encode a literal node's lang and datatype as a string of the
+	* form ":[langLen]:[datatypeLen]:[langString][dataTypeString]"
+	* @return the string.
+	*/
+	public String litLangTypeToRDBString ( String lang, String dtype ) throws RDFRDBException {
+		String res = RDBCodeDelim;
+		res = ((lang == null) ? "" : Integer.toString(lang.length())) + RDBCodeDelim;
+		res = res + ((dtype == null) ? "" : Integer.toString(dtype.length())) + RDBCodeDelim;
+		res = res + (lang == null ? "" : lang) + (dtype == null ? "" : dtype);
+		return res;
+	}
+	
+	/**
+	* Check if an object is long, i.e., it exceeds the length
+	* limit for storing in a statement table.
+	* @return true if literal is long, else false.
+	*/
+	protected boolean objectIsLong ( int encodingLen, String objAsString ) {
+		return ( (encodingLen + objAsString.length()) > LONG_OBJECT_LENGTH);
+	}
+	
+	class RDBLongObject {
+		String		head;		/* prefix of long object that can be indexed */
+		long		hash;		/* hash encoding of tail */
+		String		tail;		/* remainder of long object */
+	}
+	
+	protected RDBLongObject literalToLongObject ( Node_Literal node ) {
+		RDBLongObject	res = new RDBLongObject();
+		int				headLen;
+		int				avail;
+		String 			lang = node.getLiteralLanguage();
+		String 			dtype = node.getLiteralDatatypeURI();
+		String 			val = node.getLiteralLexicalForm();
+		String			langType = litLangTypeToRDBString(lang,dtype);
+
+		res.head = RDBCodeLiteral + RDBCodeValue + RDBCodeDelim + langType;
+		headLen = res.head.length();
+		avail = INDEX_KEY_LENGTH - (headLen + EOS_LEN);
+		if ( val.length() > avail ) {
+			res.head = res.head + val.substring(0,avail);
+			res.tail = val.substring(avail);
+			res.hash = stringToHash(res.tail);
+		} else {
+			res.head = res.head + val;
+			res.tail = "";
+		}
+		res.head = res.head + EOS;
+		return res;
+	}
+	
+		
+	protected long stringToHash ( String str ) {
+		CRC32 checksum = new CRC32();
+		checksum.update(str.getBytes());
+		return checksum.getValue();
+	}
+	
+	/**
+	 * Return the database ID for the URI, if it exists
+	 */
+	public DBIDInt getBlankID(String bstr, boolean add) throws RDFRDBException {
+		RDBLongObject	lobj = URIToLongObject (bstr,RDBCodeBlank);
+		return getLongObjectID(lobj, LONG_URI_TABLE, add);
+	}
+	
+	/**
+	 * Return the database ID for the URI, if it exists
+	 */
+	public DBIDInt getURIID(String qname, boolean add) throws RDFRDBException {
+		RDBLongObject	lobj = URIToLongObject (qname,RDBCodeURI);
+		return getLongObjectID(lobj, LONG_URI_TABLE, add);
+	}
+
+	protected RDBLongObject URIToLongObject ( String qname, String code ) {
+		RDBLongObject	res = new RDBLongObject();
+		int				headLen;
+		int				avail;
+
+		res.head = code + RDBCodeValue + RDBCodeDelim;
+		headLen = res.head.length();
+		avail = INDEX_KEY_LENGTH - (headLen + EOS_LEN);
+		if ( qname.length() > avail ) {
+			res.head = res.head + qname.substring(0,avail);
+			res.tail = qname.substring(avail);
+			res.hash = stringToHash(res.tail);
+		} else {
+			res.head = res.head + qname;
+			res.tail = "";
+		}
+		res.head = res.head + EOS;
+		return res;	
+	}
+			
+	
+	/**
+	 * Return the database ID for the literal, if it exists
+	 */
+	public DBIDInt getLiteralID(Node_Literal lnode, boolean add) throws RDFRDBException {
+		RDBLongObject	lobj = literalToLongObject (lnode);
+		return getLongObjectID(lobj, LONG_LIT_TABLE, add);
+	}
+			
+	public DBIDInt getLongObjectID(RDBLongObject lobj, String table, boolean add) throws RDFRDBException {
+		ResultSet rs = null;
+		PreparedStatement ps = null;
+		try {
+			String opName = "getLongObjectID";
+			if ( lobj.tail.length() > 0 ) 
+				opName += "withChkSum";
+			ps = m_sql.getPreparedSQLStatement(opName, table); 
+			ps.setString(1,lobj.head);
+			if ( lobj.tail.length() > 0 ) 
+				ps.setLong(2, lobj.hash);
+			
+			rs = ps.executeQuery();
+			DBIDInt result = null;
+			if (rs.next()) {
+				result = wrapDBID(rs.getObject(1));
+			} else {
+				if ( add )
+					result = addRDBLongObject(lobj, table);
+			}
+
+			return result;
+		} catch (SQLException e1) {
+			// /* DEBUG */ System.out.println("Literal truncation (" + l.toString().length() + ") " + l.toString().substring(0, 150));
+			throw new RDFRDBException("Failed to find literal", e1);
+		}finally {
+			if(rs != null)
+                try {
+                    rs.close();
+                } catch (SQLException e1) {
+                	throw new RDFRDBException("Failed to get last inserted ID: " + e1);
                 }
-                else
-                    markUsed(annots);
-            }
-            PdfReader.killIndirect(ref);
-            PdfIndirectReference kid = ref;
-            while ((ref = wd.getAsIndirectObject(PdfName.PARENT)) != null) {
-                wd = wd.getAsDict( PdfName.PARENT );
-                PdfArray kids = wd.getAsArray(PdfName.KIDS);
-                if (removeRefFromArray(kids, kid) != 0)
-                    break;
-                kid = ref;
-                PdfReader.killIndirect(ref);
-            }
-            if (ref == null) {
-                removeRefFromArray(arrayf, kid);
-                markUsed(arrayf);
-            }
-            if (page != -1) {
-                item.remove( k );
-                --k;
-            }
+             if(ps!=null)m_sql.returnPreparedSQLStatement(ps);
+		}
+	}
+ 
+	/**
+	 * Insert a long object into the database.  
+	 * This assumes the object is not already in the database.
+	 * @return the db index of the added literal 
+	 */
+	public DBIDInt addRDBLongObject(RDBLongObject lobj, String table) throws RDFRDBException {
+		PreparedStatement ps = null;
+
+//        // Because the long object bound has been reset to less than the actual table allocation.
+//        if ( lobj.tail == null || lobj.tail.equals("") )
+//            System.err.println("Unexpected : empty tail") ;
+        
+        
+		try {
+			int argi = 1;
+			String opname = "insertLongObject";
+            // If not pre-allocated , 1-Head / 2-Hash / 3-Tail
+            // If pre-allocated , 1-Id, / 2-Head / 3-Hash [/ 4-Tail]
+			ps = m_sql.getPreparedSQLStatement(opname, table);
+			int dbid = 0; // init only needed to satisfy java compiler
+			if ( PRE_ALLOCATE_ID ) {
+				dbid = getInsertID(table);
+				ps.setInt(argi++,dbid);
+			} 
+			 ps.setString(argi++, lobj.head);
+             
+             // Do the tail - this can be a large text-holding column, or a binary column
+             // depending on the database.
+             
+             setLongObjectHashAndTail(ps, argi, lobj) ;
+             argi += 2 ;        // Hash and tail.
+
+			ps.executeUpdate();
+			if ( !PRE_ALLOCATE_ID ) dbid = getInsertID(table);
+			return wrapDBID(new Integer(dbid));
+            
+		} catch (Exception e1) {
+			/* DEBUG */ System.out.println("Problem on long object (l=" + lobj.head + ") " + e1 );
+			// System.out.println("ID is: " + id);
+			throw new RDFRDBException("Failed to add long object ", e1);
+		} finally {
+			if(ps!=null)m_sql.returnPreparedSQLStatement(ps);
+		}
+	}
+	
+    // Common way to get the sequence ID, even though the SQL statements are quite different. 
+    // MySQL is different (it overrides this in Driver_MySQL).
+    
+	public int getInsertID(String tableName)
+	{
+	    DBIDInt result = null;
+        PreparedStatement ps = null ;
+	    try {
+	        ps = m_sql.getPreparedSQLStatement("getInsertID",tableName);
+	        ResultSet rs = ps.executeQuery();
+	        if (rs.next()) {
+	            result = wrapDBID(rs.getObject(1));
+	        } else
+	            throw new RDFRDBException("No insert ID");
+	    } catch (SQLException e) {
+	        throw new RDFRDBException("Failed to insert ID: " + e);
+	    } finally { 
+            if ( ps != null )
+                m_sql.returnPreparedSQLStatement(ps) ;
         }
-        if (page == -1 || item.size() == 0)
-            fields.remove(name);
-        return true;
-    }
+	    return result.getIntID();
+	}
 
-    /**
-     * Removes a field from the document.
-     * 
-     * @param name the field name
-     * @return <CODE>true</CODE> if the field exists, <CODE>false otherwise</CODE>
-     */
-    public boolean removeField(String name) {
-        return removeField(name, -1);
+    
+    // Different ways of inserting the tail value
+    // 1/ As a text field, using .setString and letting JDBC encode the characters
+    // 2/ As a binary field, using a BLOB of UTF-8 encoded bytes
+    
+    protected void setLongObjectHashAndTail(PreparedStatement ps, int argi, RDBLongObject lobj)
+    throws SQLException
+    {
+        setLongObjectHashAndTail_Text(ps, argi, lobj) ;
     }
+    
+    protected void setLongObjectHashAndTail_Text(PreparedStatement ps, int argi, RDBLongObject lobj)
+    throws SQLException
+    {
+        if ( lobj.tail.length() > 0 ) {
+            ps.setLong(argi++, lobj.hash);
+            ps.setString(argi++, lobj.tail);
+        } else {
+            ps.setNull(argi++,java.sql.Types.BIGINT);
+            ps.setNull(argi++,java.sql.Types.VARCHAR);     
+        }
 
-    /**
-     * Gets the property generateAppearances.
-     * 
-     * @return the property generateAppearances
-     */
-    public boolean isGenerateAppearances() {
-        return generateAppearances;
     }
-
-    /**
-     * Sets the option to generate appearances. Not generating appearances
-     * will speed-up form filling but the results can be
-     * unexpected in Acrobat. Don't use it unless your environment is well
-     * controlled. The default is <CODE>true</CODE>.
-     * 
-     * @param generateAppearances the option to generate appearances
-     */
-    public void setGenerateAppearances(boolean generateAppearances) {
-        this.generateAppearances = generateAppearances;
-        PdfDictionary top = reader.getCatalog().getAsDict(PdfName.ACROFORM);
-        if (generateAppearances)
-            top.remove(PdfName.NEEDAPPEARANCES);
+    
+    protected void setLongObjectHashAndTail_Binary(PreparedStatement ps, int argi, RDBLongObject lobj)
+    throws SQLException
+    {
+        if ( lobj.tail.length() > 0 )
+            ps.setLong(argi++, lobj.hash);
         else
-            top.put(PdfName.NEEDAPPEARANCES, PdfBoolean.PDFTRUE);
-    }
-
-    /** The field representations for retrieval and modification. */
-    public static class Item {
-    	
-        /**
-         * <CODE>writeToAll</CODE> constant.
-         * 
-         *  @since 2.1.5
-         */
-        public static final int WRITE_MERGED = 1;
+            ps.setNull(argi++,java.sql.Types.BIGINT);
         
-        /**
-         * <CODE>writeToAll</CODE> and <CODE>markUsed</CODE> constant.
-         * 
-         *  @since 2.1.5
-         */
-        public static final int WRITE_WIDGET = 2;
-        
-        /**
-         * <CODE>writeToAll</CODE> and <CODE>markUsed</CODE> constant.
-         * 
-         *  @since 2.1.5
-         */
-        public static final int WRITE_VALUE = 4;
-
-        /**
-         * This function writes the given key/value pair to all the instances
-         * of merged, widget, and/or value, depending on the <code>writeFlags</code> setting
-         *
-         * @since 2.1.5
-         *
-         * @param key        you'll never guess what this is for.
-         * @param value      if value is null, the key will be removed
-         * @param writeFlags ORed together WRITE_* flags
-         */
-        public void writeToAll(PdfName key, PdfObject value, int writeFlags) {
-            int i;
-            PdfDictionary curDict = null;
-            if ((writeFlags & WRITE_MERGED) != 0) {
-                for (i = 0; i < merged.size(); ++i) {
-                    curDict = getMerged(i);
-                    curDict.put(key, value);
-                }
-            }
-            if ((writeFlags & WRITE_WIDGET) != 0) {
-                for (i = 0; i < widgets.size(); ++i) {
-                    curDict = getWidget(i);
-                    curDict.put(key, value);
-                }
-            }
-            if ((writeFlags & WRITE_VALUE) != 0) {
-                for (i = 0; i < values.size(); ++i) {
-                    curDict = getValue(i);
-                    curDict.put(key, value);
-                }
-            }
+        byte[] b = null ;
+        try { b = lobj.tail.getBytes("UTF-8") ; }
+        catch (UnsupportedEncodingException ex)
+        {
+            // Can't happen - UTF-8 is required by Java.
+            throw new RDFRDBException("No UTF-8 encoding (setLongObjectHashAndTail_Binary)") ;
         }
-
-        /**
-         * Mark all the item dictionaries used matching the given flags
-         * 
-         * @since 2.1.5
-         * @param writeFlags WRITE_MERGED is ignored
-         */
-        public void markUsed( AcroFields parentFields, int writeFlags ) {
-            if ((writeFlags & WRITE_VALUE) != 0) {
-                for (int i = 0; i < size(); ++i) {
-                    parentFields.markUsed( getValue( i ) );
-                }
-            }
-            if ((writeFlags & WRITE_WIDGET) != 0) {
-                for (int i = 0; i < size(); ++i) {
-                    parentFields.markUsed(getWidget(i));
-                }
-            }
-        }
-
-        /**
-         * An array of <CODE>PdfDictionary</CODE> where the value tag /V
-         * is present.
-         * 
-         * @deprecated (will remove 'public' in the future)
-         */
-        public ArrayList values = new ArrayList();
-        
-        /**
-         * An array of <CODE>PdfDictionary</CODE> with the widgets.
-         * 
-         * @deprecated (will remove 'public' in the future)
-         */
-        public ArrayList widgets = new ArrayList();
-        
-        /**
-         * An array of <CODE>PdfDictionary</CODE> with the widget references.
-         * 
-         * @deprecated (will remove 'public' in the future)
-         */
-        public ArrayList widget_refs = new ArrayList();
-        
-        /**
-         * An array of <CODE>PdfDictionary</CODE> with all the field
-         * and widget tags merged.
-         * 
-         * @deprecated (will remove 'public' in the future)
-         */
-        public ArrayList merged = new ArrayList();
-        
-        /**
-         * An array of <CODE>Integer</CODE> with the page numbers where
-         * the widgets are displayed.
-         * 
-         * @deprecated (will remove 'public' in the future)
-         */
-        public ArrayList page = new ArrayList();
-        /**
-         * An array of <CODE>Integer</CODE> with the tab order of the field in the page.
-         * 
-         * @deprecated (will remove 'public' in the future)
-         */
-        public ArrayList tabOrder = new ArrayList();
-
-        /**
-         * Preferred method of determining the number of instances
-         * of a given field.
-         * 
-         * @since 2.1.5
-         * @return number of instances
-         */
-        public int size() {
-            return values.size();
-        }
-
-        /**
-         * Remove the given instance from this item.  It is possible to
-         * remove all instances using this function.
-         * 
-         * @since 2.1.5
-         * @param killIdx
-         */
-        void remove(int killIdx) {
-            values.remove(killIdx);
-            widgets.remove(killIdx);
-            widget_refs.remove(killIdx);
-            merged.remove(killIdx);
-            page.remove(killIdx);
-            tabOrder.remove(killIdx);
-        }
-
-        /**
-         * Retrieve the value dictionary of the given instance
-         * 
-         * @since 2.1.5
-         * @param idx instance index
-         * @return dictionary storing this instance's value.  It may be shared across instances.
-         */
-        public PdfDictionary getValue(int idx) {
-            return (PdfDictionary) values.get(idx);
-        }
-
-        /**
-         * Add a value dict to this Item
-         * 
-         * @since 2.1.5
-         * @param value new value dictionary
-         */
-        void addValue(PdfDictionary value) {
-            values.add(value);
-        }
-
-        /**
-         * Retrieve the widget dictionary of the given instance
-         * 
-         * @since 2.1.5
-         * @param idx instance index
-         * @return The dictionary found in the appropriate page's Annot array.
-         */
-        public PdfDictionary getWidget(int idx) {
-            return (PdfDictionary) widgets.get(idx);
-        }
-
-        /**
-         * Add a widget dict to this Item
-         * 
-         * @since 2.1.5
-         * @param widget
-         */
-        void addWidget(PdfDictionary widget) {
-            widgets.add(widget);
-        }
-
-        /**
-         * Retrieve the reference to the given instance
-         * 
-         * @since 2.1.5
-         * @param idx instance index
-         * @return reference to the given field instance
-         */
-        public PdfIndirectReference getWidgetRef(int idx) {
-            return (PdfIndirectReference) widget_refs.get(idx);
-        }
-
-        /**
-         * Add a widget ref to this Item
-         * 
-         * @since 2.1.5
-         * @param widgRef
-         */
-        void addWidgetRef(PdfIndirectReference widgRef) {
-            widget_refs.add(widgRef);
-        }
-
-        /**
-         * Retrieve the merged dictionary for the given instance.  The merged
-         * dictionary contains all the keys present in parent fields, though they
-         * may have been overwritten (or modified?) by children.
-         * Example: a merged radio field dict will contain /V
-         * 
-         * @since 2.1.5
-         * @param idx  instance index
-         * @return the merged dictionary for the given instance
-         */
-        public PdfDictionary getMerged(int idx) {
-            return (PdfDictionary) merged.get(idx);
-        }
-
-        /**
-         * Adds a merged dictionary to this Item.
-         * 
-         * @since 2.1.5
-         * @param mergeDict
-         */
-        void addMerged(PdfDictionary mergeDict) {
-            merged.add(mergeDict);
-        }
-
-        /**
-         * Retrieve the page number of the given instance
-         * 
-         * @since 2.1.5
-         * @param idx
-         * @return remember, pages are "1-indexed", not "0-indexed" like field instances.
-         */
-        public Integer getPage(int idx) {
-            return (Integer) page.get(idx);
-        }
-
-        /**
-         * Adds a page to the current Item.
-         * 
-         * @since 2.1.5
-         * @param pg
-         */
-        void addPage(int pg) {
-            page.add(new Integer(pg));
-        }
-
-        /**
-         * forces a page value into the Item.
-         * 
-         * @since 2.1.5
-         * @param idx
-         */
-        void forcePage(int idx, int pg) {
-            page.set(idx, new Integer( pg ));
-        }
-
-        /**
-         * Gets the tabOrder.
-         * 
-         * @since 2.1.5
-         * @param idx
-         * @return tab index of the given field instance
-         */
-        public Integer getTabOrder(int idx) {
-            return (Integer) tabOrder.get(idx);
-        }
-
-        /**
-         * Adds a tab order value to this Item.
-         * 
-         * @since 2.1.5
-         * @param order
-         */
-        void addTabOrder(int order) {
-            tabOrder.add(new Integer(order));
-        }
+        //System.out.println("bytes in : "+b.length) ;
+        ps.setBytes(argi++, b) ;
     }
-
-    private static class InstHit {
-        IntHashtable hits;
-        public InstHit(int inst[]) {
-            if (inst == null)
-                return;
-            hits = new IntHashtable();
-            for (int k = 0; k < inst.length; ++k)
-                hits.put(inst[k], 1);
+    
+	/**
+	 * Return the prefix string that has the given prefix id.
+	 * @param prefixID - the dbid of the prefix.
+	 * @return the prefix string or null if it does not exist.
+	 */
+	protected String IDtoPrefix ( int prefixID ) {
+		// check cache
+		DBIDInt dbid = new DBIDInt(prefixID);
+		String res = prefixCache.get(dbid);
+		if ( res != null)
+			return res;
+		else {
+            res = IDtoString ( prefixID, PREFIX_TABLE, RDBCodePrefix);
+            prefixCache.put(dbid,res);
+			return res;
         }
+	}
+	
+	/**
+	* Return the Blank node string that has the given database id.
+	* @param bnID - the dbid of the blank node, as a string.
+	* @return the Blank node string or null if it does not exist.
+	*/
+	protected String IDtoBlank(String bnID) {
+		return IDtoString(bnID, LONG_URI_TABLE, RDBCodeBlank);
+	}
+	/**
+		* Return the URI string that has the given database id.
+		* @param uriID - the dbid of the uri, as a string.
+		* @return the uri string or null if it does not exist.
+		*/
+	protected String IDtoURI(String uriID) {
+		return IDtoString(uriID, LONG_URI_TABLE, RDBCodeURI);
+	}
 
-        public boolean isHit(int n) {
-            if (hits == null)
-                return true;
-            return hits.containsKey(n);
-        }
-    }
+	/**
+	* Return the long literal string that has the given database id.
+	* @param litID - the dbid of the literal..
+	* @return the long literal string or null if it does not exist.
+	*/
+	protected String IDtoLiteral ( int litID ) {
+		return IDtoString ( litID, LONG_LIT_TABLE, RDBCodeLiteral);
+	}
+	
 
-    /**
-     * Gets the field names that have signatures and are signed.
-     * 
-     * @return the field names that have signatures and are signed
-     */
-    public ArrayList getSignatureNames() {
-        if (sigNames != null)
-            return new ArrayList(sigNames.keySet());
-        sigNames = new HashMap();
-        ArrayList sorter = new ArrayList();
-        for (Iterator it = fields.entrySet().iterator(); it.hasNext();) {
-            Map.Entry entry = (Map.Entry)it.next();
-            Item item = (Item)entry.getValue();
-            PdfDictionary merged = item.getMerged(0);
-            if (!PdfName.SIG.equals(merged.get(PdfName.FT)))
-                continue;
-            PdfDictionary v = merged.getAsDict(PdfName.V);
-            if (v == null)
-                continue;
-            PdfString contents = v.getAsString(PdfName.CONTENTS);
-            if (contents == null)
-                continue;
-            PdfArray ro = v.getAsArray(PdfName.BYTERANGE);
-            if (ro == null)
-                continue;
-            int rangeSize = ro.size();
-            if (rangeSize < 2)
-                continue;
-            int length = ro.getAsNumber(rangeSize - 1).intValue() + ro.getAsNumber(rangeSize - 2).intValue();
-            sorter.add(new Object[]{entry.getKey(), new int[]{length, 0}});
-        }
-        Collections.sort(sorter, new AcroFields.SorterComparator());
-        if (!sorter.isEmpty()) {
-            if (((int[])((Object[])sorter.get(sorter.size() - 1))[1])[0] == reader.getFileLength())
-                totalRevisions = sorter.size();
-            else
-                totalRevisions = sorter.size() + 1;
-            for (int k = 0; k < sorter.size(); ++k) {
-                Object objs[] = (Object[])sorter.get(k);
-                String name = (String)objs[0];
-                int p[] = (int[])objs[1];
-                p[1] = k + 1;
-                sigNames.put(name, p);
-            }
-        }
-        return new ArrayList(sigNames.keySet());
-    }
+	
+	protected String IDtoString ( String dbidAsString, String table, String RDBcode ) {
+		int	dbID;
+		String res = null;
+		try {
+			dbID = Integer.parseInt(dbidAsString);
+		} catch (NumberFormatException e1) {
+			throw new RDFRDBException("Invalid Object ID: " + dbidAsString);
+		}
+		return IDtoString (dbID, table, RDBcode);
+	}
 
-    /**
-     * Gets the field names that have blank signatures.
-     * 
-     * @return the field names that have blank signatures
-     */
-    public ArrayList getBlankSignatureNames() {
-        getSignatureNames();
-        ArrayList sigs = new ArrayList();
-        for (Iterator it = fields.entrySet().iterator(); it.hasNext();) {
-            Map.Entry entry = (Map.Entry)it.next();
-            Item item = (Item)entry.getValue();
-            PdfDictionary merged = item.getMerged(0);
-            if (!PdfName.SIG.equals(merged.getAsName(PdfName.FT)))
-                continue;
-            if (sigNames.containsKey(entry.getKey()))
-                continue;
-            sigs.add(entry.getKey());
-        }
-        return sigs;
-    }
+	protected String IDtoString ( int dbID, String table, String RDBcode ) {
+		String res = null;
+		RDBLongObject lobj = IDtoLongObject(dbID, table);
+		if ( lobj == null )
+			throw new RDFRDBException("Invalid Object ID: " + dbID);
+		// debug check
+		if ( !lobj.head.substring(0,3).equals(RDBcode + RDBCodeValue + RDBCodeDelim) )
+			throw new RDFRDBException("Malformed URI in Database: " + lobj.head);
+		res = lobj.head.substring(3,lobj.head.length() - EOS_LEN);
+		if ( lobj.tail != null )
+			res = res + lobj.tail;	
+		return res;
+	}
 
-    /**
-     * Gets the signature dictionary, the one keyed by /V.
-     * 
-     * @param name the field name
-     * @return the signature dictionary keyed by /V or <CODE>null</CODE> if the field is not
-     * a signature
-     */
-    public PdfDictionary getSignatureDictionary(String name) {
-        getSignatureNames();
-        name = getTranslatedFieldName(name);
-        if (!sigNames.containsKey(name))
-            return null;
-        Item item = (Item)fields.get(name);
-        PdfDictionary merged = item.getMerged(0);
-        return merged.getAsDict(PdfName.V);
-    }
-
-    /**
-     * Checks is the signature covers the entire document or just part of it.
-     * 
-     * @param name the signature field name
-     * @return <CODE>true</CODE> if the signature covers the entire document,
-     * <CODE>false</CODE> otherwise
-     */
-    public boolean signatureCoversWholeDocument(String name) {
-        getSignatureNames();
-        name = getTranslatedFieldName(name);
-        if (!sigNames.containsKey(name))
-            return false;
-        return ((int[])sigNames.get(name))[0] == reader.getFileLength();
-    }
-
-    /**
-     * Verifies a signature. An example usage is:
-     * <p>
-     * <pre>
-     * KeyStore kall = PdfPKCS7.loadCacertsKeyStore();
-     * PdfReader reader = new PdfReader("my_signed_doc.pdf");
-     * AcroFields af = reader.getAcroFields();
-     * ArrayList names = af.getSignatureNames();
-     * for (int k = 0; k &lt; names.size(); ++k) {
-     *    String name = (String)names.get(k);
-     *    System.out.println("Signature name: " + name);
-     *    System.out.println("Signature covers whole document: " + af.signatureCoversWholeDocument(name));
-     *    PdfPKCS7 pk = af.verifySignature(name);
-     *    Calendar cal = pk.getSignDate();
-     *    Certificate pkc[] = pk.getCertificates();
-     *    System.out.println("Subject: " + PdfPKCS7.getSubjectFields(pk.getSigningCertificate()));
-     *    System.out.println("Document modified: " + !pk.verify());
-     *    Object fails[] = PdfPKCS7.verifyCertificates(pkc, kall, null, cal);
-     *    if (fails == null)
-     *        System.out.println("Certificates verified against the KeyStore");
-     *    else
-     *        System.out.println("Certificate failed: " + fails[1]);
-     * }
-     * </pre>
-     * 
-     * @param name the signature field name
-     * @return a <CODE>PdfPKCS7</CODE> class to continue the verification
-     */
-    public PdfPKCS7 verifySignature(String name) {
-        return verifySignature(name, null);
-    }
-
-    /**
-     * Verifies a signature. An example usage is:
-     * <p>
-     * <pre>
-     * KeyStore kall = PdfPKCS7.loadCacertsKeyStore();
-     * PdfReader reader = new PdfReader("my_signed_doc.pdf");
-     * AcroFields af = reader.getAcroFields();
-     * ArrayList names = af.getSignatureNames();
-     * for (int k = 0; k &lt; names.size(); ++k) {
-     *    String name = (String)names.get(k);
-     *    System.out.println("Signature name: " + name);
-     *    System.out.println("Signature covers whole document: " + af.signatureCoversWholeDocument(name));
-     *    PdfPKCS7 pk = af.verifySignature(name);
-     *    Calendar cal = pk.getSignDate();
-     *    Certificate pkc[] = pk.getCertificates();
-     *    System.out.println("Subject: " + PdfPKCS7.getSubjectFields(pk.getSigningCertificate()));
-     *    System.out.println("Document modified: " + !pk.verify());
-     *    Object fails[] = PdfPKCS7.verifyCertificates(pkc, kall, null, cal);
-     *    if (fails == null)
-     *        System.out.println("Certificates verified against the KeyStore");
-     *    else
-     *        System.out.println("Certificate failed: " + fails[1]);
-     * }
-     * </pre>
-     * 
-     * @param name the signature field name
-     * @param provider the provider or <code>null</code> for the default provider
-     * @return a <CODE>PdfPKCS7</CODE> class to continue the verification
-     */
-    public PdfPKCS7 verifySignature(String name, String provider) {
-        PdfDictionary v = getSignatureDictionary(name);
-        if (v == null)
-            return null;
-        try {
-            PdfName sub = v.getAsName(PdfName.SUBFILTER);
-            PdfString contents = v.getAsString(PdfName.CONTENTS);
-            PdfPKCS7 pk = null;
-            if (sub.equals(PdfName.ADBE_X509_RSA_SHA1)) {
-                PdfString cert = v.getAsString(PdfName.CERT);
-                pk = new PdfPKCS7(contents.getOriginalBytes(), cert.getBytes(), provider);
-            }
-            else
-                pk = new PdfPKCS7(contents.getOriginalBytes(), provider);
-            updateByteRange(pk, v);
-            PdfString str = v.getAsString(PdfName.M);
-            if (str != null)
-                pk.setSignDate(PdfDate.decode(str.toString()));
-            PdfObject obj = PdfReader.getPdfObject(v.get(PdfName.NAME));
-            if (obj != null) {
-              if (obj.isString())
-                pk.setSignName(((PdfString)obj).toUnicodeString());
-              else if(obj.isName())
-                pk.setSignName(PdfName.decodeName(obj.toString()));
-            }
-            str = v.getAsString(PdfName.REASON);
-            if (str != null)
-                pk.setReason(str.toUnicodeString());
-            str = v.getAsString(PdfName.LOCATION);
-            if (str != null)
-                pk.setLocation(str.toUnicodeString());
-            return pk;
-        }
-        catch (Exception e) {
-            throw new ExceptionConverter(e);
-        }
-    }
-
-    private void updateByteRange(PdfPKCS7 pkcs7, PdfDictionary v) {
-        PdfArray b = v.getAsArray(PdfName.BYTERANGE);
-        RandomAccessFileOrArray rf = reader.getSafeFile();
-        try {
-            rf.reOpen();
-            byte buf[] = new byte[8192];
-            for (int k = 0; k < b.size(); ++k) {
-                int start = b.getAsNumber(k).intValue();
-                int length = b.getAsNumber(++k).intValue();
-                rf.seek(start);
-                while (length > 0) {
-                    int rd = rf.read(buf, 0, Math.min(length, buf.length));
-                    if (rd <= 0)
+	// Get whatever is strong under a long id. 
+	protected RDBLongObject IDtoLongObject ( int dbid, String table ) {
+		RDBLongObject	res = null;
+		ResultSet rs=null;
+		PreparedStatement ps = null;
+		try {
+			String opName = "getLongObject";
+			ps = m_sql.getPreparedSQLStatement(opName, table);
+			ps.setInt(1, dbid);
+			rs = ps.executeQuery();
+			if (rs.next()) {
+                res = new RDBLongObject();
+				res.head = rs.getString(1);
+				int colType = rs.getMetaData().getColumnType(2) ;
+                switch (colType)
+                {
+                    case Types.VARCHAR:
+                    case Types.LONGVARCHAR:
+                    //case Types.LONGNVARCHAR:        // JDBC 4 - Types.LONGNVARCHAR -16 (const in Java 1.6)
+                    case -16:                           
+                    //case Types.NVARCHAR:            // JDBC 4 - Types.NVARCHAR -9 (const in Java 1.6)
+                    case -9: 
+                    case Types.CHAR:
+                        res.tail = rs.getString(2) ;
+                        if ( res.tail == null )
+                            res.tail = "" ;
+                        break ;
+                    case Types.BLOB:
+                    case Types.LONGVARBINARY:
+                    //case Types.NCLOB:               // JDBC 4 - Types.NCLOB 2011 (const in Java 1.6)
+                    case 2011:                          
+                        byte[] b2 = rs.getBytes(2) ;
+                        if ( b2 == null )
+                            // The meaning of "" is mixed in SQL. 
+                            // Should not happen - we never store empty strings it the tail
+                            res.tail = "" ;
+                        else
+                            try
+                            { res.tail = new String(b2, 0, b2.length, "UTF-8") ; }
+                            catch (UnsupportedEncodingException ex)
+                            { ex.printStackTrace(); }
                         break;
-                    length -= rd;
-                    pkcs7.update(buf, 0, rd);
+                    default:
+                        logger.error("Long object is of unexpected SQL type: "+rs.getMetaData().getColumnType(2)) ;
+                        throw new RDFRDBException("Long object is of unexpected SQL type: "+rs.getMetaData().getColumnType(2));
                 }
-            }
-        }
-        catch (Exception e) {
-            throw new ExceptionConverter(e);
-        }
-        finally {
-            try{rf.close();}catch(Exception e){}
-        }
-    }
-
-    private void markUsed(PdfObject obj) {
-        if (!append)
-            return;
-        ((PdfStamperImp)writer).markUsed(obj);
-    }
-
-    /**
-     * Gets the total number of revisions this document has.
-     * 
-     * @return the total number of revisions
-     */
-    public int getTotalRevisions() {
-        getSignatureNames();
-        return this.totalRevisions;
-    }
-
-    /**
-     * Gets this <CODE>field</CODE> revision.
-     * 
-     * @param field the signature field name
-     * @return the revision or zero if it's not a signature field
-     */
-    public int getRevision(String field) {
-        getSignatureNames();
-        field = getTranslatedFieldName(field);
-        if (!sigNames.containsKey(field))
-            return 0;
-        return ((int[])sigNames.get(field))[1];
-    }
-
-    /**
-     * Extracts a revision from the document.
-     * 
-     * @param field the signature field name
-     * @return an <CODE>InputStream</CODE> covering the revision. Returns <CODE>null</CODE> if
-     * it's not a signature field
-     * @throws IOException on error
-     */
-    public InputStream extractRevision(String field) throws IOException {
-        getSignatureNames();
-        field = getTranslatedFieldName(field);
-        if (!sigNames.containsKey(field))
-            return null;
-        int length = ((int[])sigNames.get(field))[0];
-        RandomAccessFileOrArray raf = reader.getSafeFile();
-        raf.reOpen();
-        raf.seek(0);
-        return new RevisionStream(raf, length);
-    }
-
-    /**
-     * Gets the appearances cache.
-     * 
-     * @return the appearances cache
-     * @since	2.1.5	this method used to return a HashMap
-     */
-    public Map getFieldCache() {
-        return this.fieldCache;
-    }
-
-    /**
-     * Sets a cache for field appearances. Parsing the existing PDF to
-     * create a new TextField is time expensive. For those tasks that repeatedly
-     * fill the same PDF with different field values the use of the cache has dramatic
-     * speed advantages. An example usage:
-     * <p>
-     * <pre>
-     * String pdfFile = ...;// the pdf file used as template
-     * ArrayList xfdfFiles = ...;// the xfdf file names
-     * ArrayList pdfOutFiles = ...;// the output file names, one for each element in xpdfFiles
-     * HashMap cache = new HashMap();// the appearances cache
-     * PdfReader originalReader = new PdfReader(pdfFile);
-     * for (int k = 0; k &lt; xfdfFiles.size(); ++k) {
-     *    PdfReader reader = new PdfReader(originalReader);
-     *    XfdfReader xfdf = new XfdfReader((String)xfdfFiles.get(k));
-     *    PdfStamper stp = new PdfStamper(reader, new FileOutputStream((String)pdfOutFiles.get(k)));
-     *    AcroFields af = stp.getAcroFields();
-     *    af.setFieldCache(cache);
-     *    af.setFields(xfdf);
-     *    stp.close();
-     * }
-     * </pre>
-     * 
-     * @param fieldCache a Map that will carry the cached appearances
-     * @since	2.1.5	this method used to take a HashMap as parameter
-     */
-    public void setFieldCache(Map fieldCache) {
-        this.fieldCache = fieldCache;
-    }
-
-    /**
-     * Sets extra margins in text fields to better mimic the Acrobat layout.
-     * 
-     * @param extraMarginLeft the extra margin left
-     * @param extraMarginTop the extra margin top
-     */
-    public void setExtraMargin(float extraMarginLeft, float extraMarginTop) {
-        this.extraMarginLeft = extraMarginLeft;
-        this.extraMarginTop = extraMarginTop;
-    }
-
-    /**
-     * Adds a substitution font to the list. The fonts in this list will be used if the original
-     * font doesn't contain the needed glyphs.
-     * 
-     * @param font the font
-     */
-    public void addSubstitutionFont(BaseFont font) {
-        if (substitutionFonts == null)
-            substitutionFonts = new ArrayList();
-        substitutionFonts.add(font);
-    }
-
-    private static final HashMap stdFieldFontNames = new HashMap();
-
-    /**
-     * Holds value of property totalRevisions.
-     */
-    private int totalRevisions;
-
-    /**
-     * Holds value of property fieldCache.
-     * 
-     * @since	2.1.5	this used to be a HashMap
-     */
-    private Map fieldCache;
-
-    static {
-        stdFieldFontNames.put("CoBO", new String[]{"Courier-BoldOblique"});
-        stdFieldFontNames.put("CoBo", new String[]{"Courier-Bold"});
-        stdFieldFontNames.put("CoOb", new String[]{"Courier-Oblique"});
-        stdFieldFontNames.put("Cour", new String[]{"Courier"});
-        stdFieldFontNames.put("HeBO", new String[]{"Helvetica-BoldOblique"});
-        stdFieldFontNames.put("HeBo", new String[]{"Helvetica-Bold"});
-        stdFieldFontNames.put("HeOb", new String[]{"Helvetica-Oblique"});
-        stdFieldFontNames.put("Helv", new String[]{"Helvetica"});
-        stdFieldFontNames.put("Symb", new String[]{"Symbol"});
-        stdFieldFontNames.put("TiBI", new String[]{"Times-BoldItalic"});
-        stdFieldFontNames.put("TiBo", new String[]{"Times-Bold"});
-        stdFieldFontNames.put("TiIt", new String[]{"Times-Italic"});
-        stdFieldFontNames.put("TiRo", new String[]{"Times-Roman"});
-        stdFieldFontNames.put("ZaDb", new String[]{"ZapfDingbats"});
-        stdFieldFontNames.put("HySm", new String[]{"HYSMyeongJo-Medium", "UniKS-UCS2-H"});
-        stdFieldFontNames.put("HyGo", new String[]{"HYGoThic-Medium", "UniKS-UCS2-H"});
-        stdFieldFontNames.put("KaGo", new String[]{"HeiseiKakuGo-W5", "UniKS-UCS2-H"});
-        stdFieldFontNames.put("KaMi", new String[]{"HeiseiMin-W3", "UniJIS-UCS2-H"});
-        stdFieldFontNames.put("MHei", new String[]{"MHei-Medium", "UniCNS-UCS2-H"});
-        stdFieldFontNames.put("MSun", new String[]{"MSung-Light", "UniCNS-UCS2-H"});
-        stdFieldFontNames.put("STSo", new String[]{"STSong-Light", "UniGB-UCS2-H"});
-    }
-
-    private static class RevisionStream extends InputStream {
-        private byte b[] = new byte[1];
-        private RandomAccessFileOrArray raf;
-        private int length;
-        private int rangePosition = 0;
-        private boolean closed;
-
-        private RevisionStream(RandomAccessFileOrArray raf, int length) {
-            this.raf = raf;
-            this.length = length;
-        }
-
-        public int read() throws IOException {
-            int n = read(b);
-            if (n != 1)
-                return -1;
-            return b[0] & 0xff;
-        }
-
-        public int read(byte[] b, int off, int len) throws IOException {
-            if (b == null) {
-                throw new NullPointerException();
-            } else if ((off < 0) || (off > b.length) || (len < 0) ||
-            ((off + len) > b.length) || ((off + len) < 0)) {
-                throw new IndexOutOfBoundsException();
-            } else if (len == 0) {
-                return 0;
-            }
-            if (rangePosition >= length) {
-                close();
-                return -1;
-            }
-            int elen = Math.min(len, length - rangePosition);
-            raf.readFully(b, off, elen);
-            rangePosition += elen;
-            return elen;
-        }
-
-        public void close() throws IOException {
-            if (!closed) {
-                raf.close();
-                closed = true;
-            }
-        }
-    }
-
-    private static class SorterComparator implements Comparator {
-        public int compare(Object o1, Object o2) {
-            int n1 = ((int[])((Object[])o1)[1])[0];
-            int n2 = ((int[])((Object[])o2)[1])[0];
-            return n1 - n2;
-        }
-    }
-
-    /**
-     * Gets the list of substitution fonts. The list is composed of <CODE>BaseFont</CODE> and can be <CODE>null</CODE>. The fonts in this list will be used if the original
-     * font doesn't contain the needed glyphs.
-     * 
-     * @return the list
-     */
-    public ArrayList getSubstitutionFonts() {
-        return substitutionFonts;
-    }
-
-    /**
-     * Sets a list of substitution fonts. The list is composed of <CODE>BaseFont</CODE> and can also be <CODE>null</CODE>. The fonts in this list will be used if the original
-     * font doesn't contain the needed glyphs.
-     * 
-     * @param substitutionFonts the list
-     */
-    public void setSubstitutionFonts(ArrayList substitutionFonts) {
-        this.substitutionFonts = substitutionFonts;
-    }
-
-    /**
-     * Gets the XFA form processor.
-     * 
-     * @return the XFA form processor
-     */
-    public XfaForm getXfa() {
-        return xfa;
-    }
-
-    private static final PdfName[] buttonRemove = {PdfName.MK, PdfName.F , PdfName.FF , PdfName.Q , PdfName.BS , PdfName.BORDER};
-
-    /**
-     * Creates a new pushbutton from an existing field. If there are several pushbuttons with the same name
-     * only the first one is used. This pushbutton can be changed and be used to replace
-     * an existing one, with the same name or other name, as long is it is in the same document. To replace an existing pushbutton
-     * call {@link #replacePushbuttonField(String,PdfFormField)}.
-     * 
-     * @param field the field name that should be a pushbutton
-     * @return a new pushbutton or <CODE>null</CODE> if the field is not a pushbutton
-     */
-    public PushbuttonField getNewPushbuttonFromField(String field) {
-        return getNewPushbuttonFromField(field, 0);
-    }
-
-    /**
-     * Creates a new pushbutton from an existing field. This pushbutton can be changed and be used to replace
-     * an existing one, with the same name or other name, as long is it is in the same document. To replace an existing pushbutton
-     * call {@link #replacePushbuttonField(String,PdfFormField,int)}.
-     * 
-     * @param field the field name that should be a pushbutton
-     * @param order the field order in fields with same name
-     * @return a new pushbutton or <CODE>null</CODE> if the field is not a pushbutton
-     *
-     * @since 2.0.7
-     */
-    public PushbuttonField getNewPushbuttonFromField(String field, int order) {
-        try {
-            if (getFieldType(field) != FIELD_TYPE_PUSHBUTTON)
-                return null;
-            Item item = getFieldItem(field);
-            if (order >= item.size())
-                return null;
-            int posi = order * 5;
-            float[] pos = getFieldPositions(field);
-            Rectangle box = new Rectangle(pos[posi + 1], pos[posi + 2], pos[posi + 3], pos[posi + 4]);
-            PushbuttonField newButton = new PushbuttonField(writer, box, null);
-            PdfDictionary dic = item.getMerged(order);
-            decodeGenericDictionary(dic, newButton);
-            PdfDictionary mk = dic.getAsDict(PdfName.MK);
-            if (mk != null) {
-                PdfString text = mk.getAsString(PdfName.CA);
-                if (text != null)
-                    newButton.setText(text.toUnicodeString());
-                PdfNumber tp = mk.getAsNumber(PdfName.TP);
-                if (tp != null)
-                    newButton.setLayout(tp.intValue() + 1);
-                PdfDictionary ifit = mk.getAsDict(PdfName.IF);
-                if (ifit != null) {
-                    PdfName sw = ifit.getAsName(PdfName.SW);
-                    if (sw != null) {
-                        int scale = PushbuttonField.SCALE_ICON_ALWAYS;
-                        if (sw.equals(PdfName.B))
-                            scale = PushbuttonField.SCALE_ICON_IS_TOO_BIG;
-                        else if (sw.equals(PdfName.S))
-                            scale = PushbuttonField.SCALE_ICON_IS_TOO_SMALL;
-                        else if (sw.equals(PdfName.N))
-                            scale = PushbuttonField.SCALE_ICON_NEVER;
-                        newButton.setScaleIcon(scale);
-                    }
-                    sw = ifit.getAsName(PdfName.S);
-                    if (sw != null) {
-                        if (sw.equals(PdfName.A))
-                            newButton.setProportionalIcon(false);
-                    }
-                    PdfArray aj = ifit.getAsArray(PdfName.A);
-                    if (aj != null && aj.size() == 2) {
-                        float left = aj.getAsNumber(0).floatValue();
-                        float bottom = aj.getAsNumber(1).floatValue();
-                        newButton.setIconHorizontalAdjustment(left);
-                        newButton.setIconVerticalAdjustment(bottom);
-                    }
-                    PdfBoolean fb = ifit.getAsBoolean(PdfName.FB);
-                    if (fb != null && fb.booleanValue())
-                        newButton.setIconFitToBounds(true);
+			}
+		} catch (SQLException e1) {
+			// /* DEBUG */ System.out.println("Literal truncation (" + l.toString().length() + ") " + l.toString().substring(0, 150));
+			throw new RDFRDBException("Failed to find literal", e1);
+		}finally {
+			if(rs != null)
+                try {
+                    rs.close();
+                } catch (SQLException e1) {
+                	throw new RDFRDBException("Failed to get last inserted ID: " + e1);
                 }
-                PdfObject i = mk.get(PdfName.I);
-                if (i != null && i.isIndirect())
-                    newButton.setIconReference((PRIndirectReference)i);
-            }
-            return newButton;
-        }
-        catch (Exception e) {
-            throw new ExceptionConverter(e);
-        }
-    }
+             if(ps!=null)m_sql.returnPreparedSQLStatement(ps);
+		}		
+		return res;
+	}
+	
+	protected RDBLongObject IDtoLongObject ( String idAsString, String table ) {
+		RDBLongObject res = null;
+		int dbid;
+		try {
+			dbid = Integer.parseInt(idAsString);
+		} catch (NumberFormatException e1) {
+			throw new RDFRDBException("Invalid Object ID: " + idAsString);
+		}
+		return IDtoLongObject(dbid,table);
+	}
+    
+ 
+	/**
+	 * Convert the raw SQL object used to store a database identifier into a java object
+	 * which meets the DBIDInt interface.
+	 */
+	public DBIDInt wrapDBID(Object id) throws RDFRDBException {
+		if (id instanceof Number) {
+			return new DBIDInt(((Number)id).intValue());
+		} else if (id == null) {
+			return null;
+		} else {
+			throw new RDFRDBException("Unexpected DB identifier type: " + id);
+			//return null;
+		}
+	}
+	
+	public String genSQLReifQualStmt () {
+		return "Stmt = ?";
+	}
+	
+	public String genSQLReifQualAnyObj( boolean objIsStmt) {
+		return "( Subj = ? OR Prop = ? OR Obj = ?" + (objIsStmt ? " OR HasType = " +
+			QUOTE_CHAR + "T" + QUOTE_CHAR + " )" : " )");		
+	}
+	
+	public String genSQLReifQualObj ( char reifProp, boolean hasObj ) {
+		String qual = "";
+		if ( reifProp == 'T' ) {
+			qual = "HasType = " + QUOTE_CHAR + "T" + QUOTE_CHAR;
+		} else {
+			String cmp = (hasObj ? " = ?" : " is not null");
+			String col = null;
+			if ( reifProp == 'S' ) col = "Subj";
+			else if ( reifProp == 'P' ) col = "Prop";
+			else if ( reifProp == 'O' ) col = "Obj";
+			else throw new JenaException("Undefined reification property");
+		
+			qual = col + cmp;
+		}
+		return qual;	
+	}
+	
+	protected String colidToColname ( char colid ) {
+		if ( colid == 'G' ) return "GraphID";
+		if ( colid == 'P' ) return "Prop";
+		if ( colid == 'S' ) return "Subj";
+		if ( colid == 'O' ) return "Obj";
+		if ( colid == 'N' ) return "Stmt";
+		if ( colid == 'T' ) return "HasType";
+		throw new JenaException("Invalid column identifer: '" + colid + "\'");
+	}
+	
+	protected String aliasToString ( int alias ) {
+		return "A" + alias;
+	}
+	
+	protected String colAliasToString ( int alias, char colid ) {
+		return aliasToString(alias) + "." + colidToColname(colid);
+	}
 
-    /**
-     * Replaces the first field with a new pushbutton. The pushbutton can be created with
-     * {@link #getNewPushbuttonFromField(String)} from the same document or it can be a
-     * generic PdfFormField of the type pushbutton.
-     * 
-     * @param field the field name
-     * @param button the <CODE>PdfFormField</CODE> representing the pushbutton
-     * @return <CODE>true</CODE> if the field was replaced, <CODE>false</CODE> if the field
-     * was not a pushbutton
-     */
-    public boolean replacePushbuttonField(String field, PdfFormField button) {
-        return replacePushbuttonField(field, button, 0);
+    /** Apply SQL escapes to a string */
+    private String escapeQuoteSQLString(String str)
+    {
+        StringBuffer sBuff = new StringBuffer(str.length()+10) ;
+        sBuff.append(QUOTE_CHAR) ;
+        for ( int i = 0 ; i < str.length() ; i++ ) 
+        {
+            char ch = str.charAt(i) ;
+            // Double up quotes
+            if ( ch == QUOTE_CHAR )
+                sBuff.append(QUOTE_CHAR) ;
+            sBuff.append(ch) ;
+        }
+        sBuff.append(QUOTE_CHAR) ;
+        return sBuff.toString() ;
     }
+    
+	/*
+	 * there's a bug in the code below in that the literal is converted to
+	 * a string BEFORE the query is run. consequently, there's a race
+	 * condition. if the (long) literal is not in the database
+	 * when the query is compiled but is added prior to running the
+	 * query, then the query will (incorrectly) return no results.
+	 * for now, we'll ignore this case and document it as a bug.
+	 */
+	
+	public String genSQLQualConst ( int alias, char pred, Node lit ) {
+		String val = nodeToRDBString(lit, false);
+		if ( val == null )
+			// constant not in database.
+			// should really optimize this and not
+			// even run the query but ok for now.
+			val = RDBCodeInvalid;
+        String qval = escapeQuoteSQLString(val) ;
+		return colAliasToString(alias,pred) + "=" + qval ;		
+	}
 
-    /**
-     * Replaces the designated field with a new pushbutton. The pushbutton can be created with
-     * {@link #getNewPushbuttonFromField(String,int)} from the same document or it can be a
-     * generic PdfFormField of the type pushbutton.
-     * 
-     * @param field the field name
-     * @param button the <CODE>PdfFormField</CODE> representing the pushbutton
-     * @param order the field order in fields with same name
-     * @return <CODE>true</CODE> if the field was replaced, <CODE>false</CODE> if the field
-     * was not a pushbutton
-     *
-     * @since 2.0.7
-     */
-    public boolean replacePushbuttonField(String field, PdfFormField button, int order) {
-        if (getFieldType(field) != FIELD_TYPE_PUSHBUTTON)
-            return false;
-        Item item = getFieldItem(field);
-        if (order >= item.size())
-            return false;
-        PdfDictionary merged = item.getMerged(order);
-        PdfDictionary values = item.getValue(order);
-        PdfDictionary widgets = item.getWidget(order);
-        for (int k = 0; k < buttonRemove.length; ++k) {
-            merged.remove(buttonRemove[k]);
-            values.remove(buttonRemove[k]);
-            widgets.remove(buttonRemove[k]);
-        }
-        for (Iterator it = button.getKeys().iterator(); it.hasNext();) {
-            PdfName key = (PdfName)it.next();
-            if (key.equals(PdfName.T) || key.equals(PdfName.RECT))
-                continue;
-            if (key.equals(PdfName.FF))
-                values.put(key, button.get(key));
-            else
-                widgets.put(key, button.get(key));
-            merged.put(key, button.get(key));
-        }
-        return true;
-    }
+	public String genSQLReifQualConst ( int alias, char pred, Node lit ) {
+		String val = "";
+		if ( (pred == 'T') && (lit.equals(RDF.Nodes.Statement)) )
+			val = "T";
+		else
+			val = nodeToRDBString(lit, false);
+        String qval = escapeQuoteSQLString(val) ;
+		return colAliasToString(alias,pred) + "=" + qval ;		
+	}
+	
+	public String genSQLQualParam( int alias, char pred ) {
+		return colAliasToString(alias,pred) + "=?";			
+	}
+
+	public String genSQLQualGraphId( int alias, int graphId ) {
+		return colAliasToString(alias,'G') + "=" + graphId;			
+	}
+
+	public String genSQLJoin( int lhsAlias, char lhsCol,
+		int rhsAlias, char rhsCol ) {
+			return colAliasToString(lhsAlias,lhsCol) + "=" +
+			colAliasToString(rhsAlias,rhsCol);
+	}
+
+	public String genSQLStringMatch( int alias, char col,
+		String fun, String stringToMatch ) {
+		boolean ignCase = 
+		   fun.equals(ExpressionFunctionURIs.J_startsWithInsensitive) ||
+		   fun.equals(ExpressionFunctionURIs.J_endsWithInsensitive) ||
+           fun.equals(ExpressionFunctionURIs.J_containsInsensitive) ;
+		boolean pfxMatch = 
+		   fun.equals(ExpressionFunctionURIs.J_startsWith) ||
+		   fun.equals(ExpressionFunctionURIs.J_startsWithInsensitive);
+		String var = colAliasToString(alias,col);
+		// generate string match operation for short literal or URI
+		String qual = " ( " + genSQLStringMatchLHS(ignCase,var);
+		qual += " " + genSQLStringMatchOp(ignCase,fun);
+		qual += " " + genSQLStringMatchRHS(ignCase,pfxMatch,stringToMatch);
+		// now match long URI or Bnode or, if object col, long literal
+		qual += " " + genSQLOrKW() + genSQLStringMatchLHS(false,var);
+		qual += " " + genSQLStringMatchOp(false,fun);
+		qual += " " + genSQLStringMatchLong() + " )";
+	
+		return qual;
+	}
+	
+	public String genSQLStringMatchLHS( boolean ignCase, String var ) {
+		return ignCase ? genSQLStringMatchLHS_IC(var): var;
+	}
+
+	public String genSQLStringMatchLong( ) {
+		return QUOTE_CHAR + stringMatchAnyChar() + stringMatchLongObj() + 
+				stringMatchAllChar() + QUOTE_CHAR;
+	}
+
+	public String genSQLStringMatchOp( boolean ignCase, String fun ) {
+		return ignCase ? genSQLStringMatchOp_IC(fun): 
+		                 genSQLStringMatchOp(fun);
+	}
+
+	public String stringMatchAllChar() { return "%"; }
+	public String stringMatchAnyChar() { return "_"; }
+	public String stringMatchEscapeChar() { return "\\\\"; }
+	public String stringMatchLongObj() { return "r"; }
+	public String stringMatchShortObj() { return "v"; }
+
+	public String genSQLStringMatchRHS( boolean ignCase, boolean pfxMatch,
+									String strToMatch ) {
+		boolean isEscaped = stringMatchNeedsEscape(strToMatch);
+		if ( isEscaped ) strToMatch = addEscape(strToMatch);
+		// for now, don't optimize for prefix match
+		/*
+		strToMatch = pfxMatch ? strToMatch + stringMatchAllChar() : 
+						stringMatchAllChar() + strToMatch;
+		strToMatch = stringMatchAllChar() + strToMatch;
+		strToMatch = nodeToRDBString(Node.createLiteral(strToMatch),false);
+		if ( pfxMatch && STRINGS_TRIMMED ) 
+			strToMatch = strToMatch.substring(0,strToMatch.length()-1);
+		*/
+		strToMatch = stringMatchAnyChar() + stringMatchShortObj() + 
+				stringMatchAllChar() + strToMatch + stringMatchAllChar();
+		strToMatch = QUOTE_CHAR + strToMatch + QUOTE_CHAR;
+		String qual = ignCase ? genSQLStringMatchRHS_IC(strToMatch): strToMatch;
+		if ( isEscaped ) qual += genSQLStringMatchEscape();
+
+		return qual;
+	}
+	
+	public String genSQLStringMatchLHS_IC(String var) {
+		return var;
+	}
+
+	public String genSQLStringMatchRHS_IC(String strToMatch) {
+		return strToMatch;
+	}
+
+	public String genSQLStringMatchOp( String fun ) {
+		return genSQLLikeKW();
+	}
+
+	public String genSQLStringMatchOp_IC( String fun ) {
+		return genSQLLikeKW();
+	}
+	
+	public boolean stringMatchNeedsEscape ( String strToMatch ) {
+		return strToMatch.indexOf('_') >= 0;
+	}
+
+	public String addEscape ( String strToMatch ) {
+		int i = strToMatch.indexOf('_');
+		return strToMatch.substring(0,i) + stringMatchEscapeChar() + 
+					strToMatch.substring(i);
+	}
+	
+	public String genSQLStringMatchEscape() {
+		return "";
+	}
+	
+	public String genSQLResList( int resIndex[], VarDesc[] binding ) {
+		String resList = "";
+		int i,j;
+		for(i=0,j=0;i<binding.length;i++) {
+			VarDesc b = binding[i];
+			if ( !b.isArgVar() ) {
+				// next result variable
+				resList += (j>0?", ":"") + colAliasToString(b.alias,b.column);
+				if ( j >= resIndex.length )
+					throw new JenaException("Too many result columns");
+				resIndex[j++] = b.mapIx;
+			}
+		}
+		return resList;
+	}
+	
+	public String genSQLFromList( int aliasCnt, String table ) {
+		int i;
+		String resList = "";
+		for(i=0;i<aliasCnt;i++) {
+			resList += (i>0?", ":"") + table + " " + aliasToString(i);
+		}
+		return resList;
+
+	}
+	
+	public String genSQLLikeKW() {
+		return "Like ";
+	}
+
+	public String genSQLEscapeKW() {
+		return "Escape ";
+	}
+
+	public String genSQLSelectKW() {
+		return "Select ";
+	}
+	
+	public String genSQLFromKW() {
+		return "From ";
+	}
+	
+	public String genSQLWhereKW() {
+		return "Where ";
+	}
+	
+	public String genSQLOrKW() {
+		return "Or ";
+	}
+	
+
+	
+	public String genSQLSelectStmt( String res, String from, String qual ) {
+		return genSQLSelectKW() + res + " " + 
+			genSQLFromKW() + from + " " +
+			(qual.length() == 0 ? qual :genSQLWhereKW()) + qual;
+	}
+
+	
+	protected int getTableCount(int graphId) {
+		ResultSet alltables = null;
+		try {
+			DatabaseMetaData dbmd = m_dbcon.getConnection().getMetaData();
+			String[] tableTypes = { "TABLE" };
+			int res = 0;
+			String tblPattern =
+				TABLE_NAME_PREFIX + "g" + Integer.toString(graphId) + "%";
+			tblPattern = stringToDBname(tblPattern);
+			alltables = dbmd.getTables(null, null, tblPattern, tableTypes);
+			while (alltables.next()) {
+				res += 1;
+			}
+			return res;
+		} catch (SQLException e1) {
+			throw new RDFRDBException("Internal SQL error in driver - " + e1);
+		} finally {
+			if(alltables != null)
+                try {
+                	alltables.close();
+                } catch (SQLException e1) {
+                	throw new RDFRDBException("Failed to get last inserted ID: " + e1);
+                }
+		}
+	}
+	
+	/*
+	 * getters and setters for database options
+	 */
+	 
+	 public int getLongObjectLengthMax () {
+		 	return LONG_OBJECT_LENGTH_MAX;
+		 }
+		 
+	 public int getLongObjectLength () {
+	 	return LONG_OBJECT_LENGTH;
+	 }
+	 
+	 public void setLongObjectLength ( int len ) {
+		checkDbUninitialized();
+		if ( len > LONG_OBJECT_LENGTH_MAX )
+			throw new JenaException("LongObjectLength exceeds maximum value for database (" +
+					+ LONG_OBJECT_LENGTH_MAX + ")");
+		LONG_OBJECT_LENGTH = len;
+	}
+
+	 public int getIndexKeyLengthMax () {
+		 	return INDEX_KEY_LENGTH_MAX;
+		 }
+		 
+	public int getIndexKeyLength () {
+   		return INDEX_KEY_LENGTH;
+	}
+	 
+	public void setIndexKeyLength ( int len ) {
+		checkDbUninitialized();
+		if ( len > INDEX_KEY_LENGTH_MAX )
+			throw new JenaException("IndexKeyLength exceeds maximum value for database ("
+					+ INDEX_KEY_LENGTH_MAX + ")");
+		INDEX_KEY_LENGTH = len;
+	}
+	
+	public boolean getIsTransactionDb () {
+		return IS_XACT_DB;
+	}
+	 
+	public void setIsTransactionDb ( boolean bool ) {
+		checkDbUninitialized();
+		if ( bool == false )
+			throw new JenaException("setIsTransactionDb unsupported for this database engine");
+	}
+
+	public boolean getDoCompressURI () {
+			return URI_COMPRESS;
+	}
+	
+	public void setDoCompressURI ( boolean bool ) {
+		checkDbUninitialized();
+		URI_COMPRESS = bool;
+	}
+	
+	public int getCompressURILength() {
+		return URI_COMPRESS_LENGTH;
+	}
+	
+	public void setCompressURILength ( int len ) {
+		checkDbUninitialized();
+		URI_COMPRESS_LENGTH = len;
+	}
+	
+	public boolean getDoDuplicateCheck() {
+		return !SKIP_DUPLICATE_CHECK;
+	}
+	
+	public void setDoDuplicateCheck(boolean bool) {
+		SKIP_DUPLICATE_CHECK = !bool;
+	}
+
+	protected boolean dbIsOpen() {
+		return (m_sysProperties != null);
+	}
+
+	protected void checkDbIsOpen() {
+		if ( !dbIsOpen() )
+			throw new JenaException("Database not open");
+	}
+	
+	protected void checkDbUninitialized() {
+		if ( dbIsOpen() || isDBFormatOK() )
+			throw new JenaException("Database configuration option cannot be set after database is formatted");
+	}
+
+	public String getTableNamePrefix() {
+		return TABLE_NAME_PREFIX;
+	}
+
+	public void setTableNamePrefix ( String prefix ) {
+		if ( dbIsOpen() )
+			throw new JenaException("Table name prefix must be set before opening or connecting to a model.");
+		/* sanity check that the new prefix length is not too long.
+		 * we have to add a few characters to the given prefix to
+		 * account for the index names (see the createStatementTable
+		 * template in the etc/<db>.sql files).
+		 */
+		String sav = TABLE_NAME_PREFIX;
+		String testpfx = prefix;
+		int i;
+		for ( i=0;i<MAXIMUM_INDEX_COLUMNS;i++) testpfx += "X";
+		setTableNames(testpfx);
+		// now see if the table names will be too long with this "prefix".
+		try {
+			String s = genTableName(10,10,true);
+			s = genTableName(10,10,false);
+		} catch ( RDFRDBException e ) {
+			setTableNames(sav);
+			throw new JenaException("New prefix (\"" + prefix +
+				"\") is too long and will cause table names \n" +
+				"to exceed maximum length for database (" + TABLE_NAME_LENGTH_MAX + ").");
+		}
+		// all ok. switch to the new prefix.
+		setTableNames(prefix);
+	}
+	
+	
+	/** generate a table name and verify that it does not
+	 * exceed the maximum length.
+	 */
+	
+	protected String genTableName( int graphId, int tblId, boolean isReif )
+	{
+		String res = stringToDBname(TABLE_NAME_PREFIX + 
+				"g" + Integer.toString(graphId) +
+				"t" + Integer.toString(tblId) +
+				(isReif ? REIF_TABLE_NAME_SUFFIX : STMT_TABLE_NAME_SUFFIX));
+		if ( res.length() > TABLE_NAME_LENGTH_MAX )
+			throw new RDFRDBException("New table name (\"" + res +
+			"\") exceeds maximum length for database (" + TABLE_NAME_LENGTH_MAX + ").");
+		return res;
+	}
+	
+	
+	   /** Names of jena system tables.
+	   protected String [] SYSTEM_TABLE_NAME; */
+	
+	protected void setTableNames ( String prefix ) {
+		TABLE_NAME_PREFIX = stringToDBname(prefix);
+		int i = 0;
+		SYSTEM_TABLE_NAME = new String[6];
+		SYSTEM_TABLE_NAME[i++] = SYSTEM_STMT_TABLE = stringToDBname(TABLE_NAME_PREFIX + "sys_stmt");
+		SYSTEM_TABLE_NAME[i++] = LONG_LIT_TABLE = stringToDBname(TABLE_NAME_PREFIX + "long_lit");
+		SYSTEM_TABLE_NAME[i++] = LONG_URI_TABLE = stringToDBname(TABLE_NAME_PREFIX + "long_uri");
+		SYSTEM_TABLE_NAME[i++] = PREFIX_TABLE = stringToDBname(TABLE_NAME_PREFIX + "prefix");
+		SYSTEM_TABLE_NAME[i++] = GRAPH_TABLE = stringToDBname(TABLE_NAME_PREFIX + "graph");
+		SYSTEM_TABLE_NAME[i++] = MUTEX_TABLE = stringToDBname(TABLE_NAME_PREFIX + "mutex");
+		SYSTEM_TABLE_CNT = i;
+	}
+	
+	/**
+	 * Return the number of system tables.
+	 */
+
+	public int getSystemTableCount() {
+		return SYSTEM_TABLE_CNT;
+	}
+	
+	/**
+	 * Return the name of a system table
+	 */
+
+	public String getSystemTableName ( int i ) {
+		return ((i < 0) || (i >= SYSTEM_TABLE_CNT)) ?
+			null : SYSTEM_TABLE_NAME[i];
+	}
+
+	
+	public String getStoreWithModel() {
+		return STORE_WITH_MODEL;
+	}
+
+	public void setStoreWithModel(String modelName) {
+		String name = null;
+		if ((modelName != null) && !modelName.equals(""))
+			name = modelName;
+		STORE_WITH_MODEL = name;
+	}
+
+	public int getCompressCacheSize() {
+		checkDbIsOpen();
+		return prefixCache.getLimit();
+	}
+
+	public void setCompressCacheSize(int count) {
+		checkDbIsOpen();
+		prefixCache.setLimit(count);
+	}
 
 }
+
+
+
+/*
+ *  (c) Copyright 2003, 2004, 2005, 2006, 2007, 2008, 2009 Hewlett-Packard Development Company, LP
+ *  All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ * IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+ * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 

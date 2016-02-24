@@ -1,150 +1,142 @@
-/*
- * Copyright (c) 2005, 2012, Oracle and/or its affiliates. All rights reserved.
- * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
- *
- * This code is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
- *
- * This code is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a copy is included in the LICENSE file that
- * accompanied this code).
- *
- * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
- *
- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
- * or visit www.oracle.com if you need additional information or have any
- * questions.
+/****************************************************************
+ * Licensed to the Apache Software Foundation (ASF) under one   *
+ * or more contributor license agreements.  See the NOTICE file *
+ * distributed with this work for additional information        *
+ * regarding copyright ownership.  The ASF licenses this file   *
+ * to you under the Apache License, Version 2.0 (the            *
+ * "License"); you may not use this file except in compliance   *
+ * with the License.  You may obtain a copy of the License at   *
+ *                                                              *
+ *   http://www.apache.org/licenses/LICENSE-2.0                 *
+ *                                                              *
+ * Unless required by applicable law or agreed to in writing,   *
+ * software distributed under the License is distributed on an  *
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY       *
+ * KIND, either express or implied.  See the License for the    *
+ * specific language governing permissions and limitations      *
+ * under the License.                                           *
+ ****************************************************************/
+
+package org.apache.james.mime4j.util;
+
+/**
+ * A resizable byte array.
  */
+public final class ByteArrayBuffer  {
+    
+    private byte[] buffer;
+    private int len;
 
-/*
- * @test
- * @bug 6262486
- * @library ../../httptest/
- * @build HttpCallback TestHttpServer ClosedChannelList HttpTransaction
- * @run main/othervm -Dhttp.keepAlive=false ResponseCacheStream
- * @summary COMPATIBILITY: jagex_com - Monkey Puzzle applet fails to load
- */
-
-import java.net.*;
-import java.io.*;
-import java.util.*;
-
-public class ResponseCacheStream implements HttpCallback {
-
-    void okReply (HttpTransaction req) throws IOException {
-        req.setResponseEntityBody ("Hello, This is the response body. Let's make it as long as possible since we need to test the cache mechanism.");
-        req.sendResponse (200, "Ok");
-            System.out.println ("Server: sent response");
-        req.orderlyClose();
+    public ByteArrayBuffer(int capacity) {
+        super();
+        if (capacity < 0) {
+            throw new IllegalArgumentException("Buffer capacity may not be negative");
+        }
+        this.buffer = new byte[capacity]; 
     }
 
-    public void request (HttpTransaction req) {
-        try {
-            okReply (req);
-        } catch (IOException e) {
-            e.printStackTrace();
+    private void expand(int newlen) {
+        byte newbuffer[] = new byte[Math.max(this.buffer.length << 1, newlen)];
+        System.arraycopy(this.buffer, 0, newbuffer, 0, this.len);
+        this.buffer = newbuffer;
+    }
+    
+    public void append(final byte[] b, int off, int len) {
+        if (b == null) {
+            return;
         }
+        if ((off < 0) || (off > b.length) || (len < 0) ||
+                ((off + len) < 0) || ((off + len) > b.length)) {
+            throw new IndexOutOfBoundsException();
+        }
+        if (len == 0) {
+            return;
+        }
+        int newlen = this.len + len;
+        if (newlen > this.buffer.length) {
+            expand(newlen);
+        }
+        System.arraycopy(b, off, this.buffer, this.len, len);
+        this.len = newlen;
     }
 
-    static class MyCacheRequest extends CacheRequest {
-        private OutputStream buf = null;
-
-        public MyCacheRequest(OutputStream out) {
-            buf = out;
+    public void append(int b) {
+        int newlen = this.len + 1;
+        if (newlen > this.buffer.length) {
+            expand(newlen);
         }
-
-        public OutputStream getBody() throws IOException {
-            return buf;
-        }
-
-        /**
-         * Aborts the attempt to cache the response. If an IOException is
-         * encountered while reading the response or writing to the cache,
-         * the current cache store operation will be abandoned.
-         */
-        public void abort() {
-        }
-
+        this.buffer[this.len] = (byte)b;
+        this.len = newlen;
     }
 
-    static class MyResponseCache extends ResponseCache {
-        private ByteArrayOutputStream buf = new ByteArrayOutputStream(1024);
-
-        public MyResponseCache() {
+    public void append(final char[] b, int off, int len) {
+        if (b == null) {
+            return;
         }
-
-        public CacheRequest put(URI uri, URLConnection conn) throws IOException {
-            return new MyCacheRequest(buf);
+        if ((off < 0) || (off > b.length) || (len < 0) ||
+                ((off + len) < 0) || ((off + len) > b.length)) {
+            throw new IndexOutOfBoundsException();
         }
-
-        public CacheResponse get(URI uri, String rqstMethod, Map<String, List<String>> rqstHeaders) throws IOException {
-            return null;
+        if (len == 0) {
+            return;
         }
-
-        public byte[] getBuffer() {
-            return buf.toByteArray();
+        int oldlen = this.len;
+        int newlen = oldlen + len;
+        if (newlen > this.buffer.length) {
+            expand(newlen);
         }
+        for (int i1 = off, i2 = oldlen; i2 < newlen; i1++, i2++) {
+            this.buffer[i2] = (byte) b[i1];
+        }
+        this.len = newlen;
     }
 
-    static TestHttpServer server;
-
-    public static void main(String[] args) throws Exception {
-        MyResponseCache cache = new MyResponseCache();
-        try {
-            ResponseCache.setDefault(cache);
-            server = new TestHttpServer (new ResponseCacheStream());
-            System.out.println ("Server: listening on port: " + server.getLocalPort());
-            URL url = new URL ("http://127.0.0.1:"+server.getLocalPort()+"/");
-            System.out.println ("Client: connecting to " + url);
-            HttpURLConnection urlc = (HttpURLConnection)url.openConnection();
-            InputStream is = urlc.getInputStream();
-            System.out.println("is is " + is.getClass() + ". And markSupported: " + is.markSupported());
-            if (is.markSupported()) {
-                byte[] b = new byte[1024];
-                byte[] b2 = new byte[32];
-                int len;
-                int count;
-                is.mark(10);
-                len = is.read(b, 0, 10);
-                is.reset();
-                len = 0;
-                count = 0;
-                do {
-                    len = is.read(b, count, 40 - count);
-                    if (len > 0)
-                        count += len;
-                } while (len > 0);
-                is.mark(20);
-                len = is.read(b2, 0, 20);
-                is.reset();
-                len = is.read(b, count, 10);
-                count += len;
-                is.mark(20);
-                len = is.read(b2, 0, 20);
-                is.reset();
-                do {
-                    len = is.read(b, count, 1024 - count);
-                    if (len > 0)
-                        count += len;
-                } while (len > 0);
-                is.close();
-                String s1 = new String(b, 0 , count);
-                String s2 = new String(cache.getBuffer(), 0 , count);
-                if (! s1.equals(s2))
-                    throw new RuntimeException("cache got corrupted!");
-            }
-        } catch (Exception e) {
-            if (server != null) {
-                server.terminate();
-            }
-            throw e;
-        }
-        server.terminate();
+    public void clear() {
+        this.len = 0;
     }
+    
+    public byte[] toByteArray() {
+        byte[] b = new byte[this.len]; 
+        if (this.len > 0) {
+            System.arraycopy(this.buffer, 0, b, 0, this.len);
+        }
+        return b;
+    }
+    
+    public int byteAt(int i) {
+        return this.buffer[i];
+    }
+    
+    public int capacity() {
+        return this.buffer.length;
+    }
+    
+    public int length() {
+        return this.len;
+    }
+
+    public byte[] buffer() {
+        return this.buffer;
+    }
+        
+    public void setLength(int len) {
+        if (len < 0 || len > this.buffer.length) {
+            throw new IndexOutOfBoundsException();
+        }
+        this.len = len;
+    }
+    
+    public boolean isEmpty() {
+        return this.len == 0; 
+    }
+    
+    public boolean isFull() {
+        return this.len == this.buffer.length; 
+    }
+
+    public String toString() {
+        return new String(toByteArray());
+    }
+    
 }
 

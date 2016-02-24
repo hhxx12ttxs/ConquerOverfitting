@@ -1,352 +1,374 @@
-/*
- * $Id: Jpeg.java 4074 2009-10-05 17:17:26Z psoares33 $
- *
- * Copyright 1999, 2000, 2001, 2002 by Bruno Lowagie.
- *
- * The contents of this file are subject to the Mozilla Public License Version 1.1
- * (the "License"); you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at http://www.mozilla.org/MPL/
- *
- * Software distributed under the License is distributed on an "AS IS" basis,
- * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
- * for the specific language governing rights and limitations under the License.
- *
- * The Original Code is 'iText, a free JAVA-PDF library'.
- *
- * The Initial Developer of the Original Code is Bruno Lowagie. Portions created by
- * the Initial Developer are Copyright (C) 1999, 2000, 2001, 2002 by Bruno Lowagie.
- * All Rights Reserved.
- * Co-Developer of the code is Paulo Soares. Portions created by the Co-Developer
- * are Copyright (C) 2000, 2001, 2002 by Paulo Soares. All Rights Reserved.
- *
- * Contributor(s): all the names of the contributors are added in the source code
- * where applicable.
- *
- * Alternatively, the contents of this file may be used under the terms of the
- * LGPL license (the "GNU LIBRARY GENERAL PUBLIC LICENSE"), in which case the
- * provisions of LGPL are applicable instead of those above.  If you wish to
- * allow use of your version of this file only under the terms of the LGPL
- * License and not to allow others to use your version of this file under
- * the MPL, indicate your decision by deleting the provisions above and
- * replace them with the notice and other provisions required by the LGPL.
- * If you do not delete the provisions above, a recipient may use your version
- * of this file under either the MPL or the GNU LIBRARY GENERAL PUBLIC LICENSE.
- *
- * This library is free software; you can redistribute it and/or modify it
- * under the terms of the MPL as stated above or under the terms of the GNU
- * Library General Public License as published by the Free Software Foundation;
- * either version 2 of the License, or any later version.
- *
- * This library is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- * FOR A PARTICULAR PURPOSE. See the GNU Library general Public License for more
- * details.
- *
- * If you didn't download this code from the following link, you should check if
- * you aren't using an obsolete version:
- * http://www.lowagie.com/iText/
- */
+// Md5.java
+// CVS Id: Md5.java,v 1.5 2000/08/16 21:37:48 ylafon Exp
+// (c) COPYRIGHT MIT and INRIA, 1996.
 
-package com.lowagie.text;
+//package org.w3c.tools.crypt ;
 
-import java.awt.color.ICC_Profile;
+// AFS - Want a standalone version
+package org.openjena.atlas.lib;
+
+
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URL;
-import com.lowagie.text.error_messages.MessageLocalization;
+import java.io.UnsupportedEncodingException;
 
-/**
- * An <CODE>Jpeg</CODE> is the representation of a graphic element (JPEG)
- * that has to be inserted into the document
- *
- * @see		Element
- * @see		Image
- */
+public class MD5 {
+    private static final int BUFFER_SIZE = 1024 ;
 
-public class Jpeg extends Image {
-    
-    // public static final membervariables
-    
-    /** This is a type of marker. */
-    public static final int NOT_A_MARKER = -1;
-    
-    /** This is a type of marker. */
-    public static final int VALID_MARKER = 0;
-    
-    /** Acceptable Jpeg markers. */
-    public static final int[] VALID_MARKERS = {0xC0, 0xC1, 0xC2};
-    
-    /** This is a type of marker. */
-    public static final int UNSUPPORTED_MARKER = 1;
-    
-    /** Unsupported Jpeg markers. */
-    public static final int[] UNSUPPORTED_MARKERS = {0xC3, 0xC5, 0xC6, 0xC7, 0xC8, 0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF};
-    
-    /** This is a type of marker. */
-    public static final int NOPARAM_MARKER = 2;
-    
-    /** Jpeg markers without additional parameters. */
-    public static final int[] NOPARAM_MARKERS = {0xD0, 0xD1, 0xD2, 0xD3, 0xD4, 0xD5, 0xD6, 0xD7, 0xD8, 0x01};
-    
-    /** Marker value */
-    public static final int M_APP0 = 0xE0;
-    /** Marker value */
-    public static final int M_APP2 = 0xE2;
-    /** Marker value */
-    public static final int M_APPE = 0xEE;
-    
-    /** sequence that is used in all Jpeg files */
-    public static final byte JFIF_ID[] = {0x4A, 0x46, 0x49, 0x46, 0x00};
-    
-    private byte[][] icc;
-    // Constructors
-    
-    Jpeg(Image image) {
-        super(image);
+    private static final int S11 = 7 ;
+    private static final int S12 = 12 ;
+    private static final int S13 = 17 ;
+    private static final int S14 = 22 ;
+    private static final int S21 = 5 ;
+    private static final int S22 = 9 ;
+    private static final int S23 = 14 ;
+    private static final int S24 = 20 ;
+    private static final int S31 = 4 ;
+    private static final int S32 = 11 ;
+    private static final int S33 = 16 ;
+    private static final int S34 = 23 ;
+    private static final int S41 = 6 ;
+    private static final int S42 = 10 ;
+    private static final int S43 = 15 ;
+    private static final int S44 = 21 ;
+
+    private static byte padding[] = {
+        (byte) 0x80, (byte) 0, (byte) 0, (byte) 0, (byte) 0, (byte) 0,
+        (byte) 0, (byte) 0, (byte) 0, (byte) 0, (byte) 0, (byte) 0,
+        (byte) 0, (byte) 0, (byte) 0, (byte) 0, (byte) 0, (byte) 0,
+        (byte) 0, (byte) 0, (byte) 0, (byte) 0, (byte) 0, (byte) 0,
+        (byte) 0, (byte) 0, (byte) 0, (byte) 0, (byte) 0, (byte) 0,
+        (byte) 0, (byte) 0, (byte) 0, (byte) 0, (byte) 0, (byte) 0,
+        (byte) 0, (byte) 0, (byte) 0, (byte) 0, (byte) 0, (byte) 0,
+        (byte) 0, (byte) 0, (byte) 0, (byte) 0, (byte) 0, (byte) 0,
+        (byte) 0, (byte) 0, (byte) 0, (byte) 0, (byte) 0, (byte) 0,
+        (byte) 0, (byte) 0, (byte) 0, (byte) 0, (byte) 0, (byte) 0,
+        (byte) 0, (byte) 0, (byte) 0, (byte) 0
+    } ;
+
+    private InputStream in       = null ;
+    private boolean     stringp  = false ;
+    private int         state[]  = null ;
+    private long        count    = 0 ;
+    private byte        buffer[] = null ;
+    private byte        digest[] = null ;
+
+    private static String stringify (byte buf[]) {
+        StringBuffer sb = new StringBuffer(2*buf.length) ;
+        for (int i = 0 ; i < buf.length; i++) {
+            int h = (buf[i] & 0xf0) >> 4 ;
+            int l = (buf[i] & 0x0f) ;
+            sb.append (new Character((char)((h>9) ? 'a'+h-10 : '0'+h))) ;
+            sb.append (new Character((char)((l>9) ? 'a'+l-10 : '0'+l))) ;
+        }
+        return sb.toString() ;
+    }
+
+    private final int F(int x, int y, int z) {
+        return ((x & y) | ((~x) & z)) ;
+    }
+
+    private final int G(int x, int y, int z) {
+        return ((x & z) | (y & (~z))) ;
+    }
+
+    private final int H(int x, int y, int z) {
+        return (x ^ y ^ z) ;
+    }
+
+    private final int I(int x, int y, int z) {
+        return (y ^ (x | (~z))) ;
+    }
+
+    private final int  rotate_left(int x, int n) {
+        return ((x << n) | (x >>> (32-n))) ;
+    }
+
+    private final int FF(int a,int b,int c,int d,int x,int s,int ac) {
+        a += (F(b, c, d) + x + ac) ;
+        a = rotate_left(a, s) ;
+        a += b ;
+        return a ;
+    }
+
+    private final int GG(int a,int b,int c,int d,int x,int s,int ac) {
+        a += (G(b, c, d) + x + ac) ;
+        a = rotate_left(a, s) ;
+        a += b ;
+        return a ;
+    }
+
+    private final int HH(int a,int b,int c,int d,int x,int s,int ac) {
+        a += (H(b, c, d) + x + ac) ;
+        a = rotate_left(a, s) ;
+        a += b ;
+        return a ;
+    }
+
+    private final int II(int a,int b,int c,int d,int x,int s,int ac) {
+        a += (I(b, c, d) + x + ac) ;
+        a = rotate_left(a, s) ;
+        a += b ;
+        return a;
+    }
+
+    private final void decode (int output[], byte input[], int off, int len) {
+        int i = 0 ;
+        int j = 0 ;
+        for ( ; j < len; i++, j += 4) {
+            output[i] = (((input[off+j]&0xff))
+                         | (((input[off+j+1] & 0xff)) << 8)
+                         | (((input[off+j+2] & 0xff)) << 16)
+                         | (((input[off+j+3] & 0xff)) << 24)) ;
+        }
+    }
+
+    private final void transform (byte block[], int offset) {
+        int a   = state[0] ;
+        int b   = state[1] ;
+        int c   = state[2] ;
+        int d   = state[3] ;
+        int x[] = new int[16] ;
+
+        decode (x, block, offset, 64);
+        /* Round 1 */
+        a = FF (a, b, c, d, x[ 0], S11, 0xd76aa478); /* 1 */
+        d = FF (d, a, b, c, x[ 1], S12, 0xe8c7b756); /* 2 */
+        c = FF (c, d, a, b, x[ 2], S13, 0x242070db); /* 3 */
+        b = FF (b, c, d, a, x[ 3], S14, 0xc1bdceee); /* 4 */
+        a = FF (a, b, c, d, x[ 4], S11, 0xf57c0faf); /* 5 */
+        d = FF (d, a, b, c, x[ 5], S12, 0x4787c62a); /* 6 */
+        c = FF (c, d, a, b, x[ 6], S13, 0xa8304613); /* 7 */
+        b = FF (b, c, d, a, x[ 7], S14, 0xfd469501); /* 8 */
+        a = FF (a, b, c, d, x[ 8], S11, 0x698098d8); /* 9 */
+        d = FF (d, a, b, c, x[ 9], S12, 0x8b44f7af); /* 10 */
+        c = FF (c, d, a, b, x[10], S13, 0xffff5bb1); /* 11 */
+        b = FF (b, c, d, a, x[11], S14, 0x895cd7be); /* 12 */
+        a = FF (a, b, c, d, x[12], S11, 0x6b901122); /* 13 */
+        d = FF (d, a, b, c, x[13], S12, 0xfd987193); /* 14 */
+        c = FF (c, d, a, b, x[14], S13, 0xa679438e); /* 15 */
+        b = FF (b, c, d, a, x[15], S14, 0x49b40821); /* 16 */
+        /* Round 2 */
+        a = GG (a, b, c, d, x[ 1], S21, 0xf61e2562); /* 17 */
+        d = GG (d, a, b, c, x[ 6], S22, 0xc040b340); /* 18 */
+        c = GG (c, d, a, b, x[11], S23, 0x265e5a51); /* 19 */
+        b = GG (b, c, d, a, x[ 0], S24, 0xe9b6c7aa); /* 20 */
+        a = GG (a, b, c, d, x[ 5], S21, 0xd62f105d); /* 21 */
+        d = GG (d, a, b, c, x[10], S22,  0x2441453); /* 22 */
+        c = GG (c, d, a, b, x[15], S23, 0xd8a1e681); /* 23 */
+        b = GG (b, c, d, a, x[ 4], S24, 0xe7d3fbc8); /* 24 */
+        a = GG (a, b, c, d, x[ 9], S21, 0x21e1cde6); /* 25 */
+        d = GG (d, a, b, c, x[14], S22, 0xc33707d6); /* 26 */
+        c = GG (c, d, a, b, x[ 3], S23, 0xf4d50d87); /* 27 */
+        b = GG (b, c, d, a, x[ 8], S24, 0x455a14ed); /* 28 */
+        a = GG (a, b, c, d, x[13], S21, 0xa9e3e905); /* 29 */
+        d = GG (d, a, b, c, x[ 2], S22, 0xfcefa3f8); /* 30 */
+        c = GG (c, d, a, b, x[ 7], S23, 0x676f02d9); /* 31 */
+        b = GG (b, c, d, a, x[12], S24, 0x8d2a4c8a); /* 32 */
+
+        /* Round 3 */
+        a = HH (a, b, c, d, x[ 5], S31, 0xfffa3942); /* 33 */
+        d = HH (d, a, b, c, x[ 8], S32, 0x8771f681); /* 34 */
+        c = HH (c, d, a, b, x[11], S33, 0x6d9d6122); /* 35 */
+        b = HH (b, c, d, a, x[14], S34, 0xfde5380c); /* 36 */
+        a = HH (a, b, c, d, x[ 1], S31, 0xa4beea44); /* 37 */
+        d = HH (d, a, b, c, x[ 4], S32, 0x4bdecfa9); /* 38 */
+        c = HH (c, d, a, b, x[ 7], S33, 0xf6bb4b60); /* 39 */
+        b = HH (b, c, d, a, x[10], S34, 0xbebfbc70); /* 40 */
+        a = HH (a, b, c, d, x[13], S31, 0x289b7ec6); /* 41 */
+        d = HH (d, a, b, c, x[ 0], S32, 0xeaa127fa); /* 42 */
+        c = HH (c, d, a, b, x[ 3], S33, 0xd4ef3085); /* 43 */
+        b = HH (b, c, d, a, x[ 6], S34,  0x4881d05); /* 44 */
+        a = HH (a, b, c, d, x[ 9], S31, 0xd9d4d039); /* 45 */
+        d = HH (d, a, b, c, x[12], S32, 0xe6db99e5); /* 46 */
+        c = HH (c, d, a, b, x[15], S33, 0x1fa27cf8); /* 47 */
+        b = HH (b, c, d, a, x[ 2], S34, 0xc4ac5665); /* 48 */
+
+        /* Round 4 */
+        a = II (a, b, c, d, x[ 0], S41, 0xf4292244); /* 49 */
+        d = II (d, a, b, c, x[ 7], S42, 0x432aff97); /* 50 */
+        c = II (c, d, a, b, x[14], S43, 0xab9423a7); /* 51 */
+        b = II (b, c, d, a, x[ 5], S44, 0xfc93a039); /* 52 */
+        a = II (a, b, c, d, x[12], S41, 0x655b59c3); /* 53 */
+        d = II (d, a, b, c, x[ 3], S42, 0x8f0ccc92); /* 54 */
+        c = II (c, d, a, b, x[10], S43, 0xffeff47d); /* 55 */
+        b = II (b, c, d, a, x[ 1], S44, 0x85845dd1); /* 56 */
+        a = II (a, b, c, d, x[ 8], S41, 0x6fa87e4f); /* 57 */
+        d = II (d, a, b, c, x[15], S42, 0xfe2ce6e0); /* 58 */
+        c = II (c, d, a, b, x[ 6], S43, 0xa3014314); /* 59 */
+        b = II (b, c, d, a, x[13], S44, 0x4e0811a1); /* 60 */
+        a = II (a, b, c, d, x[ 4], S41, 0xf7537e82); /* 61 */
+        d = II (d, a, b, c, x[11], S42, 0xbd3af235); /* 62 */
+        c = II (c, d, a, b, x[ 2], S43, 0x2ad7d2bb); /* 63 */
+        b = II (b, c, d, a, x[ 9], S44, 0xeb86d391); /* 64 */
+
+        state[0] += a;
+        state[1] += b;
+        state[2] += c;
+        state[3] += d;
+    }
+
+    private final void update (byte input[], int len) {
+        int index = ((int) (count >> 3)) & 0x3f ;
+        count += (len << 3) ;
+        int partLen = 64 - index ;
+        int i = 0 ;
+        if ( len >= partLen ) {
+            System.arraycopy (input, 0, buffer, index, partLen) ;
+            transform (buffer, 0) ;
+            for (i = partLen ; i + 63 < len ; i+= 64)
+                transform (input, i) ;
+            index = 0 ;
+        } else {
+            i = 0 ;
+        }
+        System.arraycopy (input, i, buffer, index, len - i) ;
+    }
+
+    private byte[] end () {
+        byte bits[] = new byte[8] ;
+        for (int i = 0 ; i < 8 ; i++)
+            bits[i] = (byte) ((count>>>(i*8)) & 0xff) ;
+        int index  = ((int) (count >> 3)) & 0x3f ;
+        int padlen = (index < 56) ? (56 - index) : (120 - index) ;
+        update (padding, padlen) ;
+        update (bits, 8) ;
+        return encode(state, 16) ;
+    }
+
+    // Encode the content.state array into 16 bytes array
+    private byte[] encode (int input[], int len) {
+        byte output[] = new byte[len] ;
+        int i = 0 ;
+        int j = 0 ;
+        for ( ; j < len ; i++, j+= 4) {
+            output[j]   = (byte) ((input[i]      ) & 0xff) ;
+            output[j+1] = (byte) ((input[i] >> 8 ) & 0xff) ;
+            output[j+2] = (byte) ((input[i] >> 16) & 0xff) ;
+            output[j+3] = (byte) ((input[i] >> 24) & 0xff) ;
+        }
+        return output ;
     }
 
     /**
-     * Constructs a <CODE>Jpeg</CODE>-object, using an <VAR>url</VAR>.
-     *
-     * @param		url			the <CODE>URL</CODE> where the image can be found
-     * @throws BadElementException
-     * @throws IOException
+     * Get the digest for our input stream.
+     * This method constructs the input stream digest, and return it, as a
+     * a String, following the MD5 (rfc1321) algorithm,
+     * @return An instance of String, giving the message digest.
+     * @exception IOException Thrown if the digestifier was unable to read the
+     *    input stream.
      */
-    public Jpeg(URL url) throws BadElementException, IOException {
-        super(url);
-        processParameters();
+
+    public byte[] getDigest ()
+        throws IOException
+    {
+        byte buffer[] = new byte[BUFFER_SIZE] ;
+        int  got      = -1 ;
+
+        if ( digest != null )
+            return digest ;
+        while ((got = in.read(buffer)) > 0 )
+            update (buffer, got) ;
+        this.digest = end () ;
+        return digest ;
     }
-    
+
     /**
-     * Constructs a <CODE>Jpeg</CODE>-object from memory.
-     *
-     * @param		img		the memory image
-     * @throws BadElementException
-     * @throws IOException
+     * Get the digest, for this string digestifier.
+     * This method doesn't throw any IOException, since it knows that the
+     * underlying stream ws built from a String.
      */
-    
-    public Jpeg(byte[] img) throws BadElementException, IOException {
-        super((URL)null);
-        rawData = img;
-        originalData = img;
-        processParameters();
-    }
-    
-    /**
-     * Constructs a <CODE>Jpeg</CODE>-object from memory.
-     *
-     * @param		img			the memory image.
-     * @param		width		the width you want the image to have
-     * @param		height		the height you want the image to have
-     * @throws BadElementException
-     * @throws IOException
-     */
-    
-    public Jpeg(byte[] img, float width, float height) throws BadElementException, IOException {
-        this(img);
-        scaledWidth = width;
-        scaledHeight = height;
-    }
-    
-    // private static methods
-    
-    /**
-     * Reads a short from the <CODE>InputStream</CODE>.
-     *
-     * @param	is		the <CODE>InputStream</CODE>
-     * @return	an int
-     * @throws IOException
-     */
-    private static final int getShort(InputStream is) throws IOException {
-        return (is.read() << 8) + is.read();
-    }
-    
-    /**
-     * Returns a type of marker.
-     *
-     * @param	marker      an int
-     * @return	a type: <VAR>VALID_MARKER</CODE>, <VAR>UNSUPPORTED_MARKER</VAR> or <VAR>NOPARAM_MARKER</VAR>
-     */
-    private static final int marker(int marker) {
-        for (int i = 0; i < VALID_MARKERS.length; i++) {
-            if (marker == VALID_MARKERS[i]) {
-                return VALID_MARKER;
-            }
-        }
-        for (int i = 0; i < NOPARAM_MARKERS.length; i++) {
-            if (marker == NOPARAM_MARKERS[i]) {
-                return NOPARAM_MARKER;
-            }
-        }
-        for (int i = 0; i < UNSUPPORTED_MARKERS.length; i++) {
-            if (marker == UNSUPPORTED_MARKERS[i]) {
-                return UNSUPPORTED_MARKER;
-            }
-        }
-        return NOT_A_MARKER;
-    }
-    
-    // private methods
-    
-    /**
-     * This method checks if the image is a valid JPEG and processes some parameters.
-     * @throws BadElementException
-     * @throws IOException
-     */
-    private void processParameters() throws BadElementException, IOException {
-        type = JPEG;
-        originalType = ORIGINAL_JPEG;
-        InputStream is = null;
+
+    public byte[] processString () {
+        if ( ! stringp )
+            throw new RuntimeException (this.getClass().getName()
+                                        + "[processString]"
+                                        + " not a string.") ;
         try {
-            String errorID;
-            if (rawData == null){
-                is = url.openStream();
-                errorID = url.toString();
-            }
-            else{
-                is = new java.io.ByteArrayInputStream(rawData);
-                errorID = "Byte array";
-            }
-            if (is.read() != 0xFF || is.read() != 0xD8)	{
-                throw new BadElementException(MessageLocalization.getComposedMessage("1.is.not.a.valid.jpeg.file", errorID));
-            }
-            boolean firstPass = true;
-            int len;
-            while (true) {
-                int v = is.read();
-                if (v < 0)
-                    throw new IOException(MessageLocalization.getComposedMessage("premature.eof.while.reading.jpg"));
-                if (v == 0xFF) {
-                    int marker = is.read();
-                    if (firstPass && marker == M_APP0) {
-                        firstPass = false;
-                        len = getShort(is);
-                        if (len < 16) {
-                            Utilities.skip(is, len - 2);
-                            continue;
-                        }
-                        byte bcomp[] = new byte[JFIF_ID.length];
-                        int r = is.read(bcomp);
-                        if (r != bcomp.length)
-                            throw new BadElementException(MessageLocalization.getComposedMessage("1.corrupted.jfif.marker", errorID));
-                        boolean found = true;
-                        for (int k = 0; k < bcomp.length; ++k) {
-                            if (bcomp[k] != JFIF_ID[k]) {
-                                found = false;
-                                break;
-                            }
-                        }
-                        if (!found) {
-                            Utilities.skip(is, len - 2 - bcomp.length);
-                            continue;
-                        }
-                        Utilities.skip(is, 2);
-                        int units = is.read();
-                        int dx = getShort(is);
-                        int dy = getShort(is);
-                        if (units == 1) {
-                            dpiX = dx;
-                            dpiY = dy;
-                        }
-                        else if (units == 2) {
-                            dpiX = (int)(dx * 2.54f + 0.5f);
-                            dpiY = (int)(dy * 2.54f + 0.5f);
-                        }
-                        Utilities.skip(is, len - 2 - bcomp.length - 7);
-                        continue;
-                    }
-                    if (marker == M_APPE) {
-                        len = getShort(is) - 2;
-                        byte[] byteappe = new byte[len];
-                        for (int k = 0; k < len; ++k) {
-                            byteappe[k] = (byte)is.read();
-                        }
-                        if (byteappe.length >= 12) {
-                            String appe = new String(byteappe, 0, 5, "ISO-8859-1");
-                            if (appe.equals("Adobe")) {
-                                invert = true;
-                            }
-                        }
-                        continue;
-                    }
-                    if (marker == M_APP2) {
-                        len = getShort(is) - 2;
-                        byte[] byteapp2 = new byte[len];
-                        for (int k = 0; k < len; ++k) {
-                            byteapp2[k] = (byte)is.read();
-                        }
-                        if (byteapp2.length >= 14) {
-                            String app2 = new String(byteapp2, 0, 11, "ISO-8859-1");
-                            if (app2.equals("ICC_PROFILE")) {
-                                int order = byteapp2[12] & 0xff;
-                                int count = byteapp2[13] & 0xff;
-                                // some jpeg producers don't know how to count to 1
-                                if (order < 1)
-                                    order = 1;
-                                if (count < 1)
-                                    count = 1;
-                                if (icc == null)
-                                    icc = new byte[count][];
-                                icc[order - 1] = byteapp2;
-                            }
-                        }
-                        continue;
-                    }
-                    firstPass = false;
-                    int markertype = marker(marker);
-                    if (markertype == VALID_MARKER) {
-                        Utilities.skip(is, 2);
-                        if (is.read() != 0x08) {
-                            throw new BadElementException(MessageLocalization.getComposedMessage("1.must.have.8.bits.per.component", errorID));
-                        }
-                        scaledHeight = getShort(is);
-                        setTop(scaledHeight);
-                        scaledWidth = getShort(is);
-                        setRight(scaledWidth);
-                        colorspace = is.read();
-                        bpc = 8;
-                        break;
-                    }
-                    else if (markertype == UNSUPPORTED_MARKER) {
-                        throw new BadElementException(MessageLocalization.getComposedMessage("1.unsupported.jpeg.marker.2", errorID, String.valueOf(marker)));
-                    }
-                    else if (markertype != NOPARAM_MARKER) {
-                        Utilities.skip(is, getShort(is) - 2);
-                    }
-                }
-            }
+            return getDigest() ;
+        } catch (IOException ex) {
         }
-        finally {
-            if (is != null) {
-                is.close();
-            }
-        }
-        plainWidth = getWidth();
-        plainHeight = getHeight();
-        if (icc != null) {
-            int total = 0;
-            for (int k = 0; k < icc.length; ++k) {
-                if (icc[k] == null) {
-                    icc = null;
-                    return;
-                }
-                total += icc[k].length - 14;
-            }
-            byte[] ficc = new byte[total];
-            total = 0;
-            for (int k = 0; k < icc.length; ++k) {
-                System.arraycopy(icc[k], 14, ficc, total, icc[k].length - 14);
-                total += icc[k].length - 14;
-            }
-            try {
-            	ICC_Profile icc_prof = ICC_Profile.getInstance(ficc);
-            	tagICC(icc_prof);
-            }
-            catch(IllegalArgumentException e) {
-            	// ignore ICC profile if it's invalid.
-            }
-            icc = null;
-        }
+        throw new RuntimeException (this.getClass().getName()
+                                    + "[processString]"
+                                    + ": implementation error.") ;
     }
+
+    /**
+     * Get the digest, as a proper string.
+     */
+
+    public String getStringDigest() {
+        if ( digest == null )
+            throw new RuntimeException (this.getClass().getName()
+                                        + "[getStringDigest]"
+                                        + ": called before processing.") ;
+        return stringify (digest) ;
+    }
+
+    /**
+     * Construct a digestifier for the given string.
+     * @param input The string to be digestified.
+     * @param encoding the encoding name used (such as UTF8)
+     */
+
+    public MD5 (String input, String encoding) {
+        byte bytes [] = null;
+        try {
+            bytes = input.getBytes (encoding);
+        } catch(UnsupportedEncodingException e){
+            throw new RuntimeException("no "+encoding+" encoding!!!");
+        }
+        this.stringp = true ;
+        this.in      = new ByteArrayInputStream (bytes) ;
+        this.state   = new int[4] ;
+        this.buffer  = new byte[64] ;
+        this.count   = 0 ;
+        state[0] = 0x67452301;
+        state[1] = 0xefcdab89;
+        state[2] = 0x98badcfe;
+        state[3] = 0x10325476;
+    }
+
+    /**
+     * Construct a digestifier for the given string.
+     * @param input The string to be digestified.
+     */
+
+    public MD5 (String input) {
+        this(input, "UTF8");
+    }
+
+    /**
+     * Construct a digestifier for the given input stream.
+     * @param in The input stream to be digestified.
+     */
+
+    public MD5 (InputStream in) {
+        this.stringp = false ;
+        this.in      = in ;
+        this.state   = new int[4] ;
+        this.buffer  = new byte[64] ;
+        this.count   = 0 ;
+        state[0] = 0x67452301;
+        state[1] = 0xefcdab89;
+        state[2] = 0x98badcfe;
+        state[3] = 0x10325476;
+    }
+
+    public static void main (String args[])
+        throws IOException
+    {
+        if ( args.length != 1) {
+            System.out.println ("MD5 <file>") ;
+            System.exit (1) ;
+        }
+        MD5 md5 = new MD5 (new FileInputStream(new File(args[0]))) ;
+        byte b[]= md5.getDigest();
+        System.out.println (stringify(b)) ;
+    }
+
 }
 

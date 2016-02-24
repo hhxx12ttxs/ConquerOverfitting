@@ -7,7 +7,8 @@ import com.gzoltar.core.instr.testing.TestResult;
 import de.unisb.cs.st.javaslicer.slicing.Slicer;
 import de.unisb.cs.st.javaslicer.tracer.TracerAgent;
 import javassist.NotFoundException;
-import org.apache.commons.lang3.StringUtils;
+
+import org.apache.commons.lang.StringUtils;
 import org.junit.runner.JUnitCore;
 import java.io.*;
 import java.util.ArrayList;

@@ -1,912 +1,624 @@
-/*-------------------------------------------------------------------------
-*
-* Copyright (c) 2004-2011, PostgreSQL Global Development Group
-*
-*
-*-------------------------------------------------------------------------
-*/
-package org.postgresql.jdbc2;
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements. See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership. The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License. You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 
-import org.postgresql.core.*;
-import org.postgresql.util.ByteConverter;
-import org.postgresql.util.PSQLException;
-import org.postgresql.util.PSQLState;
-import org.postgresql.util.GT;
+package org.apache.thrift.transport;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.IOException;
-import java.math.BigDecimal;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Types;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.Random;
 
 /**
- * Array is used collect one column of query result data.
+ * FileTransport implementation of the TTransport interface.
+ * Currently this is a straightforward port of the cpp implementation
+ * 
+ * It may make better sense to provide a basic stream access on top of the framed file format
+ * The FileTransport can then be a user of this framed file format with some additional logic
+ * for chunking.
  *
- * <p>
- * Read a field of type Array into either a natively-typed Java array object or
- * a ResultSet. Accessor methods provide the ability to capture array slices.
- *
- * <p>
- * Other than the constructor all methods are direct implementations of those
- * specified for java.sql.Array. Please refer to the javadoc for java.sql.Array
- * for detailed descriptions of the functionality and parameters of the methods
- * of this class.
- *
- * @see ResultSet#getArray
+ * @author Joydeep Sen Sarma <jssarma@facebook.com>
  */
-public abstract class AbstractJdbc2Array
-{
+public class TFileTransport extends TTransport {
 
-    /**
-     * Array list implementation specific for storing PG array elements.
-     */
-    private static class PgArrayList extends ArrayList
-    {
-
-        private static final long serialVersionUID = 2052783752654562677L;
-
-        /**
-         * How many dimensions.
-         */
-        int dimensionsCount = 1;
-
+  public static class TruncableBufferedInputStream extends BufferedInputStream {
+    public void trunc() {
+      pos = count = 0;
+    }        
+    public TruncableBufferedInputStream(InputStream in) {
+      super(in);
     }
-
-    /**
-     * A database connection.
-     */
-    private BaseConnection connection = null;
-
-    /**
-     * The OID of this field.
-     */
-    private int oid;
-
-    /**
-     * Field value as String.
-     */
-    private String fieldString = null;
-
-    /**
-     * Whether Object[] should be used instead primitive arrays. Object[] can
-     * contain null elements. It should be set to <Code>true</Code> if
-     * {@link BaseConnection#haveMinimumCompatibleVersion(String)} returns
-     * <Code>true</Code> for argument "8.3".
-     */
-    private final boolean useObjects;
-
-    /**
-     * Are we connected to an 8.2 or higher server?  Only 8.2 or higher
-     * supports null array elements.
-     */
-    private final boolean haveMinServer82;
-
-    /**
-     * Value of field as {@link PgArrayList}. Will be initialized only once
-     * within {@link #buildArrayList()}.
-     */
-    private PgArrayList arrayList;
-
-    private byte[] fieldBytes;
-
-    private AbstractJdbc2Array(BaseConnection connection, int oid) throws SQLException {
-        this.connection = connection;
-        this.oid = oid;
-        this.useObjects = connection.haveMinimumCompatibleVersion("8.3");
-        this.haveMinServer82 = connection.haveMinimumServerVersion("8.2");
+    public TruncableBufferedInputStream(InputStream in, int size) {
+      super(in, size);
     }
+  }
+
+
+  public static class Event {
+    private byte[] buf_;
+    private int nread_;
+    private int navailable_;
 
     /**
-     * Create a new Array.
+     * Initialize an event. Initially, it has no valid contents
      *
-     * @param connection a database connection
-     * @param oid the oid of the array datatype
-     * @param fieldString the array data in string form
+     * @param buf byte array buffer to store event 
      */
-    public AbstractJdbc2Array(BaseConnection connection, int oid, String fieldString) throws SQLException {
-        this(connection, oid);
-        this.fieldString = fieldString;
+    public Event(byte[] buf) {
+      buf_ = buf;
+      nread_ = navailable_ = 0;
     }
 
+    public byte[] getBuf() { return buf_;}
+    public int getSize() { return buf_.length; }
+
+
+    public void setAvailable(int sz) { nread_ = 0; navailable_=sz;}
+    public int getRemaining() { return (navailable_ - nread_); }
+
+    public int emit(byte[] buf, int offset, int ndesired) {
+      if((ndesired == 0) || (ndesired > getRemaining()))
+        ndesired = getRemaining();
+
+      if(ndesired <= 0)
+        return (ndesired);
+
+      System.arraycopy(buf_, nread_, buf, offset, ndesired);
+      nread_ += ndesired;
+
+      return(ndesired);
+    }
+  };
+
+  public static class ChunkState {
     /**
-     * Create a new Array.
+     * Chunk Size. Must be same across all implementations
+     */
+    public static final int DEFAULT_CHUNK_SIZE = 16 * 1024 * 1024;
+
+    private int chunk_size_ = DEFAULT_CHUNK_SIZE;
+    private long offset_ = 0;
+
+    public ChunkState() {}
+    public ChunkState(int chunk_size) { chunk_size_ = chunk_size; }
+
+    public void skip(int size) {offset_ += size; }
+    public void seek(long offset) {offset_ = offset;}
+
+    public int getChunkSize() { return chunk_size_;}
+    public int getChunkNum() { return ((int)(offset_/chunk_size_));}
+    public int getRemaining() { return (chunk_size_ - ((int)(offset_ % chunk_size_)));}
+    public long getOffset() { return (offset_);}
+  }
+
+  public static enum TailPolicy {
+
+    NOWAIT(0, 0),
+      WAIT_FOREVER(500, -1);
+
+    /**
+     * Time in milliseconds to sleep before next read
+     * If 0, no sleep
+     */
+    public final int timeout_;
+
+    /**
+     * Number of retries before giving up
+     * if 0, no retries
+     * if -1, retry forever
+     */
+    public final int retries_;
+
+    /**
+     * ctor for policy
      *
-     * @param connection a database connection
-     * @param oid the oid of the array datatype
-     * @param fieldBytes the array data in byte form
+     * @param timeout sleep time for this particular policy
+     * @param retries number of retries
      */
-    public AbstractJdbc2Array(BaseConnection connection, int oid, byte[] fieldBytes) throws SQLException {
-        this(connection, oid);
-        this.fieldBytes = fieldBytes;
+
+    TailPolicy(int timeout, int retries) {
+      timeout_ = timeout;
+      retries_ = retries;
     }
+  }
 
-    public Object getArray() throws SQLException
-    {
-        return getArrayImpl(1, 0, null);
+  /**
+   * Current tailing policy
+   */
+  TailPolicy currentPolicy_ = TailPolicy.NOWAIT;
+
+
+  /** 
+   * Underlying file being read
+   */
+  protected TSeekableFile inputFile_ = null;
+
+  /** 
+   * Underlying outputStream 
+   */
+  protected OutputStream outputStream_ = null;
+
+
+  /**
+   * Event currently read in
+   */
+  Event currentEvent_ = null;
+
+  /**
+   * InputStream currently being used for reading
+   */
+  InputStream inputStream_ = null;
+
+  /**
+   * current Chunk state
+   */
+  ChunkState cs = null;
+
+  /**
+   * is read only?
+   */
+  private boolean readOnly_ = false;
+
+  /**
+   * Get File Tailing Policy
+   * 
+   * @return current read policy
+   */
+  public TailPolicy getTailPolicy() {
+    return (currentPolicy_);
+  }
+
+  /**
+   * Set file Tailing Policy
+   * 
+   * @param policy New policy to set
+   * @return Old policy
+   */
+  public TailPolicy setTailPolicy(TailPolicy policy) {
+    TailPolicy old = currentPolicy_;
+    currentPolicy_ = policy;
+    return (old);
+  }
+
+
+  /**
+   * Initialize read input stream
+   * 
+   * @return input stream to read from file
+   */
+  private InputStream createInputStream() throws TTransportException {
+    InputStream is;
+    try {
+      if(inputStream_ != null) {
+        ((TruncableBufferedInputStream)inputStream_).trunc();
+        is = inputStream_;
+      } else {
+        is = new TruncableBufferedInputStream(inputFile_.getInputStream());
+      }
+    } catch (IOException iox) {
+      System.err.println("createInputStream: "+iox.getMessage());
+      throw new TTransportException(iox.getMessage(), iox);
     }
+    return(is);
+  }
 
-    public Object getArray(long index, int count) throws SQLException
-    {
-        return getArrayImpl(index, count, null);
-    }
+  /**
+   * Read (potentially tailing) an input stream
+   * 
+   * @param is InputStream to read from
+   * @param buf Buffer to read into
+   * @param off Offset in buffer to read into
+   * @param len Number of bytes to read
+   * @param tp  policy to use if we hit EOF
+   *
+   * @return number of bytes read
+   */
+  private int tailRead(InputStream is, byte[] buf, 
+                       int off, int len, TailPolicy tp) throws TTransportException {
+    int orig_len = len;
+    try {
+      int retries = 0;
+      while(len > 0) {
+        int cnt = is.read(buf, off, len);
+        if(cnt > 0) {
+          off += cnt;
+          len -= cnt;
+          retries = 0;
+          cs.skip(cnt); // remember that we read so many bytes
+        } else if (cnt == -1) {
+          // EOF
+          retries++;
 
-    public Object getArrayImpl(Map map) throws SQLException
-    {
-        return getArrayImpl(1, 0, map);
-    }
+          if((tp.retries_ != -1) && tp.retries_ < retries)
+            return (orig_len - len);
 
-    public Object getArrayImpl(long index, int count, Map map) throws SQLException
-    {
-
-        // for now maps aren't supported.
-        if (map != null && !map.isEmpty())
-        {
-            throw org.postgresql.Driver.notImplemented(this.getClass(), "getArrayImpl(long,int,Map)");
-        }
-
-        // array index is out of range
-        if (index < 1)
-        {
-            throw new PSQLException(GT.tr("The array index is out of range: {0}", new Long(index)), PSQLState.DATA_ERROR);
-        }
-
-        if (fieldBytes != null) {
-            return readBinaryArray((int) index, count);
-        }
-
-        buildArrayList();
-
-        if (count == 0)
-            count = arrayList.size();
-
-        // array index out of range
-        if ((--index) + count > arrayList.size())
-        {
-            throw new PSQLException(GT.tr("The array index is out of range: {0}, number of elements: {1}.", new Object[] { new Long(index + count), new Long(arrayList.size()) }), PSQLState.DATA_ERROR);
-        }
-
-        return buildArray(arrayList, (int) index, count);
-    }
-
-    private Object readBinaryArray(int index, int count) throws SQLException {
-        int dimensions = ByteConverter.int4(fieldBytes, 0);
-        //int flags = ByteConverter.int4(fieldBytes, 4); // bit 0: 0=no-nulls, 1=has-nulls
-        int elementOid = ByteConverter.int4(fieldBytes, 8);
-        int pos = 12;
-        int[] dims = new int[dimensions];
-        for (int d = 0; d < dimensions; ++d) {
-            dims[d] = ByteConverter.int4(fieldBytes, pos); pos += 4;
-            /*int lbound = ByteConverter.int4(fieldBytes, pos);*/ pos += 4;
-        }
-        if (dimensions == 0) {
-            return java.lang.reflect.Array.newInstance(elementOidToClass(elementOid), 0);
-        }
-        if (count > 0) {
-            dims[0] = Math.min(count, dims[0]);
-        }
-        Object arr = java.lang.reflect.Array.newInstance(elementOidToClass(elementOid), dims);
-        try {
-            storeValues((Object[]) arr, elementOid, dims, pos, 0, index);
-        }
-        catch (IOException ioe)
-        {
-            throw new PSQLException(GT.tr("Invalid character data was found.  This is most likely caused by stored data containing characters that are invalid for the character set the database was created in.  The most common example of this is storing 8bit data in a SQL_ASCII database."), PSQLState.DATA_ERROR, ioe);
-        }
-        return arr;
-    }
-
-    private int storeValues(final Object[] arr, int elementOid, final int[] dims, int pos, final int thisDimension, int index) throws SQLException, IOException {
-        if (thisDimension == dims.length - 1) {
-            for (int i = 1; i < index; ++i) {
-                int len = ByteConverter.int4(fieldBytes, pos); pos += 4;
-                if (len != -1) {
-                    pos += len;
-                }
-            }
-            for (int i = 0; i < dims[thisDimension]; ++i) {
-                int len = ByteConverter.int4(fieldBytes, pos); pos += 4;
-                if (len == -1) {
-                    continue;
-                }
-                switch (elementOid) {
-                case Oid.INT2:
-                    arr[i] = new Short(ByteConverter.int2(fieldBytes, pos));
-                    break;
-                case Oid.INT4:
-                    arr[i] = new Integer(ByteConverter.int4(fieldBytes, pos));
-                    break;
-                case Oid.INT8:
-                    arr[i] = new Long(ByteConverter.int8(fieldBytes, pos));
-                    break;
-                case Oid.FLOAT4:
-                    arr[i] = new Float(ByteConverter.float4(fieldBytes, pos));
-                    break;
-                case Oid.FLOAT8:
-                    arr[i] = new Double(ByteConverter.float8(fieldBytes, pos));
-                    break;
-                case Oid.TEXT:
-                case Oid.VARCHAR:
-                    Encoding encoding = connection.getEncoding();
-                    arr[i] = encoding.decode(fieldBytes, pos, len);
-                    break;
-                }
-                pos += len;
-            }
+          if(tp.timeout_ > 0) {
+            try {Thread.sleep(tp.timeout_);} catch(InterruptedException e) {}
+          }
         } else {
-            for (int i = 0; i < dims[thisDimension]; ++i) {
-                pos = storeValues((Object[]) arr[i], elementOid, dims, pos, thisDimension + 1, 0);
-            }
+          // either non-zero or -1 is what the contract says!
+          throw new
+            TTransportException("Unexpected return from InputStream.read = "
+                                + cnt);
         }
-        return pos;
+      }
+    } catch (IOException iox) {
+      throw new TTransportException(iox.getMessage(), iox);
     }
 
-    
-    private ResultSet readBinaryResultSet(int index, int count) throws SQLException {
-        int dimensions = ByteConverter.int4(fieldBytes, 0);
-        //int flags = ByteConverter.int4(fieldBytes, 4); // bit 0: 0=no-nulls, 1=has-nulls
-        int elementOid = ByteConverter.int4(fieldBytes, 8);
-        int pos = 12;
-        int[] dims = new int[dimensions];
-        for (int d = 0; d < dimensions; ++d) {
-            dims[d] = ByteConverter.int4(fieldBytes, pos); pos += 4;
-            /*int lbound = ByteConverter.int4(fieldBytes, pos); */ pos += 4;
+    return(orig_len - len);
+  }
+
+  /**
+   * Event is corrupted. Do recovery
+   *
+   * @return true if recovery could be performed and we can read more data
+   *         false is returned only when nothing more can be read
+   */
+  private boolean performRecovery() throws TTransportException {
+    int numChunks = getNumChunks();
+    int curChunk = cs.getChunkNum();
+
+    if(curChunk >= (numChunks-1)) {
+      return false;
+    }
+    seekToChunk(curChunk+1);
+    return true;
+  }
+
+  /**
+   * Read event from underlying file
+   *
+   * @return true if event could be read, false otherwise (on EOF)
+   */
+  private boolean readEvent() throws TTransportException {
+    byte[] ebytes = new byte[4];
+    int esize;
+    int nread;
+    int nrequested;
+
+    retry:
+    do {
+      // corner case. read to end of chunk
+      nrequested = cs.getRemaining();
+      if(nrequested < 4) {
+        nread = tailRead(inputStream_, ebytes, 0, nrequested, currentPolicy_);
+        if(nread != nrequested) {
+          return(false);
         }
-        if (count > 0 && dimensions > 0) {
-            dims[0] = Math.min(count, dims[0]);
-        }
-        List rows = new ArrayList();
-        Field[] fields = new Field[2];
-        if (dimensions > 0) {
-            storeValues(rows, fields, elementOid, dims, pos, 0, index);
-        }
-        BaseStatement stat = (BaseStatement) connection.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
-        return stat.createDriverResultSet(fields, rows);
+      }
+
+      // assuming serialized on little endian machine
+      nread = tailRead(inputStream_, ebytes, 0, 4, currentPolicy_);
+      if(nread != 4) {
+        return(false);
+      }
+
+      esize=0;
+      for(int i=3; i>=0; i--) {
+        int val = (0x000000ff & (int)ebytes[i]);
+        esize |= (val << (i*8));
+      }
+
+      // check if event is corrupted and do recovery as required
+      if(esize > cs.getRemaining()) {
+        throw new TTransportException("FileTransport error: bad event size");
+        /*        
+                  if(performRecovery()) {
+                  esize=0;
+                  } else {
+                  return false;
+                  }
+        */
+      }
+    } while (esize == 0);
+
+    // reset existing event or get a larger one
+    if(currentEvent_.getSize() < esize)
+      currentEvent_ = new Event(new byte [esize]);
+
+    // populate the event
+    byte[] buf = currentEvent_.getBuf();
+    nread = tailRead(inputStream_, buf, 0, esize, currentPolicy_);
+    if(nread != esize) {
+      return(false);
+    }
+    currentEvent_.setAvailable(esize);
+    return(true);
+  }
+
+  /**
+   * open if both input/output open unless readonly
+   *
+   * @return true
+   */
+  public boolean isOpen() {
+    return ((inputStream_ != null) && (readOnly_ || (outputStream_ != null)));
+  }
+
+
+  /**
+   * Diverging from the cpp model and sticking to the TSocket model
+   * Files are not opened in ctor - but in explicit open call
+   */
+  public void open() throws TTransportException {
+    if (isOpen()) 
+      throw new TTransportException(TTransportException.ALREADY_OPEN);
+
+    try {
+      inputStream_ = createInputStream();
+      cs = new ChunkState();
+      currentEvent_ = new Event(new byte [256]);
+
+      if(!readOnly_)
+        outputStream_ = new BufferedOutputStream(inputFile_.getOutputStream(), 8192);
+    } catch (IOException iox) {
+      throw new TTransportException(TTransportException.NOT_OPEN, iox);
+    }
+  }
+
+  /**
+   * Closes the transport.
+   */
+  public void close() {
+    if (inputFile_ != null) {
+      try {
+        inputFile_.close();
+      } catch (IOException iox) {
+        System.err.println("WARNING: Error closing input file: " +
+                           iox.getMessage());
+      }
+      inputFile_ = null;
+    }
+    if (outputStream_ != null) {
+      try {
+        outputStream_.close();
+      } catch (IOException iox) {
+        System.err.println("WARNING: Error closing output stream: " +
+                           iox.getMessage());
+      }
+      outputStream_ = null;
+    }
+  }
+
+
+  /**
+   * File Transport ctor
+   *
+   * @param path File path to read and write from
+   * @param readOnly Whether this is a read-only transport
+   */ 
+  public TFileTransport(final String path, boolean readOnly) throws IOException {
+    inputFile_ = new TStandardFile(path);
+    readOnly_ = readOnly;
+  }
+
+  /**
+   * File Transport ctor
+   *
+   * @param inputFile open TSeekableFile to read/write from
+   * @param readOnly Whether this is a read-only transport
+   */
+  public TFileTransport(TSeekableFile inputFile, boolean readOnly) {
+    inputFile_ = inputFile;
+    readOnly_ = readOnly;
+  }
+
+
+  /**
+   * Cloned from TTransport.java:readAll(). Only difference is throwing an EOF exception
+   * where one is detected.
+   */
+  public int readAll(byte[] buf, int off, int len)
+    throws TTransportException {
+    int got = 0;
+    int ret = 0;
+    while (got < len) {
+      ret = read(buf, off+got, len-got);
+      if (ret < 0) {
+        throw new TTransportException("Error in reading from file");
+      }
+      if(ret == 0) {
+        throw new TTransportException(TTransportException.END_OF_FILE,
+                                      "End of File reached");
+      }
+      got += ret;
+    }
+    return got;
+  }
+
+
+  /**
+   * Reads up to len bytes into buffer buf, starting at offset off.
+   *
+   * @param buf Array to read into
+   * @param off Index to start reading at
+   * @param len Maximum number of bytes to read
+   * @return The number of bytes actually read
+   * @throws TTransportException if there was an error reading data
+   */
+  public int read(byte[] buf, int off, int len) throws TTransportException {
+    if(!isOpen()) 
+      throw new TTransportException(TTransportException.NOT_OPEN, 
+                                    "Must open before reading");
+
+    if(currentEvent_.getRemaining() == 0) {
+      if(!readEvent())
+        return(0);
     }
 
-    private int storeValues(List rows, Field[] fields, int elementOid, final int[] dims, int pos, final int thisDimension, int index) throws SQLException {
-        if (thisDimension == dims.length - 1) {
-            fields[0] = new Field("INDEX", Oid.INT4);
-            fields[0].setFormat(Field.BINARY_FORMAT);
-            fields[1] = new Field("VALUE", elementOid);
-            fields[1].setFormat(Field.BINARY_FORMAT);
-            for (int i = 1; i < index; ++i) {
-                int len = ByteConverter.int4(fieldBytes, pos); pos += 4;
-                if (len != -1) {
-                    pos += len;
-                }
-            }
-            for (int i = 0; i < dims[thisDimension]; ++i) {
-                byte[][] rowData = new byte[2][];
-                rowData[0] = new byte[4];
-                ByteConverter.int4(rowData[0], 0, i + index);
-                rows.add(rowData);
-                int len = ByteConverter.int4(fieldBytes, pos); pos += 4;
-                if (len == -1) {
-                    continue;
-                }
-                rowData[1] = new byte[len];
-                System.arraycopy(fieldBytes, pos, rowData[1], 0, rowData[1].length);
-                pos += len;
-            }
-        } else {
-            fields[0] = new Field("INDEX", Oid.INT4);
-            fields[0].setFormat(Field.BINARY_FORMAT);
-            fields[1] = new Field("VALUE", oid);
-            fields[1].setFormat(Field.BINARY_FORMAT);
-            int nextDimension = thisDimension + 1;
-            int dimensionsLeft = dims.length - nextDimension;
-            for (int i = 1; i < index; ++i) {
-                pos = calcRemainingDataLength(dims, pos, elementOid, nextDimension);
-            }
-            for (int i = 0; i < dims[thisDimension]; ++i) {
-                byte[][] rowData = new byte[2][];
-                rowData[0] = new byte[4];
-                ByteConverter.int4(rowData[0], 0, i + index);
-                rows.add(rowData);
-                int dataEndPos = calcRemainingDataLength(dims, pos, elementOid, nextDimension);
-                int dataLength = dataEndPos - pos;
-                rowData[1] = new byte[12 + 8 * dimensionsLeft + dataLength];
-                ByteConverter.int4(rowData[1], 0, dimensionsLeft);
-                System.arraycopy(fieldBytes, 4, rowData[1], 4, 8);
-                System.arraycopy(fieldBytes, 12 + nextDimension * 8, rowData[1], 12, dimensionsLeft * 8);
-                System.arraycopy(fieldBytes, pos, rowData[1], 12 + dimensionsLeft * 8, dataLength);
-                pos = dataEndPos;
-            }
-        }
-        return pos;
+    int nread = currentEvent_.emit(buf, off, len);
+    return nread;
+  }
+
+  public int getNumChunks() throws TTransportException {
+    if(!isOpen()) 
+      throw new TTransportException(TTransportException.NOT_OPEN, 
+                                    "Must open before getNumChunks");
+    try {
+      long len = inputFile_.length();
+      if(len == 0)
+        return 0;
+      else 
+        return (((int)(len/cs.getChunkSize())) + 1);
+
+    } catch (IOException iox) {
+      throw new TTransportException(iox.getMessage(), iox);
+    }
+  }
+
+  public int getCurChunk() throws TTransportException {
+    if(!isOpen()) 
+      throw new TTransportException(TTransportException.NOT_OPEN, 
+                                    "Must open before getCurChunk");
+    return (cs.getChunkNum());
+
+  }
+
+
+  public void seekToChunk(int chunk) throws TTransportException {
+    if(!isOpen()) 
+      throw new TTransportException(TTransportException.NOT_OPEN, 
+                                    "Must open before seeking");
+
+    int numChunks = getNumChunks();
+
+    // file is empty, seeking to chunk is pointless
+    if (numChunks == 0) {
+      return;
     }
 
-    private int calcRemainingDataLength(int[] dims, int pos, int elementOid, int thisDimension) {
-        if (thisDimension == dims.length - 1) {
-            for (int i = 0; i < dims[thisDimension]; ++i) {
-                int len = ByteConverter.int4(fieldBytes, pos); pos += 4;
-                if (len == -1) {
-                    continue;
-                }
-                pos += len;
-            }
-        } else {
-            pos = calcRemainingDataLength(dims, elementOid, pos, thisDimension + 1);
-        }
-        return pos;
+    // negative indicates reverse seek (from the end)
+    if (chunk < 0) {
+      chunk += numChunks;
     }
 
-    private Class elementOidToClass(int oid)
-            throws SQLException {
-        switch (oid) {
-        case Oid.INT2:
-            return Short.class;
-        case Oid.INT4:
-            return Integer.class;
-        case Oid.INT8:
-            return Long.class;
-        case Oid.FLOAT4:
-            return Float.class;
-        case Oid.FLOAT8:
-            return Double.class;
-        case Oid.TEXT:
-        case Oid.VARCHAR:
-            return String.class;
-        default:
-            throw org.postgresql.Driver.notImplemented(this.getClass(),
-                    "readBinaryArray(data,oid)");
-        }
+    // too large a value for reverse seek, just seek to beginning
+    if (chunk < 0) {
+      chunk = 0;
     }
 
-    /**
-     * Build {@link ArrayList} from field's string input. As a result
-     * of this method {@link #arrayList} is build. Method can be called
-     * many times in order to make sure that array list is ready to use, however
-     * {@link #arrayList} will be set only once during first call.
-     */
-    private synchronized void buildArrayList() throws SQLException
-    {
-        if (arrayList != null)
-            return;
-
-        arrayList = new PgArrayList();
-
-        char delim = connection.getTypeInfo().getArrayDelimiter(oid);
-
-        if (fieldString != null)
-        {
-
-            char[] chars = fieldString.toCharArray();
-            StringBuffer buffer = null;
-            boolean insideString = false;
-            boolean wasInsideString = false; // needed for checking if NULL
-            // value occured
-            List dims = new ArrayList(); // array dimension arrays
-            PgArrayList curArray = arrayList; // currently processed array
-
-            // Starting with 8.0 non-standard (beginning index
-            // isn't 1) bounds the dimensions are returned in the
-            // data formatted like so "[0:3]={0,1,2,3,4}".
-            // Older versions simply do not return the bounds.
-            //
-            // Right now we ignore these bounds, but we could
-            // consider allowing these index values to be used
-            // even though the JDBC spec says 1 is the first
-            // index. I'm not sure what a client would like
-            // to see, so we just retain the old behavior.
-            int startOffset = 0;
-            {
-                if (chars[0] == '[')
-                {
-                    while (chars[startOffset] != '=')
-                    {
-                        startOffset++;
-                    }
-                    startOffset++; // skip =
-                }
-            }
-
-            for (int i = startOffset; i < chars.length; i++)
-            {
-
-                // escape character that we need to skip
-                if (chars[i] == '\\')
-                    i++;
-
-                // subarray start
-                else if (!insideString && chars[i] == '{')
-                {
-                    if (dims.size() == 0)
-                    {
-                        dims.add(arrayList);
-                    }
-                    else
-                    {
-                        PgArrayList a = new PgArrayList();
-                        PgArrayList p = ((PgArrayList) dims.get(dims.size() - 1));
-                        p.add(a);
-                        dims.add(a);
-                    }
-                    curArray = (PgArrayList) dims.get(dims.size() - 1);
-
-                    // number of dimensions
-                    {
-                        for (int t = i + 1; t < chars.length; t++) {
-                            if (Character.isWhitespace(chars[t])) continue;
-                            else if (chars[t] == '{') curArray.dimensionsCount++;
-                            else break;
-                        }
-                    }
-
-                    buffer = new StringBuffer();
-                    continue;
-                }
-
-                // quoted element
-                else if (chars[i] == '"')
-                {
-                    insideString = !insideString;
-                    wasInsideString = true;
-                    continue;
-                }
-
-                // white space
-                else if (!insideString && Character.isWhitespace(chars[i]))
-                {
-                    continue;
-                }
-
-                // array end or element end
-                else if ((!insideString && (chars[i] == delim || chars[i] == '}')) || i == chars.length - 1)
-                {
-
-                    // when character that is a part of array element
-                    if (chars[i] != '"' && chars[i] != '}' && chars[i] != delim && buffer != null)
-                    {
-                        buffer.append(chars[i]);
-                    }
-
-                    String b = buffer == null ? null : buffer.toString();
-
-                    // add element to current array
-                    if (b != null && (b.length() > 0 || wasInsideString))
-                    {
-                        curArray.add(!wasInsideString && haveMinServer82 && b.equals("NULL") ? null : b);
-                    }
-
-                    wasInsideString = false;
-                    buffer = new StringBuffer();
-
-                    // when end of an array
-                    if (chars[i] == '}')
-                    {
-                        dims.remove(dims.size() - 1);
-
-                        // when multi-dimension
-                        if (dims.size() > 0)
-                        {
-                            curArray = (PgArrayList) dims.get(dims.size() - 1);
-                        }
-
-                        buffer = null;
-                    }
-
-                    continue;
-                }
-
-                if (buffer != null)
-                    buffer.append(chars[i]);
-            }
-        }
+    long eofOffset=0;
+    boolean seekToEnd = (chunk >= numChunks);
+    if(seekToEnd) {
+      chunk = chunk - 1;
+      try { eofOffset = inputFile_.length(); }
+      catch (IOException iox) {throw new TTransportException(iox.getMessage(),
+                                                             iox);}
     }
 
-    /**
-     * Convert {@link ArrayList} to array.
-     *
-     * @param input list to be converted into array
-     */
-    private Object buildArray (PgArrayList input, int index, int count) throws SQLException
-    {
+    if(chunk*cs.getChunkSize() != cs.getOffset()) {
+      try { inputFile_.seek((long)chunk*cs.getChunkSize()); } 
+      catch (IOException iox) {
+        System.err.println("createInputStream: "+iox.getMessage());
+        throw new TTransportException("Seek to chunk " +
+                                      chunk + " " +iox.getMessage(), iox);
+      }
 
-        if (count < 0)
-            count = input.size();
-
-        // array to be returned
-        Object ret = null;
-
-        // how many dimensions
-        int dims = input.dimensionsCount;
-
-        // dimensions length array (to be used with java.lang.reflect.Array.newInstance(Class<?>, int[]))
-        int[] dimsLength = dims > 1 ? new int[dims] : null;
-        if (dims > 1) {
-            for (int i = 0; i < dims; i++) {
-                dimsLength[i] = (i == 0 ? count : 0);
-            }
-        }
-
-        // array elements counter
-        int length = 0;
-
-        // array elements type
-        final int type = connection.getTypeInfo().getSQLType(connection.getTypeInfo().getPGArrayElement(oid));
-
-        if (type == Types.BIT)
-        {
-            boolean[] pa = null; // primitive array
-            Object[] oa = null; // objects array
-
-            if (dims > 1 || useObjects)
-            {
-ret = oa = (dims > 1 ? (Object[]) java.lang.reflect.Array.newInstance(useObjects ? Boolean.class : boolean.class, dimsLength) : new Boolean[count]);
-            }
-            else
-            {
-                ret = pa = new boolean[count];
-            }
-
-            // add elements
-            for (; count > 0; count--)
-            {
-                Object o = input.get(index++);
-
-                if (dims > 1 || useObjects)
-                {
-                    oa[length++] = o == null ? null : (dims > 1 ? buildArray((PgArrayList) o, 0, -1) : new Boolean(AbstractJdbc2ResultSet.toBoolean((String) o)));
-                }
-                else
-                {
-                    pa[length++] = o == null ? false : AbstractJdbc2ResultSet.toBoolean((String) o);
-                }
-            }
-        }
-
-        else if (type == Types.SMALLINT || type == Types.INTEGER)
-        {
-            int[] pa = null;
-            Object[] oa = null;
-
-            if (dims > 1 || useObjects)
-            {
-ret = oa = (dims > 1 ? (Object[]) java.lang.reflect.Array.newInstance(useObjects ? Integer.class : int.class, dimsLength) : new Integer[count]);
-            }
-            else
-            {
-                ret = pa = new int[count];
-            }
-
-            for (; count > 0; count--)
-            {
-                Object o = input.get(index++);
-
-                if (dims > 1 || useObjects)
-                {
-                    oa[length++] = o == null ? null : (dims > 1 ? buildArray((PgArrayList) o, 0, -1) : new Integer(AbstractJdbc2ResultSet.toInt((String) o)));
-                }
-                else
-                {
-                    pa[length++] = o == null ? 0 : AbstractJdbc2ResultSet.toInt((String) o);
-                }
-            }
-        }
-
-        else if (type == Types.BIGINT)
-        {
-            long[] pa = null;
-            Object[] oa = null;
-
-            if (dims > 1 || useObjects)
-            {
-ret = oa = (dims > 1 ? (Object[]) java.lang.reflect.Array.newInstance(useObjects ? Long.class : long.class, dimsLength) : new Long[count]);
-            }
-
-            else
-            {
-                ret = pa = new long[count];
-            }
-
-            for (; count > 0; count--)
-            {
-                Object o = input.get(index++);
-
-                if (dims > 1 || useObjects)
-                {
-                    oa[length++] = o == null ? null : (dims > 1 ? buildArray((PgArrayList) o, 0, -1) : new Long(AbstractJdbc2ResultSet.toLong((String) o)));
-                }
-                else
-                {
-                    pa[length++] = o == null ? 0l : AbstractJdbc2ResultSet.toLong((String) o);
-                }
-            }
-        }
-
-        else if (type == Types.NUMERIC)
-        {
-            Object[] oa = null;
-            ret = oa = (dims > 1 ? (Object[]) java.lang.reflect.Array.newInstance(BigDecimal.class, dimsLength) : new BigDecimal[count]);
-
-            for (; count > 0; count--)
-            {
-                Object v = input.get(index++);
-                oa[length++] = dims > 1 && v != null ? buildArray((PgArrayList) v, 0, -1) : (v == null ? null : AbstractJdbc2ResultSet.toBigDecimal((String) v, -1));
-            }
-        }
-
-        else if (type == Types.REAL)
-        {
-            float[] pa = null;
-            Object[] oa = null;
-
-            if (dims > 1 || useObjects)
-            {
-ret = oa = (dims > 1 ? (Object[]) java.lang.reflect.Array.newInstance(useObjects ? Float.class : float.class, dimsLength) : new Float[count]);
-            }
-            else
-            {
-                ret = pa = new float[count];
-            }
-
-            for (; count > 0; count--)
-            {
-                Object o = input.get(index++);
-
-                if (dims > 1 || useObjects)
-                {
-                    oa[length++] = o == null ? null : (dims > 1 ? buildArray((PgArrayList) o, 0, -1) : new Float(AbstractJdbc2ResultSet.toFloat((String) o)));
-                }
-                else
-                {
-                    pa[length++] = o == null ? 0f : AbstractJdbc2ResultSet.toFloat((String) o);
-                }
-            }
-        }
-
-        else if (type == Types.DOUBLE)
-        {
-            double[] pa = null;
-            Object[] oa = null;
-
-            if (dims > 1 || useObjects)
-            {
-ret = oa = (dims > 1 ? (Object[]) java.lang.reflect.Array.newInstance(useObjects ? Double.class : double.class, dimsLength) : new Double[count]);
-            }
-            else
-            {
-                ret = pa = new double[count];
-            }
-
-            for (; count > 0; count--)
-            {
-                Object o = input.get(index++);
-
-                if (dims > 1 || useObjects)
-                {
-                    oa[length++] = o == null ? null : (dims > 1 ? buildArray((PgArrayList) o, 0, -1) : new Double(AbstractJdbc2ResultSet.toDouble((String) o)));
-                }
-                else
-                {
-                    pa[length++] = o == null ? 0d : AbstractJdbc2ResultSet.toDouble((String) o);
-                }
-            }
-        }
-
-        else if (type == Types.CHAR || type == Types.VARCHAR)
-        {
-            Object[] oa = null;
-            ret = oa = (dims > 1 ? (Object[]) java.lang.reflect.Array.newInstance(String.class, dimsLength) : new String[count]);
-
-            for (; count > 0; count--)
-            {
-                Object v = input.get(index++);
-                oa[length++] = dims > 1 && v != null ? buildArray((PgArrayList) v, 0, -1) : v;
-            }
-        }
-
-        else if (type == Types.DATE)
-        {
-            Object[] oa = null;
-            ret = oa = (dims > 1 ? (Object[]) java.lang.reflect.Array.newInstance(java.sql.Date.class, dimsLength) : new java.sql.Date[count]);
-
-            for (; count > 0; count--)
-            {
-                Object v = input.get(index++);
-                oa[length++] = dims > 1 && v != null ? buildArray((PgArrayList) v, 0, -1) : (v == null ? null : connection.getTimestampUtils().toDate(null, (String) v));
-            }
-        }
-
-        else if (type == Types.TIME)
-        {
-            Object[] oa = null;
-            ret = oa = (dims > 1 ? (Object[]) java.lang.reflect.Array.newInstance(java.sql.Time.class, dimsLength) : new java.sql.Time[count]);
-
-            for (; count > 0; count--)
-            {
-                Object v = input.get(index++);
-                oa[length++] = dims > 1 && v != null ? buildArray((PgArrayList) v, 0, -1) : (v == null ? null : connection.getTimestampUtils().toTime(null, (String) v));
-            }
-        }
-
-        else if (type == Types.TIMESTAMP)
-        {
-            Object[] oa = null;
-            ret = oa = (dims > 1 ? (Object[]) java.lang.reflect.Array.newInstance(java.sql.Timestamp.class, dimsLength) : new java.sql.Timestamp[count]);
-
-            for (; count > 0; count--)
-            {
-                Object v = input.get(index++);
-                oa[length++] = dims > 1 && v != null ? buildArray((PgArrayList) v, 0, -1) : (v == null ? null : connection.getTimestampUtils().toTimestamp(null, (String) v));
-            }
-        }
-
-        // other datatypes not currently supported
-        else
-        {
-            if (connection.getLogger().logDebug())
-                connection.getLogger().debug("getArrayImpl(long,int,Map) with " + getBaseTypeName());
-
-            throw org.postgresql.Driver.notImplemented(this.getClass(), "getArrayImpl(long,int,Map)");
-        }
-
-        return ret;
+      cs.seek((long)chunk*cs.getChunkSize());
+      currentEvent_.setAvailable(0);
+      inputStream_ = createInputStream();
     }
 
-    public int getBaseType() throws SQLException
-    {
-        return connection.getTypeInfo().getSQLType(getBaseTypeName());
+    if(seekToEnd) {
+      // waiting forever here - otherwise we can hit EOF and end up
+      // having consumed partial data from the data stream.
+      TailPolicy old = setTailPolicy(TailPolicy.WAIT_FOREVER);
+      while(cs.getOffset() < eofOffset) { readEvent(); }
+      currentEvent_.setAvailable(0);
+      setTailPolicy(old);
+    }
+  }
+
+  public void seekToEnd() throws TTransportException {
+    if(!isOpen()) 
+      throw new TTransportException(TTransportException.NOT_OPEN, 
+                                    "Must open before seeking");
+    seekToChunk(getNumChunks());
+  }
+
+
+  /**
+   * Writes up to len bytes from the buffer.
+   *
+   * @param buf The output data buffer
+   * @param off The offset to start writing from
+   * @param len The number of bytes to write
+   * @throws TTransportException if there was an error writing data
+   */
+  public void write(byte[] buf, int off, int len) throws TTransportException {
+    throw new TTransportException("Not Supported");
+  }
+
+  /**
+   * Flush any pending data out of a transport buffer.
+   *
+   * @throws TTransportException if there was an error writing out data.
+   */
+  public void flush() throws TTransportException {
+    throw new TTransportException("Not Supported");
+  }
+
+  /**
+   * test program
+   * 
+   */
+  public static void main(String[] args) throws Exception {
+
+    int num_chunks = 10;
+
+    if((args.length < 1) || args[0].equals("--help")
+       || args[0].equals("-h") || args[0].equals("-?")) {
+      printUsage();
     }
 
-    public String getBaseTypeName() throws SQLException
-    {
-        buildArrayList();
-        int elementOID = connection.getTypeInfo().getPGArrayElement(oid);
-        return connection.getTypeInfo().getPGType(elementOID);
+    if(args.length > 1) {
+      try {
+        num_chunks = Integer.parseInt(args[1]);
+      } catch (Exception e) {
+        System.err.println("Cannot parse " + args[1]); 
+        printUsage();
+      }
     }
 
-    public java.sql.ResultSet getResultSet() throws SQLException
-    {
-        return getResultSetImpl(1, 0, null);
+    TFileTransport t = new TFileTransport(args[0], true);
+    t.open();
+    System.out.println("NumChunks="+t.getNumChunks());
+
+    Random r = new Random();
+    for(int j=0; j<num_chunks; j++) {
+      byte[] buf = new byte[4096];
+      int cnum = r.nextInt(t.getNumChunks()-1);
+      System.out.println("Reading chunk "+cnum);
+      t.seekToChunk(cnum);
+      for(int i=0; i<4096; i++) {
+        t.read(buf, 0, 4096);
+      }
     }
+  }
 
-    public java.sql.ResultSet getResultSet(long index, int count) throws SQLException
-    {
-        return getResultSetImpl(index, count, null);
-    }
+  private static void printUsage() {
+    System.err.println("Usage: TFileTransport <filename> [num_chunks]");
+    System.err.println("       (Opens and reads num_chunks chunks from file randomly)");
+    System.exit(1);
+  }
 
-    public java.sql.ResultSet getResultSetImpl(Map map) throws SQLException
-    {
-        return getResultSetImpl(1, 0, map);
-    }
-
-    public ResultSet getResultSetImpl(long index, int count, Map map) throws SQLException
-    {
-
-        // for now maps aren't supported.
-        if (map != null && !map.isEmpty())
-        {
-            throw org.postgresql.Driver.notImplemented(this.getClass(), "getResultSetImpl(long,int,Map)");
-        }
-
-        // array index is out of range
-        if (index < 1)
-        {
-            throw new PSQLException(GT.tr("The array index is out of range: {0}", new Long(index)), PSQLState.DATA_ERROR);
-        }
-
-        if (fieldBytes != null) {
-            return readBinaryResultSet((int) index, count);
-        }
-
-        buildArrayList();
-
-        if (count == 0)
-        {
-            count = arrayList.size();
-        }
-
-        // array index out of range
-        if ((--index) + count > arrayList.size())
-        {
-            throw new PSQLException(GT.tr("The array index is out of range: {0}, number of elements: {1}.", new Object[] { new Long(index + count), new Long(arrayList.size()) }), PSQLState.DATA_ERROR);
-        }
-
-        List rows = new ArrayList();
-
-        Field[] fields = new Field[2];
-
-        // one dimensional array
-        if (arrayList.dimensionsCount <= 1)
-        {
-            // array element type
-            final int baseOid = connection.getTypeInfo().getPGArrayElement(oid);
-            fields[0] = new Field("INDEX", Oid.INT4);
-            fields[1] = new Field("VALUE", baseOid);
-
-            for (int i = 0; i < count; i++)
-            {
-                int offset = (int)index + i;
-                byte[][] t = new byte[2][0];
-                String v = (String) arrayList.get(offset);
-                t[0] = connection.encodeString(Integer.toString(offset + 1));
-                t[1] = v == null ? null : connection.encodeString(v);
-                rows.add(t);
-            }
-        }
-
-        // when multi-dimensional
-        else
-        {
-            fields[0] = new Field("INDEX", Oid.INT4);
-            fields[1] = new Field("VALUE", oid);
-            for (int i = 0; i < count; i++)
-            {
-                int offset = (int)index + i;
-                byte[][] t = new byte[2][0];
-                Object v = arrayList.get(offset);
-
-                t[0] = connection.encodeString(Integer.toString(offset + 1));
-                t[1] = v == null ? null : connection.encodeString(toString((PgArrayList) v));
-                rows.add(t);
-            }
-        }
-
-        BaseStatement stat = (BaseStatement) connection.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
-        return (ResultSet) stat.createDriverResultSet(fields, rows);
-    }
-
-    public String toString()
-    {
-        return fieldString;
-    }
-
-    /**
-     * Convert array list to PG String representation (e.g. {0,1,2}).
-     */
-    private String toString(PgArrayList list) throws SQLException
-    {
-        StringBuffer b = new StringBuffer().append('{');
-
-        char delim = connection.getTypeInfo().getArrayDelimiter(oid);
-
-        for (int i = 0; i < list.size(); i++)
-        {
-            Object v = list.get(i);
-
-            if (i > 0)
-                b.append(delim);
-
-            if (v == null)
-                b.append("NULL");
-
-            else if (v instanceof PgArrayList)
-                b.append(toString((PgArrayList) v));
-
-            else
-                escapeArrayElement(b, (String)v);
-        }
-
-        b.append('}');
-
-        return b.toString();
-    }
-
-    public static void escapeArrayElement(StringBuffer b, String s)
-    {
-        b.append('"');
-        for (int j = 0; j < s.length(); j++) {
-            char c = s.charAt(j);
-            if (c == '"' || c == '\\') {
-                b.append('\\');
-            }
-
-            b.append(c);
-        }
-        b.append('"');
-    }
-
-    public boolean isBinary() {
-        return fieldBytes != null;
-    }
-
-    public byte[] toBytes() {
-        return fieldBytes;
-    }
 }
 
