@@ -1,8 +1,10 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.fixcapture;
 
+import cn.edu.pku.sei.plde.conqueroverfitting.slice.StaticSlice;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.ShellUtils;
 import com.gzoltar.core.GZoltar;
 import com.gzoltar.core.instr.testing.TestResult;
+import com.sun.org.apache.bcel.internal.generic.LUSHR;
 import de.unisb.cs.st.javaslicer.slicing.Slicer;
 import de.unisb.cs.st.javaslicer.tracer.TracerAgent;
 import javassist.NotFoundException;
@@ -89,6 +91,7 @@ public class Capturer {
                 }
             }
         }
+        String statements= ""; //for static slicing
         for (int i=errorLineIndex; i<functionLines.length; i++){
             String detectingLine = functionLines[i].replace("\n","").trim();
             //clean the annotation
@@ -111,8 +114,9 @@ public class Capturer {
                 return exceptionProcessing(detectingLine);
             }
             if (detectingLine.contains("assert")){
-                return assertProcessing(detectingLine);
+                return assertProcessing(detectingLine, statements);
             }
+            statements += detectingLine+"\n";
         }
         //No Assert And Throw Exception Found
         if (_functionCode.startsWith("(expected")){
@@ -128,42 +132,42 @@ public class Capturer {
         return "throw new " + exceptionName + "();";
     }
 
-    private String assertProcessing(String assertLine) throws Exception{
+    private String assertProcessing(String assertLine, String statements) throws Exception{
         String assertType = assertLine.substring(0, assertLine.indexOf('('));
         List<String> parameters = divideParameter(assertLine, 1);
+        if (parameters.size() != 3){
+            throw new Exception("Function divideParameter Error!");
+        }
+
         if (assertType.contains("assertEquals")){
+            String callExpression="";
+            String returnExpression="";
             List<String> callParam;
             List<String> returnParam;
             String returnString;
-            if (parameters.get(0).contains("(") && parameters.get(0).contains(")")){
-                callParam = divideParameter(parameters.get(0),1);
-                returnParam = divideParameter(parameters.get(1), 1);
-                returnString = "return "+parameters.get(1);
-                if (parameters.get(0).contains(".")){
-                    String testClass = parameters.get(0).substring(0,parameters.get(0).indexOf("."));
-                    if (parameters.get(1).contains(".")){
-                        if (parameters.get(1).substring(0, parameters.get(1).indexOf(".")).equals(testClass)){
-                            returnString = "return " + parameters.get(1).substring(parameters.get(1).indexOf(".")+1);
-                        }
 
-                    }
-                }
+            if (parameters.get(0).contains("(") && parameters.get(0).contains(")")){
+                callExpression = parameters.get(0);
+                returnExpression = parameters.get(1);
             }
             else {
-                callParam = divideParameter(parameters.get(1),1);
-                returnParam = divideParameter(parameters.get(0), 1);
-                returnString = "return "+parameters.get(0);
-                if (parameters.get(1).contains(".")){
-                    String testClass = parameters.get(1).substring(0,parameters.get(1).indexOf("."));
-                    if (parameters.get(0).contains(".")){
-                        if (parameters.get(0).substring(0, parameters.get(0).indexOf(".")).equals(testClass)){
-                            returnString = "return " + parameters.get(0).substring(parameters.get(0).indexOf(".")+1);
-                        }
-
+                callExpression = parameters.get(1);
+                returnExpression = parameters.get(0);
+            }
+            callParam = divideParameter(callExpression,1);
+            returnParam = divideParameter(returnExpression, 1);
+            returnString = "return "+returnExpression;
+            if (callExpression.contains(".")){
+                String testClass = callExpression.substring(0,callExpression.indexOf("."));
+                if (returnExpression.contains(".")){
+                    if (returnExpression.substring(0, returnExpression.indexOf(".")).equals(testClass)){
+                        returnString = "return " + returnExpression.substring(returnExpression.indexOf(".")+1);
                     }
+
                 }
             }
-            String attachLines = slicingProcess(returnParam, callParam, assertLine);
+            //String attachLines = slicingProcess(returnParam, callParam, assertLine);
+            String attachLines = staticSlicingProcess(returnParam, callParam, statements);
             return attachLines + returnString + ";";
         }
         else if (assertType.contains("assertNull")){
@@ -315,6 +319,33 @@ public class Capturer {
         }
 
         throw new NotFoundException("Target function: "+ targetFunctionName+ " No Found");
+    }
+
+    private String staticSlicingProcess(List<String> returnParam, List<String> callParam, String statements){
+        for (int i=0; i<returnParam.size(); i++){
+            if (StringUtils.isNumeric(returnParam.get(i))){
+                returnParam.remove(i);
+            }
+        }
+        for (int i=0; i<callParam.size(); i++){
+            if (StringUtils.isNumeric(callParam.get(i))){
+                callParam.remove(i);
+            }
+        }
+        for (int i=0; i<callParam.size(); i++){
+            if (returnParam.contains(callParam.get(i))){
+                returnParam.remove(callParam.get(i));
+            }
+        }
+        if (returnParam.size() == 0){
+            return "";
+        }
+        String result = "";
+        for (String param: returnParam){
+            StaticSlice staticSlice = new StaticSlice(statements, param);
+            result += staticSlice.getSliceStatements();
+        }
+        return result;
     }
 
     private String slicingProcess(List<String> returnParam, List<String> callParam, String assertLine) throws Exception{

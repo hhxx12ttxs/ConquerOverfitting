@@ -71,9 +71,6 @@ public class EntiretyTest {
         List<VariableInfo> allInfos = InfoUtils.AddMethodInfoListToVariableInfoList(variableInfos, methodInfos);
         Map<VariableInfo, List<String>> exceptionVariable = ExceptionExtractor.extractWithAbandonTrueValue(traceResults, allInfos);
         Map<VariableInfo, List<String>> filteredVariable = ExceptionExtractor.filterWithSearchBoundary(exceptionVariable,project,10);
-        if (filteredVariable.size() != 1){
-            System.out.println("Filter Error");
-        }
         String ifString = BoundaryGenerator.generate(filteredVariable.entrySet().iterator().next(), project);
         System.out.println(ifString);
     }
