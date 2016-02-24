@@ -1,1568 +1,1730 @@
-/*
- * Copyright 1999-2011 Alibaba Group.
- *  
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *  
- *      http://www.apache.org/licenses/LICENSE-2.0
- *  
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-package com.alibaba.dubbo.common.serialize.support.dubbo;
+package net.schmizz.sshj.common;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.Serializable;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.regex.Matcher;
-
-import com.alibaba.dubbo.common.bytecode.ClassGenerator;
-import com.alibaba.dubbo.common.io.UnsafeByteArrayInputStream;
-import com.alibaba.dubbo.common.io.UnsafeByteArrayOutputStream;
-import com.alibaba.dubbo.common.logger.Logger;
-import com.alibaba.dubbo.common.logger.LoggerFactory;
-import com.alibaba.dubbo.common.serialize.support.java.CompactedObjectInputStream;
-import com.alibaba.dubbo.common.serialize.support.java.CompactedObjectOutputStream;
-import com.alibaba.dubbo.common.utils.ClassHelper;
-import com.alibaba.dubbo.common.utils.IOUtils;
-import com.alibaba.dubbo.common.utils.ReflectUtils;
-import com.alibaba.dubbo.common.utils.StringUtils;
 
 /**
- * Builder.
- * 
- * @author qian.lei
+ * <p> Encodes and decodes to and from Base64 notation. </p> <p> Homepage: <a href="http://iharder.net/base64">http://iharder.net/base64</a>.
+ * </p> <p/> <p> Example: </p> <p/> <code>String encoded = Base64.encode( myByteArray );</code> <br /> <code>byte[]
+ * myByteArray = Base64.decode( encoded );</code> <p/> <p> The <tt>options</tt> parameter, which appears in a few
+ * places, is used to pass several pieces of information to the encoder. In the "higher level" method such as
+ * encodeBytes( bytes, options ) the options parameter can be used to indicate such things as first gzipping the bytes
+ * before encoding them, not inserting linefeeds, and encoding using the URL-safe and Ordered dialects. </p> <p/> <p>
+ * Note, according to <a href="http://www.faqs.org/rfcs/rfc3548.html">RFC3548</a>, Section 2.1, implementations should
+ * not add line feeds unless explicitly told to do so. I've got Base64 set to this behavior now, although earlier
+ * versions broke lines by default. </p> <p/> <p> The constants defined in Base64 can be OR-ed together to combine
+ * options, so you might make a call like this: </p> <p/> <code>String encoded = Base64.encodeBytes( mybytes,
+ * Base64.GZIP | Base64.DO_BREAK_LINES );</code> <p> to compress the data before encoding it and then making the output
+ * have newline characters. </p> <p> Also... </p> <code>String encoded = Base64.encodeBytes( crazyString.getBytes()
+ * );</code> <p/> <p> I am placing this code in the Public Domain. Do with it as you will. This software comes with no
+ * guarantees or warranties but with plenty of well-wishing instead! Please visit <a
+ * href="http://iharder.net/base64">http://iharder.net/base64</a> periodically to check for updates or to contribute
+ * improvements. </p>
  *
- * @param <T> type.
+ * @author Robert Harder
+ * @author rob@iharder.net
+ * @version 2.3.3
  */
+public class Base64 {
 
-@SuppressWarnings({ "unchecked", "rawtypes" })
-public abstract class Builder<T> implements GenericDataFlags
-{
-	// Must be protected. by qian.lei
-	protected static Logger logger = LoggerFactory.getLogger(Builder.class);
+    /**
+     * A {@link Base64.InputStream} will read data from another <tt>java.io.InputStream</tt>, given in the constructor,
+     * and encode/decode to/from Base64 notation on the fly.
+     *
+     * @see Base64
+     * @since 1.3
+     */
+    public static class InputStream
+            extends java.io.FilterInputStream {
 
-	private static final AtomicLong BUILDER_CLASS_COUNTER = new AtomicLong(0);
+        private final boolean encode; // Encoding or decoding
+        private int position; // Current position in the buffer
+        private final byte[] buffer; // Small buffer holding converted data
+        private final int bufferLength; // Length of buffer (3 or 4)
+        private int numSigBytes; // Number of meaningful bytes in the buffer
+        private int lineLength;
+        private final boolean breakLines; // Break lines at less than 80 characters
+        private final int options; // Record options used to create the stream.
+        // private final byte[] alphabet; // Local copies to avoid extra method calls
+        private final byte[] decodabet; // Local copies to avoid extra method calls
 
-	private static final String BUILDER_CLASS_NAME = Builder.class.getName();
+        /**
+         * Constructs a {@link Base64.InputStream} in DECODE mode.
+         *
+         * @param in the <tt>java.io.InputStream</tt> from which to read data.
+         *
+         * @since 1.3
+         */
+        public InputStream(java.io.InputStream in) {
+            this(in, DECODE);
+        } // end constructor
 
-	private static final Map<Class<?>, Builder<?>> BuilderMap = new ConcurrentHashMap<Class<?>, Builder<?>>();
-	private static final Map<Class<?>, Builder<?>> nonSerializableBuilderMap = new ConcurrentHashMap<Class<?>, Builder<?>>();
+        /**
+         * Constructs a {@link Base64.InputStream} in either ENCODE or DECODE mode.
+         * <p/>
+         * Valid options:
+         * <p/>
+         * <pre>
+         *   ENCODE or DECODE: Encode or Decode as data is read.
+         *   DO_BREAK_LINES: break lines at 76 characters
+         *     (only meaningful when encoding)&lt;/i&gt;
+         * </pre>
+         * <p/>
+         * Example: <code>new Base64.InputStream( in, Base64.DECODE )</code>
+         *
+         * @param in      the <tt>java.io.InputStream</tt> from which to read data.
+         * @param options Specified options
+         *
+         * @see Base64#ENCODE
+         * @see Base64#DECODE
+         * @see Base64#DO_BREAK_LINES
+         * @since 2.0
+         */
+        public InputStream(java.io.InputStream in, int options) {
 
-	private static final String FIELD_CONFIG_SUFFIX = ".fc";
+            super(in);
+            this.options = options; // Record for later
+            breakLines = (options & DO_BREAK_LINES) > 0;
+            encode = (options & ENCODE) > 0;
+            bufferLength = encode ? 4 : 3;
+            buffer = new byte[bufferLength];
+            position = -1;
+            lineLength = 0;
+            // alphabet = getAlphabet(options);
+            decodabet = getDecodabet(options);
+        } // end constructor
 
-	private static final int MAX_FIELD_CONFIG_FILE_SIZE = 16 * 1024;
+        /**
+         * Reads enough of the input stream to convert to/from Base64 and returns the next byte.
+         *
+         * @return next byte
+         *
+         * @since 1.3
+         */
+        @Override
+        public int read()
+                throws java.io.IOException {
 
-	private static final Comparator<String> FNC = new Comparator<String>(){
-		public int compare(String n1, String n2){ return compareFieldName(n1, n2); }
-	};
+            // Do we need to get data?
+            if (position < 0)
+                if (encode) {
+                    byte[] b3 = new byte[3];
+                    int numBinaryBytes = 0;
+                    for (int i = 0; i < 3; i++) {
+                        int b = in.read();
 
-	private static final Comparator<Field> FC = new Comparator<Field>(){
-		public int compare(Field f1, Field f2){ return compareFieldName(f1.getName(), f2.getName()); }
-	};
+                        // If end of stream, b is -1.
+                        if (b >= 0) {
+                            b3[i] = (byte) b;
+                            numBinaryBytes++;
+                        } else
+                            break; // out of for loop
 
-	private static final Comparator<Constructor> CC = new Comparator<Constructor>(){
-		public int compare(Constructor o1, Constructor o2){ return o1.getParameterTypes().length - o2.getParameterTypes().length; }
-	};
+                    } // end for: each needed input byte
 
-	// class-descriptor mapper
-	private static final List<String> mDescList = new ArrayList<String>();
+                    if (numBinaryBytes > 0) {
+                        encode3to4(b3, 0, numBinaryBytes, buffer, 0, options);
+                        position = 0;
+                        numSigBytes = 4;
+                    } // end if: got data
+                    else
+                        return -1; // Must be end of stream
+                } // end if: encoding
 
-	private static final Map<String, Integer> mDescMap = new ConcurrentHashMap<String, Integer>();
+                // Else decoding
+                else {
+                    byte[] b4 = new byte[4];
+                    int i = 0;
+                    for (i = 0; i < 4; i++) {
+                        // Read four "meaningful" bytes:
+                        int b = 0;
+                        do
+                            b = in.read();
+                        while (b >= 0 && decodabet[b & 0x7f] <= WHITE_SPACE_ENC);
 
-	public static ClassDescriptorMapper DEFAULT_CLASS_DESCRIPTOR_MAPPER = new ClassDescriptorMapper(){
-		public String getDescriptor(int index)
-		{
-			if( index < 0 || index >= mDescList.size() )
-				return null;
-			return mDescList.get(index);
-		}
+                        if (b < 0)
+                            break; // Reads a -1 if end of stream
 
-		public int getDescriptorIndex(String desc)
-		{
-			Integer ret = mDescMap.get(desc);
-			return ret == null ? -1 : ret.intValue();
-		}
-	};
+                        b4[i] = (byte) b;
+                    } // end for: each needed input byte
 
-	protected Builder(){}
+                    if (i == 4) {
+                        numSigBytes = decode4to3(b4, 0, buffer, 0, options);
+                        position = 0;
+                    } // end if: got four characters
+                    else if (i == 0)
+                        return -1;
+                    else
+                        // Must have broken out from above.
+                        throw new java.io.IOException("Improperly padded Base64 input.");
 
-	abstract public Class<T> getType();
+                } // end else: decode
 
-	public void writeTo(T obj, OutputStream os) throws IOException
-	{
-		GenericObjectOutput out = new GenericObjectOutput(os);
-		writeTo(obj, out);
-		out.flushBuffer();
-	}
+            // Got data?
+            if (position >= 0) {
+                // End of relevant data?
+                if ( /* !encode && */position >= numSigBytes)
+                    return -1;
 
-	public T parseFrom(byte[] b) throws IOException
-	{
-		return parseFrom(new UnsafeByteArrayInputStream(b));
-	}
+                if (encode && breakLines && lineLength >= MAX_LINE_LENGTH) {
+                    lineLength = 0;
+                    return '\n';
+                } // end if
+                else {
+                    lineLength++; // This isn't important when decoding
+                    // but throwing an extra "if" seems
+                    // just as wasteful.
 
-	public T parseFrom(InputStream is) throws IOException
-	{
-		return parseFrom(new GenericObjectInput(is));
-	}
+                    int b = buffer[position++];
 
-	abstract public void writeTo(T obj, GenericObjectOutput out) throws IOException;
+                    if (position >= bufferLength)
+                        position = -1;
 
-	abstract public T parseFrom(GenericObjectInput in) throws IOException;
+                    return b & 0xFF; // This is how you "cast" a byte that's
+                    // intended to be unsigned.
+                } // end else
+            } // end if: position >= 0
+            else
+                throw new java.io.IOException("Error in Base64 code reading stream.");
+        } // end read
 
-	public static <T> Builder<T> register(Class<T> c, boolean isAllowNonSerializable)
-    {
-        if( c == Object.class || c.isInterface() )
-            return (Builder<T>)GenericBuilder;
-        if( c == Object[].class )
-            return (Builder<T>)GenericArrayBuilder;
+        /**
+         * Calls {@link #read()} repeatedly until the end of stream is reached or <var>len</var> bytes are read. Returns
+         * number of bytes read into array or -1 if end of stream is encountered.
+         *
+         * @param dest array to hold values
+         * @param off  offset for array
+         * @param len  max number of bytes to read into array
+         *
+         * @return bytes read into array or -1 if end of stream is encountered.
+         *
+         * @since 1.3
+         */
+        @Override
+        public int read(byte[] dest, int off, int len)
+                throws java.io.IOException {
+            int i;
+            int b;
+            for (i = 0; i < len; i++) {
+                b = read();
 
-        Builder<T> b = (Builder<T>)BuilderMap.get(c);
-        if(null != b) return b;
-        
-        boolean isSerializable = Serializable.class.isAssignableFrom(c);
-        if(!isAllowNonSerializable && !isSerializable) {
-            throw new IllegalStateException("Serialized class " + c.getName() +
-            " must implement java.io.Serializable (dubbo codec setting: isAllowNonSerializable = false)");
+                if (b >= 0)
+                    dest[off + i] = (byte) b;
+                else if (i == 0)
+                    return -1;
+                else
+                    break; // Out of 'for' loop
+            } // end for: each byte read
+            return i;
+        } // end read
+
+    } // end inner class InputStream
+
+    /**
+     * A {@link Base64.OutputStream} will write data to another <tt>java.io.OutputStream</tt>, given in the constructor,
+     * and encode/decode to/from Base64 notation on the fly.
+     *
+     * @see Base64
+     * @since 1.3
+     */
+    public static class OutputStream
+            extends java.io.FilterOutputStream {
+
+        private final boolean encode;
+        private int position;
+        private byte[] buffer;
+        private final int bufferLength;
+        private int lineLength;
+        private final boolean breakLines;
+        private final byte[] b4; // Scratch used in a few places
+        private boolean suspendEncoding;
+        private final int options; // Record for later
+        // private final byte[] alphabet; // Local copies to avoid extra method calls
+        private final byte[] decodabet; // Local copies to avoid extra method calls
+
+        /**
+         * Constructs a {@link Base64.OutputStream} in ENCODE mode.
+         *
+         * @param out the <tt>java.io.OutputStream</tt> to which data will be written.
+         *
+         * @since 1.3
+         */
+        public OutputStream(java.io.OutputStream out) {
+            this(out, ENCODE);
+        } // end constructor
+
+        /**
+         * Constructs a {@link Base64.OutputStream} in either ENCODE or DECODE mode.
+         * <p/>
+         * Valid options:
+         * <p/>
+         * <pre>
+         *   ENCODE or DECODE: Encode or Decode as data is read.
+         *   DO_BREAK_LINES: don't break lines at 76 characters
+         *     (only meaningful when encoding)&lt;/i&gt;
+         * </pre>
+         * <p/>
+         * Example: <code>new Base64.OutputStream( out, Base64.ENCODE )</code>
+         *
+         * @param out     the <tt>java.io.OutputStream</tt> to which data will be written.
+         * @param options Specified options.
+         *
+         * @see Base64#ENCODE
+         * @see Base64#DECODE
+         * @see Base64#DO_BREAK_LINES
+         * @since 1.3
+         */
+        public OutputStream(java.io.OutputStream out, int options) {
+            super(out);
+            breakLines = (options & DO_BREAK_LINES) > 0;
+            encode = (options & ENCODE) > 0;
+            bufferLength = encode ? 3 : 4;
+            buffer = new byte[bufferLength];
+            position = 0;
+            lineLength = 0;
+            suspendEncoding = false;
+            b4 = new byte[4];
+            this.options = options;
+            // alphabet = getAlphabet(options);
+            decodabet = getDecodabet(options);
+        } // end constructor
+
+        /**
+         * Flushes and closes (I think, in the superclass) the stream.
+         *
+         * @since 1.3
+         */
+        @Override
+        public void close()
+                throws java.io.IOException {
+            // 1. Ensure that pending characters are written
+            flush();
+
+            // 2. Actually close the stream
+            // Base class both flushes and closes.
+            super.close();
+
+            buffer = null;
+            out = null;
+        } // end close
+
+        /**
+         * Flushes the stream (and the enclosing streams).
+         *
+         * @throws java.io.IOException
+         * @since 2.3
+         */
+        @Override
+        public void flush()
+                throws java.io.IOException {
+            flushBase64();
+            super.flush();
         }
-        
-        b = (Builder<T>)nonSerializableBuilderMap.get(c);
-        if(null != b) return b;
-        
-        b = newBuilder(c);
-        if(isSerializable)
-            BuilderMap.put(c, b);
-        else
-            nonSerializableBuilderMap.put(c, b);
-        
-        return b;
-    } 
-	
-	public static <T> Builder<T> register(Class<T> c)
-	{
-	    return register(c, false);
-	}
 
-	public static <T> void register(Class<T> c, Builder<T> b)
-	{
-	    if(Serializable.class.isAssignableFrom(c))
-	        BuilderMap.put(c, b);
-	    else
-	        nonSerializableBuilderMap.put(c, b);
-	}
+        /**
+         * Method added by PHIL. [Thanks, PHIL. -Rob] This pads the buffer without closing the stream.
+         *
+         * @throws java.io.IOException if there's an error.
+         */
+        public void flushBase64()
+                throws java.io.IOException {
+            if (position > 0)
+                if (encode) {
+                    out.write(encode3to4(b4, buffer, position, options));
+                    position = 0;
+                } // end if: encoding
+                else
+                    throw new java.io.IOException("Base64 input not properly padded.");
 
-	private static <T> Builder<T> newBuilder(Class<T> c)
-	{
-		if( c.isPrimitive() )
-			throw new RuntimeException("Can not create builder for primitive type: " + c);
+        } // end flush
 
-		if( logger.isInfoEnabled() )
-			logger.info("create Builder for class: " + c);
+        /**
+         * Resumes encoding of the stream. May be helpful if you need to embed a piece of base64-encoded data in a
+         * stream.
+         *
+         * @since 1.5.1
+         */
+        public void resumeEncoding() {
+            suspendEncoding = false;
+        } // end resumeEncoding
 
-		Builder<?> builder;
-		if( c.isArray() )
-			builder = newArrayBuilder(c);
-		else
-			builder = newObjectBuilder(c);
-		return (Builder<T>)builder;
-	}
-	
-	private static Builder<?> newArrayBuilder(Class<?> c)
-	{
-		Class<?> cc = c.getComponentType();
-		if( cc.isInterface() )
-			return GenericArrayBuilder;
+        /**
+         * Suspends encoding of the stream. May be helpful if you need to embed a piece of base64-encoded data in a
+         * stream.
+         *
+         * @throws java.io.IOException if there's an error flushing
+         * @since 1.5.1
+         */
+        public void suspendEncoding()
+                throws java.io.IOException {
+            flushBase64();
+            suspendEncoding = true;
+        } // end suspendEncoding
 
-		ClassLoader cl = ClassHelper.getCallerClassLoader(Builder.class);
+        /**
+         * Calls {@link #write(int)} repeatedly until <var>len</var> bytes are written.
+         *
+         * @param theBytes array from which to read bytes
+         * @param off      offset for array
+         * @param len      max number of bytes to read into array
+         *
+         * @since 1.3
+         */
+        @Override
+        public void write(byte[] theBytes, int off, int len)
+                throws java.io.IOException {
+            // Encoding suspended?
+            if (suspendEncoding) {
+                super.out.write(theBytes, off, len);
+                return;
+            } // end if: supsended
 
-		String cn = ReflectUtils.getName(c), ccn = ReflectUtils.getName(cc); // get class name as int[][], double[].
-		String bcn = BUILDER_CLASS_NAME + "$bc" + BUILDER_CLASS_COUNTER.getAndIncrement();
+            for (int i = 0; i < len; i++)
+                write(theBytes[off + i]);
 
-		int ix = cn.indexOf(']');
-		String s1 = cn.substring(0, ix), s2 = cn.substring(ix); // if name='int[][]' then s1='int[', s2='][]'
+        } // end write
 
-		StringBuilder cwt = new StringBuilder("public void writeTo(Object obj, ").append(GenericObjectOutput.class.getName()).append(" out) throws java.io.IOException{"); // writeTo code.
-		StringBuilder cpf = new StringBuilder("public Object parseFrom(").append(GenericObjectInput.class.getName()).append(" in) throws java.io.IOException{"); // parseFrom code.
+        /**
+         * Writes the byte to the output stream after converting to/from Base64 notation. When encoding, bytes are
+         * buffered three at a time before the output stream actually gets a write() call. When decoding, bytes are
+         * buffered four at a time.
+         *
+         * @param theByte the byte to write
+         *
+         * @since 1.3
+         */
+        @Override
+        public void write(int theByte)
+                throws java.io.IOException {
+            // Encoding suspended?
+            if (suspendEncoding) {
+                super.out.write(theByte);
+                return;
+            } // end if: supsended
 
-		cwt.append("if( $1 == null ){ $2.write0(OBJECT_NULL); return; }");
-		cwt.append(cn).append(" v = (").append(cn).append(")$1; int len = v.length; $2.write0(OBJECT_VALUES); $2.writeUInt(len); for(int i=0;i<len;i++){ ");
+            // Encode?
+            if (encode) {
+                buffer[position++] = (byte) theByte;
+                if (position >= bufferLength) { // Enough to encode.
 
-		cpf.append("byte b = $1.read0(); if( b == OBJECT_NULL ) return null; if( b != OBJECT_VALUES ) throw new java.io.IOException(\"Input format error, expect OBJECT_NULL|OBJECT_VALUES, get \" + b + \".\");");
-		cpf.append("int len = $1.readUInt(); if( len == 0 ) return new ").append(s1).append('0').append(s2).append("; ");
-		cpf.append(cn).append(" ret = new ").append(s1).append("len").append(s2).append("; for(int i=0;i<len;i++){ ");
+                    out.write(encode3to4(b4, buffer, bufferLength, options));
 
-		Builder<?> builder = null;
-		if( cc.isPrimitive() )
-		{
-			if( cc == boolean.class )
-			{
-				cwt.append("$2.writeBool(v[i]);");
-				cpf.append("ret[i] = $1.readBool();");
-			}
-			else if( cc == byte.class )
-			{
-				cwt.append("$2.writeByte(v[i]);");
-				cpf.append("ret[i] = $1.readByte();");
-			}
-			else if( cc == char.class )
-			{
-				cwt.append("$2.writeShort((short)v[i]);");
-				cpf.append("ret[i] = (char)$1.readShort();");
-			}
-			else if( cc == short.class )
-			{
-				cwt.append("$2.writeShort(v[i]);");
-				cpf.append("ret[i] = $1.readShort();");
-			}
-			else if( cc == int.class )
-			{
-				cwt.append("$2.writeInt(v[i]);");
-				cpf.append("ret[i] = $1.readInt();");
-			}
-			else if( cc == long.class )
-			{
-				cwt.append("$2.writeLong(v[i]);");
-				cpf.append("ret[i] = $1.readLong();");
-			}
-			else if( cc == float.class )
-			{
-				cwt.append("$2.writeFloat(v[i]);");
-				cpf.append("ret[i] = $1.readFloat();");
-			}
-			else if( cc == double.class )
-			{
-				cwt.append("$2.writeDouble(v[i]);");
-				cpf.append("ret[i] = $1.readDouble();");
-			}
-		}
-		else
-		{
-			builder = register(cc);
+                    lineLength += 4;
+                    if (breakLines && lineLength >= MAX_LINE_LENGTH) {
+                        out.write(NEW_LINE);
+                        lineLength = 0;
+                    } // end if: end of line
 
-			cwt.append("builder.writeTo(v[i], $2);");
-			cpf.append("ret[i] = (").append(ccn).append(")builder.parseFrom($1);");
-		}
-		cwt.append(" } }");
-		cpf.append(" } return ret; }");
+                    position = 0;
+                } // end if: enough to output
+            } // end if: encoding
+            else // Meaningful Base64 character?
+                if (decodabet[theByte & 0x7f] > WHITE_SPACE_ENC) {
+                    buffer[position++] = (byte) theByte;
+                    if (position >= bufferLength) { // Enough to output.
 
-		ClassGenerator cg = ClassGenerator.newInstance(cl);
-		cg.setClassName(bcn);
-		cg.setSuperClass(Builder.class);
-		cg.addDefaultConstructor();
-		if( builder != null )
-			cg.addField("public static " + BUILDER_CLASS_NAME + " builder;");
-		cg.addMethod("public Class getType(){ return " + cn + ".class; }");
-		cg.addMethod(cwt.toString());
-		cg.addMethod(cpf.toString());
-		try
-		{
-			Class<?> wc = cg.toClass();
-			// set static field.
-			if( builder != null )
-				wc.getField("builder").set(null, builder);
-			return (Builder<?>)wc.newInstance();
-		}
-		catch(RuntimeException e)
-		{
-			throw e;
-		}
-		catch(Throwable e)
-		{
-			throw new RuntimeException(e.getMessage());
-		}
-		finally
-		{
-			cg.release();
-		}
-	}
+                        int len = Base64.decode4to3(buffer, 0, b4, 0, options);
+                        out.write(b4, 0, len);
+                        position = 0;
+                    } // end if: enough to output
+                } // end if: meaningful base64 character
+                else if (decodabet[theByte & 0x7f] != WHITE_SPACE_ENC)
+                    throw new java.io.IOException("Invalid character in Base64 data.");
+        } // end write
 
-	private static Builder<?> newObjectBuilder(final Class<?> c)
-	{
-		if( c.isEnum() )
-			return newEnumBuilder(c);
+    } // end inner class OutputStream
 
-		if( c.isAnonymousClass() )
-			throw new RuntimeException("Can not instantiation anonymous class: " + c);
+    /** No options specified. Value is zero. */
+    public final static int NO_OPTIONS = 0;
 
-		if( c.getEnclosingClass() != null && !Modifier.isStatic(c.getModifiers()) )
-			throw new RuntimeException("Can not instantiation inner and non-static class: " + c);
+    /** Specify encoding in first bit. Value is one. */
+    public final static int ENCODE = 1;
 
-		if( Throwable.class.isAssignableFrom(c) )
-			return SerializableBuilder;
+    /** Specify decoding in first bit. Value is zero. */
+    public final static int DECODE = 0;
 
-		ClassLoader cl = ClassHelper.getCallerClassLoader(Builder.class);
-	
-		// is same package.
-		boolean isp;
-		String cn = c.getName(), bcn;
-		if( c.getClassLoader() == null ) // is system class. if( cn.startsWith("java.") || cn.startsWith("javax.") || cn.startsWith("sun.") )
-		{
-			isp = false;
-			bcn = BUILDER_CLASS_NAME + "$bc" + BUILDER_CLASS_COUNTER.getAndIncrement();
-		}
-		else
-		{
-			isp = true;
-			bcn = cn + "$bc" + BUILDER_CLASS_COUNTER.getAndIncrement();
-		}
+    /** Specify that data should be gzip-compressed in second bit. Value is two. */
+    public final static int GZIP = 2;
 
-		// is Collection, is Map, is Serializable.
-		boolean isc = Collection.class.isAssignableFrom(c);
-		boolean ism = !isc && Map.class.isAssignableFrom(c);
-		boolean iss = !( isc || ism ) && Serializable.class.isAssignableFrom(c);
+    /** Do break lines when encoding. Value is 8. */
+    public final static int DO_BREAK_LINES = 8;
 
-		// deal with fields.
-		String[] fns = null; // fix-order fields names
-		InputStream is = c.getResourceAsStream(c.getSimpleName() + FIELD_CONFIG_SUFFIX); // load field-config file.
-		if( is != null )
-		{
-			try
-			{
-				int len = is.available();
-				if( len > 0 )
-				{
-					if( len > MAX_FIELD_CONFIG_FILE_SIZE )
-						throw new RuntimeException("Load [" + c.getName() + "] field-config file error: File-size too larger");
+    /*          ******** P R I V A T E F I E L D S ******** */
 
-					String[] lines = IOUtils.readLines(is);
-					if( lines != null && lines.length > 0 )
-					{
-						List<String> list = new ArrayList<String>();
-						for(int i=0;i<lines.length;i++)
-						{
-							fns = lines[i].split(",");
-							Arrays.sort(fns, FNC);
-							for(int j=0;j<fns.length;j++)
-								list.add(fns[j]);
-						}
-						fns = list.toArray(new String[0]);
-					}
-				}
-			}
-			catch(IOException e)
-			{
-				throw new RuntimeException("Load [" + c.getName() + "] field-config file error: " + e.getMessage() );
-			}
-			finally
-			{
-				try{ is.close(); }
-				catch(IOException e){}
-			}
-		}
+    /**
+     * Encode using Base64-like encoding that is URL- and Filename-safe as described in Section 4 of RFC3548: <a
+     * href="http://www.faqs.org/rfcs/rfc3548.html">http://www.faqs.org/rfcs/rfc3548.html</a>. It is important to note
+     * that data encoded this way is <em>not</em> officially valid Base64, or at the very least should not be called
+     * Base64 without also specifying that is was encoded using the URL- and Filename-safe dialect.
+     */
+    public final static int URL_SAFE = 16;
 
-		Field f, fs[];
-		if( fns != null )
-		{
-			fs = new Field[fns.length];
-			for(int i=0;i<fns.length;i++)
-			{
-				String fn = fns[i];
-				try
-				{
-					f = c.getDeclaredField(fn);
-					int mod = f.getModifiers();
-					if( Modifier.isStatic(mod) || (serializeIgnoreFinalModifier(c) && Modifier.isFinal(mod)) )
-						throw new RuntimeException("Field [" + c.getName() + "." + fn + "] is static/final field.");
-					if( Modifier.isTransient(mod) )
-					{
-						if( iss )
-							return SerializableBuilder;
-						throw new RuntimeException("Field [" + c.getName() + "." + fn + "] is transient field.");
-					}
-					f.setAccessible(true);
-					fs[i] = f;
-				}
-				catch(SecurityException e)
-				{
-					throw new RuntimeException(e.getMessage());
-				}
-				catch(NoSuchFieldException e)
-				{
-					throw new RuntimeException("Field [" + c.getName() + "." + fn + "] not found.");
-				}
-			}
-		}
-		else
-		{
-			Class<?> t = c;
-			List<Field> fl = new ArrayList<Field>();
-			do
-			{
-				fs = t.getDeclaredFields();
-				for( Field tf : fs )
-				{
-					int mod = tf.getModifiers();
-                    if (Modifier.isStatic(mod)
-                            || (serializeIgnoreFinalModifier(c) && Modifier.isFinal(mod))
-                            || tf.getName().equals("this$0") // skip static or inner-class's 'this$0' field.
-                            || ! Modifier.isPublic(tf.getType().getModifiers()) ) //skip private inner-class field
-						continue;
-					if( Modifier.isTransient(mod) )
-					{
-						if( iss )
-							return SerializableBuilder;
-						continue;
-					}
-					tf.setAccessible(true);
-					fl.add(tf);
-				}
-				t = t.getSuperclass();
-			}
-			while( t != Object.class );
+    /** Encode using the special "ordered" dialect of Base64 described here: <a href="http://www.faqs.org/qa/rfcc-1940.html">http://www.faqs.org/qa/rfcc-1940.html</a>. */
+    public final static int ORDERED = 32;
 
-			fs = fl.toArray(new Field[0]);
-			if( fs.length > 1 )
-				Arrays.sort(fs, FC);
-		}
+    /** Maximum line length (76) of Base64 output. */
+    private final static int MAX_LINE_LENGTH = 76;
 
-		// deal with constructors.
-		Constructor<?>[] cs = c.getDeclaredConstructors();
-		if( cs.length == 0 )
-		{
-			Class<?> t = c;
-			do
-			{
-				t = t.getSuperclass();
-				if( t == null )
-					throw new RuntimeException("Can not found Constructor?");
-				cs = c.getDeclaredConstructors();
-			}
-			while( cs.length == 0 );
-		}
-		if( cs.length > 1 )
-			Arrays.sort(cs, CC);
+    /** The equals sign (=) as a byte. */
+    private final static byte EQUALS_SIGN = (byte) '=';
 
-		// writeObject code.
-		StringBuilder cwf = new StringBuilder("protected void writeObject(Object obj, ").append(GenericObjectOutput.class.getName()).append(" out) throws java.io.IOException{");
-		cwf.append(cn).append(" v = (").append(cn).append(")$1; ");
-		cwf.append("$2.writeInt(fields.length);");
+    /** The new line character (\n) as a byte. */
+    private final static byte NEW_LINE = (byte) '\n';
+    /** Preferred encoding. */
+    private final static String PREFERRED_ENCODING = "US-ASCII";
 
-		// readObject code.
-		StringBuilder crf = new StringBuilder("protected void readObject(Object ret, ").append(GenericObjectInput.class.getName()).append(" in) throws java.io.IOException{");
-		crf.append("int fc = $2.readInt();");
-		crf.append("if( fc != ").append(fs.length).append(" ) throw new IllegalStateException(\"Deserialize Class [").append(cn).append("], field count not matched. Expect ").append(fs.length).append(" but get \" + fc +\".\");");
-		crf.append(cn).append(" ret = (").append(cn).append(")$1;");
+    /*          ******** S T A N D A R D B A S E 6 4 A L P H A B E T ******** */
 
-		// newInstance code.
-		StringBuilder cni = new StringBuilder("protected Object newInstance(").append(GenericObjectInput.class.getName()).append(" in){ return ");
-		Constructor<?> con = cs[0];
-		int mod = con.getModifiers();
-		boolean dn = Modifier.isPublic(mod) || ( isp && !Modifier.isPrivate(mod) );
-		if( dn )
-		{
-			cni.append("new ").append(cn).append("(");
-		}
-		else
-		{
-			con.setAccessible(true);
-			cni.append("constructor.newInstance(new Object[]{");
-		}
-		Class<?>[] pts = con.getParameterTypes();
-		for(int i=0;i<pts.length;i++)
-		{
-			if( i > 0 )
-				cni.append(',');
-			cni.append(defaultArg(pts[i]));
-		}
-		if( !dn )
-			cni.append("}"); // close object array.
-		cni.append("); }");
+    private final static byte WHITE_SPACE_ENC = -5; // Indicates white space in encoding
 
-		// get bean-style property metadata.
-		Map<String, PropertyMetadata> pms = propertyMetadatas(c);
-		List<Builder<?>> builders = new ArrayList<Builder<?>>(fs.length);
-		String fn, ftn; // field name, field type name.
-		Class<?> ft; // field type.
-		boolean da; // direct access.
-		PropertyMetadata pm;
-		for(int i=0;i<fs.length;i++)
-		{
-			f = fs[i];
-			fn = f.getName();
-			ft = f.getType();
-			ftn = ReflectUtils.getName(ft);
-			da = isp && ( f.getDeclaringClass() == c ) && ( Modifier.isPrivate(f.getModifiers()) == false );
-			if( da )
-			{
-				pm = null;
-			}
-			else
-			{
-				pm = pms.get(fn);
-				if( pm != null && ( pm.type != ft || pm.setter == null || pm.getter == null ) )
-					pm = null;
-			}
+    private final static byte EQUALS_SIGN_ENC = -1; // Indicates equals sign in encoding
 
-			crf.append("if( fc == ").append(i).append(" ) return;");
-			if( ft.isPrimitive() )
-			{
-				if( ft == boolean.class )
-				{
-					if( da )
-					{
-						cwf.append("$2.writeBool(v.").append(fn).append(");");
-						crf.append("ret.").append(fn).append(" = $2.readBool();");
-					}
-					else if( pm != null )
-					{
-						cwf.append("$2.writeBool(v.").append(pm.getter).append("());");
-						crf.append("ret.").append(pm.setter).append("($2.readBool());");
-					}
-					else
-					{
-						cwf.append("$2.writeBool(((Boolean)fields[").append(i).append("].get($1)).booleanValue());");
-						crf.append("fields[").append(i).append("].set(ret, ($w)$2.readBool());");
-					}
-				}
-				else if( ft == byte.class )
-				{
-					if( da )
-					{
-						cwf.append("$2.writeByte(v.").append(fn).append(");");
-						crf.append("ret.").append(fn).append(" = $2.readByte();");
-					}
-					else if( pm != null )
-					{
-						cwf.append("$2.writeByte(v.").append(pm.getter).append("());");
-						crf.append("ret.").append(pm.setter).append("($2.readByte());");
-					}
-					else
-					{
-						cwf.append("$2.writeByte(((Byte)fields[").append(i).append("].get($1)).byteValue());");
-						crf.append("fields[").append(i).append("].set(ret, ($w)$2.readByte());");
-					}
-				}
-				else if( ft == char.class )
-				{
-					if( da )
-					{
-						cwf.append("$2.writeShort((short)v.").append(fn).append(");");
-						crf.append("ret.").append(fn).append(" = (char)$2.readShort();");
-					}
-					else if( pm != null )
-					{
-						cwf.append("$2.writeShort((short)v.").append(pm.getter).append("());");
-						crf.append("ret.").append(pm.setter).append("((char)$2.readShort());");
-					}
-					else
-					{
-						cwf.append("$2.writeShort((short)((Character)fields[").append(i).append("].get($1)).charValue());");
-						crf.append("fields[").append(i).append("].set(ret, ($w)((char)$2.readShort()));");
-					}
-				}
-				else if( ft == short.class )
-				{
-					if( da )
-					{
-						cwf.append("$2.writeShort(v.").append(fn).append(");");
-						crf.append("ret.").append(fn).append(" = $2.readShort();");
-					}
-					else if( pm != null )
-					{
-						cwf.append("$2.writeShort(v.").append(pm.getter).append("());");
-						crf.append("ret.").append(pm.setter).append("($2.readShort());");
-					}
-					else
-					{
-						cwf.append("$2.writeShort(((Short)fields[").append(i).append("].get($1)).shortValue());");
-						crf.append("fields[").append(i).append("].set(ret, ($w)$2.readShort());");
-					}
-				}
-				else if( ft == int.class )
-				{
-					if( da )
-					{
-						cwf.append("$2.writeInt(v.").append(fn).append(");");
-						crf.append("ret.").append(fn).append(" = $2.readInt();");
-					}
-					else if( pm != null )
-					{
-						cwf.append("$2.writeInt(v.").append(pm.getter).append("());");
-						crf.append("ret.").append(pm.setter).append("($2.readInt());");
-					}
-					else
-					{
-						cwf.append("$2.writeInt(((Integer)fields[").append(i).append("].get($1)).intValue());");
-						crf.append("fields[").append(i).append("].set(ret, ($w)$2.readInt());");
-					}
-				}
-				else if( ft == long.class )
-				{
-					if( da )
-					{
-						cwf.append("$2.writeLong(v.").append(fn).append(");");
-						crf.append("ret.").append(fn).append(" = $2.readLong();");
-					}
-					else if( pm != null )
-					{
-						cwf.append("$2.writeLong(v.").append(pm.getter).append("());");
-						crf.append("ret.").append(pm.setter).append("($2.readLong());");
-					}
-					else
-					{
-						cwf.append("$2.writeLong(((Long)fields[").append(i).append("].get($1)).longValue());");
-						crf.append("fields[").append(i).append("].set(ret, ($w)$2.readLong());");
-					}
-				}
-				else if( ft == float.class )
-				{
-					if( da )
-					{
-						cwf.append("$2.writeFloat(v.").append(fn).append(");");
-						crf.append("ret.").append(fn).append(" = $2.readFloat();");
-					}
-					else if( pm != null )
-					{
-						cwf.append("$2.writeFloat(v.").append(pm.getter).append("());");
-						crf.append("ret.").append(pm.setter).append("($2.readFloat());");
-					}
-					else
-					{
-						cwf.append("$2.writeFloat(((Float)fields[").append(i).append("].get($1)).floatValue());");
-						crf.append("fields[").append(i).append("].set(ret, ($w)$2.readFloat());");
-					}
-				}
-				else if( ft == double.class )
-				{
-					if( da )
-					{
-						cwf.append("$2.writeDouble(v.").append(fn).append(");");
-						crf.append("ret.").append(fn).append(" = $2.readDouble();");
-					}
-					else if( pm != null )
-					{
-						cwf.append("$2.writeDouble(v.").append(pm.getter).append("());");
-						crf.append("ret.").append(pm.setter).append("($2.readDouble());");
-					}
-					else
-					{
-						cwf.append("$2.writeDouble(((Double)fields[").append(i).append("].get($1)).doubleValue());");
-						crf.append("fields[").append(i).append("].set(ret, ($w)$2.readDouble());");
-					}
-				}
-			}
-			else if( ft == c )
-			{
-				if( da )
-				{
-					cwf.append("this.writeTo(v.").append(fn).append(", $2);");
-					crf.append("ret.").append(fn).append(" = (").append(ftn).append(")this.parseFrom($2);");
-				}
-				else if( pm != null )
-				{
-					cwf.append("this.writeTo(v.").append(pm.getter).append("(), $2);");
-					crf.append("ret.").append(pm.setter).append("((").append(ftn).append(")this.parseFrom($2));");
-				}
-				else
-				{
-					cwf.append("this.writeTo((").append(ftn).append(")fields[").append(i).append("].get($1), $2);");
-					crf.append("fields[").append(i).append("].set(ret, this.parseFrom($2));");
-				}
-			}
-			else
-			{
-				int bc = builders.size();
-				builders.add( register(ft) );
+    /*          ******** U R L S A F E B A S E 6 4 A L P H A B E T ******** */
 
-				if( da )
-				{
-					cwf.append("builders[").append(bc).append("].writeTo(v.").append(fn).append(", $2);");
-					crf.append("ret.").append(fn).append(" = (").append(ftn).append(")builders[").append(bc).append("].parseFrom($2);");
-				}
-				else if( pm != null )
-				{
-					cwf.append("builders[").append(bc).append("].writeTo(v.").append(pm.getter).append("(), $2);");
-					crf.append("ret.").append(pm.setter).append("((").append(ftn).append(")builders[").append(bc).append("].parseFrom($2));");
-				}
-				else
-				{
-					cwf.append("builders[").append(bc).append("].writeTo((").append(ftn).append(")fields[").append(i).append("].get($1), $2);");
-					crf.append("fields[").append(i).append("].set(ret, builders[").append(bc).append("].parseFrom($2));");
-				}
-			}
-		}
+    /** The 64 valid Base64 values. */
+    /* Host platform me be something funny like EBCDIC, so we hardcode these values. */
+    private final static byte[] _STANDARD_ALPHABET = {(byte) 'A', (byte) 'B', (byte) 'C', (byte) 'D', (byte) 'E',
+            (byte) 'F', (byte) 'G', (byte) 'H', (byte) 'I', (byte) 'J', (byte) 'K', (byte) 'L', (byte) 'M', (byte) 'N',
+            (byte) 'O', (byte) 'P', (byte) 'Q', (byte) 'R', (byte) 'S', (byte) 'T', (byte) 'U', (byte) 'V', (byte) 'W',
+            (byte) 'X', (byte) 'Y', (byte) 'Z', (byte) 'a', (byte) 'b', (byte) 'c', (byte) 'd', (byte) 'e', (byte) 'f',
+            (byte) 'g', (byte) 'h', (byte) 'i', (byte) 'j', (byte) 'k', (byte) 'l', (byte) 'm', (byte) 'n', (byte) 'o',
+            (byte) 'p', (byte) 'q', (byte) 'r', (byte) 's', (byte) 't', (byte) 'u', (byte) 'v', (byte) 'w', (byte) 'x',
+            (byte) 'y', (byte) 'z', (byte) '0', (byte) '1', (byte) '2', (byte) '3', (byte) '4', (byte) '5', (byte) '6',
+            (byte) '7', (byte) '8', (byte) '9', (byte) '+', (byte) '/'};
 
-		// skip any fields.
-		crf.append("for(int i=").append(fs.length).append(";i<fc;i++) $2.skipAny();");
+    /**
+     * Translates a Base64 value to either its 6-bit reconstruction value or a negative number indicating some other
+     * meaning.
+     */
+    private final static byte[] _STANDARD_DECODABET = {-9, -9, -9, -9, -9, -9, -9, -9, -9, // Decimal
+            // 0 - 8
+            -5, -5, // Whitespace: Tab and Linefeed
+            -9, -9, // Decimal 11 - 12
+            -5, // Whitespace: Carriage Return
+            -9, -9, -9, -9, -9, -9, -9, -9, -9, -9, -9, -9, -9, // Decimal 14 - 26
+            -9, -9, -9, -9, -9, // Decimal 27 - 31
+            -5, // Whitespace: Space
+            -9, -9, -9, -9, -9, -9, -9, -9, -9, -9, // Decimal 33 - 42
+            62, // Plus sign at decimal 43
+            -9, -9, -9, // Decimal 44 - 46
+            63, // Slash at decimal 47
+            52, 53, 54, 55, 56, 57, 58, 59, 60, 61, // Numbers zero through nine
+            -9, -9, -9, // Decimal 58 - 60
+            -1, // Equals sign at decimal 61
+            -9, -9, -9, // Decimal 62 - 64
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, // Letters 'A' through 'N'
+            14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, // Letters 'O' through 'Z'
+            -9, -9, -9, -9, -9, -9, // Decimal 91 - 96
+            26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, // Letters 'a' through 'm'
+            39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, // Letters 'n' through 'z'
+            -9, -9, -9, -9 // Decimal 123 - 126
+            /*
+            * ,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9, // Decimal 127 - 139
+            * -9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9, // Decimal 140 - 152
+            * -9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9, // Decimal 153 - 165
+            * -9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9, // Decimal 166 - 178
+            * -9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9, // Decimal 179 - 191
+            * -9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9, // Decimal 192 - 204
+            * -9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9, // Decimal 205 - 217
+            * -9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9, // Decimal 218 - 230
+            * -9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9, // Decimal 231 - 243
+            * -9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9 // Decimal 244 - 255
+            */
+    };
 
-		// collection or map
-		if( isc )
-		{
-			cwf.append("$2.writeInt(v.size()); for(java.util.Iterator it=v.iterator();it.hasNext();){ $2.writeObject(it.next()); }");
-			crf.append("int len = $2.readInt(); for(int i=0;i<len;i++) ret.add($2.readObject());");
-		}
-		else if( ism )
-		{
-			cwf.append("$2.writeInt(v.size()); for(java.util.Iterator it=v.entrySet().iterator();it.hasNext();){ java.util.Map.Entry entry = (java.util.Map.Entry)it.next(); $2.writeObject(entry.getKey()); $2.writeObject(entry.getValue()); }");
-			crf.append("int len = $2.readInt(); for(int i=0;i<len;i++) ret.put($2.readObject(), $2.readObject());");
-		}
-		cwf.append(" }");
-		crf.append(" }");
+    /*          ******** O R D E R E D B A S E 6 4 A L P H A B E T ******** */
 
-		ClassGenerator cg = ClassGenerator.newInstance(cl);
-		cg.setClassName(bcn);
-		cg.setSuperClass(AbstractObjectBuilder.class);
-		cg.addDefaultConstructor();
-		cg.addField("public static java.lang.reflect.Field[] fields;");
-		cg.addField("public static " + BUILDER_CLASS_NAME + "[] builders;");
-		if( !dn )
-			cg.addField("public static java.lang.reflect.Constructor constructor;");
-		cg.addMethod("public Class getType(){ return " + cn + ".class; }");
-		cg.addMethod(cwf.toString());
-		cg.addMethod(crf.toString());
-		cg.addMethod(cni.toString());
-		try
-		{
-			Class<?> wc = cg.toClass();
-			// set static field
-			wc.getField("fields").set(null, fs);
-			wc.getField("builders").set(null, builders.toArray(new Builder<?>[0]));
-			if( !dn )
-				wc.getField("constructor").set(null, con);
-			return (Builder<?>)wc.newInstance();
-		}
-		catch(RuntimeException e)
-		{
-			throw e;
-		}
-		catch(Throwable e)
-		{
-			throw new RuntimeException(e.getMessage(), e);
-		}
-		finally
-		{
-			cg.release();
-		}
-	}
+    /**
+     * Used in the URL- and Filename-safe dialect described in Section 4 of RFC3548: <a
+     * href="http://www.faqs.org/rfcs/rfc3548.html">http://www.faqs.org/rfcs/rfc3548.html</a>. Notice that the last two
+     * bytes become "hyphen" and "underscore" instead of "plus" and "slash."
+     */
+    private final static byte[] _URL_SAFE_ALPHABET = {(byte) 'A', (byte) 'B', (byte) 'C', (byte) 'D', (byte) 'E',
+            (byte) 'F', (byte) 'G', (byte) 'H', (byte) 'I', (byte) 'J', (byte) 'K', (byte) 'L', (byte) 'M', (byte) 'N',
+            (byte) 'O', (byte) 'P', (byte) 'Q', (byte) 'R', (byte) 'S', (byte) 'T', (byte) 'U', (byte) 'V', (byte) 'W',
+            (byte) 'X', (byte) 'Y', (byte) 'Z', (byte) 'a', (byte) 'b', (byte) 'c', (byte) 'd', (byte) 'e', (byte) 'f',
+            (byte) 'g', (byte) 'h', (byte) 'i', (byte) 'j', (byte) 'k', (byte) 'l', (byte) 'm', (byte) 'n', (byte) 'o',
+            (byte) 'p', (byte) 'q', (byte) 'r', (byte) 's', (byte) 't', (byte) 'u', (byte) 'v', (byte) 'w', (byte) 'x',
+            (byte) 'y', (byte) 'z', (byte) '0', (byte) '1', (byte) '2', (byte) '3', (byte) '4', (byte) '5', (byte) '6',
+            (byte) '7', (byte) '8', (byte) '9', (byte) '-', (byte) '_'};
 
-	private static Builder<?> newEnumBuilder(Class<?> c)
-	{
-		ClassLoader cl = ClassHelper.getCallerClassLoader(Builder.class);
-		
-		String cn = c.getName();
-		String bcn = BUILDER_CLASS_NAME + "$bc" + BUILDER_CLASS_COUNTER.getAndIncrement();
+    /** Used in decoding URL- and Filename-safe dialects of Base64. */
+    private final static byte[] _URL_SAFE_DECODABET = {-9, -9, -9, -9, -9, -9, -9, -9, -9, // Decimal
+            // 0 - 8
+            -5, -5, // Whitespace: Tab and Linefeed
+            -9, -9, // Decimal 11 - 12
+            -5, // Whitespace: Carriage Return
+            -9, -9, -9, -9, -9, -9, -9, -9, -9, -9, -9, -9, -9, // Decimal 14 - 26
+            -9, -9, -9, -9, -9, // Decimal 27 - 31
+            -5, // Whitespace: Space
+            -9, -9, -9, -9, -9, -9, -9, -9, -9, -9, // Decimal 33 - 42
+            -9, // Plus sign at decimal 43
+            -9, // Decimal 44
+            62, // Minus sign at decimal 45
+            -9, // Decimal 46
+            -9, // Slash at decimal 47
+            52, 53, 54, 55, 56, 57, 58, 59, 60, 61, // Numbers zero through nine
+            -9, -9, -9, // Decimal 58 - 60
+            -1, // Equals sign at decimal 61
+            -9, -9, -9, // Decimal 62 - 64
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, // Letters 'A' through 'N'
+            14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, // Letters 'O' through 'Z'
+            -9, -9, -9, -9, // Decimal 91 - 94
+            63, // Underscore at decimal 95
+            -9, // Decimal 96
+            26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, // Letters 'a' through 'm'
+            39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, // Letters 'n' through 'z'
+            -9, -9, -9, -9 // Decimal 123 - 126
+            /*
+            * ,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9, // Decimal 127 - 139
+            * -9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9, // Decimal 140 - 152
+            * -9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9, // Decimal 153 - 165
+            * -9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9, // Decimal 166 - 178
+            * -9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9, // Decimal 179 - 191
+            * -9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9, // Decimal 192 - 204
+            * -9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9, // Decimal 205 - 217
+            * -9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9, // Decimal 218 - 230
+            * -9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9, // Decimal 231 - 243
+            * -9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9 // Decimal 244 - 255
+            */
+    };
 
-		StringBuilder cwt = new StringBuilder("public void writeTo(Object obj, ").append(GenericObjectOutput.class.getName()).append(" out) throws java.io.IOException{"); // writeTo code.
-		cwt.append(cn).append(" v = (").append(cn).append(")$1;");
-		cwt.append("if( $1 == null ){ $2.writeUTF(null); }else{ $2.writeUTF(v.name()); } }");
+    /*          ******** D E T E R M I N E W H I C H A L H A B E T ******** */
 
-		StringBuilder cpf = new StringBuilder("public Object parseFrom(").append(GenericObjectInput.class.getName()).append(" in) throws java.io.IOException{"); // parseFrom code.
-		cpf.append("String name = $1.readUTF(); if( name == null ) return null; return (").append(cn).append(")Enum.valueOf(").append(cn).append(".class, name); }");
+    /**
+     * I don't get the point of this technique, but someone requested it, and it is described here: <a
+     * href="http://www.faqs.org/qa/rfcc-1940.html">http://www.faqs.org/qa/rfcc-1940.html</a>.
+     */
+    private final static byte[] _ORDERED_ALPHABET = {(byte) '-', (byte) '0', (byte) '1', (byte) '2', (byte) '3',
+            (byte) '4', (byte) '5', (byte) '6', (byte) '7', (byte) '8', (byte) '9', (byte) 'A', (byte) 'B', (byte) 'C',
+            (byte) 'D', (byte) 'E', (byte) 'F', (byte) 'G', (byte) 'H', (byte) 'I', (byte) 'J', (byte) 'K', (byte) 'L',
+            (byte) 'M', (byte) 'N', (byte) 'O', (byte) 'P', (byte) 'Q', (byte) 'R', (byte) 'S', (byte) 'T', (byte) 'U',
+            (byte) 'V', (byte) 'W', (byte) 'X', (byte) 'Y', (byte) 'Z', (byte) '_', (byte) 'a', (byte) 'b', (byte) 'c',
+            (byte) 'd', (byte) 'e', (byte) 'f', (byte) 'g', (byte) 'h', (byte) 'i', (byte) 'j', (byte) 'k', (byte) 'l',
+            (byte) 'm', (byte) 'n', (byte) 'o', (byte) 'p', (byte) 'q', (byte) 'r', (byte) 's', (byte) 't', (byte) 'u',
+            (byte) 'v', (byte) 'w', (byte) 'x', (byte) 'y', (byte) 'z'};
 
-		ClassGenerator cg = ClassGenerator.newInstance(cl);
-		cg.setClassName(bcn);
-		cg.setSuperClass(Builder.class);
-		cg.addDefaultConstructor();
-		cg.addMethod("public Class getType(){ return " + cn + ".class; }");
-		cg.addMethod(cwt.toString());
-		cg.addMethod(cpf.toString());
-		try
-		{
-			Class<?> wc = cg.toClass();
-			return (Builder<?>)wc.newInstance();
-		}
-		catch(RuntimeException e)
-		{
-			throw e;
-		}
-		catch(Throwable e)
-		{
-			throw new RuntimeException(e.getMessage(), e);
-		}
-		finally
-		{
-			cg.release();
-		}
-	}
+    /** Used in decoding the "ordered" dialect of Base64. */
+    private final static byte[] _ORDERED_DECODABET = {-9, -9, -9, -9, -9, -9, -9, -9, -9, // Decimal
+            // 0 - 8
+            -5, -5, // Whitespace: Tab and Linefeed
+            -9, -9, // Decimal 11 - 12
+            -5, // Whitespace: Carriage Return
+            -9, -9, -9, -9, -9, -9, -9, -9, -9, -9, -9, -9, -9, // Decimal 14 - 26
+            -9, -9, -9, -9, -9, // Decimal 27 - 31
+            -5, // Whitespace: Space
+            -9, -9, -9, -9, -9, -9, -9, -9, -9, -9, // Decimal 33 - 42
+            -9, // Plus sign at decimal 43
+            -9, // Decimal 44
+            0, // Minus sign at decimal 45
+            -9, // Decimal 46
+            -9, // Slash at decimal 47
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, // Numbers zero through nine
+            -9, -9, -9, // Decimal 58 - 60
+            -1, // Equals sign at decimal 61
+            -9, -9, -9, // Decimal 62 - 64
+            11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, // Letters 'A' through 'M'
+            24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, // Letters 'N' through 'Z'
+            -9, -9, -9, -9, // Decimal 91 - 94
+            37, // Underscore at decimal 95
+            -9, // Decimal 96
+            38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, // Letters 'a' through 'm'
+            51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, // Letters 'n' through 'z'
+            -9, -9, -9, -9 // Decimal 123 - 126
+            /*
+            * ,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9, // Decimal 127 - 139
+            * -9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9, // Decimal 140 - 152
+            * -9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9, // Decimal 153 - 165
+            * -9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9, // Decimal 166 - 178
+            * -9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9, // Decimal 179 - 191
+            * -9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9, // Decimal 192 - 204
+            * -9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9, // Decimal 205 - 217
+            * -9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9, // Decimal 218 - 230
+            * -9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9, // Decimal 231 - 243
+            * -9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9 // Decimal 244 - 255
+            */
+    };
 
-	private static Map<String, PropertyMetadata> propertyMetadatas(Class<?> c)
-	{
-		Map<String, Method> mm = new HashMap<String, Method>(); // method map.
-		Map<String, PropertyMetadata> ret = new HashMap<String, PropertyMetadata>(); // property metadata map.
-
-		// All public method.
-		for( Method m : c.getMethods() )
-		{
-			if( m.getDeclaringClass() == Object.class ) // Ignore Object's method.
-				continue;
-			mm.put(ReflectUtils.getDesc(m), m);
-		}
-
-		Matcher matcher;
-		for( Map.Entry<String,Method> entry : mm.entrySet() )
-		{
-			String desc = entry.getKey();
-			Method method = entry.getValue();
-			if( ( matcher = ReflectUtils.GETTER_METHOD_DESC_PATTERN.matcher(desc) ).matches() ||
-					( matcher = ReflectUtils.IS_HAS_CAN_METHOD_DESC_PATTERN.matcher(desc) ).matches() )
-			{
-				String pn = propertyName(matcher.group(1));
-				Class<?> pt = method.getReturnType();
-				PropertyMetadata pm = ret.get(pn);
-				if( pm == null )
-				{
-					pm = new PropertyMetadata();
-					pm.type = pt;
-					ret.put(pn, pm);
-				}
-				else
-				{
-					if( pm.type != pt )
-						continue;
-				}
-				pm.getter = method.getName();
-			}
-			else if( ( matcher = ReflectUtils.SETTER_METHOD_DESC_PATTERN.matcher(desc) ).matches() )
-			{
-				String pn = propertyName(matcher.group(1));
-				Class<?> pt = method.getParameterTypes()[0];
-				PropertyMetadata pm = ret.get(pn);
-				if( pm == null )
-				{
-					pm = new PropertyMetadata();
-					pm.type = pt;
-					ret.put(pn, pm);
-				}
-				else
-				{
-					if( pm.type != pt )
-						continue;
-				}
-				pm.setter = method.getName();
-			}
-		}
-		return ret;
-	}
-
-	private static String propertyName(String s)
-	{
-		return s.length() == 1 || Character.isLowerCase(s.charAt(1)) ? Character.toLowerCase(s.charAt(0)) + s.substring(1) : s;
-	}
-	
-	private static boolean serializeIgnoreFinalModifier(Class cl)
-    {
-//	    if (cl.isAssignableFrom(BigInteger.class)) return false;
-//	    for performance
-//	    if (cl.getName().startsWith("java")) return true;
-//	    if (cl.getName().startsWith("javax")) return true;
-	    
-	    return false;
+    /**
+     * Low-level access to decoding ASCII characters in the form of a byte array. <strong>Ignores GUNZIP option, if it's
+     * set.</strong> This is not generally a recommended method, although it is used internally as part of the decoding
+     * process. Special case: if len = 0, an empty array is returned. Still, if you need more speed and reduced memory
+     * footprint (and aren't gzipping), consider this method.
+     *
+     * @param source The Base64 encoded data
+     *
+     * @return decoded data
+     *
+     * @since 2.3.1
+     */
+    public static byte[] decode(byte[] source) {
+        byte[] decoded = null;
+        try {
+            decoded = decode(source, 0, source.length, Base64.NO_OPTIONS);
+        } catch (java.io.IOException ex) {
+            assert false : "IOExceptions only come from GZipping, which is turned off: " + ex.getMessage();
+        }
+        return decoded;
     }
-	
-	@SuppressWarnings("unused")
-    private static boolean isPrimitiveOrPrimitiveArray1(Class<?> cl)
-    {
-        if (cl.isPrimitive()){
-            return true;
-        } else {
-            Class clazz = cl.getClass().getComponentType();
-            if (clazz!=null && clazz.isPrimitive()){
-                return true;
+
+    /*          ******** E N C O D I N G M E T H O D S ******** */
+
+    /**
+     * Low-level access to decoding ASCII characters in the form of a byte array. <strong>Ignores GUNZIP option, if it's
+     * set.</strong> This is not generally a recommended method, although it is used internally as part of the decoding
+     * process. Special case: if len = 0, an empty array is returned. Still, if you need more speed and reduced memory
+     * footprint (and aren't gzipping), consider this method.
+     *
+     * @param source  The Base64 encoded data
+     * @param off     The offset of where to begin decoding
+     * @param len     The length of characters to decode
+     * @param options Can specify options such as alphabet type to use
+     *
+     * @return decoded data
+     *
+     * @throws java.io.IOException If bogus characters exist in source data
+     * @since 1.3
+     */
+    public static byte[] decode(byte[] source, int off, int len, int options)
+            throws java.io.IOException {
+
+        // Lots of error checking and exception throwing
+        if (source == null)
+            throw new NullPointerException("Cannot decode null source array.");
+        if (off < 0 || off + len > source.length)
+            throw new IllegalArgumentException(String.format(
+                    "Source array with length %d cannot have offset of %d and process %d bytes.", source.length, off,
+                    len));
+
+        if (len == 0)
+            return new byte[0];
+        else if (len < 4)
+            throw new IllegalArgumentException(
+                    "Base64-encoded string must have at least four characters, but length specified was " + len);
+
+        byte[] DECODABET = getDecodabet(options);
+
+        int len34 = len * 3 / 4; // Estimate on array size
+        byte[] outBuff = new byte[len34]; // Upper limit on size of output
+        int outBuffPosn = 0; // Keep track of where we're writing
+
+        byte[] b4 = new byte[4]; // Four byte buffer from source, eliminating white space
+        int b4Posn = 0; // Keep track of four byte input buffer
+        int i = 0; // Source array counter
+        byte sbiCrop = 0; // Low seven bits (ASCII) of input
+        byte sbiDecode = 0; // Special value from DECODABET
+
+        for (i = off; i < off + len; i++) { // Loop through source
+
+            sbiCrop = (byte) (source[i] & 0x7f); // Only the low seven bits
+            sbiDecode = DECODABET[sbiCrop]; // Special value
+
+            // White space, Equals sign, or legit Base64 character
+            // Note the values such as -5 and -9 in the
+            // DECODABETs at the top of the file.
+            if (sbiDecode >= WHITE_SPACE_ENC) {
+                if (sbiDecode >= EQUALS_SIGN_ENC) {
+                    b4[b4Posn++] = sbiCrop; // Save non-whitespace
+                    if (b4Posn > 3) { // Time to decode?
+                        outBuffPosn += decode4to3(b4, 0, outBuff, outBuffPosn, options);
+                        b4Posn = 0;
+
+                        // If that was the equals sign, break out of 'for' loop
+                        if (sbiCrop == EQUALS_SIGN)
+                            break;
+                    } // end if: quartet built
+                } // end if: equals sign or better
+            } // end if: white space, equals sign or better
+            else
+                // There's a bad input character in the Base64 stream.
+                throw new java.io.IOException(String.format("Bad Base64 input character '%c' in array position %d",
+                                                            source[i], i));
+        } // each input character
+
+        byte[] out = new byte[outBuffPosn];
+        System.arraycopy(outBuff, 0, out, 0, outBuffPosn);
+        return out;
+    } // end decode
+
+    /**
+     * Decodes data from Base64 notation, automatically detecting gzip-compressed data and decompressing it.
+     *
+     * @param s the string to decode
+     *
+     * @return the decoded data
+     *
+     * @throws java.io.IOException If there is a problem
+     * @since 1.4
+     */
+    public static byte[] decode(String s)
+            throws java.io.IOException {
+        return decode(s, NO_OPTIONS);
+    }
+
+    /**
+     * Decodes data from Base64 notation, automatically detecting gzip-compressed data and decompressing it.
+     *
+     * @param s       the string to decode
+     * @param options encode options such as URL_SAFE
+     *
+     * @return the decoded data
+     *
+     * @throws java.io.IOException  if there is an error
+     * @throws NullPointerException if <tt>s</tt> is null
+     * @since 1.4
+     */
+    public static byte[] decode(String s, int options)
+            throws java.io.IOException {
+
+        if (s == null)
+            throw new NullPointerException("Input string was null.");
+
+        byte[] bytes;
+        try {
+            bytes = s.getBytes(PREFERRED_ENCODING);
+        } // end try
+        catch (java.io.UnsupportedEncodingException uee) {
+            bytes = s.getBytes();
+        } // end catch
+        // </change>
+
+        // Decode
+        bytes = decode(bytes, 0, bytes.length, options);
+
+        // Check to see if it's gzip-compressed
+        // GZIP Magic Two-Byte Number: 0x8b1f (35615)
+        if (bytes != null && bytes.length >= 4) {
+
+            int head = bytes[0] & 0xff | bytes[1] << 8 & 0xff00;
+            if (java.util.zip.GZIPInputStream.GZIP_MAGIC == head) {
+                java.io.ByteArrayInputStream bais = null;
+                java.util.zip.GZIPInputStream gzis = null;
+                java.io.ByteArrayOutputStream baos = null;
+                byte[] buffer = new byte[2048];
+                int length = 0;
+
+                try {
+                    baos = new java.io.ByteArrayOutputStream();
+                    bais = new java.io.ByteArrayInputStream(bytes);
+                    gzis = new java.util.zip.GZIPInputStream(bais);
+
+                    while ((length = gzis.read(buffer)) >= 0)
+                        baos.write(buffer, 0, length);
+
+                    // No error? Get new bytes.
+                    bytes = baos.toByteArray();
+
+                } // end try
+                catch (java.io.IOException e) {
+                    // Just return originally-decoded bytes
+                } // end catch
+                finally {
+                    try {
+                        baos.close();
+                    } catch (Exception e) {
+                    }
+                    try {
+                        gzis.close();
+                    } catch (Exception e) {
+                    }
+                    try {
+                        bais.close();
+                    } catch (Exception e) {
+                    }
+                } // end finally
+
+            } // end if: gzipped
+        } // end if: bytes.length >= 2
+
+        return bytes;
+    } // end decode
+
+    /**
+     * Reads <tt>infile</tt> and decodes it to <tt>outfile</tt>.
+     *
+     * @param infile  Input file
+     * @param outfile Output file
+     *
+     * @throws java.io.IOException if there is an error
+     * @since 2.2
+     */
+    public static void decodeFileToFile(String infile, String outfile)
+            throws java.io.IOException {
+
+        byte[] decoded = Base64.decodeFromFile(infile);
+        java.io.OutputStream out = null;
+        try {
+            out = new java.io.BufferedOutputStream(new java.io.FileOutputStream(outfile));
+            out.write(decoded);
+        } // end try
+        catch (java.io.IOException e) {
+            throw e; // Catch and release to execute finally{}
+        } // end catch
+        finally {
+            try {
+                out.close();
+            } catch (Exception ex) {
             }
-        } 
-        return false;
+        } // end finally
+    } // end decodeFileToFile
+
+    /**
+     * Convenience method for reading a base64-encoded file and decoding it. <p/> <p> As of v 2.3, if there is a error,
+     * the method will throw an java.io.IOException. <b>This is new to v2.3!</b> In earlier versions, it just returned
+     * false, but in retrospect that's a pretty poor way to next it. </p>
+     *
+     * @param filename Filename for reading encoded data
+     *
+     * @return decoded byte array
+     *
+     * @throws java.io.IOException if there is an error
+     * @since 2.1
+     */
+    public static byte[] decodeFromFile(String filename)
+            throws java.io.IOException {
+
+        byte[] decodedData = null;
+        Base64.InputStream bis = null;
+        try {
+            // Set up some useful variables
+            java.io.File file = new java.io.File(filename);
+            byte[] buffer = null;
+            int length = 0;
+            int numBytes = 0;
+
+            // Check for size of file
+            if (file.length() > Integer.MAX_VALUE)
+                throw new java.io.IOException("File is too big for this convenience method (" + file.length()
+                                                      + " bytes).");
+            buffer = new byte[(int) file.length()];
+
+            // Open a stream
+            bis = new Base64.InputStream(new java.io.BufferedInputStream(new java.io.FileInputStream(file)),
+                                         Base64.DECODE);
+
+            // Read until done
+            while ((numBytes = bis.read(buffer, length, 4096)) >= 0)
+                length += numBytes;
+
+            // Save in a variable to return
+            decodedData = new byte[length];
+            System.arraycopy(buffer, 0, decodedData, 0, length);
+
+        } // end try
+        catch (java.io.IOException e) {
+            throw e; // Catch and release to execute finally{}
+        } // end catch: java.io.IOException
+        finally {
+            try {
+                bis.close();
+            } catch (Exception e) {
+            }
+        } // end finally
+
+        return decodedData;
+    } // end decodeFromFile
+
+    /**
+     * Convenience method for decoding data to a file. <p/> <p> As of v 2.3, if there is a error, the method will throw
+     * an java.io.IOException. <b>This is new to v2.3!</b> In earlier versions, it just returned false, but in
+     * retrospect that's a pretty poor way to next it. </p>
+     *
+     * @param dataToDecode Base64-encoded data as a string
+     * @param filename     Filename for saving decoded data
+     *
+     * @throws java.io.IOException if there is an error
+     * @since 2.1
+     */
+    public static void decodeToFile(String dataToDecode, String filename)
+            throws java.io.IOException {
+
+        Base64.OutputStream bos = null;
+        try {
+            bos = new Base64.OutputStream(new java.io.FileOutputStream(filename), Base64.DECODE);
+            bos.write(dataToDecode.getBytes(PREFERRED_ENCODING));
+        } // end try
+        catch (java.io.IOException e) {
+            throw e; // Catch and throw to execute finally{} block
+        } // end catch: java.io.IOException
+        finally {
+            try {
+                bos.close();
+            } catch (Exception e) {
+            }
+        } // end finally
+
+    } // end decodeToFile
+
+    /**
+     * Attempts to decode Base64 data and deserialize a Java Object within. Returns <tt>null</tt> if there was an
+     * error.
+     *
+     * @param encodedObject The Base64 data to decode
+     *
+     * @return The decoded and deserialized object
+     *
+     * @throws NullPointerException   if encodedObject is null
+     * @throws java.io.IOException    if there is a general error
+     * @throws ClassNotFoundException if the decoded object is of a class that cannot be found by the JVM
+     * @since 1.5
+     */
+    public static Object decodeToObject(String encodedObject)
+            throws java.io.IOException,
+                   java.lang.ClassNotFoundException {
+
+        // Decode and gunzip if necessary
+        byte[] objBytes = decode(encodedObject);
+
+        java.io.ByteArrayInputStream bais = null;
+        java.io.ObjectInputStream ois = null;
+        Object obj = null;
+
+        try {
+            bais = new java.io.ByteArrayInputStream(objBytes);
+            ois = new java.io.ObjectInputStream(bais);
+
+            obj = ois.readObject();
+        } // end try
+        catch (java.io.IOException e) {
+            throw e; // Catch and throw in order to execute finally{}
+        } // end catch
+        catch (java.lang.ClassNotFoundException e) {
+            throw e; // Catch and throw in order to execute finally{}
+        } // end catch
+        finally {
+            try {
+                bais.close();
+            } catch (Exception e) {
+            }
+            try {
+                ois.close();
+            } catch (Exception e) {
+            }
+        } // end finally
+
+        return obj;
+    } // end decodeObject
+
+    /**
+     * Performs Base64 encoding on the <code>raw</code> ByteBuffer, writing it to the <code>encoded</code> ByteBuffer.
+     * This is an experimental feature. Currently it does not pass along any options (such as {@link #DO_BREAK_LINES} or
+     * {@link #GZIP}.
+     *
+     * @param raw     input buffer
+     * @param encoded output buffer
+     *
+     * @since 2.3
+     */
+    public static void encode(java.nio.ByteBuffer raw, java.nio.ByteBuffer encoded) {
+        byte[] raw3 = new byte[3];
+        byte[] enc4 = new byte[4];
+
+        while (raw.hasRemaining()) {
+            int rem = Math.min(3, raw.remaining());
+            raw.get(raw3, 0, rem);
+            Base64.encode3to4(enc4, raw3, rem, Base64.NO_OPTIONS);
+            encoded.put(enc4);
+        } // end input remaining
     }
 
-	private static String defaultArg(Class<?> cl)
-	{
-	    if( boolean.class == cl ) return "false";
-	    if( int.class == cl ) return "0";
-	    if( long.class == cl ) return "0l";
-	    if( double.class == cl ) return "(double)0";
-	    if( float.class == cl ) return "(float)0";
-	    if( short.class == cl ) return "(short)0";
-	    if( char.class == cl ) return "(char)0";
-	    if( byte.class == cl ) return "(byte)0";
-	    if( byte[].class == cl ) return "new byte[]{0}";
-	    if( !cl.isPrimitive() ) return "null";
-	    throw new UnsupportedOperationException();
-	}
+    /**
+     * Performs Base64 encoding on the <code>raw</code> ByteBuffer, writing it to the <code>encoded</code> CharBuffer.
+     * This is an experimental feature. Currently it does not pass along any options (such as {@link #DO_BREAK_LINES} or
+     * {@link #GZIP}.
+     *
+     * @param raw     input buffer
+     * @param encoded output buffer
+     *
+     * @since 2.3
+     */
+    public static void encode(java.nio.ByteBuffer raw, java.nio.CharBuffer encoded) {
+        byte[] raw3 = new byte[3];
+        byte[] enc4 = new byte[4];
 
-	private static int compareFieldName(String n1, String n2)
-	{
-		int l = Math.min(n1.length(), n2.length());
-		for(int i=0;i<l;i++)
-		{
-			int t = n1.charAt(i) - n2.charAt(i);
-			if( t != 0 )
-				return t;
-		}
-		return n1.length() - n2.length();
-	}
+        while (raw.hasRemaining()) {
+            int rem = Math.min(3, raw.remaining());
+            raw.get(raw3, 0, rem);
+            Base64.encode3to4(enc4, raw3, rem, Base64.NO_OPTIONS);
+            for (int i = 0; i < 4; i++)
+                encoded.put((char) (enc4[i] & 0xFF));
+        } // end input remaining
+    }
 
-	private static void addDesc(Class<?> c)
-	{
-		String desc = ReflectUtils.getDesc(c);
-		int index = mDescList.size();
-		mDescList.add(desc);
-		mDescMap.put(desc, index);
-	}
+    /**
+     * Encodes a byte array into Base64 notation. Does not GZip-compress data.
+     *
+     * @param source The data to convert
+     *
+     * @return The data in Base64-encoded form
+     *
+     * @throws NullPointerException if source array is null
+     * @since 1.4
+     */
+    public static String encodeBytes(byte[] source) {
+        // Since we're not going to have the GZIP encoding turned on,
+        // we're not going to have an java.io.IOException thrown, so
+        // we should not force the user to have to catch it.
+        String encoded = null;
+        try {
+            encoded = encodeBytes(source, 0, source.length, NO_OPTIONS);
+        } catch (java.io.IOException ex) {
+            assert false : ex.getMessage();
+        } // end catch
+        assert encoded != null;
+        return encoded;
+    } // end encodeBytes
 
-	static class PropertyMetadata
-	{
-		Class<?> type;
-		String setter, getter;
-	}
+    /**
+     * Encodes a byte array into Base64 notation. <p> Example options: <p/>
+     * <pre>
+     *   GZIP: gzip-compresses object before encoding it.
+     *   DO_BREAK_LINES: break lines at 76 characters
+     *     &lt;i&gt;Note: Technically, this makes your encoding non-compliant.&lt;/i&gt;
+     * </pre>
+     * <p> Example: <code>encodeBytes( myData, Base64.GZIP )</code> or <p> Example: <code>encodeBytes( myData,
+     * Base64.GZIP | Base64.DO_BREAK_LINES )</code> <p/> <p/> <p> As of v 2.3, if there is an error with the GZIP
+     * stream, the method will throw an java.io.IOException. <b>This is new to v2.3!</b> In earlier versions, it just
+     * returned a null value, but in retrospect that's a pretty poor way to next it. </p>
+     *
+     * @param source  The data to convert
+     * @param options Specified options
+     *
+     * @return The Base64-encoded data as a String
+     *
+     * @throws java.io.IOException  if there is an error
+     * @throws NullPointerException if source array is null
+     * @see Base64#GZIP
+     * @see Base64#DO_BREAK_LINES
+     * @since 2.0
+     */
+    public static String encodeBytes(byte[] source, int options)
+            throws java.io.IOException {
+        return encodeBytes(source, 0, source.length, options);
+    } // end encodeBytes
 
-	public static abstract class AbstractObjectBuilder<T> extends Builder<T>
-	{
-		abstract public Class<T> getType();
+    /**
+     * Encodes a byte array into Base64 notation. Does not GZip-compress data. <p/> <p> As of v 2.3, if there is an
+     * error, the method will throw an java.io.IOException. <b>This is new to v2.3!</b> In earlier versions, it just
+     * returned a null value, but in retrospect that's a pretty poor way to next it. </p>
+     *
+     * @param source The data to convert
+     * @param off    Offset in array where conversion should begin
+     * @param len    Length of data to convert
+     *
+     * @return The Base64-encoded data as a String
+     *
+     * @throws NullPointerException     if source array is null
+     * @throws IllegalArgumentException if source array, offset, or length are invalid
+     * @since 1.4
+     */
+    public static String encodeBytes(byte[] source, int off, int len) {
+        // Since we're not going to have the GZIP encoding turned on,
+        // we're not going to have an java.io.IOException thrown, so
+        // we should not force the user to have to catch it.
+        String encoded = null;
+        try {
+            encoded = encodeBytes(source, off, len, NO_OPTIONS);
+        } catch (java.io.IOException ex) {
+            assert false : ex.getMessage();
+        } // end catch
+        assert encoded != null;
+        return encoded;
+    } // end encodeBytes
 
-		public void writeTo(T obj, GenericObjectOutput out) throws IOException
-		{
-			if( obj == null )
-			{
-				out.write0(OBJECT_NULL);
-			}
-			else
-			{
-				int ref = out.getRef(obj);
-				if( ref < 0 )
-				{
-					out.addRef(obj);
-					out.write0(OBJECT);
-					writeObject(obj, out);
-				}
-				else
-				{
-					out.write0(OBJECT_REF);
-					out.writeUInt(ref);
-				}
-			}
-		}
+    /**
+     * Encodes a byte array into Base64 notation. <p> Example options: <p/>
+     * <pre>
+     *   GZIP: gzip-compresses object before encoding it.
+     *   DO_BREAK_LINES: break lines at 76 characters
+     *     &lt;i&gt;Note: Technically, this makes your encoding non-compliant.&lt;/i&gt;
+     * </pre>
+     * <p> Example: <code>encodeBytes( myData, Base64.GZIP )</code> or <p> Example: <code>encodeBytes( myData,
+     * Base64.GZIP | Base64.DO_BREAK_LINES )</code> <p/> <p/> <p> As of v 2.3, if there is an error with the GZIP
+     * stream, the method will throw an java.io.IOException. <b>This is new to v2.3!</b> In earlier versions, it just
+     * returned a null value, but in retrospect that's a pretty poor way to next it. </p>
+     *
+     * @param source  The data to convert
+     * @param off     Offset in array where conversion should begin
+     * @param len     Length of data to convert
+     * @param options Specified options
+     *
+     * @return The Base64-encoded data as a String
+     *
+     * @throws java.io.IOException      if there is an error
+     * @throws NullPointerException     if source array is null
+     * @throws IllegalArgumentException if source array, offset, or length are invalid
+     * @see Base64#GZIP
+     * @see Base64#DO_BREAK_LINES
+     * @since 2.0
+     */
+    public static String encodeBytes(byte[] source, int off, int len, int options)
+            throws java.io.IOException {
+        byte[] encoded = encodeBytesToBytes(source, off, len, options);
 
-		public T parseFrom(GenericObjectInput in) throws IOException
-		{
-			byte b = in.read0();
-			switch( b )
-			{
-				case OBJECT:
-				{
-					T ret = newInstance(in);
-					in.addRef(ret);
-					readObject(ret, in);
-					return ret;
-				}
-				case OBJECT_REF:
-					return (T)in.getRef(in.readUInt());
-				case OBJECT_NULL:
-					return null;
-				default:
-					throw new IOException("Input format error, expect OBJECT|OBJECT_REF|OBJECT_NULL, get " + b);
-			}
-		}
+        // Return value according to relevant encoding.
+        try {
+            return new String(encoded, PREFERRED_ENCODING);
+        } // end try
+        catch (java.io.UnsupportedEncodingException uue) {
+            return new String(encoded);
+        } // end catch
 
-		abstract protected void writeObject(T obj, GenericObjectOutput out) throws IOException;
+    } // end encodeBytes
 
-		abstract protected T newInstance(GenericObjectInput in) throws IOException;
+    /**
+     * Similar to {@link #encodeBytes(byte[])} but returns a byte array instead of instantiating a String. This is more
+     * efficient if you're working with I/O streams and have large data sets to encode.
+     *
+     * @param source The data to convert
+     *
+     * @return The Base64-encoded data as a byte[] (of ASCII characters)
+     *
+     * @throws NullPointerException if source array is null
+     * @since 2.3.1
+     */
+    public static byte[] encodeBytesToBytes(byte[] source) {
+        byte[] encoded = null;
+        try {
+            encoded = encodeBytesToBytes(source, 0, source.length, Base64.NO_OPTIONS);
+        } catch (java.io.IOException ex) {
+            assert false : "IOExceptions only come from GZipping, which is turned off: " + ex.getMessage();
+        }
+        return encoded;
+    }
 
-		abstract protected void readObject(T ret, GenericObjectInput in) throws IOException;
-	}
+    /**
+     * Similar to {@link #encodeBytes(byte[], int, int, int)} but returns a byte array instead of instantiating a
+     * String. This is more efficient if you're working with I/O streams and have large data sets to encode.
+     *
+     * @param source  The data to convert
+     * @param off     Offset in array where conversion should begin
+     * @param len     Length of data to convert
+     * @param options Specified options
+     *
+     * @return The Base64-encoded data as a String
+     *
+     * @throws java.io.IOException      if there is an error
+     * @throws NullPointerException     if source array is null
+     * @throws IllegalArgumentException if source array, offset, or length are invalid
+     * @see Base64#GZIP
+     * @see Base64#DO_BREAK_LINES
+     * @since 2.3.1
+     */
+    public static byte[] encodeBytesToBytes(byte[] source, int off, int len, int options)
+            throws java.io.IOException {
 
-	static final Builder<Object> GenericBuilder = new Builder<Object>(){
-		@Override
-		public Class<Object> getType(){ return Object.class; }
-		@Override
-		public void writeTo(Object obj, GenericObjectOutput out) throws IOException{ out.writeObject(obj); }
-		@Override
-		public Object parseFrom(GenericObjectInput in) throws IOException{ return in.readObject(); }
-	};
+        if (source == null)
+            throw new NullPointerException("Cannot serialize a null array.");
 
-	static final Builder<Object[]> GenericArrayBuilder = new AbstractObjectBuilder<Object[]>(){
-		@Override
-		public Class<Object[]> getType(){ return Object[].class; }
-		@Override
-		protected Object[] newInstance(GenericObjectInput in) throws IOException
-		{
-			return new Object[in.readUInt()];
-		}
-		@Override
-		protected void readObject(Object[] ret, GenericObjectInput in) throws IOException
-		{
-			for(int i=0;i<ret.length;i++)
-				ret[i] = in.readObject();
-		}
-		@Override
-		protected void writeObject(Object[] obj, GenericObjectOutput out) throws IOException
-		{
-			out.writeUInt(obj.length);
-			for( Object item : obj )
-				out.writeObject(item);
-		}
-	};
+        if (off < 0)
+            throw new IllegalArgumentException("Cannot have negative offset: " + off);
 
-	static final Builder<Serializable> SerializableBuilder = new Builder<Serializable>(){
-		@Override
-		public Class<Serializable> getType()
-		{
-			return Serializable.class;
-		}
-		@Override
-		public void writeTo(Serializable obj, GenericObjectOutput out) throws IOException
-		{
-			if( obj == null )
-			{
-				out.write0(OBJECT_NULL);
-			}
-			else
-			{
-				out.write0(OBJECT_STREAM);
-				UnsafeByteArrayOutputStream bos = new UnsafeByteArrayOutputStream();
-				CompactedObjectOutputStream oos = new CompactedObjectOutputStream(bos);
-				oos.writeObject(obj);
-				oos.flush();
-				bos.close();
-				byte[] b = bos.toByteArray();
-				out.writeUInt(b.length);
-				out.write0(b, 0, b.length);
-			}
-		}
-		@Override
-		public Serializable parseFrom(GenericObjectInput in) throws IOException
-		{
-			byte b = in.read0();
-			if( b == OBJECT_NULL )
-				return null;
-			if( b != OBJECT_STREAM )
-				throw new IOException("Input format error, expect OBJECT_NULL|OBJECT_STREAM, get " + b + ".");
+        if (len < 0)
+            throw new IllegalArgumentException("Cannot have length offset: " + len);
 
-			UnsafeByteArrayInputStream bis = new UnsafeByteArrayInputStream(in.read0(in.readUInt()));
-			CompactedObjectInputStream ois = new CompactedObjectInputStream(bis);
-			try{ return (Serializable)ois.readObject(); }
-			catch(ClassNotFoundException e){ throw new IOException(StringUtils.toString(e)); }
-		}
-	};
+        if (off + len > source.length)
+            throw new IllegalArgumentException(String.format(
+                    "Cannot have offset of %d and length of %d with array of length %d", off, len, source.length));
 
-	static
-	{
-		addDesc(boolean[].class);
-		addDesc(byte[].class);
-		addDesc(char[].class);
-		addDesc(short[].class);
-		addDesc(int[].class);
-		addDesc(long[].class);
-		addDesc(float[].class);
-		addDesc(double[].class);
+        // Compress?
+        if ((options & GZIP) > 0) {
+            java.io.ByteArrayOutputStream baos = null;
+            java.util.zip.GZIPOutputStream gzos = null;
+            Base64.OutputStream b64os = null;
 
-		addDesc(Boolean.class);
-		addDesc(Byte.class);
-		addDesc(Character.class);
-		addDesc(Short.class);
-		addDesc(Integer.class);
-		addDesc(Long.class);
-		addDesc(Float.class);
-		addDesc(Double.class);
+            try {
+                // GZip -> Base64 -> ByteArray
+                baos = new java.io.ByteArrayOutputStream();
+                b64os = new Base64.OutputStream(baos, ENCODE | options);
+                gzos = new java.util.zip.GZIPOutputStream(b64os);
 
-		addDesc(String.class);
-		addDesc(String[].class);
+                gzos.write(source, off, len);
+                gzos.close();
+            } // end try
+            catch (java.io.IOException e) {
+                // Catch it and then throw it immediately so that
+                // the finally{} block is called for cleanup.
+                throw e;
+            } // end catch
+            finally {
+                try {
+                    gzos.close();
+                } catch (Exception e) {
+                }
+                try {
+                    b64os.close();
+                } catch (Exception e) {
+                }
+                try {
+                    baos.close();
+                } catch (Exception e) {
+                }
+            } // end finally
 
-		addDesc(ArrayList.class);
-		addDesc(HashMap.class);
-		addDesc(HashSet.class);
-		addDesc(Date.class);
-		addDesc(java.sql.Date.class);
-		addDesc(java.sql.Time.class);
-		addDesc(java.sql.Timestamp.class);
-		addDesc(java.util.LinkedList.class);
-		addDesc(java.util.LinkedHashMap.class);
-		addDesc(java.util.LinkedHashSet.class);
+            return baos.toByteArray();
+        } // end if: compress
 
-		register(byte[].class, new Builder<byte[]>(){
-			@Override
-			public Class<byte[]> getType(){ return byte[].class; }
-			@Override
-			public void writeTo(byte[] obj, GenericObjectOutput out) throws IOException{ out.writeBytes(obj); }
-			@Override
-			public byte[] parseFrom(GenericObjectInput in) throws IOException{ return in.readBytes(); }
-		});
-		register(Boolean.class, new Builder<Boolean>(){
-			@Override
-			public Class<Boolean> getType(){ return Boolean.class; }
-			@Override
-			public void writeTo(Boolean obj, GenericObjectOutput out) throws IOException
-			{
-				if( obj == null )
-					out.write0(VARINT_N1);
-				else if( obj.booleanValue() )
-					out.write0(VARINT_1);
-				else
-					out.write0(VARINT_0);
-			}
-			@Override
-			public Boolean parseFrom(GenericObjectInput in) throws IOException
-			{
-				byte b = in.read0();
-				switch( b )
-				{
-					case VARINT_N1: return null;
-					case VARINT_0: return Boolean.FALSE;
-					case VARINT_1: return Boolean.TRUE;
-					default: throw new IOException("Input format error, expect VARINT_N1|VARINT_0|VARINT_1, get " + b + ".");
-				}
-			}
-		});
-		register(Byte.class, new Builder<Byte>(){
-			@Override
-			public Class<Byte> getType(){ return Byte.class; }
-			@Override
-			public void writeTo(Byte obj, GenericObjectOutput out) throws IOException
-			{
-				if( obj == null )
-				{
-					out.write0(OBJECT_NULL);
-				}
-				else
-				{
-					out.write0(OBJECT_VALUE);
-					out.writeByte(obj.byteValue());
-				}
-			}
-			@Override
-			public Byte parseFrom(GenericObjectInput in) throws IOException
-			{
-				byte b = in.read0();
-				if( b == OBJECT_NULL )
-					return null;
-				if( b != OBJECT_VALUE )
-					throw new IOException("Input format error, expect OBJECT_NULL|OBJECT_VALUE, get " + b + ".");
+        // Else, don't compress. Better not to use streams at all then.
+        else {
+            boolean breakLines = (options & DO_BREAK_LINES) > 0;
 
-				return Byte.valueOf(in.readByte());
-			}
-		});
-		register(Character.class, new Builder<Character>(){
-			@Override
-			public Class<Character> getType(){ return Character.class; }
-			@Override
-			public void writeTo(Character obj, GenericObjectOutput out) throws IOException
-			{
-				if( obj == null )
-				{
-					out.write0(OBJECT_NULL);
-				}
-				else
-				{
-					out.write0(OBJECT_VALUE);
-					out.writeShort((short)obj.charValue());
-				}
-			}
-			@Override
-			public Character parseFrom(GenericObjectInput in) throws IOException
-			{
-				byte b = in.read0();
-				if( b == OBJECT_NULL )
-					return null;
-				if( b != OBJECT_VALUE )
-					throw new IOException("Input format error, expect OBJECT_NULL|OBJECT_VALUE, get " + b + ".");
+            // int len43 = len * 4 / 3;
+            // byte[] outBuff = new byte[ ( len43 ) // Main 4:3
+            // + ( (len % 3) > 0 ? 4 : 0 ) // Account for padding
+            // + (breakLines ? ( len43 / MAX_LINE_LENGTH ) : 0) ]; // New lines
+            // Try to determine more precisely how big the array needs to be.
+            // If we get it right, we don't have to do an array copy, and
+            // we save a bunch of memory.
+            int encLen = len / 3 * 4 + (len % 3 > 0 ? 4 : 0); // Bytes needed for actual encoding
+            if (breakLines)
+                encLen += encLen / MAX_LINE_LENGTH; // Plus extra newline characters
+            byte[] outBuff = new byte[encLen];
 
-				return Character.valueOf((char)in.readShort());
-			}
-		});
-		register(Short.class, new Builder<Short>(){
-			@Override
-			public Class<Short> getType(){ return Short.class; }
-			@Override
-			public void writeTo(Short obj, GenericObjectOutput out) throws IOException
-			{
-				if( obj == null )
-				{
-					out.write0(OBJECT_NULL);
-				}
-				else
-				{
-					out.write0(OBJECT_VALUE);
-					out.writeShort(obj.shortValue());
-				}
-			}
-			@Override
-			public Short parseFrom(GenericObjectInput in) throws IOException
-			{
-				byte b = in.read0();
-				if( b == OBJECT_NULL )
-					return null;
-				if( b != OBJECT_VALUE )
-					throw new IOException("Input format error, expect OBJECT_NULL|OBJECT_VALUE, get " + b + ".");
+            int d = 0;
+            int e = 0;
+            int len2 = len - 2;
+            int lineLength = 0;
+            for (; d < len2; d += 3, e += 4) {
+                encode3to4(source, d + off, 3, outBuff, e, options);
 
-				return Short.valueOf(in.readShort());
-			}
-		});
-		register(Integer.class, new Builder<Integer>(){
-			@Override
-			public Class<Integer> getType(){ return Integer.class; }
-			@Override
-			public void writeTo(Integer obj, GenericObjectOutput out) throws IOException
-			{
-				if( obj == null )
-				{
-					out.write0(OBJECT_NULL);
-				}
-				else
-				{
-					out.write0(OBJECT_VALUE);
-					out.writeInt(obj.intValue());
-				}
-			}
-			@Override
-			public Integer parseFrom(GenericObjectInput in) throws IOException
-			{
-				byte b = in.read0();
-				if( b == OBJECT_NULL )
-					return null;
-				if( b != OBJECT_VALUE )
-					throw new IOException("Input format error, expect OBJECT_NULL|OBJECT_VALUE, get " + b + ".");
+                lineLength += 4;
+                if (breakLines && lineLength >= MAX_LINE_LENGTH) {
+                    outBuff[e + 4] = NEW_LINE;
+                    e++;
+                    lineLength = 0;
+                } // end if: end of line
+            } // en dfor: each piece of array
 
-				return Integer.valueOf(in.readInt());
-			}
-		});
-		register(Long.class, new Builder<Long>(){
-			@Override
-			public Class<Long> getType(){ return Long.class; }
-			@Override
-			public void writeTo(Long obj, GenericObjectOutput out) throws IOException
-			{
-				if( obj == null )
-				{
-					out.write0(OBJECT_NULL);
-				}
-				else
-				{
-					out.write0(OBJECT_VALUE);
-					out.writeLong(obj.longValue());
-				}
-			}
-			@Override
-			public Long parseFrom(GenericObjectInput in) throws IOException
-			{
-				byte b = in.read0();
-				if( b == OBJECT_NULL )
-					return null;
-				if( b != OBJECT_VALUE )
-					throw new IOException("Input format error, expect OBJECT_NULL|OBJECT_VALUE, get " + b + ".");
+            if (d < len) {
+                encode3to4(source, d + off, len - d, outBuff, e, options);
+                e += 4;
+            } // end if: some padding needed
 
-				return Long.valueOf(in.readLong());
-			}
-		});
-		register(Float.class, new Builder<Float>(){
-			@Override
-			public Class<Float> getType(){ return Float.class; }
-			@Override
-			public void writeTo(Float obj, GenericObjectOutput out) throws IOException
-			{
-				if( obj == null )
-				{
-					out.write0(OBJECT_NULL);
-				}
-				else
-				{
-					out.write0(OBJECT_VALUE);
-					out.writeFloat(obj.floatValue());
-				}
-			}
-			@Override
-			public Float parseFrom(GenericObjectInput in) throws IOException
-			{
-				byte b = in.read0();
-				if( b == OBJECT_NULL )
-					return null;
-				if( b != OBJECT_VALUE )
-					throw new IOException("Input format error, expect OBJECT_NULL|OBJECT_VALUE, get " + b + ".");
+            // Only resize array if we didn't guess it right.
+            if (e < outBuff.length - 1) {
+                byte[] finalOut = new byte[e];
+                System.arraycopy(outBuff, 0, finalOut, 0, e);
+                // System.err.println("Having to resize array from " + outBuff.length + " to " + e
+                // );
+                return finalOut;
+            } else
+                // System.err.println("No need to resize array.");
+                return outBuff;
 
-				return new Float(in.readFloat());
-			}
-		});
-		register(Double.class, new Builder<Double>(){
-			@Override
-			public Class<Double> getType(){ return Double.class; }
-			@Override
-			public void writeTo(Double obj, GenericObjectOutput out) throws IOException
-			{
-				if( obj == null )
-				{
-					out.write0(OBJECT_NULL);
-				}
-				else
-				{
-					out.write0(OBJECT_VALUE);
-					out.writeDouble(obj.doubleValue());
-				}
-			}
-			@Override
-			public Double parseFrom(GenericObjectInput in) throws IOException
-			{
-				byte b = in.read0();
-				if( b == OBJECT_NULL )
-					return null;
-				if( b != OBJECT_VALUE )
-					throw new IOException("Input format error, expect OBJECT_NULL|OBJECT_VALUE, get " + b + ".");
+        } // end else: don't compress
 
-				return new Double(in.readDouble());
-			}
-		});
-		register(String.class, new Builder<String>(){
-			@Override
-			public Class<String> getType(){ return String.class; }
-			@Override
-			public String parseFrom(GenericObjectInput in) throws IOException{ return in.readUTF(); }
-			@Override
-			public void writeTo(String obj, GenericObjectOutput out) throws IOException{ out.writeUTF(obj); }
-		});
-		register(StringBuilder.class, new Builder<StringBuilder>(){
-			@Override
-			public Class<StringBuilder> getType(){ return StringBuilder.class; }
-			@Override
-			public StringBuilder parseFrom(GenericObjectInput in) throws IOException{ return new StringBuilder(in.readUTF()); }
-			@Override
-			public void writeTo(StringBuilder obj, GenericObjectOutput out) throws IOException{ out.writeUTF(obj.toString()); }
-		});
-		register(StringBuffer.class, new Builder<StringBuffer>(){
-			@Override
-			public Class<StringBuffer> getType(){ return StringBuffer.class; }
-			@Override
-			public StringBuffer parseFrom(GenericObjectInput in) throws IOException{ return new StringBuffer(in.readUTF()); }
-			@Override
-			public void writeTo(StringBuffer obj, GenericObjectOutput out) throws IOException{ out.writeUTF(obj.toString()); }
-		});
+    } // end encodeBytesToBytes
 
-		// java.util
-		register(ArrayList.class, new Builder<ArrayList>(){
-			@Override
-			public Class<ArrayList> getType(){ return ArrayList.class; }
-			@Override
-			public void writeTo(ArrayList obj, GenericObjectOutput out) throws IOException
-			{
-				if( obj == null )
-				{
-					out.write0(OBJECT_NULL);
-				}
-				else
-				{
-					out.write0(OBJECT_VALUES);
-					out.writeUInt(obj.size());
-					for( Object item : obj )
-						out.writeObject(item);
-				}
-			}
-			@Override
-			public ArrayList parseFrom(GenericObjectInput in) throws IOException
-			{
-				byte b = in.read0();
-				if( b == OBJECT_NULL )
-					return null;
-				if( b != OBJECT_VALUES )
-					throw new IOException("Input format error, expect OBJECT_NULL|OBJECT_VALUES, get " + b + ".");
+    /**
+     * Reads <tt>infile</tt> and encodes it to <tt>outfile</tt>.
+     *
+     * @param infile  Input file
+     * @param outfile Output file
+     *
+     * @throws java.io.IOException if there is an error
+     * @since 2.2
+     */
+    public static void encodeFileToFile(String infile, String outfile)
+            throws java.io.IOException {
 
-				int len = in.readUInt();
-				ArrayList ret = new ArrayList(len);
-				for(int i=0;i<len;i++)
-					ret.add(in.readObject());
-				return ret;
-			}
-		});
-		register(HashMap.class, new Builder<HashMap>(){
-			@Override
-			public Class<HashMap> getType(){ return HashMap.class; }
-			@Override
-			public void writeTo(HashMap obj, GenericObjectOutput out) throws IOException
-			{
-				if( obj == null )
-				{
-					out.write0(OBJECT_NULL);
-				}
-				else
-				{
-					out.write0(OBJECT_MAP);
-					out.writeUInt(obj.size());
-					for( Map.Entry entry : (Set<Map.Entry>)obj.entrySet() )
-					{
-						out.writeObject(entry.getKey());
-						out.writeObject(entry.getValue());
-					}
-				}
-			}
-			@Override
-			public HashMap parseFrom(GenericObjectInput in) throws IOException
-			{
-				byte b = in.read0();
-				if( b == OBJECT_NULL )
-					return null;
-				if( b != OBJECT_MAP )
-					throw new IOException("Input format error, expect OBJECT_NULL|OBJECT_MAP, get " + b + ".");
+        String encoded = Base64.encodeFromFile(infile);
+        java.io.OutputStream out = null;
+        try {
+            out = new java.io.BufferedOutputStream(new java.io.FileOutputStream(outfile));
+            out.write(encoded.getBytes("US-ASCII")); // Strict, 7-bit output.
+        } // end try
+        catch (java.io.IOException e) {
+            throw e; // Catch and release to execute finally{}
+        } // end catch
+        finally {
+            try {
+                out.close();
+            } catch (Exception ex) {
+            }
+        } // end finally
+    } // end encodeFileToFile
 
-				int len = in.readUInt();
-				HashMap ret = new HashMap(len);
-				for(int i=0;i<len;i++)
-					ret.put(in.readObject(), in.readObject());
-				return ret;
-			}
-		});
-		register(HashSet.class, new Builder<HashSet>(){
-			@Override
-			public Class<HashSet> getType(){ return HashSet.class; }
-			@Override
-			public void writeTo(HashSet obj, GenericObjectOutput out) throws IOException
-			{
-				if( obj == null )
-				{
-					out.write0(OBJECT_NULL);
-				}
-				else
-				{
-					out.write0(OBJECT_VALUES);
-					out.writeUInt(obj.size());
-					for( Object item : obj )
-						out.writeObject(item);
-				}
-			}
-			@Override
-			public HashSet parseFrom(GenericObjectInput in) throws IOException
-			{
-				byte b = in.read0();
-				if( b == OBJECT_NULL )
-					return null;
-				if( b != OBJECT_VALUES )
-					throw new IOException("Input format error, expect OBJECT_NULL|OBJECT_VALUES, get " + b + ".");
+    /**
+     * Convenience method for reading a binary file and base64-encoding it. <p/> <p> As of v 2.3, if there is a error,
+     * the method will throw an java.io.IOException. <b>This is new to v2.3!</b> In earlier versions, it just returned
+     * false, but in retrospect that's a pretty poor way to next it. </p>
+     *
+     * @param filename Filename for reading binary data
+     *
+     * @return base64-encoded string
+     *
+     * @throws java.io.IOException if there is an error
+     * @since 2.1
+     */
+    public static String encodeFromFile(String filename)
+            throws java.io.IOException {
 
-				int len = in.readUInt();
-				HashSet ret = new HashSet(len);
-				for(int i=0;i<len;i++)
-					ret.add(in.readObject());
-				return ret;
-			}
-		});
+        String encodedData = null;
+        Base64.InputStream bis = null;
+        try {
+            // Set up some useful variables
+            java.io.File file = new java.io.File(filename);
+            byte[] buffer = new byte[Math.max((int) (file.length() * 1.4), 40)]; // Need max() for
+            // math on small
+            // files (v2.2.1)
+            int length = 0;
+            int numBytes = 0;
 
-		register(Date.class, new Builder<Date>(){
-			@Override
-			public Class<Date> getType(){ return Date.class; }
-			@Override
-			public void writeTo(Date obj, GenericObjectOutput out) throws IOException
-			{
-				if( obj == null )
-				{
-					out.write0(OBJECT_NULL);
-				}
-				else
-				{
-					out.write0(OBJECT_VALUE);
-					out.writeLong(obj.getTime());
-				}
-			}
-			@Override
-			public Date parseFrom(GenericObjectInput in) throws IOException
-			{
-				byte b = in.read0();
-				if( b == OBJECT_NULL )
-					return null;
-				if( b != OBJECT_VALUE )
-					throw new IOException("Input format error, expect OBJECT_NULL|OBJECT_VALUE, get " + b + ".");
+            // Open a stream
+            bis = new Base64.InputStream(new java.io.BufferedInputStream(new java.io.FileInputStream(file)),
+                                         Base64.ENCODE);
 
-				return new Date(in.readLong());
-			}
-		});
+            // Read until done
+            while ((numBytes = bis.read(buffer, length, 4096)) >= 0)
+                length += numBytes;
 
-		// java.sql
-		register(java.sql.Date.class, new Builder<java.sql.Date>(){
-			@Override
-			public Class<java.sql.Date> getType(){ return java.sql.Date.class; }
-			@Override
-			public void writeTo(java.sql.Date obj, GenericObjectOutput out) throws IOException
-			{
-				if( obj == null )
-				{
-					out.write0(OBJECT_NULL);
-				}
-				else
-				{
-					out.write0(OBJECT_VALUE);
-					out.writeLong(obj.getTime());
-				}
-			}
-			@Override
-			public java.sql.Date parseFrom(GenericObjectInput in) throws IOException
-			{
-				byte b = in.read0();
-				if( b == OBJECT_NULL )
-					return null;
-				if( b != OBJECT_VALUE )
-					throw new IOException("Input format error, expect OBJECT_NULL|OBJECT_VALUE, get " + b + ".");
+            // Save in a variable to return
+            encodedData = new String(buffer, 0, length, Base64.PREFERRED_ENCODING);
 
-				return new java.sql.Date(in.readLong());
-			}
-		});
-		register(java.sql.Timestamp.class, new Builder<java.sql.Timestamp>(){
-			@Override
-			public Class<java.sql.Timestamp> getType(){ return java.sql.Timestamp.class; }
-			@Override
-			public void writeTo(java.sql.Timestamp obj, GenericObjectOutput out) throws IOException
-			{
-				if( obj == null )
-				{
-					out.write0(OBJECT_NULL);
-				}
-				else
-				{
-					out.write0(OBJECT_VALUE);
-					out.writeLong(obj.getTime());
-				}
-			}
-			@Override
-			public java.sql.Timestamp parseFrom(GenericObjectInput in) throws IOException
-			{
-				byte b = in.read0();
-				if( b == OBJECT_NULL )
-					return null;
-				if( b != OBJECT_VALUE )
-					throw new IOException("Input format error, expect OBJECT_NULL|OBJECT_VALUE, get " + b + ".");
+        } // end try
+        catch (java.io.IOException e) {
+            throw e; // Catch and release to execute finally{}
+        } // end catch: java.io.IOException
+        finally {
+            try {
+                bis.close();
+            } catch (Exception e) {
+            }
+        } // end finally
 
-				return new java.sql.Timestamp(in.readLong());
-			}
-		});
-		register(java.sql.Time.class, new Builder<java.sql.Time>(){
-			@Override
-			public Class<java.sql.Time> getType(){ return java.sql.Time.class; }
-			@Override
-			public void writeTo(java.sql.Time obj, GenericObjectOutput out) throws IOException
-			{
-				if( obj == null )
-				{
-					out.write0(OBJECT_NULL);
-				}
-				else
-				{
-					out.write0(OBJECT_VALUE);
-					out.writeLong(obj.getTime());
-				}
-			}
-			@Override
-			public java.sql.Time parseFrom(GenericObjectInput in) throws IOException
-			{
-				byte b = in.read0();
-				if( b == OBJECT_NULL )
-					return null;
-				if( b != OBJECT_VALUE )
-					throw new IOException("Input format error, expect OBJECT_NULL|OBJECT_VALUE, get " + b + ".");
+        return encodedData;
+    } // end encodeFromFile
 
-				return new java.sql.Time(in.readLong());
-			}
-		});
-	}
-}
+    /**
+     * Serializes an object and returns the Base64-encoded version of that serialized object. <p/> <p> As of v 2.3, if
+     * the object cannot be serialized or there is another error, the method will throw an java.io.IOException. <b>This
+     * is new to v2.3!</b> In earlier versions, it just returned a null value, but in retrospect that's a pretty poor
+     * way to next it. </p>
+     * <p/>
+     * The object is not GZip-compressed before being encoded.
+     *
+     * @param serializableObject The object to encode
+     *
+     * @return The Base64-encoded object
+     *
+     * @throws java.io.IOException  if there is an error
+     * @throws NullPointerException if serializedObject is null
+     * @since 1.4
+     */
+    public static String encodeObject(java.io.Serializable serializableObject)
+            throws java.io.IOException {
+        return encodeObject(serializableObject, NO_OPTIONS);
+    } // end encodeObject
+
+    /**
+     * Serializes an object and returns the Base64-encoded version of that serialized object. <p/> <p> As of v 2.3, if
+     * the object cannot be serialized or there is another error, the method will throw an java.io.IOException. <b>This
+     * is new to v2.3!</b> In earlier versions, it just returned a null value, but in retrospect that's a pretty poor
+     * way to next it. </p>
+     * <p/>
+     * The object is not GZip-compressed before being encoded.
+     * <p/>
+     * Example options:
+     * <p/>
+     * <pre>
+     *   GZIP: gzip-compresses object before encoding it.
+     *   DO_BREAK_LINES: break lines at 76 characters
+     * </pre>
+     * <p/>
+     * Example: <code>encodeObject( myObj, Base64.GZIP )</code> or
+     * <p/>
+     * Example: <code>encodeObject( myObj, Base64.GZIP | Base64.DO_BREAK_LINES )</code>
+     *
+     * @param serializableObject The object to encode
+     * @param options            Specified options
+     *
+     * @return The Base64-encoded object
+     *
+     * @throws java.io.IOException if there is an error
+     * @see Base64#GZIP
+     * @see Base64#DO_BREAK_LINES
+     * @since 2.0
+     */
+    public static String encodeObject(java.io.Serializable serializableObject, int options)
+            throws java.io.IOException {
+
+        if (serializableObject == null)
+            throw new NullPointerException("Cannot serialize a null object.");
+
+        // Streams
+        java.io.ByteArrayOutputStream baos = null;
+        java.io.OutputStream b64os = null;
+        java.io.ObjectOutputStream oos = null;
+
+        try {
+            // ObjectOutputStream -> (GZIP) -> Base64 -> ByteArrayOutputStream
+            // Note that the optional GZIPping is handled by Base64.OutputStream.
+            baos = new java.io.ByteArrayOutputStream();
+            b64os = new Base64.OutputStream(baos, ENCODE | options);
+            oos = new java.io.ObjectOutputStream(b64os);
+            oos.writeObject(serializableObject);
+        } // end try
+        catch (java.io.IOException e) {
+            // Catch it and then throw it immediately so that
+            // the finally{} block is called for cleanup.
+            throw e;
+        } // end catch
+        finally {
+            try {
+                oos.close();
+            } catch (Exception e) {
+            }
+            try {
+                b64os.close();
+            } catch (Exception e) {
+            }
+            try {
+                baos.close();
+            } catch (Exception e) {
+            }
+        } // end finally
+
+        // Return value according to relevant encoding.
+        try {
+            return new String(baos.toByteArray(), PREFERRED_ENCODING);
+        } // end try
+        catch (java.io.UnsupportedEncodingException uue) {
+            // Fall back to some Java default
+            return new String(baos.toByteArray());
+        } // end catch
+
+    } // end encode
+
+    /**
+     * Convenience method for encoding data to a file. <p/> <p> As of v 2.3, if there is a error, the method will throw
+     * an java.io.IOException. <b>This is new to v2.3!</b> In earlier versions, it just returned false, but in
+     * retrospect that's a pretty poor way to next it. </p>
+     *
+     * @param dataToEncode byte array of data to encode in base64 form
+     * @param filename     Filename for saving encoded data
+     *
+     * @throws java.io.IOException  if there is an error
+     * @throws NullPointerException if dataToEncode is null
+     * @since 2.1
+     */
+    public static void encodeToFile(byte[] dataToEncode, String filename)
+            throws java.io.IOException {
+
+        if (dataToEncode == null)
+            throw new NullPointerException("Data to encode was null.");
+
+        Base64.OutputStream bos = null;
+        try {
+            bos = new Base64.OutputStream(new java.io.FileOutputStream(filename), Base64.ENCODE);
+            bos.write(dataToEncode);
+        } // end try
+        catch (java.io.IOException e) {
+            throw e; // Catch and throw to execute finally{} block
+        } // end catch: java.io.IOException
+        finally {
+            try {
+                bos.close();
+            } catch (Exception e) {
+            }
+        } // end finally
+
+    } // end encodeToFile
+
+    /**
+     * Decodes four bytes from array <var>source</var> and writes the resulting bytes (up to three of them) to
+     * <var>destination</var>. The source and destination arrays can be manipulated anywhere along their length by
+     * specifying <var>srcOffset</var> and <var>destOffset</var>. This method does not check to make sure your arrays
+     * are large enough to accomodate <var>srcOffset</var> + 4 for the <var>source</var> array or <var>destOffset</var>
+     * + 3 for the <var>destination</var> array. This method returns the actual number of bytes that were converted from
+     * the Base64 encoding. <p> This is the lowest level of the decoding method with all possible parameters. </p>
+     *
+     * @param source      the array to convert
+     * @param srcOffset   the index where conversion begins
+     * @param destination the array to hold the conversion
+     * @param destOffset  the index where output will be put
+     * @param options     alphabet type is pulled from this (standard, url-safe, ordered)
+     *
+     * @return the number of decoded bytes converted
+     *
+     * @throws NullPointerException     if source or destination arrays are null
+     * @throws IllegalArgumentException if srcOffset or destOffset are invalid or there is not enough room in the
+     *                                  array.
+     * @since 1.3
+     */
+    private static int decode4to3(byte[] source, int srcOffset, byte[] destination, int destOffset, int options) {
+
+        // Lots of error checking and exception throwing
+        if (source == null)
+            throw new NullPointerException("Source array was null.");
+        if (destination == null)
+            throw new NullPointerException("Destination array was null.");
+        if (srcOffset < 0 || srcOffset + 3 >= source.length)
+            throw new IllegalArgumentException(String.format(
+                    "Source array with length %d cannot have offset of %d and still process four bytes.",
+                    source.length, srcOffset));
+        if (destOffset < 0 || destOffset + 2 >= destination.length)
+            throw new IllegalArgumentException(String.format(
+                    "Destination array with length %d cannot have offset of %d and still store three bytes.",
+                    destination.length, destOffset));
+
+        byte[] DECODABET = getDecodabet(options);
+
+        // Example: Dk==
+        if (source[srcOffset + 2] == EQUALS_SIGN) {
+            // Two ways to do the same thing. Don't know which way I like best.
+            // int outBuff = ( ( DECODABET[ source[ srcOffset ] ] << 24 ) >>> 6 )
+            // | ( ( DECODABET[ source[ srcOffset + 1] ] << 24 ) >>> 12 );
+            int outBuff = (DECODABET[source[srcOffset]] & 0xFF) << 18 | (DECODABET[source[srcOffset + 1]] & 0xFF) << 12;
+
+            destination[destOffset] = (byte) (outBuff >>> 16);
+            return 1;
+        }
+
+        // Example: DkL=
+        else if (source[srcOffset + 3] == EQUALS_SIGN) {
+            // Two ways to do the same thing. Don't know which way I like best.
+            // int outBuff = ( ( DECODABET[ source[ srcOffset ] ] << 24 ) >>> 6 )
+            // | ( ( DECODABET[ source[ srcOffset + 1 ] ] << 24 ) >>> 12 )
+            // | ( ( DECODABET[ source[ srcOffset + 2 ] ] << 24 ) >>> 18 );
+            int outBuff = (DECODABET[source[srcOffset]] & 0xFF) << 18 | (DECODABET[source[srcOffset + 1]] & 0xFF) << 12
+                    | (DECODABET[source[srcOffset + 2]] & 0xFF) << 6;
+
+            destination[destOffset] = (byte) (outBuff >>> 16);
+            destination[destOffset + 1] = (byte) (outBuff >>> 8);
+            return 2;
+        }
+
+        // Example: DkLE
+        else {
+            // Two ways to do the same thing. Don't know which way I like best.
+            // int outBuff = ( ( DECODABET[ source[ srcOffset ] ] << 24 ) >>> 6 )
+            // | ( ( DECODABET[ source[ srcOffset + 1 ] ] << 24 ) >>> 12 )
+            // | ( ( DECODABET[ source[ srcOffset + 2 ] ] << 24 ) >>> 18 )
+            // | ( ( DECODABET[ source[ srcOffset + 3 ] ] << 24 ) >>> 24 );
+            int outBuff = (DECODABET[source[srcOffset]] & 0xFF) << 18 | (DECODABET[source[srcOffset + 1]] & 0xFF) << 12
+                    | (DECODABET[source[srcOffset + 2]] & 0xFF) << 6 | DECODABET[source[srcOffset + 3]] & 0xFF;
+
+            destination[destOffset] = (byte) (outBuff >> 16);
+            destination[destOffset + 1] = (byte) (outBuff >> 8);
+            destination[destOffset + 2] = (byte) outBuff;
+
+            return 3;
+        }
+    } // end decodeToBytes
+
+    /**
+     * Encodes up to the first three bytes of array <var>threeBytes</var> and returns a four-byte array in Base64
+     * notation. The actual number of significant bytes in your array is given by <var>numSigBytes</var>. The array
+     * <var>threeBytes</var> needs only be as big as <var>numSigBytes</var>. Code can reuse a byte array by passing a
+     * four-byte array as <var>b4</var>.
+     *
+     * @param b4          A reusable byte array to reduce array instantiation
+     * @param threeBytes  the array to convert
+     * @param numSigBytes the number of significant bytes in your array
+     *
+     * @return four byte array in Base64 notation.
+     *
+     * @since 1.5.1
+     */
+    private static byte[] encode3to4(byte[] b4, byte[] threeBytes, int numSigBytes, int options) {
+        encode3to4(threeBytes, 0, numSigBytes, b4, 0, options);
+        return b4;
+    } // end encode3to4
+
+    /**
+     * <p> Encodes up to three bytes of the array <var>source</var> and writes the resulting four Base64 bytes to
+     * <var>destination</var>. The source and destination arrays can be manipulated anywhere along their length by
+     * specifying <var>srcOffset</var> and <var>destOffset</var>. This method does not check to make sure your arrays
+     * are large enough to accomodate <var>srcOffset</var> + 3 for the <var>source</var> array or <var>destOffset</var>
+     * + 4 for the <var>destination</var> array. The actual number of significant bytes in your array is given by
+     * <var>numSigBytes</var>. </p> <p> This is the lowest level of the encoding method with all possible parameters.
+     * </p>
+     *
+     * @param source      the array to convert
+     * @param srcOffset   the index where conversion begins
+     * @param numSigBytes the number of significant bytes in your array
+     * @param destination the array to hold the conversion
+     * @param destOffset  the index where output will be put
+     *
+     * @return the <var>destination</var> array
+     *
+     * @since 1.3
+     */
+    private static byte[] encode3to4(byte[] source, int srcOffset, int numSigBytes, byte[] destination, int destOffset,
+                                     int options) {
+
+        byte[] ALPHABET = getAlphabet(options);
+
+        // 1 2 3
+        // 01234567890123456789012345678901 Bit position
+        // --------000000001111111122222222 Array position from threeBytes
+        // --------| || || || | Six bit groups to index ALPHABET
+        // >>18 >>12 >> 6 >> 0 Right shift necessary
+        // 0x3f 0x3f 0x3f Additional AND
+
+        // Create buffer with zero-padding if there are only one or two
+        // significant bytes passed in the array.
+        // We have to shift left 24 in order to flush out the 1's that appear
+        // when Java treats a value as negative that is cast from a byte to an int.
+        int inBuff = (numSigBytes > 0 ? source[srcOffset] << 24 >>> 8 : 0)
+                | (numSigBytes > 1 ? source[srcOffset + 1] << 24 >>> 16 : 0)
+                | (numSigBytes > 2 ? source[srcOffset + 2] << 24 >>> 24 : 0);
+
+        switch (numSigBytes) {
+            case 3:
+                destination[destOffset] = ALPHABET[(inBuff >>> 18)];
+                destination[destOffset + 1] = ALPHABET[inBuff >>> 12 & 0x3f];
+                destination[destOffset + 2] = ALPHABET[inBuff >>> 6 & 0x3f];
+                destination[destOffset + 3] = ALPHABET[inBuff & 0x3f];
+                return destination;
+
+            case 2:
+                destination[destOffset] = ALPHABET[(inBuff >>> 18)];
+                destination[destOffset + 1] = ALPHABET[inBuff >>> 12 & 0x3f];
+                destination[destOffset + 2] = ALPHABET[inBuff >>> 6 & 0x3f];
+                destination[destOffset + 3] = EQUALS_SIGN;
+                return destination;
+
+            case 1:
+                destination[destOffset] = ALPHABET[(inBuff >>> 18)];
+                destination[destOffset + 1] = ALPHABET[inBuff >>> 12 & 0x3f];
+                destination[destOffset + 2] = EQUALS_SIGN;
+                destination[destOffset + 3] = EQUALS_SIGN;
+                return destination;
+
+            default:
+                return destination;
+        } // end switch
+    } // end encode3to4
+
+    /**
+     * Returns one of the _SOMETHING_ALPHABET byte arrays depending on the options specified. It's possible, though
+     * silly, to specify ORDERED <b>and</b> URLSAFE in which case one of them will be picked, though there is no
+     * guarantee as to which one will be picked.
+     */
+    private static byte[] getAlphabet(int options) {
+        if ((options & URL_SAFE) == URL_SAFE)
+            return _URL_SAFE_ALPHABET;
+        else if ((options & ORDERED) == ORDERED)
+            return _ORDERED_ALPHABET;
+        else
+            return _STANDARD_ALPHABET;
+    } // end getAlphabet
+
+    /**
+     * Returns one of the _SOMETHING_DECODABET byte arrays depending on the options specified. It's possible, though
+     * silly, to specify ORDERED and URL_SAFE in which case one of them will be picked, though there is no guarantee as
+     * to which one will be picked.
+     */
+    private static byte[] getDecodabet(int options) {
+        if ((options & URL_SAFE) == URL_SAFE)
+            return _URL_SAFE_DECODABET;
+        else if ((options & ORDERED) == ORDERED)
+            return _ORDERED_DECODABET;
+        else
+            return _STANDARD_DECODABET;
+    } // end getAlphabet
+
+    /** Defeats instantiation. */
+    private Base64() {
+    }
+
+} // end class Base64

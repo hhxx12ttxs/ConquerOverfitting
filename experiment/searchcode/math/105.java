@@ -1,346 +1,1096 @@
-/*  Copyright (c) 2006-2007, Vladimir Nikic
-    All rights reserved.
-
-    Redistribution and use of this software in source and binary forms,
-    with or without modification, are permitted provided that the following
-    conditions are met:
-
-    * Redistributions of source code must retain the above
-      copyright notice, this list of conditions and the
-      following disclaimer.
-
-    * Redistributions in binary form must reproduce the above
-      copyright notice, this list of conditions and the
-      following disclaimer in the documentation and/or other
-      materials provided with the distribution.
-
-    * The name of HtmlCleaner may not be used to endorse or promote
-      products derived from this software without specific prior
-      written permission.
-
-    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-    AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-    IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-    ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
-    LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-    CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-    SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-    INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-    CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-    ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-    POSSIBILITY OF SUCH DAMAGE.
-
-    You can contact Vladimir Nikic by sending e-mail to
-    nikic_vladimir@yahoo.com. Please include the word "HtmlCleaner" in the
-    subject line.
-*/
-
-package org.htmlcleaner;
+package com.objectwave.utility;
 
 import java.io.*;
-import java.net.URL;
-import java.util.StringTokenizer;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.*;
 
 /**
- * <p>Common utilities.</p>
+ *  Extension fo the RandomAccessFile to use currBuf.bytesfered I/O as much as
+ *  possible. Usable with the <code>com.objectwave.persist.FileBroker</code> .
+ *  Publically identical to <code>java.io.RandomAccessFile</code> , except for
+ *  the constuctor and <code>flush()</code> . <p>
  *
- * Created by: Vladimir Nikic<br/>
- * Date: November, 2006.
+ *  <b>Note:</b> This class is not threadsafe.
+ *
+ * @author  Steven Sinclair
+ * @version  $Date: 2005/02/20 17:27:32 $ $Revision: 2.3 $
+ * @see  java.io.RandomAccessFile
  */
-public class Utils {
+public class BufferedRandomAccessFile implements DataInput, DataOutput
+{
 
-    /**
-     * Trims specified string from left.
-     * @param s
+	protected FileBufferStruct currBuf;
+	protected FileBufferStruct altBuf;
+
+//////////////////////////////  END CUT & PASTE FROM RandomAccessFile
+
+	RandomAccessFile delegate;
+
+	/**
+	 *  Constructor for the BufferedRandomAccessFile object
+	 *
+	 * @param  file Description of Parameter
+	 * @param  mode Description of Parameter
+	 * @param  bufferSize Description of Parameter
+	 * @exception  IOException Description of Exception
+	 */
+	public BufferedRandomAccessFile(File file, String mode, int bufferSize) throws IOException
+	{
+		this(file, mode);
+
+		if(bufferSize < 1)
+		{
+			throw new Error("Buffer size must be at least 1");
+		}
+		currBuf = new FileBufferStruct();
+		altBuf = new FileBufferStruct();
+		currBuf.bytes = new byte[bufferSize];
+		currBuf.filePos = delegate.getFilePointer();
+		currBuf.modified = false;
+		altBuf.bytes = new byte[bufferSize];
+		altBuf.filePos = -1;
+		// not initialized
+		fillBuffer();
+	}
+
+	/**
+	 *  Constructor for the BufferedRandomAccessFile object
+	 *
+	 * @param  file Description of Parameter
+	 * @param  mode Description of Parameter
+	 * @exception  IOException Description of Exception
+	 */
+	protected BufferedRandomAccessFile(File file, String mode) throws IOException
+	{
+		delegate = new RandomAccessFile(file, mode);
+	}
+
+	/**
+	 *  Sets the Length attribute of the BufferedRandomAccessFile object
+	 *
+	 * @param  newLength The new Length value
+	 * @exception  IOException Description of Exception
+	 */
+	public void setLength(long newLength) throws IOException
+	{
+		// need to check altBuf, too.
+
+		delegate.setLength(newLength);
+		if(newLength < currBuf.filePos)
+		{
+			currBuf.filePos = newLength;
+			currBuf.pos = 0;
+			currBuf.dataLen = 0;
+		}
+		else if(newLength < currBuf.filePos + currBuf.dataLen)
+		{
+			currBuf.dataLen = (int) (newLength - currBuf.filePos);
+			if(currBuf.dataLen > currBuf.pos)
+			{
+				currBuf.pos = currBuf.dataLen;
+			}
+		}
+	}
+
+/////////////////////////////  Support Reader & Writer
+
+	/**
+	 *  Gets the Reader attribute of the BufferedRandomAccessFile object
+	 *
+	 * @return  The Reader value
+	 */
+	public Reader getReader()
+	{
+		return
+			new Reader()
+			{
+				/**
+				 *  Description of the Method
+				 *
+				 * @exception  IOException Description of Exception
+				 */
+				public void close() throws IOException
+				{
+					BufferedRandomAccessFile.this.close();
+				}
+				/**
+				 *  Description of the Method
+				 *
+				 * @param  readAhreadLimit Description of Parameter
+				 * @exception  IOException Description of Exception
+				 */
+				public void mark(int readAhreadLimit) throws IOException
+				{
+					throw new IOException("mark not supported");
+				}
+				/**
+				 *  Description of the Method
+				 *
+				 * @return  Description of the Returned Value
+				 */
+				public boolean markSupported()
+				{
+					return false;
+				}
+				/**
+				 *  Description of the Method
+				 *
+				 * @return  Description of the Returned Value
+				 * @exception  IOException Description of Exception
+				 */
+				public int read() throws IOException
+				{
+					return BufferedRandomAccessFile.this.readChar();
+				}
+				/**
+				 *  Description of the Method
+				 *
+				 * @param  buf Description of Parameter
+				 * @return  Description of the Returned Value
+				 * @exception  IOException Description of Exception
+				 */
+				public int read(char[] buf) throws IOException
+				{
+					return read(buf, 0, buf.length);
+				}
+				/**
+				 *  Description of the Method
+				 *
+				 * @param  buf Description of Parameter
+				 * @param  pos Description of Parameter
+				 * @param  len Description of Parameter
+				 * @return  Description of the Returned Value
+				 * @exception  IOException Description of Exception
+				 */
+				public int read(char[] buf, int pos, int len) throws IOException
+				{
+					for(int i = 0; i < len; i++)
+					{
+						buf[pos + i] = readChar();
+					}
+					return len;
+				}
+				/**
+				 *  Description of the Method
+				 *
+				 * @return  Description of the Returned Value
+				 * @exception  IOException Description of Exception
+				 */
+				public boolean ready() throws IOException
+				{
+					return (currBuf.pos < currBuf.dataLen) ||
+							(length() < currBuf.filePos + currBuf.pos);
+				}
+				/**
+				 *  Description of the Method
+				 *
+				 * @param  n Description of Parameter
+				 * @return  Description of the Returned Value
+				 * @exception  IOException Description of Exception
+				 */
+				public long skip(long n) throws IOException
+				{
+					skipBytes(n);
+					return n;
+				}
+			};
+	}
+
+	/**
+	 *  Gets the Writer attribute of the BufferedRandomAccessFile object
+	 *
+	 * @return  The Writer value
+	 */
+	public Writer getWriter()
+	{
+		return
+			new Writer()
+			{
+				/**
+				 *  Description of the Method
+				 *
+				 * @exception  IOException Description of Exception
+				 */
+				public void close() throws IOException
+				{
+					BufferedRandomAccessFile.this.close();
+				}
+				/**
+				 *  Description of the Method
+				 *
+				 * @exception  IOException Description of Exception
+				 */
+				public void flush() throws IOException
+				{
+					BufferedRandomAccessFile.this.flush();
+				}
+				/**
+				 *  Description of the Method
+				 *
+				 * @param  ch Description of Parameter
+				 * @exception  IOException Description of Exception
+				 */
+				public void write(int ch) throws IOException
+				{
+					writeChar(ch);
+				}
+				/**
+				 *  Description of the Method
+				 *
+				 * @param  ch Description of Parameter
+				 * @exception  IOException Description of Exception
+				 */
+				public void write(char[] ch) throws IOException
+				{
+					write(ch, 0, ch.length);
+				}
+				/**
+				 *  Description of the Method
+				 *
+				 * @param  ch Description of Parameter
+				 * @param  pos Description of Parameter
+				 * @param  len Description of Parameter
+				 * @exception  IOException Description of Exception
+				 */
+				public void write(char[] ch, int pos, int len) throws IOException
+				{
+					for(int i = 0; i < len; i++)
+					{
+						writeChar(ch[pos + i]);
+					}
+				}
+				/**
+				 *  Description of the Method
+				 *
+				 * @param  str Description of Parameter
+				 * @exception  IOException Description of Exception
+				 */
+				public void write(String str) throws IOException
+				{
+					write(str, 0, str.length());
+				}
+				/**
+				 *  Description of the Method
+				 *
+				 * @param  str Description of Parameter
+				 * @param  pos Description of Parameter
+				 * @param  len Description of Parameter
+				 * @exception  IOException Description of Exception
+				 */
+				public void write(String str, int pos, int len) throws IOException
+				{
+					for(int i = 0; i < len; i++)
+					{
+						writeChar(str.charAt(pos + i));
+					}
+				}
+			};
+	}
+
+	/**
+	 *  Gets the FD attribute of the BufferedRandomAccessFile object
+	 *
+	 * @return  The FD value
+	 * @exception  IOException Description of Exception
+	 */
+	public FileDescriptor getFD() throws IOException
+	{
+		return delegate.getFD();
+	}
+
+	/**
+	 *  Gets the FilePointer attribute of the BufferedRandomAccessFile object
+	 *
+	 * @return  The FilePointer value
+	 */
+	public long getFilePointer()
+	{
+		return currBuf.filePos + currBuf.pos;
+	}
+
+//////////////////////////////  BEGIN CUT & PASTE FROM RandomAccessFile
+
+	/**
+	 *  Description of the Method
+	 *
+	 * @return  Description of the Returned Value
+	 * @exception  IOException Description of Exception
+	 */
+	public boolean readBoolean() throws IOException
+	{
+		return readByte() != 0;
+	}
+
+	/**
+	 *  Description of the Method
+	 *
+	 * @return  Description of the Returned Value
+	 * @exception  IOException Description of Exception
+	 */
+	public int readUnsignedByte() throws IOException
+	{
+		int b = read();
+		if(b < 0)
+		{
+			throw new EOFException();
+		}
+		return b & 0xff;
+	}
+
+	/**
+	 *  Description of the Method
+	 *
+	 * @return  Description of the Returned Value
+	 * @exception  IOException Description of Exception
+	 */
+	public byte readByte() throws IOException
+	{
+		int b = read();
+		if(b < 0)
+		{
+			throw new EOFException();
+		}
+		return (byte) b;
+	}
+
+	/**
+	 *  Description of the Method
+	 *
+	 * @return  Description of the Returned Value
+	 * @exception  IOException Description of Exception
+	 */
+	public short readShort() throws IOException
+	{
+		int ch1 = this.read();
+		int ch2 = this.read();
+		if((ch1 | ch2) < 0)
+		{
+			throw new EOFException();
+		}
+		return (short) ((ch1 << 8) + (ch2 << 0));
+	}
+
+	/**
+	 *  Description of the Method
+	 *
+	 * @return  Description of the Returned Value
+	 * @exception  IOException Description of Exception
+	 */
+	public int readUnsignedShort() throws IOException
+	{
+		int ch1 = this.read();
+		int ch2 = this.read();
+		if((ch1 | ch2) < 0)
+		{
+			throw new EOFException();
+		}
+		return (ch1 << 8) + (ch2 << 0);
+	}
+
+	/**
+	 *  Description of the Method
+	 *
+	 * @return  Description of the Returned Value
+	 * @exception  IOException Description of Exception
+	 */
+	public char readChar() throws IOException
+	{
+		return (char) readUnsignedShort();
+	}
+
+	/**
+	 *  Description of the Method
+	 *
+	 * @return  Description of the Returned Value
+	 * @exception  IOException Description of Exception
+	 */
+	public int readInt() throws IOException
+	{
+		int ch1 = this.read();
+		int ch2 = this.read();
+		int ch3 = this.read();
+		int ch4 = this.read();
+		if((ch1 | ch2 | ch3 | ch4) < 0)
+		{
+			throw new EOFException();
+		}
+		return ((ch1 << 24) + (ch2 << 16) + (ch3 << 8) + (ch4 << 0));
+	}
+
+	/**
+	 *  Description of the Method
+	 *
+	 * @return  Description of the Returned Value
+	 * @exception  IOException Description of Exception
+	 */
+	public long readLong() throws IOException
+	{
+		return ((long) (readInt()) << 32) + (readInt() & 0xFFFFFFFFL);
+	}
+
+	/**
+	 *  Description of the Method
+	 *
+	 * @return  Description of the Returned Value
+	 * @exception  IOException Description of Exception
+	 */
+	public float readFloat() throws IOException
+	{
+		return Float.intBitsToFloat(readInt());
+	}
+
+	/**
+	 *  Description of the Method
+	 *
+	 * @return  Description of the Returned Value
+	 * @exception  IOException Description of Exception
+	 */
+	public double readDouble() throws IOException
+	{
+		return Double.longBitsToDouble(readLong());
+	}
+
+	/**
+	 *  Description of the Method
+	 *
+	 * @return  Description of the Returned Value
+	 * @exception  IOException Description of Exception
+	 */
+	public String readLine() throws IOException
+	{
+		StringBuffer input = new StringBuffer();
+		int c = -1;
+		boolean eol = false;
+
+		while(!eol)
+		{
+			switch (c = read())
+			{
+				case -1:
+				case '\n':
+					eol = true;
+					break;
+				case '\r':
+					eol = true;
+					long cur = getFilePointer();
+					if((read()) != '\n')
+					{
+						seek(cur);
+					}
+					break;
+				default:
+					input.append((char) c);
+			}
+		}
+
+		if((c == -1) && (input.length() == 0))
+		{
+			return null;
+		}
+		return input.toString();
+	}
+
+	/**
+	 *  Description of the Method
+	 *
+	 * @return  Description of the Returned Value
+	 * @exception  IOException Description of Exception
+	 */
+	public String readUTF() throws IOException
+	{
+		//throw new Error("Not implemented yet");
+		return DataInputStream.readUTF(this);
+	}
+
+	/**
+	 *  Description of the Method
+	 *
+	 * @param  b Description of Parameter
+	 * @exception  IOException Description of Exception
+	 */
+	public void writeBoolean(boolean b) throws IOException
+	{
+		write(b ? 1 : 0);
+	}
+
+	/**
+	 *  Description of the Method
+	 *
+	 * @param  b Description of Parameter
+	 * @exception  IOException Description of Exception
+	 */
+	public void writeByte(int b) throws IOException
+	{
+		write(b);
+	}
+
+	/**
+	 *  Description of the Method
+	 *
+	 * @param  s Description of Parameter
+	 * @exception  IOException Description of Exception
+	 */
+	public void writeShort(int s) throws IOException
+	{
+		write((s >>> 8) & 0xFF);
+		write((s >>> 0) & 0xFF);
+	}
+
+	/**
+	 *  Description of the Method
+	 *
+	 * @param  ch Description of Parameter
+	 * @exception  IOException Description of Exception
+	 */
+	public void writeChar(int ch) throws IOException
+	{
+		writeShort(ch);
+	}
+
+	/**
+	 *  Description of the Method
+	 *
+	 * @param  i Description of Parameter
+	 * @exception  IOException Description of Exception
+	 */
+	public void writeInt(int i) throws IOException
+	{
+		write((i >>> 24) & 0xFF);
+		write((i >>> 16) & 0xFF);
+		write((i >>> 8) & 0xFF);
+		write((i >>> 0) & 0xFF);
+	}
+
+	/**
+	 *  Description of the Method
+	 *
+	 * @param  l Description of Parameter
+	 * @exception  IOException Description of Exception
+	 */
+	public void writeLong(long l) throws IOException
+	{
+		write((int) (l >>> 56) & 0xFF);
+		write((int) (l >>> 48) & 0xFF);
+		write((int) (l >>> 40) & 0xFF);
+		write((int) (l >>> 32) & 0xFF);
+		write((int) (l >>> 24) & 0xFF);
+		write((int) (l >>> 16) & 0xFF);
+		write((int) (l >>> 8) & 0xFF);
+		write((int) (l >>> 0) & 0xFF);
+	}
+
+	/**
+	 *  Description of the Method
+	 *
+	 * @param  f Description of Parameter
+	 * @exception  IOException Description of Exception
+	 */
+	public void writeFloat(float f) throws IOException
+	{
+		writeInt(Float.floatToIntBits(f));
+	}
+
+	/**
+	 *  Description of the Method
+	 *
+	 * @param  f Description of Parameter
+	 * @exception  IOException Description of Exception
+	 */
+	public void writeDouble(double f) throws IOException
+	{
+		writeLong(Double.doubleToLongBits(f));
+	}
+
+	/**
+	 *  Description of the Method
+	 *
+	 * @param  str Description of Parameter
+	 * @exception  IOException Description of Exception
+	 */
+	public void writeUTF(String str) throws IOException
+	{
+		int strlen = str.length();
+		int utflen = 0;
+
+		for(int i = 0; i < strlen; i++)
+		{
+			int c = str.charAt(i);
+			if((c >= 0x0001) && (c <= 0x007F))
+			{
+				utflen++;
+			}
+			else if(c > 0x07FF)
+			{
+				utflen += 3;
+			}
+			else
+			{
+				utflen += 2;
+			}
+		}
+		if(utflen > 65535)
+		{
+			throw new UTFDataFormatException();
+		}
+		write((utflen >>> 8) & 0xFF);
+		write((utflen >>> 0) & 0xFF);
+		for(int i = 0; i < strlen; i++)
+		{
+			int c = str.charAt(i);
+			if((c >= 0x0001) && (c <= 0x007F))
+			{
+				write(c);
+			}
+			else if(c > 0x07FF)
+			{
+				write(0xE0 | ((c >> 12) & 0x0F));
+				write(0x80 | ((c >> 6) & 0x3F));
+				write(0x80 | ((c >> 0) & 0x3F));
+			}
+			else
+			{
+				write(0xC0 | ((c >> 6) & 0x1F));
+				write(0x80 | ((c >> 0) & 0x3F));
+			}
+		}
+	}
+
+	/**
+	 *  Description of the Method
+	 *
+	 * @param  b Description of Parameter
+	 * @exception  IOException Description of Exception
+	 */
+	public void readFully(byte[] b) throws IOException
+	{
+		readFully(b, 0, b.length);
+	}
+
+	/**
+	 *  Description of the Method
+	 *
+	 * @param  b Description of Parameter
+	 * @param  pos Description of Parameter
+	 * @param  len Description of Parameter
+	 * @exception  IOException Description of Exception
+	 */
+	public void readFully(byte[] b, int pos, int len) throws IOException
+	{
+		int n = 0;
+		while(n < len)
+		{
+			int count = this.read(b, pos + n, len - n);
+			if(count < 0)
+			{
+				throw new EOFException();
+			}
+			n += count;
+		}
+	}
+
+	/**
+	 *  Description of the Method
+	 *
+	 * @param  s Description of Parameter
+	 * @exception  IOException Description of Exception
+	 */
+	public void writeBytes(String s) throws IOException
+	{
+		byte[] b = s.getBytes();
+		write(b, 0, b.length);
+	}
+
+	/**
+	 *  Description of the Method
+	 *
+	 * @param  s Description of Parameter
+	 * @exception  IOException Description of Exception
+	 */
+	public void writeChars(String s) throws IOException
+	{
+		int clen = s.length();
+		int blen = 2 * clen;
+		byte[] b = new byte[blen];
+		char[] c = new char[clen];
+		s.getChars(0, clen, c, 0);
+		for(int i = 0, j = 0; i < clen; i++)
+		{
+			b[j++] = (byte) (c[i] >>> 8);
+			b[j++] = (byte) (c[i] >>> 0);
+		}
+		write(b, 0, blen);
+	}
+
+	/**
+	 *  Description of the Method
+	 *
+	 * @return  Description of the Returned Value
+	 * @exception  IOException Description of Exception
+	 */
+	public long length() throws IOException
+	{
+		long fileLen = delegate.length();
+		System.out.println("File Len " + fileLen);
+		System.out.println("File Pos " + currBuf.filePos);
+		System.out.println("CurentLen " + currBuf.dataLen);
+		if(currBuf.filePos + currBuf.dataLen > fileLen)
+		{
+			return currBuf.filePos + currBuf.dataLen;
+		}
+		else
+		{
+			return fileLen;
+		}
+	}
+
+	/**
+	 *  Description of the Method
+	 *
+	 * @return  Description of the Returned Value
+	 * @exception  IOException Description of Exception
+	 */
+	public int read() throws IOException
+	{
+		if(currBuf.pos < currBuf.dataLen)
+		{
+			// at least one byte is available in the buffer
+
+			return currBuf.bytes[currBuf.pos++];
+		}
+		else
+		{
+			syncBuffer(currBuf.filePos + currBuf.pos);
+			if(currBuf.dataLen == 0)
+			{
+				throw new EOFException();
+			}
+			return read();
+			// recurse: should be trivial this time.
+		}
+	}
+
+	/**
+	 *  Description of the Method
+	 *
+	 * @param  b Description of Parameter
+	 * @return  Description of the Returned Value
+	 * @exception  IOException Description of Exception
+	 */
+	public int read(byte[] b) throws IOException
+	{
+		System.out.println("read(byte[" + b.length + "])");
+		return read(b, 0, b.length);
+	}
+
+	/**
+	 *  Description of the Method
+	 *
+	 * @param  b Description of Parameter
+	 * @param  pos Description of Parameter
+	 * @param  len Description of Parameter
+	 * @return  Description of the Returned Value
+	 * @exception  IOException Description of Exception
+	 */
+	public int read(byte[] b, int pos, int len) throws IOException
+	{
+		System.out.println("read(byte[" + b.length + "], " + pos + ", " + len + ")");
+
+		if(currBuf.pos + len <= currBuf.dataLen)
+		{
+			// enough data available in buffer
+
+			System.arraycopy(currBuf.bytes, currBuf.pos, b, pos, len);
+			currBuf.pos += len;
+			return len;
+		}
+		else
+		{
+			syncBuffer(currBuf.filePos + currBuf.pos);
+			// currBuf.pos had better be 0 now.
+			if(currBuf.dataLen < currBuf.bytes.length)
+			{
+				// we have read to EOF: couldn't fill a buffer
+
+				int readLen = Math.min(len, currBuf.dataLen);
+				System.arraycopy(currBuf.bytes, currBuf.pos, b, pos, readLen);
+				currBuf.pos += readLen;
+				return readLen;
+			}
+			else
+			{
+				if(currBuf.dataLen <= len)
+				{
+					return read(b, pos, len);
+					// recurse: should be trivial this time
+				}
+				else
+				{
+					// too big for a buffer: use the delegate's read.
+
+					System.out.println(" * delegate.seek(" + (currBuf.filePos + currBuf.pos) + ")");
+					delegate.seek(currBuf.filePos);
+					System.out.println(" * delegate.read(byte[" + b.length + "], " + pos + ", " + len + ")");
+					int readLen = delegate.read(b, pos, len);
+					if(len > currBuf.bytes.length)
+					{
+						currBuf.filePos += len - currBuf.bytes.length;
+					}
+					currBuf.dataLen = Math.min(readLen, currBuf.bytes.length);
+					System.arraycopy(b, pos, currBuf.bytes, 0, currBuf.dataLen);
+					return readLen;
+				}
+			}
+		}
+	}
+
+	/**
+	 *  Description of the Method
+	 *
+	 * @param  pos Description of Parameter
+	 * @exception  IOException Description of Exception
+	 */
+	public void seek(long pos) throws IOException
+	{
+		long newBufPos = pos - currBuf.filePos;
+		if(newBufPos >= 0 && newBufPos < currBuf.dataLen)
+		{
+			// it falls within the buffer
+
+			System.out.println("manual set " + pos);
+			currBuf.pos = (int) newBufPos;
+		}
+		else
+		{
+			System.out.println("Sync buffer " + pos);
+			syncBuffer(pos);
+		}
+	}
+
+	/**
+	 *  Description of the Method
+	 *
+	 * @param  n Description of Parameter
+	 * @return  Description of the Returned Value
+	 * @exception  IOException Description of Exception
+	 */
+	public int skipBytes(int n) throws IOException
+	{
+		return (int) skipBytes((long) n);
+	}
+
+	/**
+	 *  Description of the Method
+	 *
+	 * @param  n Description of Parameter
+	 * @return  Description of the Returned Value
+	 * @exception  IOException Description of Exception
+	 */
+	public long skipBytes(long n) throws IOException
+	{
+		try
+		{
+			seek(currBuf.filePos + currBuf.pos + n);
+			return n;
+		}
+		catch(EOFException ex)
+		{
+			return -1;
+		}
+	}
+
+	/**
+	 *  Description of the Method
+	 *
+	 * @param  b Description of Parameter
+	 * @exception  IOException Description of Exception
+	 */
+	public void write(byte[] b) throws IOException
+	{
+		write(b, 0, b.length);
+	}
+
+	/**
+	 *  Description of the Method
+	 *
+	 * @param  b Description of Parameter
+	 * @param  pos Description of Parameter
+	 * @param  len Description of Parameter
+	 * @exception  IOException Description of Exception
+	 */
+	public void write(byte[] b, int pos, int len) throws IOException
+	{
+		System.out.println("write(byte[], " + pos + ", " + len + ")");
+		System.out.println("Curr buff pos " + currBuf.pos);
+		if(pos + len <= currBuf.bytes.length)
+		{
+			System.arraycopy(b, pos, currBuf.bytes, currBuf.pos, len);
+			currBuf.pos += len;
+			if(currBuf.pos > currBuf.dataLen)
+			{
+				currBuf.dataLen = currBuf.pos;
+			}
+		}
+		else
+		{
+			if(len <= currBuf.bytes.length)
+			{
+				syncBuffer(currBuf.filePos + currBuf.pos);
+				write(b, pos, len);
+				// recurse: it should succeed trivially this time.
+			}
+			else
+			{
+				// write more than the buffer can contain: use delegate
+
+				delegate.seek(currBuf.filePos + currBuf.pos);
+				delegate.write(b, pos, len);
+				syncBuffer(currBuf.filePos + currBuf.pos + len);
+			}
+		}
+	}
+
+	/**
+	 *  Description of the Method
+	 *
+	 * @param  b Description of Parameter
+	 * @exception  IOException Description of Exception
+	 */
+	public void write(int b) throws IOException
+	{
+		System.out.println("Write " + (char) b + " currBuf.pos=" + currBuf.pos + ", currBuf.dataLen=" + currBuf.dataLen);
+
+		if(currBuf.pos < currBuf.bytes.length)
+		{
+			// trivial write
+
+			currBuf.bytes[currBuf.pos++] = (byte) b;
+			currBuf.modified = true;
+			if(currBuf.pos > currBuf.dataLen)
+			{
+				currBuf.dataLen++;
+			}
+		}
+		else
+		{
+			syncBuffer(currBuf.filePos + currBuf.pos);
+			write(b);
+			// recurse: should succeed trivially this time.
+		}
+	}
+
+	// This will do more when dual buffers are implemented.
+	//
+	/**
+	 *  Description of the Method
+	 *
+	 * @exception  IOException Description of Exception
+	 */
+	public void flush() throws IOException
+	{
+		commitBuffer();
+		/*
+		 * FileBufferStruct temp = currBuf;
+		 * try
+		 * {
+		 * currBuf = altBuf;
+		 * commitBuffer();
+		 * }
+		 * finally
+		 * {
+		 * currBuf = temp;
+		 * }
+		 */
+	}
+
+	/**
+	 *  Description of the Method
+	 *
+	 * @exception  IOException Description of Exception
+	 */
+	public void close() throws IOException
+	{
+		flush();
+		System.out.println(" * delegate.close");
+		delegate.close();
+	}
+
+	/**
+	 *  Save any changes and re-read the currBuf.bytes from the given position.
+	 *  Note that the read(byte[],int,int) method assumes that this method sets
+	 *  currBuf.pos to 0.
+	 *
+	 * @param  new_FP Description of Parameter
+	 * @return  int - the number of bytes available for reading
+	 * @exception  IOException Description of Exception
+	 */
+	protected int syncBuffer(long new_FP) throws IOException
+	{
+		commitBuffer();
+		System.out.println(" * delegate.seek");
+		delegate.seek(new_FP);
+		currBuf.filePos = new_FP;
+		fillBuffer();
+		return currBuf.dataLen;
+	}
+
+	/**
+	 *  Description of the Method
+	 *
+	 * @exception  IOException Description of Exception
+	 */
+	protected void fillBuffer() throws IOException
+	{
+		System.out.println(" * delegate.read(byte[" + currBuf.bytes.length + "])");
+		currBuf.dataLen = delegate.read(currBuf.bytes);
+		currBuf.pos = 0;
+		if(currBuf.dataLen < 0)
+		{
+			currBuf.dataLen = 0;
+		}
+	}
+
+	/**
+	 *  If modified, write buffered bytes to the delegate file
+	 *
+	 * @exception  IOException Description of Exception
+	 */
+	protected void commitBuffer() throws IOException
+	{
+		if(currBuf.modified)
+		{
+			System.out.println(" * delegate.seek");
+			delegate.seek(currBuf.filePos);
+
+			System.out.println(" * delegate.write(byte[],0," + currBuf.dataLen + ")");
+			delegate.write(currBuf.bytes, 0, currBuf.dataLen);
+			currBuf.modified = false;
+		}
+	}
+    /*
+     * Internal structure for holding data
      */
-    public static String ltrim(String s) {
-        if (s == null) {
-            return null;
-        }
-
-        int index = 0;
-        int len = s.length();
-
-        while ( index < len && Character.isWhitespace(s.charAt(index)) ) {
-            index++;
-        }
-
-        return (index >= len) ? "" : s.substring(index);
+    protected class FileBufferStruct
+    {
+        /**
+         *  Description of the Field
+         */
+        public byte[] bytes;
+        /**
+         *  Description of the Field
+         */
+        public int pos;
+        /**
+         *  Description of the Field
+         */
+        public int dataLen;
+        /**
+         *  Description of the Field
+         */
+        public boolean modified;
+        /**
+         *  Description of the Field
+         */
+        public long filePos;
     }
-
-    /**
-     * Trims specified string from right.
-     * @param s
-     */
-    public static String rtrim(String s) {
-        if (s == null) {
-            return null;
-        }
-
-        int len = s.length();
-        int index = len;
-
-        while ( index > 0 && Character.isWhitespace(s.charAt(index-1)) ) {
-            index--;
-        }
-
-        return (index <= 0) ? "" : s.substring(0, index);
-    }
-
-    /**
-     * Reads content from the specified URL with specified charset into string
-     * @param url
-     * @param charset
-     * @throws IOException
-     */
-    public static StringBuffer readUrl(URL url, String charset) throws IOException {
-        StringBuffer buffer = new StringBuffer(1024);
-
-        Object content = url.getContent();
-        if (content instanceof InputStream) {
-            InputStreamReader reader = new InputStreamReader((InputStream)content, charset);
-            char[] charArray = new char[1024];
-
-            int charsRead = 0;
-            do {
-                charsRead = reader.read(charArray);
-                if (charsRead >= 0) {
-                    buffer.append(charArray, 0, charsRead);
-                }
-            } while (charsRead > 0);
-        }
-
-        return buffer;
-    }
-
-    /**
-     * Escapes XML string.
-     * @param s String to be escaped
-     * @param props Cleaner properties affects escaping behaviour
-     * @param isDomCreation Tells if escaped content will be part of the DOM
-     */
-    public static String escapeXml(String s, CleanerProperties props, boolean isDomCreation) {
-        boolean advanced = props.isAdvancedXmlEscape();
-        boolean recognizeUnicodeChars = props.isRecognizeUnicodeChars();
-        boolean translateSpecialEntities = props.isTranslateSpecialEntities();
-        return escapeXml(s, advanced, recognizeUnicodeChars, translateSpecialEntities, isDomCreation);
-    }
-    /**
-     * change notes: 
-     * 1) convert ascii characters encoded using &#xx; format to the ascii characters -- may be an attempt to slip in malicious html
-     * 2) convert &#xxx; format characters to &quot; style representation if available for the character.
-     * 3) convert html special entities to xml &#xxx; when outputing in xml
-     * @param s
-     * @param advanced
-     * @param recognizeUnicodeChars
-     * @param translateSpecialEntities
-     * @param isDomCreation
-     * @return
-     */
-    public static String escapeXml(String s, boolean advanced, boolean recognizeUnicodeChars, boolean translateSpecialEntities, boolean isDomCreation) {
-        if (s != null) {
-    		int len = s.length();
-    		StringBuffer result = new StringBuffer(len);
-
-    		for (int i = 0; i < len; i++) {
-    			char ch = s.charAt(i);
-
-    			SpecialEntity code;
-    			if (ch == '&') {
-    				if ( (advanced || recognizeUnicodeChars) && (i < len-1) && (s.charAt(i+1) == '#') ) {
-    					i = convertToUnicode(s, isDomCreation, recognizeUnicodeChars, result, i+2);
-    				} else if ((translateSpecialEntities || advanced) &&
-				        (code = SpecialEntities.INSTANCE.getSpecialEntity(s.substring(i, i+Math.min(10, len-i)))) != null) {
-			            if (translateSpecialEntities && code.isHtmlSpecialEntity()) {
-                            if (recognizeUnicodeChars) {
-                                result.append( (char)code.intValue() );
-                            } else {
-                                result.append( "&#" + code + ";" );
-                            }
-							i += code.getKey().length() + 1;
-						} else if (advanced ) {
-					        result.append(code.getEscaped(isDomCreation));
-		                    i += code.getKey().length()+1;
-			            } else {
-			                result.append("&amp;");
-			            }
-    				} else {
-    					result.append("&amp;");
-    				}
-    			} else if ((code = SpecialEntities.INSTANCE.getSpecialEntityByUnicode(ch)) != null ) {
-    				result.append(code.getEscaped(isDomCreation));
-    			} else {
-    				result.append(ch);
-    			}
-    		}
-
-    		return result.toString();
-    	}
-
-    	return null;
-    }
-
-    private static final Pattern ASCII_CHAR = Pattern.compile("\\p{Print}");
-    /**
-     * @param s
-     * @param domCreation 
-     * @param recognizeUnicodeChars
-     * @param result
-     * @param i
-     * @return
-     */
-    public static int convertToUnicode(String s, boolean domCreation, boolean recognizeUnicodeChars, StringBuffer result, int i) {
-        StringBuilder unicode = new StringBuilder();
-        int charIndex = extractCharCode(s, i, true, unicode);
-        if (unicode.length() > 0) {
-        	try {
-        		char unicodeChar = unicode.substring(0,1).equals("x") ?
-                                        (char)Integer.parseInt(unicode.substring(1), 16) :
-                                        (char)Integer.parseInt(unicode.toString());
-                SpecialEntity specialEntity = SpecialEntities.INSTANCE.getSpecialEntityByUnicode(unicodeChar);
-                if ( unicodeChar ==0) {
-                    // null character &#0Peanut for example
-                    // just consume character &
-                    result.append("&amp;");
-                } else if ( specialEntity != null && 
-                        // special characters that are always escaped. 
-                        (!specialEntity.isHtmlSpecialEntity() 
-                                // OR we are not outputting unicode characters as the characters ( they are staying escaped ) 
-                                || !recognizeUnicodeChars)) {
-                    result.append(domCreation?specialEntity.getHtmlString():specialEntity.getEscapedXmlString());
-                } else if ( recognizeUnicodeChars ) {
-                    // output unicode characters as their actual byte code with the exception of characters that have special xml meaning.
-                    result.append( String.valueOf(unicodeChar));
-                } else if ( ASCII_CHAR.matcher(new String(new char[] { unicodeChar } )).find()) {
-                    // ascii printable character. this fancy escaping might be an attempt to slip in dangerous characters (i.e. spelling out <script> ) 
-                    // by converting to printable characters we can more easily detect such attacks.
-                    result.append(String.valueOf(unicodeChar));
-                } else {
-        			result.append( "&#").append(unicode).append(";" );
-        		}
-        	} catch (NumberFormatException e) {
-        	    // should never happen now
-        		result.append("&amp;#").append(unicode).append(";" );
-        	}
-        } else {
-        	result.append("&amp;");
-        }
-        return charIndex;
-    }
-
-    // TODO have pattern consume leading 0's and discard.
-    public static Pattern HEX_STRICT = Pattern.compile("^([x|X][\\p{XDigit}]+)(;?)");
-    public static Pattern HEX_RELAXED = Pattern.compile("^0*([x|X][\\p{XDigit}]+)(;?)");
-    public static Pattern DECIMAL = Pattern.compile("^([\\p{Digit}]+)(;?)");
-    /**
-     * <ul>
-     * <li>(earlier code was failing on this) - &#138A; is converted by FF to 3 characters: &#138; + 'A' + ';'</li>
-     * <li>&#0x138A; is converted by FF to 6? 7? characters: &#0 'x'+'1'+'3'+ '8' + 'A' + ';'
-     * #0 is displayed kind of weird</li>
-     * <li>&#x138A; is a single character</li>
-     * </ul>
-     *
-     * @param s
-     * @param charIndex
-     * @param relaxedUnicode '&#0x138;' is treated like '&#x138;'
-     * @param unicode
-     * @return the index to continue scanning the source string -1 so normal loop incrementing skips the ';'
-     */
-    public static int extractCharCode(String s, int charIndex, boolean relaxedUnicode, StringBuilder unicode) {
-        int len = s.length();
-        CharSequence subSequence = s.subSequence(charIndex, Math.min(len,charIndex+15));
-        Matcher matcher;
-        if( relaxedUnicode ) {
-            matcher = HEX_RELAXED.matcher(subSequence);
-        } else {
-            matcher = HEX_STRICT.matcher(subSequence);
-        }
-        // silly note: remember calling find() twice finds second match :-)
-        if (matcher.find() || ((matcher = DECIMAL.matcher(subSequence)).find())) {
-            // -1 so normal loop incrementing skips the ';'
-            charIndex += matcher.end() -1;
-            unicode.append(matcher.group(1));
-        }
-        return charIndex;
-    }
-
-    /**
-     * Checks whether specified object's string representation is empty string (containing of only whitespaces).
-     * @param object Object whose string representation is checked
-     * @return true, if empty string, false otherwise
-     */
-    public static boolean isWhitespaceString(Object object) {
-        if (object != null) {
-            String s = object.toString();
-            return s != null && "".equals(s.trim());
-        }
-        return false;
-    }
-
-    /**
-     * Checks if specified character can be part of xml identifier (tag name of attribute name)
-     * and is not standard identifier character.
-     * @param ch Character to be checked
-     * @return True if it can be part of xml identifier
-     */
-    public static boolean isIdentifierHelperChar(char ch) {
-        return ':' == ch || '.' == ch || '-' == ch || '_' == ch;
-    }
-
-    /**
-     * Chacks whether specified string can be valid tag name or attribute name in xml.
-     * @param s String to be checked
-     * @return True if string is valid xml identifier, false otherwise
-     */
-    public static boolean isValidXmlIdentifier(String s) {
-        if (s != null) {
-            int len = s.length();
-            if (len == 0) {
-                return false;
-            }
-            for (int i = 0; i < len; i++) {
-                char ch = s.charAt(i);
-                if ( (i == 0 && !Character.isUnicodeIdentifierStart(ch)) ||
-                     (!Character.isUnicodeIdentifierStart(ch) && !Character.isDigit(ch) && !Utils.isIdentifierHelperChar(ch)) ) {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
-     * @param o
-     * @return True if specified string is null of contains only whitespace characters
-     */
-    public static boolean isEmptyString(Object o) {
-        if ( o == null ) {
-            return true;
-        }
-        String s = o.toString();
-        String text = escapeXml(s, true, false, false, false);
-        // TODO: doesn't escapeXml handle this?
-        String last = text.replace(SpecialEntities.NON_BREAKABLE_SPACE, ' ').trim();
-        return last.isEmpty();
-    }
-
-    public static String[] tokenize(String s, String delimiters) {
-        if (s == null) {
-            return new String[] {};
-        }
-
-        StringTokenizer tokenizer = new StringTokenizer(s, delimiters);
-        String result[] = new String[tokenizer.countTokens()];
-        int index = 0;
-        while (tokenizer.hasMoreTokens()) {
-            result[index++] = tokenizer.nextToken();
-        }
-
-        return result;
-    }
-
 }
+
+

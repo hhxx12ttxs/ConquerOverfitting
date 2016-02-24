@@ -1,304 +1,84 @@
-/*******************************************************************************
- * Copyright 2010 Mario Zechner (contact@badlogicgames.com)
- * 
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the
- * License. You may obtain a copy of the License at
- * 
- * http://www.apache.org/licenses/LICENSE-2.0
- * 
- * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS"
- * BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language
- * governing permissions and limitations under the License.
- ******************************************************************************/
+/*
+ * IntegerArray.java - Automatically growing array of ints
+ * :tabSize=8:indentSize=8:noTabs=false:
+ * :folding=explicit:collapseFolds=1:
+ *
+ * Copyright (C) 2001 Slava Pestov
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ */
 
-package com.badlogic.gdx.math;
+package org.gjt.sp.util;
 
 /**
- * Encapsulates a 2D vector. Allows chaining methods by returning a reference to
- * itself
- * 
- * @author badlogicgames@gmail.com
- * 
+ * A simple collection that stores integers and grows automatically.
  */
-public final class Vector2 {
-	/** static temporary vector * */
-	private final static Vector2 tmp = new Vector2();
+public class IntegerArray
+{
+	//{{{ IntegerArray constructor
+	public IntegerArray()
+	{
+		array = new int[2000];
+	} //}}}
 
-	/** the x-component of this vector * */
-	public float x;
-
-	/** the y-component of this vector * */
-	public float y;
-
-	/**
-	 * Constructs a new vector at (0,0)
-	 */
-	public Vector2() {
-
-	}
-
-	/**
-	 * Constructs a vector with the given components
-	 * 
-	 * @param x
-	 *            The x-component
-	 * @param y
-	 *            The y-component
-	 */
-	public Vector2(float x, float y) {
-		this.x = x;
-		this.y = y;
-	}
-
-	/**
-	 * Constructs a vector from the given vector
-	 * 
-	 * @param v
-	 *            The vector
-	 */
-	public Vector2(Vector2 v) {
-		set(v);
-	}
-
-	public float length() {
-		return (float) Math.sqrt(x * x + y * y);
-	}
-
-	/** Return the squared length of this vector. */
-	public float lengthSquared() {
-		return (x * x + y * y);
-	}
-
-	/**
-	 * @return a copy of this vector
-	 */
-	public Vector2 cpy() {
-		return new Vector2(this);
-	}
-
-	/**
-	 * @return The euclidian length
-	 */
-	public float len() {
-		return (float) Math.sqrt(x * x + y * y);
-	}
-
-	/**
-	 * @return The squared euclidian length
-	 */
-	public float len2() {
-		return x * x + y * y;
-	}
-
-	/**
-	 * Sets this vector from the given vector
-	 * 
-	 * @param v
-	 *            The vector
-	 * @return This vector for chaining
-	 */
-	public Vector2 set(Vector2 v) {
-		x = v.x;
-		y = v.y;
-		return this;
-	}
-
-	/**
-	 * Sets the components of this vector
-	 * 
-	 * @param x
-	 *            The x-component
-	 * @param y
-	 *            The y-component
-	 * @return This vector for chaining
-	 */
-	public Vector2 set(float x, float y) {
-		this.x = x;
-		this.y = y;
-		return this;
-	}
-
-	/**
-	 * Substracts the given vector from this vector.
-	 * 
-	 * @param v
-	 *            The vector
-	 * @return This vector for chaining
-	 */
-	public Vector2 sub(Vector2 v) {
-		x -= v.x;
-		y -= v.y;
-		return this;
-	}
-
-	/**
-	 * Normalizes this vector
-	 * 
-	 * @return This vector for chaining
-	 */
-	public Vector2 nor() {
-		float len = len();
-		if (len != 0) {
-			x /= len;
-			y /= len;
+	//{{{ add() method
+	public void add(int num)
+	{
+		if(len >= array.length)
+		{
+			int[] arrayN = new int[len * 2];
+			System.arraycopy(array,0,arrayN,0,len);
+			array = arrayN;
 		}
-		return this;
-	}
 
-	/**
-	 * Adds the given vector to this vector
-	 * 
-	 * @param v
-	 *            The vector
-	 * @return This vector for chaining
-	 */
-	public Vector2 add(Vector2 v) {
-		x += v.x;
-		y += v.y;
-		return this;
-	}
+		array[len++] = num;
+	} //}}}
 
-	/**
-	 * Adds the given components to this vector
-	 * 
-	 * @param x
-	 *            The x-component
-	 * @param y
-	 *            The y-component
-	 * @return This vector for chaining
-	 */
-	public Vector2 add(float x, float y) {
-		this.x += x;
-		this.y += y;
-		return this;
-	}
+	//{{{ get() method
+	public final int get(int index)
+	{
+		return array[index];
+	} //}}}
 
-	/**
-	 * @param v
-	 *            The other vector
-	 * @return The dot product between this and the other vector
-	 */
-	public float dot(Vector2 v) {
-		return x * v.x + y * v.y;
-	}
+	//{{{ getSize() method
+	public final int getSize()
+	{
+		return len;
+	} //}}}
 
-	/**
-	 * Multiplies this vector by a scalar
-	 * 
-	 * @param scalar
-	 *            The scalar
-	 * @return This vector for chaining
-	 */
-	public Vector2 mul(float scalar) {
-		x *= scalar;
-		y *= scalar;
-		return this;
-	}
+	//{{{ setSize() method
+	public final void setSize(int len)
+	{
+		this.len = len;
+	} //}}}
 
-	/**
-	 * @param v
-	 *            The other vector
-	 * @return the distance between this and the other vector
-	 */
-	public float dst(Vector2 v) {
-		final float x_d = v.x - x;
-		final float y_d = v.y - y;
-		return (float) Math.sqrt(x_d * x_d + y_d * y_d);
-	}
+	//{{{ clear() method
+	public final void clear()
+	{
+		len = 0;
+	} //}}}
 
-	/**
-	 * @param x
-	 *            The x-component of the other vector
-	 * @param y
-	 *            The y-component of the other vector
-	 * @return the distance between this and the other vector
-	 */
-	public float dst(float x, float y) {
-		final float x_d = x - this.x;
-		final float y_d = y - this.y;
-		return (float) Math.sqrt(x_d * x_d + y_d * y_d);
-	}
+	//{{{ getArray() method
+	public int[] getArray()
+	{
+		return array;
+	} //}}}
 
-	/**
-	 * @param v
-	 *            The other vector
-	 * @return the squared distance between this and the other vector
-	 */
-	public float dst2(Vector2 v) {
-		final float x_d = v.x - x;
-		final float y_d = v.y - y;
-		return x_d * x_d + y_d * y_d;
-	}
-
-	public String toString() {
-		return "[" + x + ":" + y + "]";
-	}
-
-	/**
-	 * Substracts the other vector from this vector.
-	 * 
-	 * @param x
-	 *            The x-component of the other vector
-	 * @param y
-	 *            The y-component of the other vector
-	 * @return This vector for chaining
-	 */
-	public Vector2 sub(float x, float y) {
-		this.x -= x;
-		this.y -= y;
-		return this;
-	}
-
-	/**
-	 * @return a temporary copy of this vector. Use with care as this is backed
-	 *         by a single static Vector2 instance. v1.tmp().add( v2.tmp() )
-	 *         will not work!
-	 */
-	public Vector2 tmp() {
-		return tmp.set(this);
-	}
-
-	public boolean isValid() {
-		return x != Float.NaN && x != Float.NEGATIVE_INFINITY
-				&& x != Float.POSITIVE_INFINITY && y != Float.NaN
-				&& y != Float.NEGATIVE_INFINITY && y != Float.POSITIVE_INFINITY;
-	}
-
-	public Vector2 clone() {
-		return new Vector2(x, y);
-	}
-
-	/*
-	 * Static
-	 */
-
-	public static Vector2 abs(Vector2 a) {
-		return new Vector2(Math.abs(a.x), Math.abs(a.y));
-	}
-
-	public static float dot(Vector2 a, Vector2 b) {
-		return a.x * b.x + a.y * b.y;
-	}
-
-	public static float cross(Vector2 a, Vector2 b) {
-		return a.x * b.y - a.y * b.x;
-	}
-
-	public static Vector2 cross(Vector2 a, float s) {
-		return new Vector2(s * a.y, -s * a.x);
-	}
-
-	public static Vector2 cross(float s, Vector2 a) {
-		return new Vector2(-s * a.y, s * a.x);
-	}
-
-	public static Vector2 min(Vector2 a, Vector2 b) {
-		return new Vector2(a.x < b.x ? a.x : b.x, a.y < b.y ? a.y : b.y);
-	}
-
-	public static Vector2 max(Vector2 a, Vector2 b) {
-		return new Vector2(a.x > b.x ? a.x : b.x, a.y > b.y ? a.y : b.y);
-	}
-
+	//{{{ Private members
+	private int[] array;
+	private int len;
+	//}}}
 }
 

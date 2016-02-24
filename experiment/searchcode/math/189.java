@@ -1,586 +1,538 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+/* =================================================================
+Copyright (C) 2009 ADV/web-engineering All rights reserved.
 
-package org.apache.catalina.tribes.io;
+This file is part of Mozart.
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serializable;
-import java.nio.ByteBuffer;
-import java.util.concurrent.atomic.AtomicInteger;
+Mozart is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Mozart is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+
+Mozart
+http://www.mozartcms.ru
+================================================================= */
+// -*- java -*-
+// File: ByteBuffer.java
+//
+// Created: Fri Nov 30 16:52:17 2001
+//
+// $Id: ByteBuffer.java 1106 2009-06-03 07:32:17Z vic $
+// $Name:  $
+//
+
+package ru.adv.util;
+
+import java.io.UnsupportedEncodingException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 
 /**
- * The XByteBuffer provides a dual functionality.
- * One, it stores message bytes and automatically extends the byte buffer if needed.<BR>
- * Two, it can encode and decode packages so that they can be defined and identified
- * as they come in on a socket.
- * <br>
- * <b>THIS CLASS IS NOT THREAD SAFE</B><BR>
- * <br/>
- * Transfer package:
- * <ul>
- * <li><b>START_DATA/b> - 7 bytes - <i>FLT2002</i></li>
- * <li><b>SIZE</b>      - 4 bytes - size of the data package</li>
- * <li><b>DATA</b>      - should be as many bytes as the prev SIZE</li>
- * <li><b>END_DATA</b>  - 7 bytes - <i>TLF2003</i></lI>
- * </ul>
- * @author Filip Hanik
- * @version $Id$
+ * Buffer of bytes.
  */
-public class XByteBuffer
-{
+public class ByteBuffer {
+	/**
+	 * The value is used for character storage.
+	 */
+	private byte _value[];
 
-    private static final org.apache.juli.logging.Log log =
-        org.apache.juli.logging.LogFactory.getLog( XByteBuffer.class );
+	/**
+	 * The count is the number of characters in the buffer.
+	 */
+	private int _count = 0;
 
-    /**
-     * This is a package header, 7 bytes (FLT2002)
-     */
-    private static final byte[] START_DATA = {70,76,84,50,48,48,50};
+	private int _hash = 0;
 
-    /**
-     * This is the package footer, 7 bytes (TLF2003)
-     */
-    private static final byte[] END_DATA = {84,76,70,50,48,48,51};
+	/**
+	 * Constructs object.
+	 */
+	public ByteBuffer() {
+		this(16);
+	}
 
-    /**
-     * Variable to hold the data
-     */
-    protected byte[] buf = null;
+	/**
+	 * Constructs object.
+	 * @param length initial capacity of buffer.
+	 */
+	public ByteBuffer(int length) {
+		_value = new byte[length];
+	}
 
-    /**
-     * Current length of data in the buffer
-     */
-    protected int bufSize = 0;
+	/**
+	 * Constructs object.
+	 */
+	public ByteBuffer(byte[] array, boolean copy) {
+		_count = array.length;
+		if (copy) {
+			_value = new byte[_count];
+			System.arraycopy(array, 0, _value, 0, _count);
+		}
+		else {
+			_value = array;
+		}
+	}
 
-    /**
-     * Flag for discarding invalid packages
-     * If this flag is set to true, and append(byte[],...) is called,
-     * the data added will be inspected, and if it doesn't start with
-     * <code>START_DATA</code> it will be thrown away.
-     *
-     */
-    protected boolean discard = true;
+	public ByteBuffer(ByteBuffer buffer, boolean copy) {
+		_count = buffer.length();
+		if (copy) {
+			_value = new byte[_count];
+			System.arraycopy(buffer._value, 0, _value, 0, _count);
+		}
+		else {
+			_value = buffer._value;
+		}
+	}
 
-    /**
-     * Constructs a new XByteBuffer
-     * @param size - the initial size of the byte buffer
-     * TODO use a pool of byte[] for performance
-     */
-    public XByteBuffer(int size, boolean discard) {
-        buf = new byte[size];
-        this.discard = discard;
-    }
+	/**
+	 * Returns actual length of buffer's data.
+	 */
+	public int length() {
+		return _count;
+	}
 
-    public XByteBuffer(byte[] data,boolean discard) {
-        this(data,data.length+128,discard);
-    }
+	/**
+	 * Return capacity of buffer;
+	 */
+	public int capacity() {
+		return _value.length;
+	}
 
-    public XByteBuffer(byte[] data, int size,boolean discard) {
-        int length = Math.max(data.length,size);
-        buf = new byte[length];
-        System.arraycopy(data,0,buf,0,data.length);
-        bufSize = data.length;
-        this.discard = discard;
-    }
+	/**
+	 * Grows capacity if given capacity more than buffer's one.
+	 */
+	public synchronized void ensureCapacity(int minimumCapacity) {
+		if (minimumCapacity > _value.length) {
+			expandCapacity(minimumCapacity);
+		}
+	}
 
-    public int getLength() {
-        return bufSize;
-    }
+	private void expandCapacity(int minimumCapacity) {
+		int newCapacity = (_value.length + 1) * 2;
+		if (newCapacity < 0) {
+			newCapacity = Integer.MAX_VALUE;
+		}
+		else {
+			if (minimumCapacity > newCapacity) {
+				newCapacity = minimumCapacity;
+			}
+		}
+		byte newValue[] = new byte[newCapacity];
+		System.arraycopy(_value, 0, newValue, 0, _count);
+		_value = newValue;
+	}
 
-    public void setLength(int size) {
-        if ( size > buf.length ) throw new ArrayIndexOutOfBoundsException("Size is larger than existing buffer.");
-        bufSize = size;
-    }
+	/**
+	 * Sets length of buffer's data.
+	 */
+	public synchronized void setLength(int newLength) {
+		if (newLength < 0) {
+			throw new ArrayIndexOutOfBoundsException(newLength);
+		}
 
-    public void trim(int length) {
-        if ( (bufSize - length) < 0 )
-            throw new ArrayIndexOutOfBoundsException("Can't trim more bytes than are available. length:"+bufSize+" trim:"+length);
-        bufSize -= length;
-    }
+		if (newLength > _value.length) {
+			expandCapacity(newLength);
+		}
 
-    public void reset() {
-        bufSize = 0;
-    }
+		if (_count != newLength) {
+			_hash = 0;
+		}
+		if (_count < newLength) {
+			for (; _count < newLength; _count++) {
+				_value[_count] = 0;
+			}
+		}
+		else {
+			_count = newLength;
+		}
+	}
 
-    public byte[] getBytesDirect() {
-        return this.buf;
-    }
+	/**
+	 * Returns byte by given index.
+	 */
+	public synchronized byte byteAt(int index) {
+		if ((index < 0) || (index >= _count)) {
+			throw new ArrayIndexOutOfBoundsException(index);
+		}
+		return _value[index];
+	}
 
-    /**
-     * Returns the bytes in the buffer, in its exact length
-     */
-    public byte[] getBytes() {
-        byte[] b = new byte[bufSize];
-        System.arraycopy(buf,0,b,0,bufSize);
-        return b;
-    }
+	/**
+	 * Sets byte at position by given index.
+	 */
+	public synchronized void setByteAt(int index, byte b) {
+		if ((index < 0) || (index >= _count)) {
+			throw new ArrayIndexOutOfBoundsException(index);
+		}
+		_value[index] = b;
+		_hash = 0;
+	}
 
-    /**
-     * Resets the buffer
-     */
-    public void clear() {
-        bufSize = 0;
-    }
+	/**
+	 * Appends data to end of buffer.
+	 */
+	public synchronized ByteBuffer append(byte str[]) {
+		int len = str.length;
+		int newcount = _count + len;
+		if (newcount > _value.length)
+			expandCapacity(newcount);
+		System.arraycopy(str, 0, _value, _count, len);
+		_count = newcount;
+		_hash = 0;
+		return this;
+	}
 
-    /**
-     * Appends the data to the buffer. If the data is incorrectly formatted, ie, the data should always start with the
-     * header, false will be returned and the data will be discarded.
-     * @param b - bytes to be appended
-     * @param len - the number of bytes to append.
-     * @return true if the data was appended correctly. Returns false if the package is incorrect, ie missing header or something, or the length of data is 0
-     */
-    public boolean append(ByteBuffer b, int len) {
-        int newcount = bufSize + len;
-        if (newcount > buf.length) {
-            expand(newcount);
+	/**
+	 * Appends data to end of buffer.
+	 */
+	public synchronized ByteBuffer append(ByteBuffer buf) {
+		int len = buf._count;
+		int newcount = _count + len;
+		if (newcount > _value.length)
+			expandCapacity(newcount);
+		System.arraycopy(buf._value, 0, _value, _count, len);
+		_count = newcount;
+		_hash = 0;
+		return this;
+	}
+
+	/**
+	 * Appends data to end of buffer.
+	 */
+	public synchronized ByteBuffer append(byte str[], int offset, int len) {
+		int newcount = _count + len;
+		if (newcount > _value.length)
+			expandCapacity(newcount);
+		System.arraycopy(str, offset, _value, _count, len);
+		_count = newcount;
+		_hash = 0;
+		return this;
+	}
+
+	/**
+	 * Appends data at end of buffer.
+	 */
+	public synchronized ByteBuffer append(byte b) {
+		int newcount = _count + 1;
+		if (newcount > _value.length)
+			expandCapacity(newcount);
+		_value[_count++] = b;
+		_hash = 0;
+		return this;
+	}
+
+	public synchronized ByteBuffer append(short v) {
+		int newcount = _count + 2;
+		if (newcount > _value.length)
+			expandCapacity(newcount);
+		_value[_count] = (byte) ((v >>> 8) & 0xFF);
+		_value[_count + 1] = (byte) ((v >>> 0) & 0xFF);
+		_count = newcount;
+		_hash = 0;
+		return this;
+	}
+
+	public synchronized ByteBuffer append(char v) {
+		int newcount = _count + 2;
+		if (newcount > _value.length)
+			expandCapacity(newcount);
+		_value[_count] = (byte) ((v >>> 8) & 0xFF);
+		_value[_count + 1] = (byte) ((v >>> 0) & 0xFF);
+		_count = newcount;
+		_hash = 0;
+		return this;
+	}
+
+    public synchronized ByteBuffer append(String s) {
+        int newcount = _count + s.length();
+        if (newcount > _value.length)
+            expandCapacity(newcount);
+        for (int i = 0; i < s.length(); ++i) {
+            append(s.charAt(i));
         }
-        b.get(buf,bufSize,len);
+        return this;
+    }
 
-        bufSize = newcount;
+	public synchronized ByteBuffer append(int v) {
+		int newcount = _count + 4;
+		if (newcount > _value.length)
+			expandCapacity(newcount);
+		_value[_count] = (byte) ((v >>> 24) & 0xFF);
+		_value[_count + 1] = (byte) ((v >>> 16) & 0xFF);
+		_value[_count + 2] = (byte) ((v >>> 8) & 0xFF);
+		_value[_count + 3] = (byte) ((v >>> 0) & 0xFF);
+		_count = newcount;
+		_hash = 0;
+		return this;
+	}
 
-        if ( discard ) {
-            if (bufSize > START_DATA.length && (firstIndexOf(buf, 0, START_DATA) == -1)) {
-                bufSize = 0;
-                log.error("Discarded the package, invalid header");
-                return false;
+	public synchronized ByteBuffer append(long v) {
+		int newcount = _count + 8;
+		if (newcount > _value.length)
+			expandCapacity(newcount);
+		_value[_count] = (byte) ((int) (v >>> 56) & 0xFF);
+		_value[_count + 1] = (byte) ((int) (v >>> 48) & 0xFF);
+		_value[_count + 2] = (byte) ((int) (v >>> 40) & 0xFF);
+		_value[_count + 3] = (byte) ((int) (v >>> 32) & 0xFF);
+		_value[_count + 4] = (byte) ((int) (v >>> 24) & 0xFF);
+		_value[_count + 5] = (byte) ((int) (v >>> 16) & 0xFF);
+		_value[_count + 6] = (byte) ((int) (v >>> 8) & 0xFF);
+		_value[_count + 7] = (byte) ((int) (v >>> 0) & 0xFF);
+		_count = newcount;
+		_hash = 0;
+		return this;
+	}
+
+	/**
+	 * Removes data from buffer.
+	 */
+	public synchronized void delete(int start, int end) {
+		if (start < 0)
+			throw new ArrayIndexOutOfBoundsException(start);
+		if (end > _count)
+			end = _count;
+		if (start > end)
+			throw new ArrayIndexOutOfBoundsException();
+
+		int len = end - start;
+		if (len > 0) {
+			System.arraycopy(_value, start + len, _value, start, _count - end);
+			_count -= len;
+		}
+		_hash = 0;
+	}
+
+	/**
+	 * Removes byte from buffer by given index.
+	 */
+	public synchronized void deleteByteAt(int index) {
+		if ((index < 0) || (index >= _count))
+			throw new ArrayIndexOutOfBoundsException();
+		System.arraycopy(_value, index + 1, _value, index, _count - index - 1);
+		_count--;
+		_hash = 0;
+	}
+
+	/**
+	 * Inserts data into buffer.
+	 */
+	public synchronized void insert(int index, byte str[], int offset, int len) {
+		if ((index < 0) || (index > _count))
+			throw new ArrayIndexOutOfBoundsException();
+		if ((offset < 0) || (offset + len < 0) || (offset + len > str.length))
+			throw new ArrayIndexOutOfBoundsException(offset);
+		if (len < 0)
+			throw new ArrayIndexOutOfBoundsException(len);
+		int newCount = _count + len;
+		if (newCount > _value.length)
+			expandCapacity(newCount);
+		System.arraycopy(_value, index, _value, index + len, _count - index);
+		System.arraycopy(str, offset, _value, index, len);
+		_count = newCount;
+		_hash = 0;
+	}
+
+	/**
+	 * Inserts data into buffer.
+	 */
+	public synchronized void insert(int offset, byte str[]) {
+		if ((offset < 0) || (offset > _count)) {
+			throw new ArrayIndexOutOfBoundsException();
+		}
+		int len = str.length;
+		int newcount = _count + len;
+		if (newcount > _value.length)
+			expandCapacity(newcount);
+		System.arraycopy(_value, offset, _value, offset + len, _count - offset);
+		System.arraycopy(str, 0, _value, offset, len);
+		_count = newcount;
+		_hash = 0;
+	}
+
+	/**
+	 * Inserts data into buffer.
+	 */
+	public synchronized void insert(int offset, byte c) {
+		int newcount = _count + 1;
+		if (newcount > _value.length)
+			expandCapacity(newcount);
+		System.arraycopy(_value, offset, _value, offset + 1, _count - offset);
+		_value[offset] = c;
+		_count = newcount;
+		_hash = 0;
+	}
+
+	/**
+	 * Inserts data into buffer.
+	 */
+	public synchronized void insert(int offset, short v) {
+		int newcount = _count + 2;
+		if (newcount > _value.length)
+			expandCapacity(newcount);
+		System.arraycopy(_value, offset, _value, offset + 3, _count - offset);
+		_value[offset] = (byte) ((v >>> 8) & 0xFF);
+		_value[offset + 1] = (byte) ((v >>> 0) & 0xFF);
+		_count = newcount;
+		_hash = 0;
+	}
+
+	/**
+	 * Inserts data into buffer.
+	 */
+	public synchronized void insert(int offset, int v) {
+		int newcount = _count + 4;
+		if (newcount > _value.length)
+			expandCapacity(newcount);
+		System.arraycopy(_value, offset, _value, offset + 5, _count - offset);
+		_value[offset] = (byte) ((v >>> 24) & 0xFF);
+		_value[offset + 1] = (byte) ((v >>> 16) & 0xFF);
+		_value[offset + 2] = (byte) ((v >>> 8) & 0xFF);
+		_value[offset + 3] = (byte) ((v >>> 0) & 0xFF);
+		_count = newcount;
+		_hash = 0;
+	}
+
+	/**
+	 * Inserts data into buffer.
+	 */
+	public synchronized void insert(int offset, long v) {
+		int newcount = _count + 8;
+		if (newcount > _value.length)
+			expandCapacity(newcount);
+		System.arraycopy(_value, offset, _value, offset + 9, _count - offset);
+		_value[offset] = (byte) ((v >>> 56) & 0xFF);
+		_value[offset + 1] = (byte) ((v >>> 48) & 0xFF);
+		_value[offset + 2] = (byte) ((v >>> 40) & 0xFF);
+		_value[offset + 3] = (byte) ((v >>> 32) & 0xFF);
+		_value[offset + 4] = (byte) ((v >>> 24) & 0xFF);
+		_value[offset + 5] = (byte) ((v >>> 16) & 0xFF);
+		_value[offset + 6] = (byte) ((v >>> 8) & 0xFF);
+		_value[offset + 7] = (byte) ((v >>> 0) & 0xFF);
+		_count = newcount;
+		_hash = 0;
+	}
+
+	/**
+	 * Returns copy of buffer's data.
+	 */
+	public synchronized void getBytes(int srcBegin, int srcEnd, byte dst[], int dstBegin) {
+		if (srcBegin < 0) {
+			throw new ArrayIndexOutOfBoundsException(srcBegin);
+		}
+		if ((srcEnd < 0) || (srcEnd > _count)) {
+			throw new ArrayIndexOutOfBoundsException(srcEnd);
+		}
+		if (srcBegin > srcEnd) {
+			throw new ArrayIndexOutOfBoundsException("srcBegin > srcEnd");
+		}
+		System.arraycopy(_value, srcBegin, dst, dstBegin, srcEnd - srcBegin);
+	}
+
+	/**
+	 * Returns copy of buffer's data.
+	 */
+	public synchronized byte[] getBytes() {
+		byte[] dst = new byte[_count];
+		System.arraycopy(_value, 0, dst, 0, _count);
+		return dst;
+	}
+
+	/**
+	 * Converts buffer's data to <code>String</code>.
+	 */
+	public String toString() {
+		return new String(getBytes());
+	}
+
+	/**
+	 * Converts buffer's data to <code>String</code>.
+	 */
+	public String toString(String encoding) throws UnsupportedEncodingException {
+		return new String(getBytes(), encoding);
+	}
+
+	/**
+	 * Coverts buffer's data to sequence of numeric string of
+	 * specified radix.
+	 */
+	public String toString(int radix) {
+        return toString(radix,null);
+	}
+
+    /**
+     * like {@link #toString(int)}
+     * @param radix
+     * @param delimeter ??????????? ????? ?????????????? byte
+     * @return
+     */
+    public String toString(int radix, String delimeter) {
+        StringBuffer sb = new StringBuffer(_count * 3);
+        for (int i = 0; i < _count; i++) {
+            int b = _value[i] & 0xFF;
+            if (b < radix && delimeter==null) {
+                sb.append('0');
+            }
+            sb.append(Integer.toString(b, radix));
+            if (delimeter!=null && (i+1) < _count ){
+                sb.append(delimeter);
             }
         }
-        return true;
-
+        return sb.toString();
     }
 
-    public boolean append(byte i) {
-        int newcount = bufSize + 1;
-        if (newcount > buf.length) {
-            expand(newcount);
-        }
-        buf[bufSize] = i;
-        bufSize = newcount;
-        return true;
-    }
+	public boolean equals(Object o) {
+		if (this == o) {
+			return true;
+		}
 
+		if (!(o instanceof ByteBuffer)) {
+			return false;
+		}
 
-    public boolean append(boolean i) {
-        int newcount = bufSize + 1;
-        if (newcount > buf.length) {
-            expand(newcount);
-        }
-        XByteBuffer.toBytes(i,buf,bufSize);
-        bufSize = newcount;
-        return true;
-    }
+		final ByteBuffer byteBuffer = (ByteBuffer) o;
 
-    public boolean append(long i) {
-        int newcount = bufSize + 8;
-        if (newcount > buf.length) {
-            expand(newcount);
-        }
-        XByteBuffer.toBytes(i,buf,bufSize);
-        bufSize = newcount;
-        return true;
-    }
+		if (_count != byteBuffer._count) {
+			return false;
+		}
 
-    public boolean append(int i) {
-        int newcount = bufSize + 4;
-        if (newcount > buf.length) {
-            expand(newcount);
-        }
-        XByteBuffer.toBytes(i,buf,bufSize);
-        bufSize = newcount;
-        return true;
-    }
+		for (int i = 0; i < _count; i++) {
+			if (_value[i] != byteBuffer._value[i]) {
+				return false;
+			}
+		}
 
-    public boolean append(byte[] b, int off, int len) {
-        if ((off < 0) || (off > b.length) || (len < 0) ||
-            ((off + len) > b.length) || ((off + len) < 0))  {
-            throw new IndexOutOfBoundsException();
-        } else if (len == 0) {
-            return false;
-        }
+		return true;
+	}
 
-        int newcount = bufSize + len;
-        if (newcount > buf.length) {
-            expand(newcount);
-        }
-        System.arraycopy(b, off, buf, bufSize, len);
-        bufSize = newcount;
+	public int hashCode() {
+		int h = _hash;
+		if (h == 0) {
+			for (int i = 0; i < _count; i++) {
+				h = 31 * h + _value[i];
+			}
+			_hash = h;
+		}
+		return h;
+	}
 
-        if ( discard ) {
-            if (bufSize > START_DATA.length && (firstIndexOf(buf, 0, START_DATA) == -1)) {
-                bufSize = 0;
-                log.error("Discarded the package, invalid header");
-                return false;
-            }
-        }
-        return true;
-    }
+	public ByteBuffer getDigest() {
+		return new ByteBuffer(4).append(hashCode());
+	}
 
-    public void expand(int newcount) {
-        //don't change the allocation strategy
-        byte newbuf[] = new byte[Math.max(buf.length << 1, newcount)];
-        System.arraycopy(buf, 0, newbuf, 0, bufSize);
-        buf = newbuf;
-    }
-
-    public int getCapacity() {
-        return buf.length;
-    }
-
-
-    /**
-     * Internal mechanism to make a check if a complete package exists
-     * within the buffer
-     * @return - true if a complete package (header,compress,size,data,footer) exists within the buffer
-     */
-    public int countPackages() {
-        return countPackages(false);
-    }
-
-    public int countPackages(boolean first)
-    {
-        int cnt = 0;
-        int pos = START_DATA.length;
-        int start = 0;
-
-        while ( start < bufSize ) {
-            //first check start header
-            int index = XByteBuffer.firstIndexOf(buf,start,START_DATA);
-            //if the header (START_DATA) isn't the first thing or
-            //the buffer isn't even 14 bytes
-            if ( index != start || ((bufSize-start)<14) ) break;
-            //next 4 bytes are compress flag not needed for count packages
-            //then get the size 4 bytes
-            int size = toInt(buf, pos);
-            //now the total buffer has to be long enough to hold
-            //START_DATA.length+4+size+END_DATA.length
-            pos = start + START_DATA.length + 4 + size;
-            if ( (pos + END_DATA.length) > bufSize) break;
-            //and finally check the footer of the package END_DATA
-            int newpos = firstIndexOf(buf, pos, END_DATA);
-            //mismatch, there is no package
-            if (newpos != pos) break;
-            //increase the packet count
-            cnt++;
-            //reset the values
-            start = pos + END_DATA.length;
-            pos = start + START_DATA.length;
-            //we only want to verify that we have at least one package
-            if ( first ) break;
-        }
-        return cnt;
-    }
-
-    /**
-     * Method to check if a package exists in this byte buffer.
-     * @return - true if a complete package (header,options,size,data,footer) exists within the buffer
-     */
-    public boolean doesPackageExist()  {
-        return (countPackages(true)>0);
-    }
-
-    /**
-     * Extracts the message bytes from a package.
-     * If no package exists, a IllegalStateException will be thrown.
-     * @param clearFromBuffer - if true, the package will be removed from the byte buffer
-     * @return - returns the actual message bytes (header, compress,size and footer not included).
-     */
-    public XByteBuffer extractDataPackage(boolean clearFromBuffer) {
-        int psize = countPackages(true);
-        if (psize == 0) {
-            throw new java.lang.IllegalStateException("No package exists in XByteBuffer");
-        }
-        int size = toInt(buf, START_DATA.length);
-        XByteBuffer xbuf = BufferPool.getBufferPool().getBuffer(size,false);
-        xbuf.setLength(size);
-        System.arraycopy(buf, START_DATA.length + 4, xbuf.getBytesDirect(), 0, size);
-        if (clearFromBuffer) {
-            int totalsize = START_DATA.length + 4 + size + END_DATA.length;
-            bufSize = bufSize - totalsize;
-            System.arraycopy(buf, totalsize, buf, 0, bufSize);
-        }
-        return xbuf;
-
-    }
-
-    public ChannelData extractPackage(boolean clearFromBuffer) {
-        XByteBuffer xbuf = extractDataPackage(clearFromBuffer);
-        ChannelData cdata = ChannelData.getDataFromPackage(xbuf);
-        return cdata;
-    }
-
-    /**
-     * Creates a complete data package
-     * @param cdata - the message data to be contained within the package
-     * @return - a full package (header,size,data,footer)
-     */
-    public static byte[] createDataPackage(ChannelData cdata) {
-//        return createDataPackage(cdata.getDataPackage());
-        //avoid one extra byte array creation
-        int dlength = cdata.getDataPackageLength();
-        int length = getDataPackageLength(dlength);
-        byte[] data = new byte[length];
-        int offset = 0;
-        System.arraycopy(START_DATA, 0, data, offset, START_DATA.length);
-        offset += START_DATA.length;
-        toBytes(dlength,data, START_DATA.length);
-        offset += 4;
-        cdata.getDataPackage(data,offset);
-        offset += dlength;
-        System.arraycopy(END_DATA, 0, data, offset, END_DATA.length);
-        offset += END_DATA.length;
-        return data;
-    }
-
-    public static byte[] createDataPackage(byte[] data, int doff, int dlength, byte[] buffer, int bufoff) {
-        if ( (buffer.length-bufoff) > getDataPackageLength(dlength) ) {
-            throw new ArrayIndexOutOfBoundsException("Unable to create data package, buffer is too small.");
-        }
-        System.arraycopy(START_DATA, 0, buffer, bufoff, START_DATA.length);
-        toBytes(data.length,buffer, bufoff+START_DATA.length);
-        System.arraycopy(data, doff, buffer, bufoff+START_DATA.length + 4, dlength);
-        System.arraycopy(END_DATA, 0, buffer, bufoff+START_DATA.length + 4 + data.length, END_DATA.length);
-        return buffer;
-    }
-
-
-    public static int getDataPackageLength(int datalength) {
-        int length =
-            START_DATA.length + //header length
-            4 + //data length indicator
-            datalength + //actual data length
-            END_DATA.length; //footer length
-        return length;
-
-    }
-
-    public static byte[] createDataPackage(byte[] data) {
-        int length = getDataPackageLength(data.length);
-        byte[] result = new byte[length];
-        return createDataPackage(data,0,data.length,result,0);
-    }
-
-
-//    public static void fillDataPackage(byte[] data, int doff, int dlength, XByteBuffer buf) {
-//        int pkglen = getDataPackageLength(dlength);
-//        if ( buf.getCapacity() <  pkglen ) buf.expand(pkglen);
-//        createDataPackage(data,doff,dlength,buf.getBytesDirect(),buf.getLength());
-//    }
-
-    /**
-     * Convert four bytes to an int
-     * @param b - the byte array containing the four bytes
-     * @param off - the offset
-     * @return the integer value constructed from the four bytes
-     * @exception java.lang.ArrayIndexOutOfBoundsException
-     */
-    public static int toInt(byte[] b,int off){
-        return ( ( b[off+3]) & 0xFF) +
-            ( ( ( b[off+2]) & 0xFF) << 8) +
-            ( ( ( b[off+1]) & 0xFF) << 16) +
-            ( ( ( b[off+0]) & 0xFF) << 24);
-    }
-
-    /**
-     * Convert eight bytes to a long
-     * @param b - the byte array containing the four bytes
-     * @param off - the offset
-     * @return the long value constructed from the eight bytes
-     * @exception java.lang.ArrayIndexOutOfBoundsException
-     */
-    public static long toLong(byte[] b,int off){
-        return ( ( (long) b[off+7]) & 0xFF) +
-            ( ( ( (long) b[off+6]) & 0xFF) << 8) +
-            ( ( ( (long) b[off+5]) & 0xFF) << 16) +
-            ( ( ( (long) b[off+4]) & 0xFF) << 24) +
-            ( ( ( (long) b[off+3]) & 0xFF) << 32) +
-            ( ( ( (long) b[off+2]) & 0xFF) << 40) +
-            ( ( ( (long) b[off+1]) & 0xFF) << 48) +
-            ( ( ( (long) b[off+0]) & 0xFF) << 56);
-    }
-
-
-    /**
-     * Converts a boolean to a 1-byte array
-     * @param bool - the integer
-     * @return - 1-byte array
-     */
-    public static byte[] toBytes(boolean bool, byte[] data, int offset) {
-        data[offset] = (byte)(bool?1:0);
-        return data;
-    }
-
-    /**
-     * Converts a byte array entry to boolean
-     * @param b byte array
-     * @param offset within byte array
-     * @return true if byte array entry is non-zero, false otherwise
-     */
-    public static boolean toBoolean(byte[] b, int offset) {
-        return b[offset] != 0;
-    }
-
-
-    /**
-     * Converts an integer to four bytes
-     * @param n - the integer
-     * @return - four bytes in an array
-     */
-    public static byte[] toBytes(int n,byte[] b, int offset) {
-        b[offset+3] = (byte) (n);
-        n >>>= 8;
-        b[offset+2] = (byte) (n);
-        n >>>= 8;
-        b[offset+1] = (byte) (n);
-        n >>>= 8;
-        b[offset+0] = (byte) (n);
-        return b;
-    }
-
-    /**
-     * Converts an long to eight bytes
-     * @param n - the long
-     * @return - eight bytes in an array
-     */
-    public static byte[] toBytes(long n, byte[] b, int offset) {
-        b[offset+7] = (byte) (n);
-        n >>>= 8;
-        b[offset+6] = (byte) (n);
-        n >>>= 8;
-        b[offset+5] = (byte) (n);
-        n >>>= 8;
-        b[offset+4] = (byte) (n);
-        n >>>= 8;
-        b[offset+3] = (byte) (n);
-        n >>>= 8;
-        b[offset+2] = (byte) (n);
-        n >>>= 8;
-        b[offset+1] = (byte) (n);
-        n >>>= 8;
-        b[offset+0] = (byte) (n);
-        return b;
-    }
-
-    /**
-     * Similar to a String.IndexOf, but uses pure bytes
-     * @param src - the source bytes to be searched
-     * @param srcOff - offset on the source buffer
-     * @param find - the string to be found within src
-     * @return - the index of the first matching byte. -1 if the find array is not found
-     */
-    public static int firstIndexOf(byte[] src, int srcOff, byte[] find){
-        int result = -1;
-        if (find.length > src.length) return result;
-        if (find.length == 0 || src.length == 0) return result;
-        if (srcOff >= src.length ) throw new java.lang.ArrayIndexOutOfBoundsException();
-        boolean found = false;
-        int srclen = src.length;
-        int findlen = find.length;
-        byte first = find[0];
-        int pos = srcOff;
-        while (!found) {
-            //find the first byte
-            while (pos < srclen){
-                if (first == src[pos])
-                    break;
-                pos++;
-            }
-            if (pos >= srclen)
-                return -1;
-
-            //we found the first character
-            //match the rest of the bytes - they have to match
-            if ( (srclen - pos) < findlen)
-                return -1;
-            //assume it does exist
-            found = true;
-            for (int i = 1; ( (i < findlen) && found); i++)
-                found = found && (find[i] == src[pos + i]);
-            if (found)
-                result = pos;
-            else if ( (srclen - pos) < findlen)
-                return -1; //no more matches possible
-            else
-                pos++;
-        }
-        return result;
-    }
-
-
-    public static Serializable deserialize(byte[] data)
-        throws IOException, ClassNotFoundException, ClassCastException {
-        return deserialize(data,0,data.length);
-    }
-
-    public static Serializable deserialize(byte[] data, int offset, int length)
-        throws IOException, ClassNotFoundException, ClassCastException {
-        return deserialize(data,offset,length,null);
-    }
-
-    private static final AtomicInteger invokecount = new AtomicInteger(0);
-
-    public static Serializable deserialize(byte[] data, int offset, int length, ClassLoader[] cls)
-        throws IOException, ClassNotFoundException, ClassCastException {
-        invokecount.addAndGet(1);
-        Object message = null;
-        if ( cls == null ) cls = new ClassLoader[0];
-        if (data != null && length > 0) {
-            InputStream  instream = new ByteArrayInputStream(data,offset,length);
-            ObjectInputStream stream = null;
-            stream = (cls.length>0)? new ReplicationStream(instream,cls):new ObjectInputStream(instream);
-            message = stream.readObject();
-            instream.close();
-            stream.close();
-        }
-        if ( message == null ) {
-            return null;
-        } else if (message instanceof Serializable)
-            return (Serializable) message;
-        else {
-            throw new ClassCastException("Message has the wrong class. It should implement Serializable, instead it is:"+message.getClass().getName());
-        }
-    }
-
-    /**
-     * Serializes a message into cluster data
-     * @param msg ClusterMessage
-     * @return serialized content as byte[] array
-     * @throws IOException
-     */
-    public static byte[] serialize(Serializable msg) throws IOException {
-        ByteArrayOutputStream outs = new ByteArrayOutputStream();
-        ObjectOutputStream out = new ObjectOutputStream(outs);
-        out.writeObject(msg);
-        out.flush();
-        byte[] data = outs.toByteArray();
-        return data;
-    }
-
-    public void setDiscard(boolean discard) {
-        this.discard = discard;
-    }
-
-    public boolean getDiscard() {
-        return discard;
-    }
-
+	public ByteBuffer getMD5Digest() {
+		try {
+			MessageDigest md = MessageDigest.getInstance("MD5");
+			return new ByteBuffer(md.digest(getBytes()), false);
+		}
+		catch (NoSuchAlgorithmException e) {
+			throw new ADVRuntimeException(e);
+		}
+	}
 }
 

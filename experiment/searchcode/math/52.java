@@ -2,471 +2,320 @@
  * Copyright 2004-2013 H2 Group. Multiple-Licensed under the H2 License,
  * Version 1.0, and under the Eclipse Public License, Version 1.0
  * (http://h2database.com/html/license.html).
- *
- * This code is based on the LZF algorithm from Marc Lehmann. It is a
- * re-implementation of the C code:
- * http://cvs.schmorp.de/liblzf/lzf_c.c?view=markup
- * http://cvs.schmorp.de/liblzf/lzf_d.c?view=markup
- *
- * According to a mail from Marc Lehmann, it's OK to use his algorithm:
- * Date: 2010-07-15 15:57
- * Subject: Re: Question about LZF licensing
- * ...
- * The algorithm is not copyrighted (and cannot be copyrighted afaik) - as long
- * as you wrote everything yourself, without copying my code, that's just fine
- * (looking is of course fine too).
- * ...
- *
- * Still I would like to keep his copyright info:
- *
- * Copyright (c) 2000-2005 Marc Alexander Lehmann <schmorp@schmorp.de>
- * Copyright (c) 2005 Oren J. Maurice <oymaurice@hazorea.org.il>
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *
- *   1.  Redistributions of source code must retain the above copyright notice,
- *       this list of conditions and the following disclaimer.
- *
- *   2.  Redistributions in binary form must reproduce the above copyright
- *       notice, this list of conditions and the following disclaimer in the
- *       documentation and/or other materials provided with the distribution.
- *
- *   3.  The name of the author may not be used to endorse or promote products
- *       derived from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ''AS IS'' AND ANY EXPRESS OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO
- * EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
- * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
- * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
- * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * Initial Developer: H2 Group
  */
+package org.h2.test.unit;
 
-package org.h2.compress;
-
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Random;
+import org.h2.compress.CompressLZF;
+import org.h2.compress.Compressor;
+import org.h2.engine.Constants;
+import org.h2.store.fs.FileUtils;
+import org.h2.test.TestBase;
+import org.h2.tools.CompressTool;
+import org.h2.util.IOUtils;
+import org.h2.util.New;
+import org.h2.util.Task;
 
 /**
- * <p>
- * This class implements the LZF lossless data compression algorithm. LZF is a
- * Lempel-Ziv variant with byte-aligned output, and optimized for speed.
- * </p>
- * <p>
- * Safety/Use Notes:
- * </p>
- * <ul>
- * <li>Each instance should be used by a single thread only.</li>
- * <li>The data buffers should be smaller than 1 GB.</li>
- * <li>For performance reasons, safety checks on expansion are omitted.</li>
- * <li>Invalid compressed data can cause an ArrayIndexOutOfBoundsException.</li>
- * </ul>
- * <p>
- * The LZF compressed format knows literal runs and back-references:
- * </p>
- * <ul>
- * <li>Literal run: directly copy bytes from input to output.</li>
- * <li>Back-reference: copy previous data to output stream, with specified
- * offset from location and length. The length is at least 3 bytes.</li>
- * </ul>
- *<p>
- * The first byte of the compressed stream is the control byte. For literal
- * runs, the highest three bits of the control byte are not set, the the lower
- * bits are the literal run length, and the next bytes are data to copy directly
- * into the output. For back-references, the highest three bits of the control
- * byte are the back-reference length. If all three bits are set, then the
- * back-reference length is stored in the next byte. The lower bits of the
- * control byte combined with the next byte form the offset for the
- * back-reference.
- * </p>
+ * Data compression tests.
  */
-public final class CompressLZF implements Compressor {
+public class TestCompress extends TestBase {
+
+    private boolean testPerformance;
+    private final byte[] buff = new byte[10];
 
     /**
-     * The number of entries in the hash table. The size is a trade-off between
-     * hash collisions (reduced compression) and speed (amount that fits in CPU
-     * cache).
-     */
-    private static final int HASH_SIZE = 1 << 14;
-
-    /**
-     * The maximum number of literals in a chunk (32).
-     */
-    private static final int MAX_LITERAL = 1 << 5;
-
-    /**
-     * The maximum offset allowed for a back-reference (8192).
-     */
-    private static final int MAX_OFF = 1 << 13;
-
-    /**
-     * The maximum back-reference length (264).
-     */
-    private static final int MAX_REF = (1 << 8) + (1 << 3);
-
-    /**
-     * Hash table for matching byte sequences (reused for performance).
-     */
-    private int[] cachedHashTable;
-
-    @Override
-    public void setOptions(String options) {
-        // nothing to do
-    }
-
-    /**
-     * Return the integer with the first two bytes 0, then the bytes at the
-     * index, then at index+1.
-     */
-    private static int first(byte[] in, int inPos) {
-        return (in[inPos] << 8) | (in[inPos + 1] & 255);
-    }
-
-    /**
-     * Return the integer with the first two bytes 0, then the bytes at the
-     * index, then at index+1.
-     */
-    private static int first(ByteBuffer in, int inPos) {
-        return (in.get(inPos) << 8) | (in.get(inPos + 1) & 255);
-    }
-
-    /**
-     * Shift the value 1 byte left, and add the byte at index inPos+2.
-     */
-    private static int next(int v, byte[] in, int inPos) {
-        return (v << 8) | (in[inPos + 2] & 255);
-    }
-
-    /**
-     * Shift the value 1 byte left, and add the byte at index inPos+2.
-     */
-    private static int next(int v, ByteBuffer in, int inPos) {
-        return (v << 8) | (in.get(inPos + 2) & 255);
-    }
-
-    /**
-     * Compute the address in the hash table.
-     */
-    private static int hash(int h) {
-        return ((h * 2777) >> 9) & (HASH_SIZE - 1);
-    }
-
-    @Override
-    public int compress(byte[] in, int inLen, byte[] out, int outPos) {
-        int inPos = 0;
-        if (cachedHashTable == null) {
-            cachedHashTable = new int[HASH_SIZE];
-        }
-        int[] hashTab = cachedHashTable;
-        int literals = 0;
-        outPos++;
-        int future = first(in, 0);
-        while (inPos < inLen - 4) {
-            byte p2 = in[inPos + 2];
-            // next
-            future = (future << 8) + (p2 & 255);
-            int off = hash(future);
-            int ref = hashTab[off];
-            hashTab[off] = inPos;
-            // if (ref < inPos
-            //       && ref > 0
-            //       && (off = inPos - ref - 1) < MAX_OFF
-            //       && in[ref + 2] == p2
-            //       && (((in[ref] & 255) << 8) | (in[ref + 1] & 255)) ==
-            //           ((future >> 8) & 0xffff)) {
-            if (ref < inPos
-                        && ref > 0
-                        && (off = inPos - ref - 1) < MAX_OFF
-                        && in[ref + 2] == p2
-                        && in[ref + 1] == (byte) (future >> 8)
-                        && in[ref] == (byte) (future >> 16)) {
-                // match
-                int maxLen = inLen - inPos - 2;
-                if (maxLen > MAX_REF) {
-                    maxLen = MAX_REF;
-                }
-                if (literals == 0) {
-                    // multiple back-references,
-                    // so there is no literal run control byte
-                    outPos--;
-                } else {
-                    // set the control byte at the start of the literal run
-                    // to store the number of literals
-                    out[outPos - literals - 1] = (byte) (literals - 1);
-                    literals = 0;
-                }
-                int len = 3;
-                while (len < maxLen && in[ref + len] == in[inPos + len]) {
-                    len++;
-                }
-                len -= 2;
-                if (len < 7) {
-                    out[outPos++] = (byte) ((off >> 8) + (len << 5));
-                } else {
-                    out[outPos++] = (byte) ((off >> 8) + (7 << 5));
-                    out[outPos++] = (byte) (len - 7);
-                }
-                out[outPos++] = (byte) off;
-                // move one byte forward to allow for a literal run control byte
-                outPos++;
-                inPos += len;
-                // rebuild the future, and store the last bytes to the
-                // hashtable. Storing hashes of the last bytes in back-reference
-                // improves the compression ratio and only reduces speed
-                // slightly.
-                future = first(in, inPos);
-                future = next(future, in, inPos);
-                hashTab[hash(future)] = inPos++;
-                future = next(future, in, inPos);
-                hashTab[hash(future)] = inPos++;
-            } else {
-                // copy one byte from input to output as part of literal
-                out[outPos++] = in[inPos++];
-                literals++;
-                // at the end of this literal chunk, write the length
-                // to the control byte and start a new chunk
-                if (literals == MAX_LITERAL) {
-                    out[outPos - literals - 1] = (byte) (literals - 1);
-                    literals = 0;
-                    // move ahead one byte to allow for the
-                    // literal run control byte
-                    outPos++;
-                }
-            }
-        }
-        // write the remaining few bytes as literals
-        while (inPos < inLen) {
-            out[outPos++] = in[inPos++];
-            literals++;
-            if (literals == MAX_LITERAL) {
-                out[outPos - literals - 1] = (byte) (literals - 1);
-                literals = 0;
-                outPos++;
-            }
-        }
-        // writes the final literal run length to the control byte
-        out[outPos - literals - 1] = (byte) (literals - 1);
-        if (literals == 0) {
-            outPos--;
-        }
-        return outPos;
-    }
-
-    /**
-     * Compress a number of bytes.
+     * Run just this test.
      *
-     * @param in the input data
-     * @param out the output area
-     * @param outPos the offset at the output array
-     * @return the end position
+     * @param a ignored
      */
-    public int compress(ByteBuffer in, byte[] out, int outPos) {
-        int inPos = in.position();
-        int inLen = in.capacity() - inPos;
-        if (cachedHashTable == null) {
-            cachedHashTable = new int[HASH_SIZE];
-        }
-        int[] hashTab = cachedHashTable;
-        int literals = 0;
-        outPos++;
-        int future = first(in, 0);
-        while (inPos < inLen - 4) {
-            byte p2 = in.get(inPos + 2);
-            // next
-            future = (future << 8) + (p2 & 255);
-            int off = hash(future);
-            int ref = hashTab[off];
-            hashTab[off] = inPos;
-            // if (ref < inPos
-            //       && ref > 0
-            //       && (off = inPos - ref - 1) < MAX_OFF
-            //       && in[ref + 2] == p2
-            //       && (((in[ref] & 255) << 8) | (in[ref + 1] & 255)) ==
-            //           ((future >> 8) & 0xffff)) {
-            if (ref < inPos
-                        && ref > 0
-                        && (off = inPos - ref - 1) < MAX_OFF
-                        && in.get(ref + 2) == p2
-                        && in.get(ref + 1) == (byte) (future >> 8)
-                        && in.get(ref) == (byte) (future >> 16)) {
-                // match
-                int maxLen = inLen - inPos - 2;
-                if (maxLen > MAX_REF) {
-                    maxLen = MAX_REF;
-                }
-                if (literals == 0) {
-                    // multiple back-references,
-                    // so there is no literal run control byte
-                    outPos--;
-                } else {
-                    // set the control byte at the start of the literal run
-                    // to store the number of literals
-                    out[outPos - literals - 1] = (byte) (literals - 1);
-                    literals = 0;
-                }
-                int len = 3;
-                while (len < maxLen && in.get(ref + len) == in.get(inPos + len)) {
-                    len++;
-                }
-                len -= 2;
-                if (len < 7) {
-                    out[outPos++] = (byte) ((off >> 8) + (len << 5));
-                } else {
-                    out[outPos++] = (byte) ((off >> 8) + (7 << 5));
-                    out[outPos++] = (byte) (len - 7);
-                }
-                out[outPos++] = (byte) off;
-                // move one byte forward to allow for a literal run control byte
-                outPos++;
-                inPos += len;
-                // rebuild the future, and store the last bytes to the
-                // hashtable. Storing hashes of the last bytes in back-reference
-                // improves the compression ratio and only reduces speed
-                // slightly.
-                future = first(in, inPos);
-                future = next(future, in, inPos);
-                hashTab[hash(future)] = inPos++;
-                future = next(future, in, inPos);
-                hashTab[hash(future)] = inPos++;
-            } else {
-                // copy one byte from input to output as part of literal
-                out[outPos++] = in.get(inPos++);
-                literals++;
-                // at the end of this literal chunk, write the length
-                // to the control byte and start a new chunk
-                if (literals == MAX_LITERAL) {
-                    out[outPos - literals - 1] = (byte) (literals - 1);
-                    literals = 0;
-                    // move ahead one byte to allow for the
-                    // literal run control byte
-                    outPos++;
-                }
-            }
-        }
-        // write the remaining few bytes as literals
-        while (inPos < inLen) {
-            out[outPos++] = in.get(inPos++);
-            literals++;
-            if (literals == MAX_LITERAL) {
-                out[outPos - literals - 1] = (byte) (literals - 1);
-                literals = 0;
-                outPos++;
-            }
-        }
-        // writes the final literal run length to the control byte
-        out[outPos - literals - 1] = (byte) (literals - 1);
-        if (literals == 0) {
-            outPos--;
-        }
-        return outPos;
+    public static void main(String... a) throws Exception {
+        TestBase.createCaller().init().test();
     }
 
     @Override
-    public void expand(byte[] in, int inPos, int inLen, byte[] out, int outPos,
-            int outLen) {
-        // if ((inPos | outPos | outLen) < 0) {
-        if (inPos < 0 || outPos < 0 || outLen < 0) {
-            throw new IllegalArgumentException();
+    public void test() throws Exception {
+        if (testPerformance) {
+            testDatabase();
+            System.exit(0);
+            return;
         }
-        do {
-            int ctrl = in[inPos++] & 255;
-            if (ctrl < MAX_LITERAL) {
-                // literal run of length = ctrl + 1,
-                ctrl++;
-                // copy to output and move forward this many bytes
-                // while (ctrl-- > 0) {
-                //     out[outPos++] = in[inPos++];
-                // }
-                System.arraycopy(in, inPos, out, outPos, ctrl);
-                outPos += ctrl;
-                inPos += ctrl;
-            } else {
-                // back reference
-                // the highest 3 bits are the match length
-                int len = ctrl >> 5;
-                // if the length is maxed, add the next byte to the length
-                if (len == 7) {
-                    len += in[inPos++] & 255;
-                }
-                // minimum back-reference is 3 bytes,
-                // so 2 was subtracted before storing size
-                len += 2;
-
-                // ctrl is now the offset for a back-reference...
-                // the logical AND operation removes the length bits
-                ctrl = -((ctrl & 0x1f) << 8) - 1;
-
-                // the next byte augments/increases the offset
-                ctrl -= in[inPos++] & 255;
-
-                // copy the back-reference bytes from the given
-                // location in output to current position
-                ctrl += outPos;
-                if (outPos + len >= out.length) {
-                    // reduce array bounds checking
-                    throw new ArrayIndexOutOfBoundsException();
-                }
-                for (int i = 0; i < len; i++) {
-                    out[outPos++] = out[ctrl++];
-                }
+        testVariableSizeInt();
+        testMultiThreaded();
+        if (config.big) {
+            for (int i = 0; i < 100; i++) {
+                test(i);
             }
-        } while (outPos < outLen);
+            for (int i = 100; i < 10000; i += i + i + 1) {
+                test(i);
+            }
+        } else {
+            test(0);
+            test(1);
+            test(7);
+            test(50);
+            test(200);
+        }
+        test(4000000);
+        testVariableEnd();
     }
 
-    /**
-     * Expand a number of compressed bytes.
-     *
-     * @param in the compressed data
-     * @param out the output area
-     */
-    public static void expand(ByteBuffer in, ByteBuffer out) {
-        do {
-            int ctrl = in.get() & 255;
-            if (ctrl < MAX_LITERAL) {
-                // literal run of length = ctrl + 1,
-                ctrl++;
-                // copy to output and move forward this many bytes
-                // (maybe slice would be faster)
-                for (int i = 0; i < ctrl; i++) {
-                    out.put(in.get());
-                }
-            } else {
-                // back reference
-                // the highest 3 bits are the match length
-                int len = ctrl >> 5;
-                // if the length is maxed, add the next byte to the length
-                if (len == 7) {
-                    len += in.get() & 255;
-                }
-                // minimum back-reference is 3 bytes,
-                // so 2 was subtracted before storing size
-                len += 2;
-
-                // ctrl is now the offset for a back-reference...
-                // the logical AND operation removes the length bits
-                ctrl = -((ctrl & 0x1f) << 8) - 1;
-
-                // the next byte augments/increases the offset
-                ctrl -= in.get() & 255;
-
-                // copy the back-reference bytes from the given
-                // location in output to current position
-                // (maybe slice would be faster)
-                ctrl += out.position();
-                for (int i = 0; i < len; i++) {
-                    out.put(out.get(ctrl++));
-                }
-            }
-        } while (out.position() < out.capacity());
+    private void testVariableSizeInt() {
+        assertEquals(1, CompressTool.getVariableIntLength(0));
+        assertEquals(2, CompressTool.getVariableIntLength(0x80));
+        assertEquals(3, CompressTool.getVariableIntLength(0x4000));
+        assertEquals(4, CompressTool.getVariableIntLength(0x200000));
+        assertEquals(5, CompressTool.getVariableIntLength(0x10000000));
+        assertEquals(5, CompressTool.getVariableIntLength(-1));
+        for (int x = 0; x < 0x20000; x++) {
+            testVar(x);
+            testVar(Integer.MIN_VALUE + x);
+            testVar(Integer.MAX_VALUE - x);
+            testVar(0x200000 + x - 100);
+            testVar(0x10000000 + x - 100);
+        }
     }
 
-    @Override
-    public int getAlgorithm() {
-        return Compressor.LZF;
+    private void testVar(int x) {
+        int len = CompressTool.getVariableIntLength(x);
+        int l2 = CompressTool.writeVariableInt(buff, 0, x);
+        assertEquals(len, l2);
+        int x2 = CompressTool.readVariableInt(buff, 0);
+        assertEquals(x2, x);
+    }
+
+    private void testMultiThreaded() throws Exception {
+        Task[] tasks = new Task[3];
+        for (int i = 0; i < tasks.length; i++) {
+            Task t = new Task() {
+                @Override
+                public void call() {
+                    CompressTool tool = CompressTool.getInstance();
+                    byte[] b = new byte[1024];
+                    Random r = new Random();
+                    while (!stop) {
+                        r.nextBytes(b);
+                        byte[] test = tool.expand(tool.compress(b, "LZF"));
+                        assertEquals(b, test);
+                    }
+                }
+            };
+            tasks[i] = t;
+            t.execute();
+        }
+        Thread.sleep(1000);
+        for (Task t : tasks) {
+            t.get();
+        }
+    }
+
+    private void testVariableEnd() {
+        CompressTool utils = CompressTool.getInstance();
+        StringBuilder b = new StringBuilder();
+        for (int i = 0; i < 90; i++) {
+            b.append('0');
+        }
+        String prefix = b.toString();
+        for (int i = 0; i < 100; i++) {
+            b = new StringBuilder(prefix);
+            for (int j = 0; j < i; j++) {
+                b.append((char) ('1' + j));
+            }
+            String test = b.toString();
+            byte[] in = test.getBytes();
+            assertEquals(in, utils.expand(utils.compress(in, "LZF")));
+        }
+    }
+
+    private void testDatabase() throws Exception {
+        deleteDb("memFS:compress");
+        Connection conn = getConnection("memFS:compress");
+        Statement stat = conn.createStatement();
+        ResultSet rs;
+        rs = stat.executeQuery("select table_name from information_schema.tables");
+        Statement stat2 = conn.createStatement();
+        while (rs.next()) {
+            String table = rs.getString(1);
+            if (!"COLLATIONS".equals(table)) {
+                stat2.execute("create table " + table +
+                        " as select * from information_schema." + table);
+            }
+        }
+        conn.close();
+        Compressor compress = new CompressLZF();
+        int pageSize = Constants.DEFAULT_PAGE_SIZE;
+        byte[] buff2 = new byte[pageSize];
+        byte[] test = new byte[2 * pageSize];
+        compress.compress(buff2, pageSize, test, 0);
+        for (int j = 0; j < 4; j++) {
+            long time = System.currentTimeMillis();
+            for (int i = 0; i < 1000; i++) {
+                InputStream in = FileUtils.newInputStream("memFS:compress.h2.db");
+                while (true) {
+                    int len = in.read(buff2);
+                    if (len < 0) {
+                        break;
+                    }
+                    compress.compress(buff2, pageSize, test, 0);
+                }
+                in.close();
+            }
+            System.out.println("compress: " + (System.currentTimeMillis() - time) + " ms");
+        }
+
+        for (int j = 0; j < 4; j++) {
+            ArrayList<byte[]> comp = New.arrayList();
+            InputStream in = FileUtils.newInputStream("memFS:compress.h2.db");
+            while (true) {
+                int len = in.read(buff2);
+                if (len < 0) {
+                    break;
+                }
+                int b = compress.compress(buff2, pageSize, test, 0);
+                byte[] data = new byte[b];
+                System.arraycopy(test, 0, data, 0, b);
+                comp.add(data);
+            }
+            in.close();
+            byte[] result = new byte[pageSize];
+            long time = System.currentTimeMillis();
+            for (int i = 0; i < 1000; i++) {
+                for (int k = 0; k < comp.size(); k++) {
+                    byte[] data = comp.get(k);
+                    compress.expand(data, 0, data.length, result, 0, pageSize);
+                }
+            }
+            System.out.println("expand: " + (System.currentTimeMillis() - time) + " ms");
+        }
+    }
+
+    private void test(int len) throws IOException {
+        testByteArray(len);
+        testByteBuffer(len);
+    }
+
+    private void testByteArray(int len) throws IOException {
+        Random r = new Random(len);
+        for (int pattern = 0; pattern < 4; pattern++) {
+            byte[] b = new byte[len];
+            switch (pattern) {
+            case 0:
+                // leave empty
+                break;
+            case 1: {
+                r.nextBytes(b);
+                break;
+            }
+            case 2: {
+                for (int x = 0; x < len; x++) {
+                    b[x] = (byte) (x & 10);
+                }
+                break;
+            }
+            case 3: {
+                for (int x = 0; x < len; x++) {
+                    b[x] = (byte) (x / 10);
+                }
+                break;
+            }
+            default:
+            }
+            if (r.nextInt(2) < 1) {
+                for (int x = 0; x < len; x++) {
+                    if (r.nextInt(20) < 1) {
+                        b[x] = (byte) (r.nextInt(255));
+                    }
+                }
+            }
+            CompressTool utils = CompressTool.getInstance();
+            // level 9 is highest, strategy 2 is huffman only
+            for (String a : new String[] { "LZF", "No",
+                    "Deflate", "Deflate level 9 strategy 2" }) {
+                long time = System.currentTimeMillis();
+                byte[] out = utils.compress(b, a);
+                byte[] test = utils.expand(out);
+                if (testPerformance) {
+                    System.out.println("p:" + pattern + " len: " + out.length +
+                            " time: " + (System.currentTimeMillis() - time) + " " + a);
+                }
+                assertEquals(b.length, test.length);
+                assertEquals(b, test);
+                Arrays.fill(test, (byte) 0);
+                CompressTool.expand(out, test, 0);
+                assertEquals(b, test);
+            }
+            for (String a : new String[] { null, "LZF", "DEFLATE", "ZIP", "GZIP" }) {
+                ByteArrayOutputStream out = new ByteArrayOutputStream();
+                OutputStream out2 = CompressTool.wrapOutputStream(out, a, "test");
+                IOUtils.copy(new ByteArrayInputStream(b), out2);
+                out2.close();
+                InputStream in = new ByteArrayInputStream(out.toByteArray());
+                in = CompressTool.wrapInputStream(in, a, "test");
+                out.reset();
+                IOUtils.copy(in, out);
+                assertEquals(b, out.toByteArray());
+            }
+        }
+    }
+
+    private void testByteBuffer(int len) {
+        if (len < 4) {
+            return;
+        }
+        Random r = new Random(len);
+        CompressLZF comp = new CompressLZF();
+        for (int pattern = 0; pattern < 4; pattern++) {
+            byte[] b = new byte[len];
+            switch (pattern) {
+            case 0:
+                // leave empty
+                break;
+            case 1: {
+                r.nextBytes(b);
+                break;
+            }
+            case 2: {
+                for (int x = 0; x < len; x++) {
+                    b[x] = (byte) (x & 10);
+                }
+                break;
+            }
+            case 3: {
+                for (int x = 0; x < len; x++) {
+                    b[x] = (byte) (x / 10);
+                }
+                break;
+            }
+            default:
+            }
+            if (r.nextInt(2) < 1) {
+                for (int x = 0; x < len; x++) {
+                    if (r.nextInt(20) < 1) {
+                        b[x] = (byte) (r.nextInt(255));
+                    }
+                }
+            }
+            ByteBuffer buff = ByteBuffer.wrap(b);
+            byte[] temp = new byte[100 + b.length * 2];
+            int compLen = comp.compress(buff, temp, 0);
+            ByteBuffer test = ByteBuffer.wrap(temp, 0, compLen);
+            byte[] exp = new byte[b.length];
+            CompressLZF.expand(test, ByteBuffer.wrap(exp));
+            assertEquals(b, exp);
+        }
     }
 
 }
+

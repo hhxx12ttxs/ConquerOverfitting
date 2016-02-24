@@ -1,594 +1,537 @@
-/*
- * Copyright (C) 2008-2009, Google Inc.
- * Copyright (C) 2008, Shawn O. Pearce <spearce@spearce.org>
- * and other copyright owners as documented in the project's IP log.
- *
- * This program and the accompanying materials are made available
- * under the terms of the Eclipse Distribution License v1.0 which
- * accompanies this distribution, is reproduced below, and is
- * available at http://www.eclipse.org/org/documents/edl-v10.php
- *
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or
- * without modification, are permitted provided that the following
- * conditions are met:
- *
- * - Redistributions of source code must retain the above copyright
- *   notice, this list of conditions and the following disclaimer.
- *
- * - Redistributions in binary form must reproduce the above
- *   copyright notice, this list of conditions and the following
- *   disclaimer in the documentation and/or other materials provided
- *   with the distribution.
- *
- * - Neither the name of the Eclipse Foundation, Inc. nor the
- *   names of its contributors may be used to endorse or promote
- *   products derived from this software without specific prior
- *   written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND
- * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
- * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
- * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
- * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
- * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+/* jcifs smb client library in Java
+ * Copyright (C) 2000  "Michael B. Allen" <jcifs at samba dot org>
+ * 
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ * 
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-package org.eclipse.jgit.util;
+package jcifs.smb;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import jcifs.Config;
 import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.ArrayList;
+import java.io.PushbackInputStream;
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.util.Calendar;
+import java.util.Date;
+import jcifs.util.Hexdump;
+import jcifs.util.LogStream;
+import jcifs.util.transport.*;
 
-import org.eclipse.jgit.internal.JGitText;
-import org.eclipse.jgit.lib.NullProgressMonitor;
-import org.eclipse.jgit.lib.ProgressMonitor;
-import org.eclipse.jgit.util.io.SafeBufferedOutputStream;
+abstract class ServerMessageBlock extends Response implements Request, SmbConstants {
 
-/**
- * A fully buffered output stream.
- * <p>
- * Subclasses determine the behavior when the in-memory buffer capacity has been
- * exceeded and additional bytes are still being received for output.
- */
-public abstract class TemporaryBuffer extends OutputStream {
-	/** Default limit for in-core storage. */
-	protected static final int DEFAULT_IN_CORE_LIMIT = 1024 * 1024;
+    static LogStream log = LogStream.getInstance();
 
-	/** Chain of data, if we are still completely in-core; otherwise null. */
-	private ArrayList<Block> blocks;
+    static final byte[] header = {
+        (byte)0xFF, (byte)'S', (byte)'M', (byte)'B',
+        (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00,
+        (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00,
+        (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00,
+        (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00,
+        (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00
+    };
 
-	/**
-	 * Maximum number of bytes we will permit storing in memory.
-	 * <p>
-	 * When this limit is reached the data will be shifted to a file on disk,
-	 * preventing the JVM heap from growing out of control.
-	 */
-	private int inCoreLimit;
+    static void writeInt2( long val, byte[] dst, int dstIndex ) {
+        dst[dstIndex] = (byte)(val);
+        dst[++dstIndex] = (byte)(val >> 8);
+    }
+    static void writeInt4( long val, byte[] dst, int dstIndex ) {
+        dst[dstIndex] = (byte)(val);
+        dst[++dstIndex] = (byte)(val >>= 8);
+        dst[++dstIndex] = (byte)(val >>= 8);
+        dst[++dstIndex] = (byte)(val >> 8);
+    }
+    static int readInt2( byte[] src, int srcIndex ) {
+        return ( src[srcIndex] & 0xFF ) +
+                (( src[srcIndex + 1] & 0xFF ) << 8 );
+    }
+    static int readInt4( byte[] src, int srcIndex ) {
+        return ( src[srcIndex] & 0xFF ) +
+                (( src[srcIndex + 1] & 0xFF ) << 8 ) +
+                (( src[srcIndex + 2] & 0xFF ) << 16 ) +
+                (( src[srcIndex + 3] & 0xFF ) << 24 );
+    }
+    static long readInt8( byte[] src, int srcIndex ) {
+        return (readInt4( src, srcIndex ) & 0xFFFFFFFFL) +
+            ((long)(readInt4( src, srcIndex + 4 )) << 32);
+    }
+    static void writeInt8( long val, byte[] dst, int dstIndex ) {
+        dst[dstIndex] = (byte)(val);
+        dst[++dstIndex] = (byte)(val >>= 8);
+        dst[++dstIndex] = (byte)(val >>= 8);
+        dst[++dstIndex] = (byte)(val >>= 8);
+        dst[++dstIndex] = (byte)(val >>= 8);
+        dst[++dstIndex] = (byte)(val >>= 8);
+        dst[++dstIndex] = (byte)(val >>= 8);
+        dst[++dstIndex] = (byte)(val >> 8);
+    }
+    static long readTime( byte[] src, int srcIndex ) {
+        int low = readInt4( src, srcIndex );
+        int hi = readInt4( src, srcIndex + 4 );
+        long t = ((long)hi << 32L ) | (low & 0xFFFFFFFFL);
+        t = ( t / 10000L - MILLISECONDS_BETWEEN_1970_AND_1601 );
+        return t;
+    }
+    static void writeTime( long t, byte[] dst, int dstIndex ) {
+        if( t != 0L ) {
+            t = (t + MILLISECONDS_BETWEEN_1970_AND_1601) * 10000L;
+        }
+        writeInt8( t, dst, dstIndex );
+    }
+    static long readUTime( byte[] buffer, int bufferIndex ) {
+        return readInt4( buffer, bufferIndex ) * 1000L;
+    }
+    static void writeUTime( long t, byte[] dst, int dstIndex ) {
+        if( t == 0L || t == 0xFFFFFFFFFFFFFFFFL ) {
+            writeInt4( 0xFFFFFFFF, dst, dstIndex );
+            return;
+        }
+        synchronized( TZ ) {
+            if( TZ.inDaylightTime( new Date() )) {
+                // in DST
+                if( TZ.inDaylightTime( new Date( t ))) {
+                    // t also in DST so no correction
+                } else {
+                    // t not in DST so subtract 1 hour
+                    t -= 3600000;
+                }
+            } else {
+                // not in DST
+                if( TZ.inDaylightTime( new Date( t ))) {
+                    // t is in DST so add 1 hour
+                    t += 3600000;
+                } else {
+                    // t isn't in DST either
+                }
+            }
+        }
+        writeInt4( (int)(t / 1000L), dst, dstIndex );
+    }
 
-	/** If {@link #inCoreLimit} has been reached, remainder goes here. */
-	private OutputStream overflow;
+    /*
+     * These are all the smbs supported by this library. This includes requests
+     * and well as their responses for each type however the actuall implementations
+     * of the readXxxWireFormat and writeXxxWireFormat methods may not be in
+     * place. For example at the time of this writing the readXxxWireFormat
+     * for requests and the writeXxxWireFormat for responses are not implemented
+     * and simply return 0. These would need to be completed for a server
+     * implementation.
+     */
 
-	/**
-	 * Create a new empty temporary buffer.
-	 *
-	 * @param limit
-	 *            maximum number of bytes to store in memory before entering the
-	 *            overflow output path.
-	 */
-	protected TemporaryBuffer(final int limit) {
-		inCoreLimit = limit;
-		reset();
-	}
+    static final byte SMB_COM_CREATE_DIRECTORY   = (byte)0x00;
+    static final byte SMB_COM_DELETE_DIRECTORY   = (byte)0x01;
+    static final byte SMB_COM_CLOSE              = (byte)0x04;
+    static final byte SMB_COM_DELETE             = (byte)0x06;
+    static final byte SMB_COM_RENAME             = (byte)0x07;
+    static final byte SMB_COM_QUERY_INFORMATION  = (byte)0x08;
+    static final byte SMB_COM_WRITE              = (byte)0x0B;
+    static final byte SMB_COM_CHECK_DIRECTORY    = (byte)0x10;
+    static final byte SMB_COM_TRANSACTION        = (byte)0x25;
+    static final byte SMB_COM_TRANSACTION_SECONDARY = (byte)0x26;
+    static final byte SMB_COM_MOVE               = (byte)0x2A;
+    static final byte SMB_COM_ECHO               = (byte)0x2B;
+    static final byte SMB_COM_OPEN_ANDX          = (byte)0x2D;
+    static final byte SMB_COM_READ_ANDX          = (byte)0x2E;
+    static final byte SMB_COM_WRITE_ANDX         = (byte)0x2F;
+    static final byte SMB_COM_TRANSACTION2       = (byte)0x32;
+    static final byte SMB_COM_FIND_CLOSE2        = (byte)0x34;
+    static final byte SMB_COM_TREE_DISCONNECT    = (byte)0x71;
+    static final byte SMB_COM_NEGOTIATE          = (byte)0x72;
+    static final byte SMB_COM_SESSION_SETUP_ANDX = (byte)0x73;
+    static final byte SMB_COM_LOGOFF_ANDX        = (byte)0x74;
+    static final byte SMB_COM_TREE_CONNECT_ANDX  = (byte)0x75;
+    static final byte SMB_COM_NT_TRANSACT        = (byte)0xA0;
+    static final byte SMB_COM_NT_TRANSACT_SECONDARY = (byte)0xA1;
+    static final byte SMB_COM_NT_CREATE_ANDX     = (byte)0xA2;
 
-	@Override
-	public void write(final int b) throws IOException {
-		if (overflow != null) {
-			overflow.write(b);
-			return;
-		}
+    /*
+     * Some fields specify the offset from the beginning of the header. This
+     * field should be used for calculating that. This would likely be zero
+     * but an implemantation that encorporates the transport header(for
+     * efficiency) might use a different initial bufferIndex. For example,
+     * to eliminate copying data when writing NbtSession data one might
+     * manage that 4 byte header specifically and therefore the initial
+     * bufferIndex, and thus headerStart, would be 4).(NOTE: If one where
+     * looking for a way to improve perfomance this is precisly what you
+     * would want to do as the jcifs.netbios.SocketXxxputStream classes
+     * arraycopy all data read or written into a new buffer shifted over 4!)
+     */
 
-		Block s = last();
-		if (s.isFull()) {
-			if (reachedInCoreLimit()) {
-				overflow.write(b);
-				return;
-			}
+    byte command, flags;
+    int headerStart,
+        length,
+        batchLevel,
+        errorCode,
+        flags2,
+        tid, pid, uid, mid,
+        wordCount, byteCount;
+    boolean useUnicode, received, extendedSecurity;
+    long responseTimeout = 1;
+    int signSeq;
+    boolean verifyFailed;
+    NtlmPasswordAuthentication auth = null;
+    String path;
+    SigningDigest digest = null;
+    ServerMessageBlock response;
 
-			s = new Block();
-			blocks.add(s);
-		}
-		s.buffer[s.count++] = (byte) b;
-	}
+    ServerMessageBlock() {
+        flags = (byte)( FLAGS_PATH_NAMES_CASELESS | FLAGS_PATH_NAMES_CANONICALIZED );
+        pid = PID;
+        batchLevel = 0;
+    }
 
-	@Override
-	public void write(final byte[] b, int off, int len) throws IOException {
-		if (overflow == null) {
-			while (len > 0) {
-				Block s = last();
-				if (s.isFull()) {
-					if (reachedInCoreLimit())
-						break;
+    void reset() {
+        flags = (byte)( FLAGS_PATH_NAMES_CASELESS | FLAGS_PATH_NAMES_CANONICALIZED );
+        flags2 = 0;
+        errorCode = 0;
+        received = false;
+        digest = null;
+    }
+    int writeString( String str, byte[] dst, int dstIndex ) {
+        return writeString( str, dst, dstIndex, useUnicode );
+    }
+    int writeString( String str, byte[] dst, int dstIndex, boolean useUnicode ) {
+        int start = dstIndex;
 
-					s = new Block();
-					blocks.add(s);
-				}
+        try {
+            if( useUnicode ) {
+                // Unicode requires word alignment
+                if((( dstIndex - headerStart ) % 2 ) != 0 ) {
+                    dst[dstIndex++] = (byte)'\0';
+                }
+                System.arraycopy( str.getBytes( UNI_ENCODING ), 0,
+                                    dst, dstIndex, str.length() * 2 );
+                dstIndex += str.length() * 2;
+                dst[dstIndex++] = (byte)'\0';
+                dst[dstIndex++] = (byte)'\0';
+            } else {
+                byte[] b = str.getBytes( OEM_ENCODING );
+                System.arraycopy( b, 0, dst, dstIndex, b.length );
+                dstIndex += b.length;
+                dst[dstIndex++] = (byte)'\0';
+            }
+        } catch( UnsupportedEncodingException uee ) {
+            if( log.level > 1 )
+                uee.printStackTrace( log );
+        }
 
-				final int n = Math.min(s.buffer.length - s.count, len);
-				System.arraycopy(b, off, s.buffer, s.count, n);
-				s.count += n;
-				len -= n;
-				off += n;
-			}
-		}
+        return dstIndex - start;
+    }
+    String readString( byte[] src, int srcIndex ) {
+        return readString( src, srcIndex, 256, useUnicode );
+    }
+    String readString( byte[] src, int srcIndex, int maxLen, boolean useUnicode ) {
+        int len = 0;
+        String str = null;
+        try {
+            if( useUnicode ) {
+                // Unicode requires word alignment
+                if((( srcIndex - headerStart ) % 2 ) != 0 ) {
+                    srcIndex++;
+                }
+                while( src[srcIndex + len] != (byte)0x00 ||
+                                            src[srcIndex + len + 1] != (byte)0x00 ) {
+                    len += 2;
+                    if( len > maxLen ) {
+if( log.level > 0 )
+Hexdump.hexdump( System.err, src, srcIndex, maxLen < 128 ? maxLen + 8 : 128 );
+                        throw new RuntimeException( "zero termination not found" );
+                    }
+                }
+                str = new String( src, srcIndex, len, UNI_ENCODING );
+            } else {
+                while( src[srcIndex + len] != (byte)0x00 ) {
+                    len++;
+                    if( len > maxLen ) {
+if( log.level > 0 )
+Hexdump.hexdump( System.err, src, srcIndex, maxLen < 128 ? maxLen + 8 : 128 );
+                        throw new RuntimeException( "zero termination not found" );
+                    }
+                }
+                str = new String( src, srcIndex, len, OEM_ENCODING );
+            }
+        } catch( UnsupportedEncodingException uee ) {
+            if( log.level > 1 )
+                uee.printStackTrace( log );
+        }
+        return str;
+    }
+    String readString(byte[] src, int srcIndex, int srcEnd, int maxLen, boolean useUnicode) {
+        int len = 0;
+        String str = null;
+        try {
+            if (useUnicode) {
+                // Unicode requires word alignment
+                if (((srcIndex - headerStart) % 2) != 0) {
+                    srcIndex++;
+                }
+                for (len = 0; (srcIndex + len + 1) < srcEnd; len += 2) {
+                    if (src[srcIndex + len] == (byte)0x00 && src[srcIndex + len + 1] == (byte)0x00) {
+                        break;
+                    }
+                    if (len > maxLen) {
+                        if (log.level > 0)
+                            Hexdump.hexdump(System.err, src, srcIndex, maxLen < 128 ? maxLen + 8 : 128);
+                        throw new RuntimeException("zero termination not found");
+                    }
+                }
+                str = new String(src, srcIndex, len, UNI_ENCODING);
+            } else {
+                for (len = 0; srcIndex < srcEnd; len++) {
+                    if (src[srcIndex + len] == (byte)0x00) {
+                        break;
+                    }
+                    if (len > maxLen) {
+                        if (log.level > 0)
+                            Hexdump.hexdump(System.err, src, srcIndex, maxLen < 128 ? maxLen + 8 : 128);
+                        throw new RuntimeException("zero termination not found");
+                    }
+                }
+                str = new String(src, srcIndex, len, OEM_ENCODING);
+            }
+        } catch( UnsupportedEncodingException uee ) {
+            if( log.level > 1 )
+                uee.printStackTrace( log );
+        }
+        return str;
+    }
+    int stringWireLength( String str, int offset ) {
+        int len = str.length() + 1;
+        if( useUnicode ) {
+            len = str.length() * 2 + 2;
+            len = ( offset % 2 ) != 0 ? len + 1 : len;
+        }
+        return len;
+    }
+    int readStringLength( byte[] src, int srcIndex, int max ) {
+        int len = 0;
+        while( src[srcIndex + len] != (byte)0x00 ) {
+            if( len++ > max ) {
+                throw new RuntimeException( "zero termination not found: " + this );
+            }
+        }
+        return len;
+    }
+    int encode( byte[] dst, int dstIndex ) {
+        int start = headerStart = dstIndex;
 
-		if (len > 0)
-			overflow.write(b, off, len);
-	}
+        dstIndex += writeHeaderWireFormat( dst, dstIndex );
+        wordCount = writeParameterWordsWireFormat( dst, dstIndex + 1 );
+        dst[dstIndex++] = (byte)(( wordCount / 2 ) & 0xFF );
+        dstIndex += wordCount;
+        wordCount /= 2;
+        byteCount = writeBytesWireFormat( dst, dstIndex + 2 );
+        dst[dstIndex++] = (byte)( byteCount & 0xFF );
+        dst[dstIndex++] = (byte)(( byteCount >> 8 ) & 0xFF );
+        dstIndex += byteCount;
 
-	/**
-	 * Dumps the entire buffer into the overflow stream, and flushes it.
-	 *
-	 * @throws IOException
-	 *             the overflow stream cannot be started, or the buffer contents
-	 *             cannot be written to it, or it failed to flush.
-	 */
-	protected void doFlush() throws IOException {
-		if (overflow == null)
-			switchToOverflow();
-		overflow.flush();
-	}
+        length = dstIndex - start;
 
-	/**
-	 * Copy all bytes remaining on the input stream into this buffer.
-	 *
-	 * @param in
-	 *            the stream to read from, until EOF is reached.
-	 * @throws IOException
-	 *             an error occurred reading from the input stream, or while
-	 *             writing to a local temporary file.
-	 */
-	public void copy(final InputStream in) throws IOException {
-		if (blocks != null) {
-			for (;;) {
-				Block s = last();
-				if (s.isFull()) {
-					if (reachedInCoreLimit())
-						break;
-					s = new Block();
-					blocks.add(s);
-				}
+        if( digest != null ) {
+            digest.sign( dst, headerStart, length, this, response );
+        }
 
-				int n = in.read(s.buffer, s.count, s.buffer.length - s.count);
-				if (n < 1)
-					return;
-				s.count += n;
-			}
-		}
+        return length;
+    }
+    int decode( byte[] buffer, int bufferIndex ) {
+        int start = headerStart = bufferIndex;
 
-		final byte[] tmp = new byte[Block.SZ];
-		int n;
-		while ((n = in.read(tmp)) > 0)
-			overflow.write(tmp, 0, n);
-	}
+        bufferIndex += readHeaderWireFormat( buffer, bufferIndex );
 
-	/**
-	 * Obtain the length (in bytes) of the buffer.
-	 * <p>
-	 * The length is only accurate after {@link #close()} has been invoked.
-	 *
-	 * @return total length of the buffer, in bytes.
-	 */
-	public long length() {
-		return inCoreLength();
-	}
+        wordCount = buffer[bufferIndex++];
+        if( wordCount != 0 ) {
+            int n;
+            if(( n = readParameterWordsWireFormat( buffer, bufferIndex )) != wordCount * 2 ) {
+                if( log.level >= 5 ) {
+                    log.println( "wordCount * 2=" + ( wordCount * 2 ) +
+                            " but readParameterWordsWireFormat returned " + n );
+                }
+            }
+            bufferIndex += wordCount * 2;
+        }
 
-	private long inCoreLength() {
-		final Block last = last();
-		return ((long) blocks.size() - 1) * Block.SZ + last.count;
-	}
+        byteCount = readInt2( buffer, bufferIndex );
+        bufferIndex += 2;
 
-	/**
-	 * Convert this buffer's contents into a contiguous byte array.
-	 * <p>
-	 * The buffer is only complete after {@link #close()} has been invoked.
-	 *
-	 * @return the complete byte array; length matches {@link #length()}.
-	 * @throws IOException
-	 *             an error occurred reading from a local temporary file
-	 * @throws OutOfMemoryError
-	 *             the buffer cannot fit in memory
-	 */
-	public byte[] toByteArray() throws IOException {
-		final long len = length();
-		if (Integer.MAX_VALUE < len)
-			throw new OutOfMemoryError(JGitText.get().lengthExceedsMaximumArraySize);
-		final byte[] out = new byte[(int) len];
-		int outPtr = 0;
-		for (final Block b : blocks) {
-			System.arraycopy(b.buffer, 0, out, outPtr, b.count);
-			outPtr += b.count;
-		}
-		return out;
-	}
+        if( byteCount != 0 ) {
+            int n;
+            if(( n = readBytesWireFormat( buffer, bufferIndex )) != byteCount ) {
+                if( log.level >= 5 ) {
+                    log.println( "byteCount=" + byteCount +
+                            " but readBytesWireFormat returned " + n );
+                }
+            }
+            // Don't think we can rely on n being correct here. Must use byteCount.
+            // Last paragraph of section 3.13.3 eludes to this.
 
-	/**
-	 * Send this buffer to an output stream.
-	 * <p>
-	 * This method may only be invoked after {@link #close()} has completed
-	 * normally, to ensure all data is completely transferred.
-	 *
-	 * @param os
-	 *            stream to send this buffer's complete content to.
-	 * @param pm
-	 *            if not null progress updates are sent here. Caller should
-	 *            initialize the task and the number of work units to <code>
-	 *            {@link #length()}/1024</code>.
-	 * @throws IOException
-	 *             an error occurred reading from a temporary file on the local
-	 *             system, or writing to the output stream.
-	 */
-	public void writeTo(final OutputStream os, ProgressMonitor pm)
-			throws IOException {
-		if (pm == null)
-			pm = NullProgressMonitor.INSTANCE;
-		for (final Block b : blocks) {
-			os.write(b.buffer, 0, b.count);
-			pm.update(b.count / 1024);
-		}
-	}
+            bufferIndex += byteCount;
+        }
 
-	/**
-	 * Open an input stream to read from the buffered data.
-	 * <p>
-	 * This method may only be invoked after {@link #close()} has completed
-	 * normally, to ensure all data is completely transferred.
-	 *
-	 * @return a stream to read from the buffer. The caller must close the
-	 *         stream when it is no longer useful.
-	 * @throws IOException
-	 *             an error occurred opening the temporary file.
-	 */
-	public InputStream openInputStream() throws IOException {
-		return new BlockInputStream();
-	}
+        length = bufferIndex - start;
+        return length;
+    }
+    int writeHeaderWireFormat( byte[] dst, int dstIndex ) {
+        System.arraycopy( header, 0, dst, dstIndex, header.length );
+        dst[dstIndex + CMD_OFFSET] = command;
+        dst[dstIndex + FLAGS_OFFSET] = flags;
+        writeInt2( flags2, dst, dstIndex + FLAGS_OFFSET + 1 );
+        dstIndex += TID_OFFSET;
+        writeInt2( tid, dst, dstIndex );
+        writeInt2( pid, dst, dstIndex + 2 );
+        writeInt2( uid, dst, dstIndex + 4 );
+        writeInt2( mid, dst, dstIndex + 6 );
+        return HEADER_LENGTH;
+    }
+    int readHeaderWireFormat( byte[] buffer, int bufferIndex ) {
+        command = buffer[bufferIndex + CMD_OFFSET];
+        errorCode = readInt4( buffer, bufferIndex + ERROR_CODE_OFFSET );
+        flags = buffer[bufferIndex + FLAGS_OFFSET];
+        flags2 = readInt2( buffer, bufferIndex + FLAGS_OFFSET + 1 );
+        tid = readInt2( buffer, bufferIndex + TID_OFFSET );
+        pid = readInt2( buffer, bufferIndex + TID_OFFSET + 2 );
+        uid = readInt2( buffer, bufferIndex + TID_OFFSET + 4 );
+        mid = readInt2( buffer, bufferIndex + TID_OFFSET + 6 );
+        return HEADER_LENGTH;
+    }
+    boolean isResponse() {
+        return ( flags & FLAGS_RESPONSE ) == FLAGS_RESPONSE;
+    }
 
-	/** Reset this buffer for reuse, purging all buffered content. */
-	public void reset() {
-		if (overflow != null) {
-			destroy();
-		}
-		if (inCoreLimit < Block.SZ) {
-			blocks = new ArrayList<Block>(1);
-			blocks.add(new Block(inCoreLimit));
-		} else {
-			blocks = new ArrayList<Block>(inCoreLimit / Block.SZ);
-			blocks.add(new Block());
-		}
-	}
+    /* 
+     * For this packet deconstruction technique to work for
+     * other networking protocols the InputStream may need
+     * to be passed to the readXxxWireFormat methods. This is
+     * actually purer. However, in the case of smb we know the
+     * wordCount and byteCount. And since every subclass of
+     * ServerMessageBlock would have to perform the same read
+     * operation on the input stream, we might as will pull that
+     * common functionality into the superclass and read wordCount
+     * and byteCount worth of data.
+     * 
+     * We will still use the readXxxWireFormat return values to
+     * indicate how many bytes(note: readParameterWordsWireFormat
+     * returns bytes read and not the number of words(but the
+     * wordCount member DOES store the number of words)) we
+     * actually read. Incedentally this is important to the
+     * AndXServerMessageBlock class that needs to potentially
+     * read in another smb's parameter words and bytes based on
+     * information in it's andxCommand, andxOffset, ...etc.
+     */ 
 
-	/**
-	 * Open the overflow output stream, so the remaining output can be stored.
-	 *
-	 * @return the output stream to receive the buffered content, followed by
-	 *         the remaining output.
-	 * @throws IOException
-	 *             the buffer cannot create the overflow stream.
-	 */
-	protected abstract OutputStream overflow() throws IOException;
+    abstract int writeParameterWordsWireFormat( byte[] dst, int dstIndex );
+    abstract int writeBytesWireFormat( byte[] dst, int dstIndex );
+    abstract int readParameterWordsWireFormat( byte[] buffer, int bufferIndex );
+    abstract int readBytesWireFormat( byte[] buffer, int bufferIndex );
 
-	private Block last() {
-		return blocks.get(blocks.size() - 1);
-	}
-
-	private boolean reachedInCoreLimit() throws IOException {
-		if (inCoreLength() < inCoreLimit)
-			return false;
-
-		switchToOverflow();
-		return true;
-	}
-
-	private void switchToOverflow() throws IOException {
-		overflow = overflow();
-
-		final Block last = blocks.remove(blocks.size() - 1);
-		for (final Block b : blocks)
-			overflow.write(b.buffer, 0, b.count);
-		blocks = null;
-
-		overflow = new SafeBufferedOutputStream(overflow, Block.SZ);
-		overflow.write(last.buffer, 0, last.count);
-	}
-
-	public void close() throws IOException {
-		if (overflow != null) {
-			try {
-				overflow.close();
-			} finally {
-				overflow = null;
-			}
-		}
-	}
-
-	/** Clear this buffer so it has no data, and cannot be used again. */
-	public void destroy() {
-		blocks = null;
-
-		if (overflow != null) {
-			try {
-				overflow.close();
-			} catch (IOException err) {
-				// We shouldn't encounter an error closing the file.
-			} finally {
-				overflow = null;
-			}
-		}
-	}
-
-	/**
-	 * A fully buffered output stream using local disk storage for large data.
-	 * <p>
-	 * Initially this output stream buffers to memory and is therefore similar
-	 * to ByteArrayOutputStream, but it shifts to using an on disk temporary
-	 * file if the output gets too large.
-	 * <p>
-	 * The content of this buffered stream may be sent to another OutputStream
-	 * only after this stream has been properly closed by {@link #close()}.
-	 */
-	public static class LocalFile extends TemporaryBuffer {
-		/** Directory to store the temporary file under. */
-		private final File directory;
-
-		/**
-		 * Location of our temporary file if we are on disk; otherwise null.
-		 * <p>
-		 * If we exceeded the {@link #inCoreLimit} we nulled out {@link #blocks}
-		 * and created this file instead. All output goes here through
-		 * {@link #overflow}.
-		 */
-		private File onDiskFile;
-
-		/** Create a new temporary buffer. */
-		public LocalFile() {
-			this(null, DEFAULT_IN_CORE_LIMIT);
-		}
-
-		/**
-		 * Create a new temporary buffer, limiting memory usage.
-		 *
-		 * @param inCoreLimit
-		 *            maximum number of bytes to store in memory. Storage beyond
-		 *            this limit will use the local file.
-		 */
-		public LocalFile(final int inCoreLimit) {
-			this(null, inCoreLimit);
-		}
-
-		/**
-		 * Create a new temporary buffer, limiting memory usage.
-		 *
-		 * @param directory
-		 *            if the buffer has to spill over into a temporary file, the
-		 *            directory where the file should be saved. If null the
-		 *            system default temporary directory (for example /tmp) will
-		 *            be used instead.
-		 */
-		public LocalFile(final File directory) {
-			this(directory, DEFAULT_IN_CORE_LIMIT);
-		}
-
-		/**
-		 * Create a new temporary buffer, limiting memory usage.
-		 *
-		 * @param directory
-		 *            if the buffer has to spill over into a temporary file, the
-		 *            directory where the file should be saved. If null the
-		 *            system default temporary directory (for example /tmp) will
-		 *            be used instead.
-		 * @param inCoreLimit
-		 *            maximum number of bytes to store in memory. Storage beyond
-		 *            this limit will use the local file.
-		 */
-		public LocalFile(final File directory, final int inCoreLimit) {
-			super(inCoreLimit);
-			this.directory = directory;
-		}
-
-		protected OutputStream overflow() throws IOException {
-			onDiskFile = File.createTempFile("jgit_", ".buf", directory); //$NON-NLS-1$ //$NON-NLS-2$
-			return new FileOutputStream(onDiskFile);
-		}
-
-		public long length() {
-			if (onDiskFile == null) {
-				return super.length();
-			}
-			return onDiskFile.length();
-		}
-
-		public byte[] toByteArray() throws IOException {
-			if (onDiskFile == null) {
-				return super.toByteArray();
-			}
-
-			final long len = length();
-			if (Integer.MAX_VALUE < len)
-				throw new OutOfMemoryError(JGitText.get().lengthExceedsMaximumArraySize);
-			final byte[] out = new byte[(int) len];
-			final FileInputStream in = new FileInputStream(onDiskFile);
-			try {
-				IO.readFully(in, out, 0, (int) len);
-			} finally {
-				in.close();
-			}
-			return out;
-		}
-
-		public void writeTo(final OutputStream os, ProgressMonitor pm)
-				throws IOException {
-			if (onDiskFile == null) {
-				super.writeTo(os, pm);
-				return;
-			}
-			if (pm == null)
-				pm = NullProgressMonitor.INSTANCE;
-			final FileInputStream in = new FileInputStream(onDiskFile);
-			try {
-				int cnt;
-				final byte[] buf = new byte[Block.SZ];
-				while ((cnt = in.read(buf)) >= 0) {
-					os.write(buf, 0, cnt);
-					pm.update(cnt / 1024);
-				}
-			} finally {
-				in.close();
-			}
-		}
-
-		@Override
-		public InputStream openInputStream() throws IOException {
-			if (onDiskFile == null)
-				return super.openInputStream();
-			return new FileInputStream(onDiskFile);
-		}
-
-		@Override
-		public void destroy() {
-			super.destroy();
-
-			if (onDiskFile != null) {
-				try {
-					if (!onDiskFile.delete())
-						onDiskFile.deleteOnExit();
-				} finally {
-					onDiskFile = null;
-				}
-			}
-		}
-	}
-
-	/**
-	 * A temporary buffer that will never exceed its in-memory limit.
-	 * <p>
-	 * If the in-memory limit is reached an IOException is thrown, rather than
-	 * attempting to spool to local disk.
-	 */
-	public static class Heap extends TemporaryBuffer {
-		/**
-		 * Create a new heap buffer with a maximum storage limit.
-		 *
-		 * @param limit
-		 *            maximum number of bytes that can be stored in this buffer.
-		 *            Storing beyond this many will cause an IOException to be
-		 *            thrown during write.
-		 */
-		public Heap(final int limit) {
-			super(limit);
-		}
-
-		@Override
-		protected OutputStream overflow() throws IOException {
-			throw new IOException(JGitText.get().inMemoryBufferLimitExceeded);
-		}
-	}
-
-	static class Block {
-		static final int SZ = 8 * 1024;
-
-		final byte[] buffer;
-
-		int count;
-
-		Block() {
-			buffer = new byte[SZ];
-		}
-
-		Block(int sz) {
-			buffer = new byte[sz];
-		}
-
-		boolean isFull() {
-			return count == buffer.length;
-		}
-	}
-
-	private class BlockInputStream extends InputStream {
-		private byte[] singleByteBuffer;
-		private int blockIndex;
-		private Block block;
-		private int blockPos;
-
-		BlockInputStream() {
-			block = blocks.get(blockIndex);
-		}
-
-		@Override
-		public int read() throws IOException {
-			if (singleByteBuffer == null)
-				singleByteBuffer = new byte[1];
-			int n = read(singleByteBuffer);
-			return n == 1 ? singleByteBuffer[0] & 0xff : -1;
-		}
-
-		@Override
-		public long skip(long cnt) throws IOException {
-			long skipped = 0;
-			while (0 < cnt) {
-				int n = (int) Math.min(block.count - blockPos, cnt);
-				if (0 < n) {
-					blockPos += n;
-					skipped += n;
-					cnt -= n;
-				} else if (nextBlock())
-					continue;
-				else
-					break;
-			}
-			return skipped;
-		}
-
-		@Override
-		public int read(byte[] b, int off, int len) throws IOException {
-			if (len == 0)
-				return 0;
-			int copied = 0;
-			while (0 < len) {
-				int c = Math.min(block.count - blockPos, len);
-				if (0 < c) {
-					System.arraycopy(block.buffer, blockPos, b, off, c);
-					blockPos += c;
-					off += c;
-					len -= c;
-					copied += c;
-				} else if (nextBlock())
-					continue;
-				else
-					break;
-			}
-			return 0 < copied ? copied : -1;
-		}
-
-		private boolean nextBlock() {
-			if (++blockIndex < blocks.size()) {
-				block = blocks.get(blockIndex);
-				blockPos = 0;
-				return true;
-			}
-			return false;
-		}
-	}
+    public int hashCode() {
+        return mid;
+    }
+    public boolean equals( Object obj ) {
+        return obj instanceof ServerMessageBlock && ((ServerMessageBlock)obj).mid == mid;
+    }
+    public String toString() {
+        String c;
+        switch( command ) {
+            case SMB_COM_NEGOTIATE:
+                c = "SMB_COM_NEGOTIATE";
+                break;
+            case SMB_COM_SESSION_SETUP_ANDX:
+                c = "SMB_COM_SESSION_SETUP_ANDX";
+                break;
+            case SMB_COM_TREE_CONNECT_ANDX:
+                c = "SMB_COM_TREE_CONNECT_ANDX";
+                break;
+            case SMB_COM_QUERY_INFORMATION:
+                c = "SMB_COM_QUERY_INFORMATION";
+                break;
+            case SMB_COM_CHECK_DIRECTORY:
+                c = "SMB_COM_CHECK_DIRECTORY";
+                break;
+            case SMB_COM_TRANSACTION:
+                c = "SMB_COM_TRANSACTION";
+                break;
+            case SMB_COM_TRANSACTION2:
+                c = "SMB_COM_TRANSACTION2";
+                break;
+            case SMB_COM_TRANSACTION_SECONDARY:
+                c = "SMB_COM_TRANSACTION_SECONDARY";
+                break;
+            case SMB_COM_FIND_CLOSE2:
+                c = "SMB_COM_FIND_CLOSE2";
+                break;
+            case SMB_COM_TREE_DISCONNECT:
+                c = "SMB_COM_TREE_DISCONNECT";
+                break;
+            case SMB_COM_LOGOFF_ANDX:
+                c = "SMB_COM_LOGOFF_ANDX";
+                break;
+            case SMB_COM_ECHO:
+                c = "SMB_COM_ECHO";
+                break;
+            case SMB_COM_MOVE:
+                c = "SMB_COM_MOVE";
+                break;
+            case SMB_COM_RENAME:
+                c = "SMB_COM_RENAME";
+                break;
+            case SMB_COM_DELETE:
+                c = "SMB_COM_DELETE";
+                break;
+            case SMB_COM_DELETE_DIRECTORY:
+                c = "SMB_COM_DELETE_DIRECTORY";
+                break;
+            case SMB_COM_NT_CREATE_ANDX:
+                c = "SMB_COM_NT_CREATE_ANDX";
+                break;
+            case SMB_COM_OPEN_ANDX:
+                c = "SMB_COM_OPEN_ANDX";
+                break;
+            case SMB_COM_READ_ANDX:
+                c = "SMB_COM_READ_ANDX";
+                break;
+            case SMB_COM_CLOSE:
+                c = "SMB_COM_CLOSE";
+                break;
+            case SMB_COM_WRITE_ANDX:
+                c = "SMB_COM_WRITE_ANDX";
+                break;
+            case SMB_COM_CREATE_DIRECTORY:
+                c = "SMB_COM_CREATE_DIRECTORY";
+                break;
+            case SMB_COM_NT_TRANSACT:
+                c = "SMB_COM_NT_TRANSACT";
+                break;
+            case SMB_COM_NT_TRANSACT_SECONDARY:
+                c = "SMB_COM_NT_TRANSACT_SECONDARY";
+                break;
+            default:
+                c = "UNKNOWN";
+        }
+        String str = errorCode == 0 ? "0" : SmbException.getMessageByCode( errorCode );
+        return new String(
+            "command="      + c +
+            ",received="    + received +
+            ",errorCode="   + str +
+            ",flags=0x"     + Hexdump.toHexString( flags & 0xFF, 4 ) +
+            ",flags2=0x"    + Hexdump.toHexString( flags2, 4 ) +
+            ",signSeq="     + signSeq +
+            ",tid="         + tid +
+            ",pid="         + pid +
+            ",uid="         + uid +
+            ",mid="         + mid +
+            ",wordCount="   + wordCount +
+            ",byteCount="   + byteCount );
+    }
 }
 

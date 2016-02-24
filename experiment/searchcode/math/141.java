@@ -1,250 +1,448 @@
-/*
- * JBoss, Home of Professional Open Source.
- * See the COPYRIGHT.txt file distributed with this work for information
- * regarding copyright ownership.  Some portions may be licensed
- * to Red Hat, Inc. under one or more contributor license agreements.
- * 
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- * 
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- * 
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
- * 02110-1301 USA.
- */
-
-package org.teiid.common.buffer;
+package erjang.m.binary;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
 import java.util.Arrays;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.Comparator;
 
-import org.teiid.common.buffer.AutoCleanupUtil.Removable;
+import com.trifork.clj_ds.PersistentTreeMap.Seq;
 
-public abstract class FileStore implements Removable {
-		
+import erjang.*;
+import erjang.driver.IO;
+import erjang.driver.IO.BARR;
+import erjang.m.erlang.ErlBif;
+import erjang.m.erlang.ErlConvert;
+
+/**
+ * The implementation of Erlang's binary module
+ * 
+ * @author Pavlo Baron (pb@pbit.org)
+ * @author Kresten Krab Thorup (krab@trifork.com)
+ * 
+ * TODO: port implementation (as far as possible) from erts/emulator/beam/erl_bif_binary.c
+ * TODO: extend signature with EProc where necessary (acc. to the corresponding C code)
+ * TODO: take care of correct usage of EBig and ESmall. Don't use EInteger
+ * TODO: no EUnsigned class, instead checks for BigInteger.signum where necessary
+ * TODO: implement an EPart class locally?
+ * TODO: use ETupleN instead of ETuple (specific classes)
+ * TODO: bin_to_list:/* C code works with big binaries in several iterations
+ * (callback starting with a calculated max. loop count). How should we do that?
+ * TODO: can binaries become awkwardly big so that EString.make duplicating the byte array would become a problem?
+ *
+ */
+public class Native extends ENative {
+	
+	static final EAtom am_scope = EAtom.intern("scope");
+	static final EAtom am_nomatch = EAtom.intern("nomatch");
+
 	/**
-	 * A customized buffered stream with an exposed buffer
+	 * at(Subject, Pos) -> int()
 	 */
-	public final class FileStoreOutputStream extends OutputStream {
-		
-		private byte[] buffer;
-		private int count;
-		private boolean bytesWritten;
-		private boolean closed;
-		private byte[] singleByte = new byte[1];
-		
-		public FileStoreOutputStream(int size) {
-			this.buffer = new byte[size];
-		}
-		
-		@Override
-		public void write(int b) throws IOException {
-			singleByte[0] = (byte)b;
-			write(singleByte, 0, 1);
-		}
+	@BIF
+	public static EInteger at(EObject subject, EObject pos) {
+		throw new NotImplemented();
+	}
 
-		@Override
-		public void write(byte[] b, int off, int len) throws IOException {
-			checkOpen();
-			if (len > buffer.length) {
-				flushBuffer();
-				writeDirect(b, off, len);
-				return;
+    protected static EString do_bin_to_list(EObject subject, EObject pos, EObject len) {
+        if (subject == null) throw ERT.badarg(subject);
+
+        EBinary bin = subject.testBinary();
+        if (bin == null) throw ERT.badarg(subject);
+        if (!bin.isBinary()) throw ERT.badarg(subject);
+
+        if (pos.testSmall() == null) throw ERT.badarg(pos);
+        if (len.testSmall() == null) throw ERT.badarg(len);
+
+        //TODO: unclear: C code operates with bit_offs which seems to be always 0 for binary:* calls
+        //implement using EString for now, but try to find a case where bit_offs actually is set to != 0
+        //so the EString implementation won't work (hypothesis)
+        //TODO: another question: C code uses callbacks for big binaries. Here, we don't. This aspect needs to be
+        //closer evaluated
+
+        //we have to do some dirty hacks with indexes to fool the ErlConverter thinking we start with 1 and
+        //expecting the stop instead of length, calculating length itself
+        ESmall start = new ESmall(pos.asInt() + 1);
+        ESmall stop = new ESmall((len.asInt() == -1) ? bin.byteSize() : len.asInt() + pos.asInt());
+
+        return ErlConvert.binary_to_list(subject, start, stop);
+    }
+
+	/**
+	 * bin_to_list(Subject) -> list()
+	 */
+	@BIF
+	public static EString bin_to_list(EObject subject) {
+        return do_bin_to_list(subject, new ESmall(0), new ESmall(-1));
+	}
+
+	/**
+	 * bin_to_list(Subject, PosLen) -> list()
+	 */
+	@BIF
+	public static EString bin_to_list(EObject subject, EObject poslen) {
+        if (poslen == null) throw ERT.badarg(poslen);
+
+        ETuple tuple = poslen.testTuple();
+        if (tuple == null) throw ERT.badarg(poslen);
+
+        ETuple2 tuple2 = ETuple2.cast(tuple);
+        if (tuple2 == null) throw ERT.badarg(poslen);
+
+        if (tuple2.elem1.testSmall() == null) throw ERT.badarg(tuple2.elem1);
+        if (tuple2.elem2.testSmall() == null) throw ERT.badarg(tuple2.elem2);
+
+		return do_bin_to_list(subject, new ESmall(tuple2.elem1.asInt()), new ESmall(tuple2.elem2.asInt()));
+	}
+	
+	/**
+	 * bin_to_list(Subject, Pos, Len) -> list()
+	 */
+	@BIF
+	public static EString bin_to_list(EObject subject, EObject pos, EObject len) {
+		return do_bin_to_list(subject, pos, len);
+	}
+	
+	/**
+	 * compile_pattern(Pattern) -> cp()
+	 */
+	@BIF
+	public static ETuple compile_pattern(EObject pattern) {
+		throw new NotImplemented();
+	}
+	
+	/**
+	 * copy(Subject) -> binary()
+	 */
+	@BIF
+	public static EBinary copy(EObject subject) {
+		return copy(subject, ERT.box(1));
+	}
+	
+	/**
+	 * copy(Subject,N) -> binary()
+	 */
+	@BIF
+	public static EBinary copy(EObject subject, EObject n) {
+		ESmall count;
+		EBinary bin;
+		if ((bin=subject.testBinary()) == null || (count=n.testSmall()) == null) {
+			throw ERT.badarg(subject, n);
+		}
+		
+		BARR b = new BARR();
+		for (int i = 0; i < count.value; i++) {
+			try {
+				bin.writeTo(b);
+			} catch (IOException e) {
+				throw new ErlangError(new EString(e.getMessage()));
 			}
-			int bufferedLength = Math.min(len, buffer.length - count);
-			if (count < buffer.length) {
-				System.arraycopy(b, off, buffer, count, bufferedLength);
-				count += bufferedLength;
-				if (bufferedLength == len) {
-					return;
+		}
+		
+		return new EBinary(b.toByteArray());		
+	}
+	
+	/**
+	 * decode_unsigned(Subject) -> Unsigned
+	 */
+	@BIF
+	public static EInteger decode_unsigned(EObject subject) {
+		throw new NotImplemented();
+	}
+	
+	/**
+	 * decode_unsigned(Subject, Endianess) -> Unsigned
+	 */
+	@BIF
+	public static EInteger decode_unsigned(EObject subject, EObject endianess) {
+		throw new NotImplemented();
+	}
+	
+	/**
+	 * encode_unsigned(Unsigned) -> binary()
+	 */
+	@BIF
+	public static EBinary encode_unsigned(EObject unsigned) {
+		throw new NotImplemented();
+	}
+	
+	/**
+	 * encode_unsigned(Unsigned,Endianess) -> binary()
+	 */
+	@BIF
+	public static EBinary encode_unsigned(EObject unsigned, EObject endianess) {
+		throw new NotImplemented();
+	}
+	
+	/**
+	 * first(Subject) -> int()
+	 */
+	@BIF
+	public static EInteger first(EObject subject) {
+		EBinary bin = subject.testBinary();
+		if (bin == null || bin.byteSize() == 0)
+			throw ERT.badarg(subject);
+		return ERT.box( bin.intBitsAt( 0, 8 ) );
+	}
+	
+	/**
+	 * last(Subject) -> int()
+	 */
+	@BIF
+	public static EInteger last(EObject subject) {
+		EBinary bin = subject.testBinary();
+		if (bin == null || bin.byteSize() == 0)
+			throw ERT.badarg(subject);
+		return ERT.box( bin.intBitsAt( (bin.bitSize()-8), 8 ) );
+	}
+	
+	/**
+	 * list_to_bin(ByteList) -> binary()  
+	 */
+	@BIF
+	public static EBinary list_to_bin(EObject byteList) {
+        return ErlBif.list_to_binary(byteList);
+	}
+	
+	/**
+	 * longest_common_prefix(Binaries) -> int()
+	 */
+	@BIF
+	public static EInteger longest_common_prefix(EObject binaries) {
+		ESeq seq = binaries.testSeq();
+		if (seq == null) throw ERT.badarg(binaries);
+		EObject[] vals = seq.toArray();
+		
+		if (vals.length == 0)
+			return ERT.box(0);
+		
+		EBinary first = vals[0].testBinary();
+		if (first == null) throw ERT.badarg(binaries);
+		
+		if (vals.length == 1)
+			return ERT.box(first.byteSize());
+
+		for (int pos = 0; true; pos++) {
+			
+			if (first.byteSize() == pos)
+				return ERT.box(pos);
+			
+			byte ch_first = first.byteAt(pos*8);
+			for (int i = 1; i < vals.length; i++) {
+				EBinary bin = vals[i].testBinary();
+				if (bin == null) throw ERT.badarg(binaries);	
+				
+				if (bin.byteSize() == pos)
+					return ERT.box(pos);
+				
+				byte ch_this = bin.byteAt(pos*8);
+
+				if (ch_first != ch_this) {
+					return ERT.box(pos);
 				}
 			}
-			flushBuffer();
-			System.arraycopy(b, off + bufferedLength, buffer, count, len - bufferedLength);
-			count += len - bufferedLength;
+		}
+	}
+	
+	/**
+	 * longest_common_suffix(Binaries) -> int()
+	 */
+	@BIF
+	public static EInteger longest_common_suffix(EObject binaries) {
+		throw new NotImplemented();
+	}
+	
+	/**
+	 * match(Subject, Pattern) -> Found | nomatch
+	 */
+	@BIF
+	public static EObject match(EObject subject, EObject pattern) {
+		return match(subject, pattern, ERT.NIL);
+	}
+	
+	/**
+	 * match(Subject,Pattern,Options) -> Found | nomatch
+	 */
+	@BIF
+	public static EObject match(EObject subject, EObject pattern, EObject options) {
+		ESeq result = matches(subject, pattern, options);
+		if (result.length() == 0)
+			return am_nomatch;
+		else
+			return result.head();
+	}
+	
+	/**
+	 * matches(Subject, Pattern) -> Found
+	 */
+	@BIF
+	public static EObject matches(EObject subject, EObject pattern) {
+		return matches(subject, pattern, ERT.NIL);
+	}
+	
+	/**
+	 * matches(Subject,Pattern,Options) -> Found
+	 */
+	@BIF
+	public static ESeq matches(EObject subject, EObject pattern, EObject options) {
+		EBinary haystack = subject.testBinary();
+		EBinary needle = pattern.testBinary();
+		ESeq needles = pattern.testSeq();
+		ESeq opts = options.testSeq();
+		
+		if (opts == null || haystack == null || (needle == null && needles==null)) {
+			throw ERT.badarg(subject, pattern, options);
+		}
+		
+		if (needles != null && needles.isNil()) {
+			throw ERT.badarg(subject, pattern, options);
+		}
+		
+		if (needle != null && needle.byteSize() == 0) {
+			throw ERT.badarg(subject, pattern, options);
+		}
+		
+		if (needle != null) {
+			needles = ERT.NIL.cons(needle);
 		}
 
-		private void writeDirect(byte[] b, int off, int len) throws IOException {
-			FileStore.this.write(b, off, len);
-			bytesWritten = true;
-		}
-
-		public void flushBuffer() throws IOException {
-			checkOpen();
-			if (count > 0) {
-				writeDirect(buffer, 0, count);
-				count = 0;
+		EObject[] neddleArr = needles.toArray();
+		
+		int offset = 0;
+		int length = haystack.byteSize();
+		if (!options.isNil()) {
+			ETuple2 opt = ETuple2.cast( opts.head() );
+			ETuple2 range = null;
+			ESmall from = null, len = null;
+			if (opt == null 
+					|| opt.elm(1) != am_scope
+					|| (range = ETuple2.cast( opt.elm(2) )) == null
+					|| (from = range.elem1.testSmall()) == null
+					|| (len = range.elem2.testSmall()) == null
+					) {
+				throw ERT.badarg(subject, pattern, options);
 			}
-		}
-		
-		/**
-		 * Return the buffer.  Can be null if closed and the underlying filestore
-		 * has been writen to.
-		 * @return
-		 */
-		public byte[] getBuffer() {
-			return buffer;
-		}
-		
-		public int getCount() {
-			return count;
-		}
-		
-		public boolean bytesWritten() {
-			return bytesWritten;
-		}
-		
-		@Override
-		public void flush() throws IOException {
-			if (bytesWritten) {
-				flushBuffer();
-			}
-		}
-		
-		@Override
-		public void close() throws IOException {
-			if (closed) {
-				return;
-			}
-			flush();
-			closed = true;
-			if (bytesWritten) {
-				this.buffer = null;
-			} else {
-				//truncate
-				this.buffer = Arrays.copyOf(this.buffer, this.count);
-			}
-		}
-		
-		private void checkOpen() {
-			if (closed) {
-				throw new IllegalStateException("Alread closed"); //$NON-NLS-1$
-			}
-		}
-		
-	}
-
-	private AtomicBoolean removed = new AtomicBoolean();
-	
-	public abstract long getLength();
-	
-	public abstract void setLength(long length) throws IOException;
-	
-	public int read(long fileOffset, byte[] b, int offSet, int length)
-			throws IOException {
-		checkRemoved();
-		return readWrite(fileOffset, b, offSet, length, false);
-	}
-
-	private void checkRemoved() throws IOException {
-		if (removed.get()) {
-			throw new IOException("already removed"); //$NON-NLS-1$
-		}
-	}
-	
-	protected abstract int readWrite(long fileOffset, byte[] b, int offSet, int length, boolean write)
-			throws IOException;
-
-	public void readFully(long fileOffset, byte[] b, int offSet, int length) throws IOException {
-		if (length == 0) {
-			return;
-		}
-        int n = 0;
-    	do {
-    	    int count = this.read(fileOffset + n, b, offSet + n, length - n);
-    	    if (count <= 0 && length > 0) {
-    	    	throw new IOException("not enough bytes available"); //$NON-NLS-1$
-    	    }
-    	    n += count;
-    	} while (n < length);
-	}
-	
-	public synchronized void write(byte[] bytes, int offset, int length) throws IOException {
-		write(getLength(), bytes, offset, length);
-	}
-	
-	public void write(long start, byte[] bytes, int offset, int length) throws IOException {
-        int n = 0;
-    	do {
-    		checkRemoved();
-    	    int count = this.readWrite(start + n, bytes, offset + n, length - n, true);
-    	    if (count <= 0 && length > 0) {
-    	    	throw new IOException("not enough bytes available"); //$NON-NLS-1$
-    	    }
-    	    n += count;
-    	} while (n < length);
-	}
-
-	public void remove() {
-		if (removed.compareAndSet(false, true)) {
-			this.removeDirect();
-		}
-	}
-	
-	protected abstract void removeDirect();
-	
-	public InputStream createInputStream(final long start, final long length) {
-		return new ExtensibleBufferedInputStream() {
-			private long offset = start;
-			private long streamLength = length;
-			private ByteBuffer bb = ByteBuffer.allocate(1<<13);
 			
+			offset = from.value;
+			length = len.value;
+			
+			if (offset < 0 || (offset + length) > haystack.byteSize()) {
+				throw ERT.badarg(subject, pattern, options);
+			}
+		}
+		
+		byte[] hay = haystack.getByteArray();
+		byte[][] needlesArr = new byte[neddleArr.length][];
+		for (int i = 0; i < neddleArr.length; i++) {
+			needlesArr[i] = neddleArr[i].testBinary().getByteArray();
+		}
+		
+		Arrays.sort(needlesArr, new Comparator<byte[]>() {
+			// sort longest-first
 			@Override
-			protected ByteBuffer nextBuffer() throws IOException {
-				int len = bb.capacity();
-				if (this.streamLength != -1 && len > this.streamLength) {
-					len = (int)this.streamLength;
+			public int compare(byte[] arg0, byte[] arg1) {
+				return arg1.length - arg0.length;
+			}			
+		});
+		
+		int orig_len = length;
+		int[] len = new int[1];
+		ESeq result = ERT.NIL;
+		ESeq last_result;
+		do {
+			last_result = result;
+			len[0] = length;
+			int found = indexof(hay, needlesArr, offset, len);
+			if (found != -1) {
+				offset = found+len[0];
+				length = (orig_len - offset);
+				result = result.cons(new ETuple2(ERT.box(found), ERT.box(len[0])));
+			}
+			
+		} while(result != last_result);
+		
+		return result.reverse();
+	}
+	
+	static int indexof(byte[] haystack, byte[][] needles, int from, int[] len)
+	{
+		for (int pos = from; pos < haystack.length; pos++) {
+			for (int i = 0; i < needles.length; i++) {
+				if (needles[i].length <= len[0] && looking_at(haystack, pos, needles[i])) {
+					len[0] = needles[i].length;
+					return pos;
 				}
-				if (this.streamLength == -1 || this.streamLength > 0) {
-					int bytes = FileStore.this.read(offset, bb.array(), 0, len);
-					if (bytes == -1) {
-						return null;
-					}
-					bb.rewind();
-					bb.limit(bytes);
-					this.offset += bytes;
-					if (this.streamLength != -1) {
-						this.streamLength -= bytes;
-					}
-					return bb;
-				}
-				return null;
 			}
-		};
+		}
+		
+		return -1;
 	}
 	
-	public InputStream createInputStream(final long start) {
-		return createInputStream(start, -1);
+	static boolean looking_at(byte[] haystack, int off, byte[] needle) {
+		if (off + needle.length > haystack.length)
+			return false;
+
+		for (int i = 0; i < needle.length; i++) {
+			if (haystack[off+i] != needle[i])
+				return false;
+		}
+
+		return true;
 	}
 	
-	public OutputStream createOutputStream() {
-		return new OutputStream() {
-			
-			@Override
-			public void write(int b) throws IOException {
-				throw new UnsupportedOperationException("buffered reading must be used"); //$NON-NLS-1$
-			}
-			
-			@Override
-			public void write(byte[] b, int off, int len) throws IOException {
-				FileStore.this.write(b, off, len);
-			}
-		};
+	/**
+	 * part(Subject, PosLen) -> binary()
+	 */
+	@BIF
+	public static EBinary part(EObject subject, EObject poslen) {
+		EBinary sub = subject.testBinary();
+		ETuple2 pl = ETuple2.cast(poslen);
+		ESmall pos, len;
+		if (sub == null 
+				|| pl == null
+				|| (pos=pl.elem1.testSmall()) == null
+				|| (len=pl.elem2.testSmall()) == null
+				) {
+			throw ERT.badarg(subject, poslen);
+		}
+		
+		return part(sub, pos.value, len.value, false);
 	}
 	
-	public FileStoreOutputStream createOutputStream(int maxMemorySize) {
-		return new FileStoreOutputStream(maxMemorySize);
+	/**
+	 * part(Subject, Pos, Len) -> binary()
+	 */
+	@BIF
+	public static EBinary part(EObject subject, EObject opos, EObject olen) {
+		EBinary sub = subject.testBinary();
+		ESmall pos, len;
+		if (sub == null 
+				|| (pos=opos.testSmall()) == null
+				|| (len=olen.testSmall()) == null
+				) {
+			throw ERT.badarg(subject, opos, olen);
+		}
+		
+		return part(sub, pos.value, len.value, false);
 	}
 	
+	private static EBinary part(EBinary sub, int pos, int len, boolean as_guard) {
+		if (len < 0) {
+			pos = pos + len;
+			len = -len;
+		}
+		
+		if (pos < 0 || (pos + len) > sub.byteSize()) {
+			throw ERT.badarg(sub, ERT.box(pos), ERT.box(len));
+		}
+		
+		return sub.sub_binary(pos, len);
+	}
+
+	/**
+	 * referenced_byte_size(binary()) -> int()
+	 */
+	@BIF
+	public static EInteger referenced_byte_size(EObject subject) {
+		throw new NotImplemented();
+	}
 }
+

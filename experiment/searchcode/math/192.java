@@ -1,454 +1,639 @@
+/*
+  (c) Copyright 2003, 2004, 2005, 2006, 2007, 2008, 2009 Hewlett-Packard Development Company, LP
+  [See end of file]
+  $Id: TestBasicOperations.java,v 1.1 2009/06/29 08:55:54 castagna Exp $
+*/
+
+package com.hp.hpl.jena.db.test;
+
 /**
- *   Copyright (c) Rich Hickey. All rights reserved.
- *   The use and distribution terms for this software are covered by the
- *   Eclipse Public License 1.0 (http://opensource.org/licenses/eclipse-1.0.php)
- *   which can be found in the file epl-v10.html at the root of this distribution.
- *   By using this software in any fashion, you are agreeing to be bound by
- * 	 the terms of this license.
- *   You must not remove this notice, or any other, from this software.
- **/
+ * 
+ * This tests basic operations on the modelRDB.
+ * 
+ * It adds/removes statements of different types and verifys
+ * that the correct statements exist at the correct times.
+ * 
+ * To run, you must have a mySQL database operational on
+ * localhost with a database name of "test" and allow use
+ * by a user named "test" with an empty password.
+ * 
+ * (Based in part on earlier Jena tests by bwm, kers, et al.)
+ * 
+ * @author csayers
+*/
 
-package clojure.lang;
-
-import java.io.Serializable;
-import java.util.Arrays;
 import java.util.Iterator;
-import java.util.Map;
 
-/**
- * Simple implementation of persistent map on an array
- * <p/>
- * Note that instances of this class are constant values
- * i.e. add/remove etc return new values
- * <p/>
- * Copies array on every change, so only appropriate for _very_small_ maps
- * <p/>
- * null keys and values are ok, but you won't be able to distinguish a null value via valAt - use contains/entryAt
- */
+import junit.framework.TestCase;
+import junit.framework.TestSuite;
 
-public class PersistentArrayMap extends APersistentMap implements IObj, IEditableCollection {
+import com.hp.hpl.jena.rdf.model.*;
 
-final Object[] array;
-static final int HASHTABLE_THRESHOLD = 16;
+import com.hp.hpl.jena.db.GraphRDB;
+import com.hp.hpl.jena.db.IDBConnection;
+import com.hp.hpl.jena.db.ModelRDB;
+import com.hp.hpl.jena.db.impl.IRDBDriver;
+import com.hp.hpl.jena.vocabulary.RDF;
 
-public static final PersistentArrayMap EMPTY = new PersistentArrayMap();
-private final IPersistentMap _meta;
 
-static public IPersistentMap create(Map other){
-	ITransientMap ret = EMPTY.asTransient();
-	for(Object o : other.entrySet())
-		{
-		Map.Entry e = (Entry) o;
-		ret = ret.assoc(e.getKey(), e.getValue());
+
+public class TestBasicOperations extends TestCase {
+
+	public TestBasicOperations(String name) {
+		super(name);
+	}
+
+	public static TestSuite suite() {
+		return new TestSuite(TestBasicOperations.class);
+	}
+
+	ModelRDB model = null;
+	IRDBDriver dbDriver = null;
+	IDBConnection conn = null;
+
+	@Override
+    protected void setUp() throws java.lang.Exception {
+		conn = TestConnection.makeAndCleanTestConnection();
+		model = ModelRDB.createModel(conn);
+		dbDriver = conn.getDriver();
+	}
+
+	@Override
+    protected void tearDown() throws java.lang.Exception {
+		if ( model != null ) model.close();
+		model = null;
+		if ( conn != null ) {
+			conn.cleanDB();
+			conn.close();
 		}
-	return ret.persistent();
-}
-
-protected PersistentArrayMap(){
-	this.array = new Object[]{};
-	this._meta = null;
-}
-
-public PersistentArrayMap withMeta(IPersistentMap meta){
-	return new PersistentArrayMap(meta, array);
-}
-
-PersistentArrayMap create(Object... init){
-	return new PersistentArrayMap(meta(), init);
-}
-
-IPersistentMap createHT(Object[] init){
-	return PersistentHashMap.create(meta(), init);
-}
-
-static public PersistentArrayMap createWithCheck(Object[] init){
-	for(int i=0;i< init.length;i += 2)
-		{
-		for(int j=i+2;j<init.length;j += 2)
-			{
-			if(equalKey(init[i],init[j]))
-				throw new IllegalArgumentException("Duplicate key: " + init[i]);
-			}
-		}
-	return new PersistentArrayMap(init);
-}
-
-static public PersistentArrayMap createAsIfByAssoc(Object[] init){
-	// If this looks like it is doing busy-work, it is because it
-	// is achieving these goals: O(n^2) run time like
-	// createWithCheck(), never modify init arg, and only
-	// allocate memory if there are duplicate keys.
-	int n = 0;
-	for(int i=0;i< init.length;i += 2)
-		{
-		boolean duplicateKey = false;
-		for(int j=0;j<i;j += 2)
-			{
-			if(equalKey(init[i],init[j]))
-				{
-				duplicateKey = true;
-				break;
-				}
-			}
-		if(!duplicateKey)
-			n += 2;
-		}
-	if(n < init.length)
-		{
-		// Create a new shorter array with unique keys, and
-		// the last value associated with each key.  To behave
-		// like assoc, the first occurrence of each key must
-		// be used, since its metadata may be different than
-		// later equal keys.
-		Object[] nodups = new Object[n];
-		int m = 0;
-		for(int i=0;i< init.length;i += 2)
-			{
-			boolean duplicateKey = false;
-			for(int j=0;j<m;j += 2)
-				{
-				if(equalKey(init[i],nodups[j]))
-					{
-					duplicateKey = true;
-					break;
-					}
-				}
-			if(!duplicateKey)
-				{
-				int j;
-				for (j=init.length-2; j>=i; j -= 2)
-					{
-					if(equalKey(init[i],init[j]))
-						{
-						break;
-						}
-					}
-				nodups[m] = init[i];
-				nodups[m+1] = init[j+1];
-				m += 2;
-				}
-			}
-		if (m != n)
-			throw new IllegalArgumentException("Internal error: m=" + m);
-		init = nodups;
-		}
-	return new PersistentArrayMap(init);
-}
-/**
- * This ctor captures/aliases the passed array, so do not modify later
- *
- * @param init {key1,val1,key2,val2,...}
- */
-public PersistentArrayMap(Object[] init){
-	this.array = init;
-	this._meta = null;
-}
-
-
-public PersistentArrayMap(IPersistentMap meta, Object[] init){
-	this._meta = meta;
-	this.array = init;
-}
-
-public int count(){
-	return array.length / 2;
-}
-
-public boolean containsKey(Object key){
-	return indexOf(key) >= 0;
-}
-
-public IMapEntry entryAt(Object key){
-	int i = indexOf(key);
-	if(i >= 0)
-		return new MapEntry(array[i],array[i+1]);
-	return null;
-}
-
-public IPersistentMap assocEx(Object key, Object val) {
-	int i = indexOf(key);
-	Object[] newArray;
-	if(i >= 0)
-		{
-		throw Util.runtimeException("Key already present");
-		}
-	else //didn't have key, grow
-		{
-		if(array.length > HASHTABLE_THRESHOLD)
-			return createHT(array).assocEx(key, val);
-		newArray = new Object[array.length + 2];
-		if(array.length > 0)
-			System.arraycopy(array, 0, newArray, 2, array.length);
-		newArray[0] = key;
-		newArray[1] = val;
-		}
-	return create(newArray);
-}
-
-public IPersistentMap assoc(Object key, Object val){
-	int i = indexOf(key);
-	Object[] newArray;
-	if(i >= 0) //already have key, same-sized replacement
-		{
-		if(array[i + 1] == val) //no change, no op
-			return this;
-		newArray = array.clone();
-		newArray[i + 1] = val;
-		}
-	else //didn't have key, grow
-		{
-		if(array.length > HASHTABLE_THRESHOLD)
-			return createHT(array).assoc(key, val);
-		newArray = new Object[array.length + 2];
-		if(array.length > 0)
-			System.arraycopy(array, 0, newArray, 2, array.length);
-		newArray[0] = key;
-		newArray[1] = val;
-		}
-	return create(newArray);
-}
-
-public IPersistentMap without(Object key){
-	int i = indexOf(key);
-	if(i >= 0) //have key, will remove
-		{
-		int newlen = array.length - 2;
-		if(newlen == 0)
-			return empty();
-		Object[] newArray = new Object[newlen];
-		for(int s = 0, d = 0; s < array.length; s += 2)
-			{
-			if(!equalKey(array[s], key)) //skip removal key
-				{
-				newArray[d] = array[s];
-				newArray[d + 1] = array[s + 1];
-				d += 2;
-				}
-			}
-		return create(newArray);
-		}
-	//don't have key, no op
-	return this;
-}
-
-public IPersistentMap empty(){
-	return (IPersistentMap) EMPTY.withMeta(meta());
-}
-
-final public Object valAt(Object key, Object notFound){
-	int i = indexOf(key);
-	if(i >= 0)
-		return array[i + 1];
-	return notFound;
-}
-
-public Object valAt(Object key){
-	return valAt(key, null);
-}
-
-public int capacity(){
-	return count();
-}
-
-private int indexOfObject(Object key){
-    Util.EquivPred ep = Util.equivPred(key);
-    for(int i = 0; i < array.length; i += 2)
-        {
-        if(ep.equiv(key, array[i]))
-            return i;
-        }
-	return -1;
-}
-
-private int indexOf(Object key){
-    if(key instanceof Keyword)
-        {
-        for(int i = 0; i < array.length; i += 2)
-            {
-            if(key == array[i])
-                return i;
-            }
-    	return -1;
-        }
-    else
-        return indexOfObject(key);
-}
-
-static boolean equalKey(Object k1, Object k2){
-    if(k1 instanceof Keyword)
-        return k1 == k2;
-	return Util.equiv(k1, k2);
-}
-
-public Iterator iterator(){
-	return new Iter(array);
-}
-
-public ISeq seq(){
-	if(array.length > 0)
-		return new Seq(array, 0);
-	return null;
-}
-
-public IPersistentMap meta(){
-	return _meta;
-}
-
-static class Seq extends ASeq implements Counted{
-	final Object[] array;
-	final int i;
-
-	Seq(Object[] array, int i){
-		this.array = array;
-		this.i = i;
+		conn = null;
 	}
 
-	public Seq(IPersistentMap meta, Object[] array, int i){
-		super(meta);
-		this.array = array;
-		this.i = i;
-	}
-
-	public Object first(){
-		return new MapEntry(array[i],array[i+1]);
-	}
-
-	public ISeq next(){
-		if(i + 2 < array.length)
-			return new Seq(array, i + 2);
-		return null;
-	}
-
-	public int count(){
-		return (array.length - i) / 2;
-	}
-
-	public Obj withMeta(IPersistentMap meta){
-		return new Seq(meta, array, i);
-	}
-}
-
-static class Iter implements Iterator{
-	Object[] array;
-	int i;
-
-	//for iterator
-	Iter(Object[] array){
-		this(array, -2);
-	}
-
-	//for entryAt
-	Iter(Object[] array, int i){
-		this.array = array;
-		this.i = i;
-	}
-
-	public boolean hasNext(){
-		return i < array.length - 2;
-	}
-
-	public Object next(){
-		i += 2;
-		return new MapEntry(array[i],array[i+1]);
-	}
-
-	public void remove(){
-		throw new UnsupportedOperationException();
-	}
-
-}
-
-public Object kvreduce(IFn f, Object init){
-    for(int i=0;i < array.length;i+=2){
-        init = f.invoke(init, array[i], array[i+1]);
-	    if(RT.isReduced(init))
-		    return ((IDeref)init).deref();
-        }
-    return init;
-}
-
-public ITransientMap asTransient(){
-	return new TransientArrayMap(array);
-}
-
-static final class TransientArrayMap extends ATransientMap {
-	int len;
-	final Object[] array;
-	Thread owner;
-
-	public TransientArrayMap(Object[] array){
-		this.owner = Thread.currentThread();
-		this.array = new Object[Math.max(HASHTABLE_THRESHOLD, array.length)];
-		System.arraycopy(array, 0, this.array, 0, array.length);
-		this.len = array.length;
+	private void addRemove(Statement stmt) {
+		model.add(stmt);
+		assertTrue(model.contains(stmt));
+		model.remove(stmt);
+		assertTrue(!model.contains(stmt));
+		model.add(stmt);
+		assertTrue(model.contains(stmt));
+		model.remove(stmt);
+		assertTrue(!model.contains(stmt));
+		model.add(stmt);
+		model.add(stmt);
+		assertTrue(model.contains(stmt));
+		model.remove(stmt);
+		assertTrue(!model.contains(stmt));
+		model.add(stmt);
+		model.add(stmt);
+		model.add(stmt);
+		model.add(stmt);
+		model.add(stmt);
+		model.add(stmt);
+		assertTrue(model.contains(stmt));
+		model.remove(stmt);
+		assertTrue(!model.contains(stmt));
 	}
 	
-	private int indexOf(Object key){
-		for(int i = 0; i < len; i += 2)
-			{
-			if(equalKey(array[i], key))
-				return i;
-			}
-		return -1;
-	}
-
-	ITransientMap doAssoc(Object key, Object val){
-		int i = indexOf(key);
-		if(i >= 0) //already have key,
-			{
-			if(array[i + 1] != val) //no change, no op
-				array[i + 1] = val;
-			}
-		else //didn't have key, grow
-			{
-			if(len >= array.length)
-				return PersistentHashMap.create(array).asTransient().assoc(key, val);
-			array[len++] = key;
-			array[len++] = val;
-			}
-		return this;
-	}
-
-	ITransientMap doWithout(Object key) {
-		int i = indexOf(key);
-		if(i >= 0) //have key, will remove
-			{
-			if (len >= 2)
-				{
-					array[i] = array[len - 2];
-					array[i + 1] = array[len - 1];
-				}
-			len -= 2;
-			}
-		return this;
-	}
-
-	Object doValAt(Object key, Object notFound) {
-		int i = indexOf(key);
-		if (i >= 0)
-			return array[i + 1];
-		return notFound;
-	}
-
-	int doCount() {
-		return len / 2;
+	private Statement crAssertedStmt(String subj, String pred, String obj) {
+		Resource s = model.createResource(subj);
+		Property p = model.createProperty(pred);
+		Resource o = model.createResource(obj);
+		return crAssertedStmt(s, p, o);
 	}
 	
-	IPersistentMap doPersistent(){
-		ensureEditable();
-		owner = null;
-		Object[] a = new Object[len];
-		System.arraycopy(array,0,a,0,len);
-		return new PersistentArrayMap(a);
+	private Statement crAssertedStmt(Resource s, Property p, RDFNode o) {
+		Statement stmt = model.createStatement(s, p, o);
+		model.add(stmt);
+		return stmt;
+	}
+	
+	private Resource crReifiedStmt(String node, Statement stmt) {
+		Resource n = model.createResource(node);
+		Resource s = stmt.getSubject();
+		Property p = stmt.getPredicate();
+		RDFNode o = stmt.getObject();
+		
+		crAssertedStmt(n,RDF.subject,s);
+		crAssertedStmt(n,RDF.predicate,p);
+		crAssertedStmt(n,RDF.object,o);
+		crAssertedStmt(n,RDF.type,RDF.Statement);
+		return n;
+	}
+	
+	public void testAddRemoveURI() {
+		Resource s = model.createResource("test#subject");
+		Property p = model.createProperty("test#predicate");
+		Resource o = model.createResource("test#object");
+
+		addRemove(model.createStatement(s, p, o));
 	}
 
-	void ensureEditable(){
-		if(owner == Thread.currentThread())
-			return;
-		if(owner != null)
-			throw new IllegalAccessError("Transient used by non-owner thread");
-		throw new IllegalAccessError("Transient used after persistent! call");
+	public void testAddRemoveLiteral() {
+		Resource s = model.createResource("test#subject");
+		Property p = model.createProperty("test#predicate");
+		Literal l = model.createLiteral("testLiteral");
+
+		addRemove(model.createStatement(s, p, l));
 	}
+
+	public void testSetLongObjectLenFailure() {
+		try {
+			int len = dbDriver.getLongObjectLength();
+			dbDriver.setLongObjectLength(len / 2);
+			assertTrue(false);
+		} catch (Exception e) {
+		}
+	}
+
+	public void testLongObjectLen() {
+		long longLen = dbDriver.getLongObjectLength();
+		assertTrue(longLen > 0 && longLen < 100000);
+
+		String base = ".";
+		StringBuffer buffer = new StringBuffer(1024 + (int) longLen);
+		/* long minLongLen = longLen < 1024 ? longLen - (longLen/2) : longLen - 512; */
+		/* long maxLongLen = longLen + 1024; */
+		/* TODO: find out why this test takes sooooo long (minutes!) with the above bounds */
+		long minLongLen = longLen - 32;
+		long maxLongLen = longLen + 32;
+		assertTrue(minLongLen > 0);
+
+		Resource s = model.createResource("test#subject");
+		Property p = model.createProperty("test#predicate");
+		Literal l;
+		Statement stmt;
+		while (buffer.length() < minLongLen) { /*( build base string */
+			buffer.append(base);
+		}
+		/* add stmts with long literals */
+		long modelSizeBeg = model.size();
+		while (buffer.length() < maxLongLen) {
+			l = model.createLiteral(buffer.toString());
+			stmt = model.createStatement(s, p, l);
+			model.add(stmt);
+			assertTrue(model.contains(stmt));
+			assertTrue(stmt.getObject().equals(l));
+			buffer.append(base);
+		}
+		assertTrue(model.size() == (modelSizeBeg + maxLongLen - minLongLen));
+		/* remove stmts with long literals */
+		while (buffer.length() > minLongLen) {
+			buffer.deleteCharAt(0);
+			l = model.createLiteral(buffer.toString());
+			stmt = model.createStatement(s, p, l);
+			assertTrue(model.contains(stmt));
+			model.remove(stmt);
+			assertTrue(!model.contains(stmt));
+		}
+		assertTrue(model.size() == modelSizeBeg);
+	}
+
+	public void testSetLongObjectLen() {
+		int len = dbDriver.getLongObjectLength();
+        int len2 = len - 2 ; 
+		try {
+			tearDown();
+			conn = TestConnection.makeTestConnection();
+			dbDriver = conn.getDriver();
+			len = dbDriver.getLongObjectLength();
+			dbDriver.setLongObjectLength(len2);
+			model = ModelRDB.createModel(conn);
+		} catch (Exception e) {
+			assertTrue(false);
+		}
+		testLongObjectLen();
+
+		// now make sure longObjectValue persists
+		model.close();
+		try {
+			conn.close();
+			conn = TestConnection.makeTestConnection();
+			dbDriver = conn.getDriver();
+			assertTrue(len == dbDriver.getLongObjectLength());
+			model = ModelRDB.open(conn);
+			assertTrue(len2 == dbDriver.getLongObjectLength());
+		} catch (Exception e) {
+			assertTrue(false);
+		}
+	}
+
+	public void testSetLongObjectLenMax() {
+		int len = dbDriver.getLongObjectLength();
+		int newLen = len;
+		int lenMax = dbDriver.getLongObjectLengthMax();
+		int hdrLen = 32; // allow 32 bytes for hdrs, etc.
+		try {
+			tearDown();
+			conn = TestConnection.makeTestConnection();
+			dbDriver = conn.getDriver();
+			len = dbDriver.getLongObjectLength();
+			lenMax = dbDriver.getLongObjectLengthMax();
+			if ( len == lenMax )
+				return; // nothing to test
+			newLen = lenMax - hdrLen;
+			dbDriver.setLongObjectLength(newLen);
+			model = ModelRDB.createModel(conn);
+		} catch (Exception e) {
+			assertTrue(false);
+		}
+		testLongObjectLen();
+
+		// now make sure longObjectValue persists
+		model.close();
+		try {
+			conn.close();
+			conn = TestConnection.makeTestConnection();
+			dbDriver = conn.getDriver();
+			assertTrue(len == dbDriver.getLongObjectLength());
+			model = ModelRDB.open(conn);
+			assertTrue(newLen == dbDriver.getLongObjectLength());
+		} catch (Exception e) {
+			assertTrue(false);
+		}
+	}
+	
+    public void testAddRemoveUTFLiteral()
+    {
+        String str = Data.strLong ;
+        Resource s = model.createResource("test#subject");
+        Property p = model.createProperty("test#predicate");
+        Literal l = model.createLiteral(str);
+
+        addRemove(model.createStatement(s, p, l));
+    }
+    
+    public void testAddRemoveLiteralSpecials()
+    {
+        String str = Data.strSpecial ;
+        Resource s = model.createResource("test#subject");
+        Property p = model.createProperty("test#predicate");
+        Literal l = model.createLiteral(str);
+        addRemove(model.createStatement(s, p, l));
+    }
+    
+	public void testAddRemoveHugeLiteral() {
+		String base = Data.strLong ;
+		StringBuffer buffer = new StringBuffer(4096);
+		while (buffer.length() < 4000)
+			buffer.append(base);
+		Resource s = model.createResource("test#subject");
+		Property p = model.createProperty("test#predicate");
+		Literal l = model.createLiteral(buffer.toString());
+
+		addRemove(model.createStatement(s, p, l));
+	}
+	
+	public void testCompressHugeURI() throws java.lang.Exception {
+		// in this test, the prefix exceeed longObjectLength but the
+		// compressed URI is less than longObjectLength
+		IDBConnection conn = TestConnection.makeAndCleanTestConnection();
+		IRDBDriver d = conn.getDriver();
+		d.setDoCompressURI(true);
+		model = ModelRDB.createModel(conn);
+		String pfx = "a123456789";
+		String longPfx = "";
+		long longLen = dbDriver.getLongObjectLength();
+		// make long prefix
+		while ( longPfx.length() < longLen )
+			longPfx += pfx;
+		String URI = longPfx + ":/www.foo/#bar";
+		Resource s = model.createResource(URI);
+		Property p = model.createProperty("test#predicate");
+		Resource o = model.createResource("test#object");
+		addRemove(model.createStatement(s, p, o));
+	}
+
+	public void testCompressHugeURI1() throws java.lang.Exception {
+		// in this test, the prefix exceeed longObjectLength but the
+		// compressed URI also exceeds longObjectLength
+		IDBConnection conn = TestConnection.makeAndCleanTestConnection();
+		IRDBDriver d = conn.getDriver();
+		d.setDoCompressURI(true);
+		model = ModelRDB.createModel(conn);
+		String pfx = "a123456789";
+		String longPfx = "";
+		long longLen = dbDriver.getLongObjectLength();
+		// make long prefix
+		while ( longPfx.length() < longLen )
+			longPfx += pfx;
+		String URI = longPfx + ":/www.foo/#bar" + longPfx;
+		Resource s = model.createResource(URI);
+		Property p = model.createProperty("test#predicate");
+		Resource o = model.createResource("test#object");
+		addRemove(model.createStatement(s, p, o));
+	}
+
+	public void testNoCompressHugeURI() throws java.lang.Exception {
+		// in this test, the prefix exceeed longObjectLength but the
+		// compressed URI is less than longObjectLength
+		IDBConnection conn = TestConnection.makeAndCleanTestConnection();
+		IRDBDriver d = conn.getDriver();
+		d.setDoCompressURI(false);
+		model = ModelRDB.createModel(conn);
+		String pfx = "a123456789";
+		String longPfx = "";
+		long longLen = dbDriver.getLongObjectLength();
+		// make long prefix
+		while ( longPfx.length() < longLen )
+			longPfx += pfx;
+		String URI = longPfx + ":/www.foo/#bar";
+		Resource s = model.createResource(URI);
+		Property p = model.createProperty("test#predicate");
+		Resource o = model.createResource("test#object");
+		addRemove(model.createStatement(s, p, o));
+	}
+	
+	public void testNoCompressHugeURI1() throws java.lang.Exception {
+		// in this test, the prefix exceeed longObjectLength but the
+		// compressed URI also exceeds longObjectLength
+		IDBConnection conn = TestConnection.makeAndCleanTestConnection();
+		IRDBDriver d = conn.getDriver();
+		d.setDoCompressURI(false);
+		model = ModelRDB.createModel(conn);
+		String pfx = "a123456789";
+		String longPfx = "";
+		long longLen = dbDriver.getLongObjectLength();
+		// make long prefix
+		while ( longPfx.length() < longLen )
+			longPfx += pfx;
+		String URI = longPfx + ":/www.foo/#bar" + longPfx;
+		Resource s = model.createResource(URI);
+		Property p = model.createProperty("test#predicate");
+		Resource o = model.createResource("test#object");
+		addRemove(model.createStatement(s, p, o));
+	}
+
+	public void testAddRemoveHugeURI() throws java.lang.Exception {
+		String pfx = "a123456789";
+		String longPfx = "";
+		long longLen = dbDriver.getLongObjectLength();
+		// make long prefix
+		while ( longPfx.length() < longLen )
+			longPfx += pfx;
+		String URI = longPfx + ":/www.foo/#bar" + longPfx;
+		Resource s = model.createResource(URI);
+		Property p = model.createProperty("test#predicate");
+		Resource o = model.createResource("test#object");
+		addRemove(model.createStatement(s, p, o));
+	}
+	
+	public void testPrefixCache() throws java.lang.Exception {
+		// in this test, add a number of long prefixes until the cache
+		// overflows and then make sure they can be retrieved.
+		IDBConnection conn = TestConnection.makeAndCleanTestConnection();
+		IRDBDriver d = conn.getDriver();
+		d.setDoCompressURI(true);
+		model = ModelRDB.createModel(conn);
+		int cacheSize = d.getCompressCacheSize();
+		cacheSize = 10;
+		d.setCompressCacheSize(cacheSize);
+
+		String pfx = "a123456789";
+		String longPfx = "";
+		long longLen = dbDriver.getLongObjectLength();
+		// make long prefix
+		while ( longPfx.length() < longLen )
+			longPfx += pfx;
+		int i;
+		for(i=0;i<cacheSize*2;i++) {
+			String URI = longPfx + i + ":/www.foo/#bar";
+			Resource s = model.createResource(URI);
+			Property p = model.createProperty("test#predicate");
+			Resource o = model.createResource("test#object");
+			model.add(s, p, o);
+		}
+		for(i=0;i<cacheSize*2;i++) {
+			String URI = longPfx + i + ":/www.foo/#bar";
+			Resource s = model.createResource(URI);
+			Property p = model.createProperty("test#predicate");
+			Resource o = model.createResource("test#object");
+			assertTrue(model.contains(s, p, o));
+		}
+
+	}
+	
+	public void testPrefixCachePersists() throws java.lang.Exception {
+		// check that the prefix cache persists and affects all models in db.
+		IDBConnection conn = TestConnection.makeAndCleanTestConnection();
+		IRDBDriver d = conn.getDriver();
+		d.setDoCompressURI(true);
+		model = ModelRDB.createModel(conn);
+		int cacheSize = d.getCompressCacheSize();
+		d.setCompressCacheSize(cacheSize/2);	
+		model.close();
+		conn.close();
+		
+		conn = TestConnection.makeTestConnection();
+		d = conn.getDriver();
+		try {
+			d.setDoCompressURI(false);
+			assertFalse(true); // should not get here
+		} catch (Exception e) {
+			model = ModelRDB.createModel(conn,"NamedModel");
+			assertTrue(d.getDoCompressURI() == true);
+			assertTrue(d.getCompressCacheSize() == cacheSize);
+		}
+	}
+
+
+	public void testAddRemoveDatatype() {
+		Resource s = model.createResource("test#subject");
+		Property p = model.createProperty("test#predicate");
+		Literal l = model.createTypedLiteral("stringType");
+
+		addRemove(model.createStatement(s, p, l));
+	}
+
+	public void testAddRemoveHugeDatatype() {
+		String base = Data.strLong ;
+		StringBuffer buffer = new StringBuffer(4096);
+		while (buffer.length() < 4000)
+			buffer.append(base);
+		Resource s = model.createResource("test#subject");
+		Property p = model.createProperty("test#predicate");
+		Literal l2 = model.createTypedLiteral(buffer.toString());
+
+		addRemove(model.createStatement(s, p, l2));
+	}
+
+	public void testAddRemoveBNode() {
+		Resource s = model.createResource();
+		Property p = model.createProperty("test#predicate");
+		Resource o = model.createResource();
+
+		addRemove(model.createStatement(s, p, o));
+
+	}
+
+	public void testBNodeIdentityPreservation() {
+		Resource s = model.createResource();
+		Property p = model.createProperty("test#predicate");
+		Resource o = model.createResource();
+
+		// Create two statements that differ only in
+		// the identity of the bnodes - then perform
+		// add-remove on one and verify the other is
+		// unchanged.
+		Statement spo = model.createStatement(s, p, o);
+		Statement ops = model.createStatement(o, p, s);
+		model.add(spo);
+		addRemove(ops);
+		assertTrue(model.contains(spo));
+		model.remove(spo);
+	}
+
+	public void testDuplicateCheck() {
+		Resource s = model.createResource();
+		Property p = model.createProperty("test#predicate");
+		Resource o = model.createResource();
+		Statement spo = model.createStatement(s, p, o);
+		model.add(spo);
+		try {
+			model.add(spo); // should be fine
+			assertTrue(model.size() == 1);
+		} catch (Exception e) {
+			assertTrue(false); // should not get here
+		}
+		model.setDoDuplicateCheck(false);
+		try {
+			model.add(spo); // should be fine - just inserted a dup
+			assertTrue(model.size() == 2);
+		} catch (Exception e) {
+			assertTrue(false); // should not get here
+		}
+	}
+	
+	private int countIter( Iterator<?> it ) {
+		int i = 0;
+		while( it.hasNext()) {
+			Statement s = (Statement) it.next();
+			i++;
+		}
+		return i;
+	}
+
+	private int countAll()
+	{
+		Iterator<?> it = model.listStatements();
+		return countIter(it);
+	}
+
+	private int countSubj(Resource s)
+	{
+		Iterator<?> it = model.listStatements(s,(Property)null,(RDFNode)null);
+		return countIter(it);
+	}
+
+	private int countObj(RDFNode o)
+	{
+		Iterator<?> it = model.listStatements((Resource)null,(Property)null,o);
+		return countIter(it);
+	}
+
+	private int countPred(Property o)
+	{
+		Iterator<?> it = model.listStatements((Resource)null,o,(RDFNode)null);
+		return countIter(it);
+	}
+
+	public void testQueryOnlyOption() {
+		GraphRDB g = new GraphRDB( conn, null, null, 
+				GraphRDB.OPTIMIZE_ALL_REIFICATIONS_AND_HIDE_NOTHING, false);
+		model = new ModelRDB(g);
+
+		Statement a1 = crAssertedStmt("s1","p1","o1");
+		Statement a2 = crAssertedStmt("s2","p2","s1");
+		Resource r1 = crReifiedStmt("r1",a1);
+		Resource r2 = crReifiedStmt("r2",a2);
+		
+		// should find 10 statements total
+		int cnt;
+		Resource s1 = a1.getSubject();
+		Property p1 = a1.getPredicate();
+		RDFNode o1 = a1.getObject();
+		
+		cnt = countAll();
+		assertTrue(cnt==10);
+		cnt = countSubj(s1);
+		assertTrue(cnt==1);
+		cnt = countObj(o1);
+		assertTrue(cnt==2);
+		cnt = countObj(s1);
+		assertTrue(cnt==3);
+		cnt = countPred(p1);
+		assertTrue(cnt==1);
+		cnt = countPred(RDF.predicate);
+		assertTrue(cnt==2);
+		cnt = countSubj(r2);
+		assertTrue(cnt==4);
+		
+		model.setQueryOnlyAsserted(true);
+		cnt = countAll();
+		assertTrue(cnt==2);
+		cnt = countSubj(s1);
+		assertTrue(cnt==1);
+		cnt = countObj(o1);
+		assertTrue(cnt==1);
+		cnt = countObj(s1);
+		assertTrue(cnt==1);
+		cnt = countPred(p1);
+		assertTrue(cnt==1);
+		cnt = countPred(RDF.predicate);
+		assertTrue(cnt==0);
+		cnt = countSubj(r2);
+		assertTrue(cnt==0);
+
+		model.setQueryOnlyReified(true);
+		cnt = countAll();
+		assertTrue(cnt==8);
+		cnt = countSubj(s1);
+		assertTrue(cnt==0);
+		cnt = countObj(o1);
+		assertTrue(cnt==1);
+		cnt = countObj(s1);
+		assertTrue(cnt==2);
+		cnt = countPred(p1);
+		assertTrue(cnt==0);
+		cnt = countPred(RDF.predicate);
+		assertTrue(cnt==2);
+		cnt = countSubj(r2);
+		assertTrue(cnt==4);
+
+		model.setQueryOnlyReified(false);
+		cnt = countAll();
+		assertTrue(cnt==10);
+	}
+
 }
-}
+    	
+
+/*
+    (c) Copyright 2003, 2004, 2005, 2006, 2007, 2008, 2009 Hewlett-Packard Development Company, LP
+    All rights reserved.
+
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions
+    are met:
+
+    1. Redistributions of source code must retain the above copyright
+       notice, this list of conditions and the following disclaimer.
+
+    2. Redistributions in binary form must reproduce the above copyright
+       notice, this list of conditions and the following disclaimer in the
+       documentation and/or other materials provided with the distribution.
+
+    3. The name of the author may not be used to endorse or promote products
+       derived from this software without specific prior written permission.
+
+    THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+    IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+    OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+    IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+    INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+    NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+    DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+    THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+    (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+    THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
 

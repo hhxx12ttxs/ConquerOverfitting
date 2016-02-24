@@ -1,122 +1,81 @@
-package org.apache.lucene.analysis.hi;
+//
+// Copyright (c) 2006, Brian Frank and Andy Frank
+// Licensed under the Academic Free License version 3.0
+//
+// History:
+//   26 Dec 05  Brian Frank  Creation
+//
+package fanx.fcode;
+
+import java.io.*;
+import fanx.util.*;
 
 /**
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * FBuf stores a byte buffer (such as executable fcode, or line numbers)
  */
+public class FBuf
+  implements FConst
+{
 
-import static org.apache.lucene.analysis.util.StemmerUtil.*;
+//////////////////////////////////////////////////////////////////////////
+// Constructors
+//////////////////////////////////////////////////////////////////////////
 
-/**
- * Light Stemmer for Hindi.
- * <p>
- * Implements the algorithm specified in:
- * <i>A Lightweight Stemmer for Hindi</i>
- * Ananthakrishnan Ramanathan and Durgesh D Rao.
- * http://computing.open.ac.uk/Sites/EACLSouthAsia/Papers/p6-Ramanathan.pdf
- * </p>
- */
-public class HindiStemmer {
-  public int stem(char buffer[], int len) {
-    // 5
-    if ((len > 6) && (endsWith(buffer, len, "?????")
-        || endsWith(buffer, len, "?????")
-        || endsWith(buffer, len, "?????")
-        || endsWith(buffer, len, "?????")
-        || endsWith(buffer, len, "?????")
-        || endsWith(buffer, len, "?????")
-        || endsWith(buffer, len, "?????")
-      ))
-      return len - 5;
-    
-    // 4
-    if ((len > 5) && (endsWith(buffer, len, "????")
-        || endsWith(buffer, len, "????")
-        || endsWith(buffer, len, "????")
-        || endsWith(buffer, len, "????")
-        || endsWith(buffer, len, "????")
-        || endsWith(buffer, len, "????")
-        || endsWith(buffer, len, "????")
-        || endsWith(buffer, len, "????")
-        || endsWith(buffer, len, "????")
-        || endsWith(buffer, len, "????")
-        || endsWith(buffer, len, "????")
-        || endsWith(buffer, len, "????")
-        || endsWith(buffer, len, "????")
-        || endsWith(buffer, len, "????")
-        || endsWith(buffer, len, "????")
-        || endsWith(buffer, len, "????")
-        || endsWith(buffer, len, "????")
-        || endsWith(buffer, len, "????")
-        ))
-      return len - 4;
-    
-    // 3
-    if ((len > 4) && (endsWith(buffer, len, "???")
-        || endsWith(buffer, len, "???")
-        || endsWith(buffer, len, "???")
-        || endsWith(buffer, len, "???")
-        || endsWith(buffer, len, "???")
-        || endsWith(buffer, len, "???")
-        || endsWith(buffer, len, "???")
-        || endsWith(buffer, len, "???")
-        || endsWith(buffer, len, "???")
-        || endsWith(buffer, len, "???")
-        || endsWith(buffer, len, "???")
-        || endsWith(buffer, len, "???")
-        || endsWith(buffer, len, "???")
-        || endsWith(buffer, len, "???")
-        || endsWith(buffer, len, "???")
-        || endsWith(buffer, len, "???")
-        || endsWith(buffer, len, "???")
-        || endsWith(buffer, len, "???")
-        || endsWith(buffer, len, "???")
-        ))
-      return len - 3;
-    
-    // 2
-    if ((len > 3) && (endsWith(buffer, len, "??")
-        || endsWith(buffer, len, "??")
-        || endsWith(buffer, len, "??")
-        || endsWith(buffer, len, "??")
-        || endsWith(buffer, len, "??")
-        || endsWith(buffer, len, "??")
-        || endsWith(buffer, len, "??")
-        || endsWith(buffer, len, "??")
-        || endsWith(buffer, len, "??")
-        || endsWith(buffer, len, "??")
-        || endsWith(buffer, len, "??")
-        || endsWith(buffer, len, "??")
-        || endsWith(buffer, len, "??")
-        || endsWith(buffer, len, "??")
-        || endsWith(buffer, len, "??")
-        || endsWith(buffer, len, "??")
-        ))
-      return len - 2;
-    
-    // 1
-    if ((len > 2) && (endsWith(buffer, len, "?")
-        || endsWith(buffer, len, "?")
-        || endsWith(buffer, len, "?")
-        || endsWith(buffer, len, "?")
-        || endsWith(buffer, len, "?")
-        || endsWith(buffer, len, "?")
-        || endsWith(buffer, len, "?")
-       ))
-      return len - 1;
-    return len;
+  public FBuf(Box box)
+  {
+    this.buf = box.buf;
+    this.len = box.len;
   }
+
+  public FBuf(byte[] buf, int len)
+  {
+    this.buf = buf;
+    this.len = len;
+  }
+
+//////////////////////////////////////////////////////////////////////////
+// Utils
+//////////////////////////////////////////////////////////////////////////
+
+  public int u2()
+  {
+    return buf[0] << 16 | buf[1];
+  }
+
+  public String utf()
+  {
+    try
+    {
+      DataInputStream in = new DataInputStream(new ByteArrayInputStream(buf, 0, len));
+      return in.readUTF();
+    }
+    catch (IOException e)
+    {
+      throw new RuntimeException(e.toString(), e);
+    }
+  }
+
+//////////////////////////////////////////////////////////////////////////
+// IO
+//////////////////////////////////////////////////////////////////////////
+
+  public static FBuf read(FStore.Input in) throws IOException
+  {
+    int len = in.u2();
+    if (len == 0) return null;
+
+    byte[] buf = new byte[len];
+    in.readFully(buf, 0, len);
+
+    return new FBuf(buf, len);
+  }
+
+//////////////////////////////////////////////////////////////////////////
+// Fields
+//////////////////////////////////////////////////////////////////////////
+
+  public byte[] buf;
+  public int len;
+
 }
 

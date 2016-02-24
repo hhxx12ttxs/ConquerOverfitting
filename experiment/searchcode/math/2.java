@@ -1,4 +1,4 @@
-package org.apache.lucene.analysis.util;
+package org.apache.lucene.analysis.pt;
 
 /**
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -17,130 +17,87 @@ package org.apache.lucene.analysis.util;
  * limitations under the License.
  */
 
+import java.util.Map;
+
 /**
- * A StringBuilder that allows one to access the array.
+ * Portuguese stemmer implementing the RSLP (Removedor de Sufixos da Lingua Portuguesa)
+ * algorithm. This is sometimes also referred to as the Orengo stemmer.
+ * 
+ * @see RSLPStemmerBase
  */
-public class OpenStringBuilder implements Appendable, CharSequence {
-  protected char[] buf;
-  protected int len;
-
-  public OpenStringBuilder() {
-    this(32);
+public class PortugueseStemmer extends RSLPStemmerBase {
+  private static final Step plural, feminine, adverb, augmentative, noun, verb, vowel;
+  
+  static {
+    Map<String,Step> steps = parse(PortugueseStemmer.class, "portuguese.rslp");
+    plural = steps.get("Plural");
+    feminine = steps.get("Feminine");
+    adverb = steps.get("Adverb");
+    augmentative = steps.get("Augmentative");
+    noun = steps.get("Noun");
+    verb = steps.get("Verb");
+    vowel = steps.get("Vowel");
   }
-
-  public OpenStringBuilder(int size) {
-    buf = new char[size];
-  }
-
-  public OpenStringBuilder(char[] arr, int len) {
-    set(arr, len);
-  }
-
-  public void setLength(int len) { this.len = len; }
-
-  public void set(char[] arr, int end) {
-    this.buf = arr;
-    this.len = end;
-  }
-
-  public char[] getArray() { return buf; }
-  public int size() { return len; }
-  public int length() { return len; }
-  public int capacity() { return buf.length; }
-
-  public Appendable append(CharSequence csq) {
-    return append(csq, 0, csq.length());
-  }
-
-  public Appendable append(CharSequence csq, int start, int end) {
-    reserve(end-start);
-    for (int i=start; i<end; i++) {
-      unsafeWrite(csq.charAt(i));
+  
+  /**
+   * @param s buffer, oversized to at least <code>len+1</code>
+   * @param len initial valid length of buffer
+   * @return new valid length, stemmed
+   */
+  public int stem(char s[], int len) {
+    assert s.length >= len + 1 : "this stemmer requires an oversized array of at least 1";
+    
+    len = plural.apply(s, len);
+    len = adverb.apply(s, len);
+    len = feminine.apply(s, len);
+    len = augmentative.apply(s, len);
+    
+    int oldlen = len;
+    len = noun.apply(s, len);
+    
+    if (len == oldlen) { /* suffix not removed */
+      oldlen = len;
+      
+      len = verb.apply(s, len);
+      
+      if (len == oldlen) { /* suffix not removed */
+        len = vowel.apply(s, len);
+      }
     }
-    return this;
-  }
-
-  public Appendable append(char c) {
-    write(c);
-    return this;
-  }
-
-  public char charAt(int index) {
-    return buf[index];
-  }
-
-  public void setCharAt(int index, char ch) {
-    buf[index] = ch;    
-  }
-
-  public CharSequence subSequence(int start, int end) {
-    throw new UnsupportedOperationException(); // todo
-  }
-
-  public void unsafeWrite(char b) {
-    buf[len++] = b;
-  }
-
-  public void unsafeWrite(int b) { unsafeWrite((char)b); }
-
-  public void unsafeWrite(char b[], int off, int len) {
-    System.arraycopy(b, off, buf, this.len, len);
-    this.len += len;
-  }
-
-  protected void resize(int len) {
-    char newbuf[] = new char[Math.max(buf.length << 1, len)];
-    System.arraycopy(buf, 0, newbuf, 0, size());
-    buf = newbuf;
-  }
-
-  public void reserve(int num) {
-    if (len + num > buf.length) resize(len + num);
-  }
-
-  public void write(char b) {
-    if (len >= buf.length) {
-      resize(len +1);
+    
+    // rslp accent removal
+    for (int i = 0; i < len; i++) {
+      switch(s[i]) {
+        case 'ŕ':
+        case 'á':
+        case 'â':
+        case 'ă':
+        case 'ä':
+        case 'ĺ': s[i] = 'a'; break;
+        case 'ç': s[i] = 'c'; break;
+        case 'č':
+        case 'é':
+        case 'ę':
+        case 'ë': s[i] = 'e'; break;
+        case 'ě':
+        case 'í':
+        case 'î':
+        case 'ď': s[i] = 'i'; break;
+        case 'ń': s[i] = 'n'; break;
+        case 'ň':
+        case 'ó':
+        case 'ô':
+        case 'ő':
+        case 'ö': s[i] = 'o'; break;
+        case 'ů':
+        case 'ú':
+        case 'ű':
+        case 'ü': s[i] = 'u'; break;
+        case 'ý':
+        case '˙': s[i] = 'y'; break;
+      }
     }
-    unsafeWrite(b);
-  }
-
-  public void write(int b) { write((char)b); }
-
-  public final void write(char[] b) {
-    write(b,0,b.length);
-  }
-
-  public void write(char b[], int off, int len) {
-    reserve(len);
-    unsafeWrite(b, off, len);
-  }
-
-  public final void write(OpenStringBuilder arr) {
-    write(arr.buf, 0, len);
-  }
-
-  public void write(String s) {
-    reserve(s.length());
-    s.getChars(0,s.length(),buf, len);
-    len +=s.length();
-  }
-
-  public void flush() {
-  }
-
-  public final void reset() {
-    len =0;
-  }
-
-  public char[] toCharArray() {
-    char newbuf[] = new char[size()];
-    System.arraycopy(buf, 0, newbuf, 0, size());
-    return newbuf;
-  }
-
-  public String toString() {
-    return new String(buf, 0, size());
+    return len;
   }
 }
 

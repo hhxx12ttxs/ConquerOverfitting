@@ -1,404 +1,606 @@
-/**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-package org.apache.hadoop.hdfs.server.datanode;
+package com.dyuproject.protostuff;
 
-import java.io.BufferedInputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.FileInputStream;
+import static com.dyuproject.protostuff.StringSerializer.FIVE_BYTE_LOWER_LIMIT;
+import static com.dyuproject.protostuff.StringSerializer.FOUR_BYTE_EXCLUSIVE;
+import static com.dyuproject.protostuff.StringSerializer.FOUR_BYTE_LOWER_LIMIT;
+import static com.dyuproject.protostuff.StringSerializer.INT_MIN_VALUE;
+import static com.dyuproject.protostuff.StringSerializer.LONG_MIN_VALUE;
+import static com.dyuproject.protostuff.StringSerializer.ONE_BYTE_EXCLUSIVE;
+import static com.dyuproject.protostuff.StringSerializer.THREE_BYTE_EXCLUSIVE;
+import static com.dyuproject.protostuff.StringSerializer.THREE_BYTE_LOWER_LIMIT;
+import static com.dyuproject.protostuff.StringSerializer.TWO_BYTE_EXCLUSIVE;
+import static com.dyuproject.protostuff.StringSerializer.TWO_BYTE_LOWER_LIMIT;
+import static com.dyuproject.protostuff.StringSerializer.putBytesFromInt;
+import static com.dyuproject.protostuff.StringSerializer.putBytesFromLong;
+import static com.dyuproject.protostuff.StringSerializer.writeFixed2ByteInt;
+
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.SocketException;
-import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
-import java.util.Arrays;
-
-import org.apache.commons.logging.Log;
-import org.apache.hadoop.fs.ChecksumException;
-import org.apache.hadoop.hdfs.protocol.Block;
-import org.apache.hadoop.hdfs.protocol.DataTransferProtocol;
-import org.apache.hadoop.hdfs.protocol.FSConstants;
-import org.apache.hadoop.hdfs.server.datanode.DatanodeBlockReader.BlockInputStreamFactory;
-import org.apache.hadoop.hdfs.util.DataTransferThrottler;
-import org.apache.hadoop.io.IOUtils;
-import org.apache.hadoop.net.SocketOutputStream;
-import org.apache.hadoop.util.ChecksumUtil;
-import org.apache.hadoop.util.DataChecksum;
-import org.apache.hadoop.util.Progressable;
-import org.apache.hadoop.util.StringUtils;
-import org.apache.hadoop.hdfs.server.datanode.BlockWithChecksumFileReader.InputStreamWithChecksumFactory;
 
 /**
- * Reads a block from the disk and sends it to a recipient.
+ * UTF-8 String serialization
+ *
+ * @author David Yu
+ * @created Feb 4, 2010
  */
-public class BlockSender implements java.io.Closeable, FSConstants {
-  public static final Log LOG = DataNode.LOG;
-  static final Log ClientTraceLog = DataNode.ClientTraceLog;
-  
-  private DataChecksum checksum; // checksum stream
-  private long offset; // starting position to read
-  private long endOffset; // ending position
-  private long blockLength;
-  private int bytesPerChecksum; // chunk size
-  private int checksumSize; // checksum size
-  private boolean chunkOffsetOK; // if need to send chunk offset
-  private long seqno; // sequence number of packet
-
-  private boolean transferToAllowed = true;
-  private boolean blockReadFully; //set when the whole block is read
-  private boolean verifyChecksum; //if true, check is verified while reading
-  private DataTransferThrottler throttler;
-  private String clientTraceFmt; // format of client trace log message
-  private DatanodeBlockReader blockReader;
-
-  /**
-   * Minimum buffer used while sending data to clients. Used only if
-   * transferTo() is enabled. 64KB is not that large. It could be larger, but
-   * not sure if there will be much more improvement.
-   */
-  private static final int MIN_BUFFER_WITH_TRANSFERTO = 64*1024;
-
-  
-  BlockSender(int namespaceId, Block block, long startOffset, long length,
-              boolean corruptChecksumOk, boolean chunkOffsetOK,
-              boolean verifyChecksum, DataNode datanode) throws IOException {
-    this(namespaceId, block, startOffset, length, false, corruptChecksumOk,
-        chunkOffsetOK, verifyChecksum, datanode, null);
-  }
-
-  BlockSender(int namespaceId, Block block, long startOffset, long length,
-              boolean ignoreChecksum, boolean corruptChecksumOk, boolean chunkOffsetOK,
-              boolean verifyChecksum, DataNode datanode, String clientTraceFmt)
-      throws IOException {
+public final class StreamedStringSerializer
+{
     
-    long blockLength = datanode.data.getVisibleLength(namespaceId, block);
-    boolean transferToAllowed = datanode.transferToAllowed;
+    private StreamedStringSerializer() {}
     
-    DatanodeBlockReader.BlockInputStreamFactory streamFactory =
-        new DatanodeBlockReader.BlockInputStreamFactory(
-          namespaceId, block, datanode.data, ignoreChecksum, verifyChecksum,
-          corruptChecksumOk);
-    blockReader = streamFactory.getBlockReader();
-
-    initialize(namespaceId, block, blockLength, startOffset, length,
-        corruptChecksumOk, chunkOffsetOK, verifyChecksum, transferToAllowed,
-         streamFactory, clientTraceFmt);
-  }
-
-  /**
-   * This consturcotr is only for backward compatibility and will be removed
-   * after new data nodes are rolled out everywhere.
-   * 
-   */
-  public BlockSender(int namespaceId, Block block, long blockLength,
-      long startOffset, long length, boolean corruptChecksumOk,
-      boolean chunkOffsetOK, boolean verifyChecksum, boolean transferToAllowed,
-      final DataInputStream metadataIn,
-      final InputStreamFactory streamFactory)
-      throws IOException {
-    this(namespaceId, block, blockLength, startOffset, length,
-        corruptChecksumOk, chunkOffsetOK, verifyChecksum, transferToAllowed,
-        new BlockWithChecksumFileReader.InputStreamWithChecksumFactory() {
-          @Override
-          public InputStream createStream(long offset) throws IOException {
-            // we are passing 0 as the offset above,
-            // so we can safely ignore
-            // the offset passed
-            return streamFactory.createStream(offset);
-          }
-
-          @Override
-          public DataInputStream getChecksumStream() throws IOException {
-            return metadataIn;
-          }
-        });
-  }
-  
-  public BlockSender(int namespaceId, Block block, long blockLength, long startOffset, long length,
-              boolean corruptChecksumOk, boolean chunkOffsetOK,
-              boolean verifyChecksum, boolean transferToAllowed,
-              BlockWithChecksumFileReader.InputStreamWithChecksumFactory streamFactory
-              ) throws IOException {
-    blockReader = new BlockWithChecksumFileReader(
-        namespaceId, block, null, false, verifyChecksum,
-        corruptChecksumOk, streamFactory);
-
-    initialize(namespaceId, block, blockLength, startOffset, length,
-         corruptChecksumOk, chunkOffsetOK, verifyChecksum, transferToAllowed,
-         streamFactory, null);
-  }
-
-  private void initialize(int namespaceId, Block block, long blockLength,
-      long startOffset, long length, boolean corruptChecksumOk,
-      boolean chunkOffsetOK, boolean verifyChecksum, boolean transferToAllowed,
-      BlockWithChecksumFileReader.InputStreamWithChecksumFactory streamFactory, String clientTraceFmt)
-      throws IOException {
-    try {
-      this.chunkOffsetOK = chunkOffsetOK;
-      this.verifyChecksum = verifyChecksum;
-      this.blockLength = blockLength;
-      this.transferToAllowed = transferToAllowed;
-      this.clientTraceFmt = clientTraceFmt;
-
-      
-      checksum = blockReader.getChecksumToSend(blockLength);
-      
-      bytesPerChecksum = blockReader.getBytesPerChecksum();
-      checksumSize = blockReader.getChecksumSize();
-      
-
-      if (length < 0) {
-        length = blockLength;
-      }
-
-      endOffset = blockLength;
-      if (startOffset < 0 || startOffset > endOffset
-          || (length + startOffset) > endOffset) {
-        String msg = " Offset " + startOffset + " and length " + length
-        + " don't match block " + block + " ( blockLen " + endOffset + " )";
-        LOG.warn("sendBlock() : " + msg);
-        throw new IOException(msg);
-      }
-
-      
-      offset = (startOffset - (startOffset % bytesPerChecksum));
-      if (length >= 0) {
-        // Make sure endOffset points to end of a checksumed chunk.
-        long tmpLen = startOffset + length;
-        if (tmpLen % bytesPerChecksum != 0) {
-          tmpLen += (bytesPerChecksum - tmpLen % bytesPerChecksum);
+    /**
+     * Writes the stringified int into the {@link LinkedBuffer}.
+     */
+    public static LinkedBuffer writeInt(final int value, final WriteSession session, 
+            final OutputStream out, LinkedBuffer lb) throws IOException
+    {
+        if(value == Integer.MIN_VALUE)
+        {
+            final int valueLen = INT_MIN_VALUE.length;
+            if(lb.offset + valueLen > lb.buffer.length)
+            {
+                // not enough size
+                out.write(lb.buffer, lb.start, lb.offset-lb.start);
+                lb.offset = lb.start;
+                //lb = new LinkedBuffer(session.nextBufferSize, lb);
+            }
+            
+            System.arraycopy(INT_MIN_VALUE, 0, lb.buffer, lb.offset, valueLen);
+            
+            lb.offset += valueLen;
+            session.size += valueLen;
+            
+            return lb;
         }
-        if (tmpLen < endOffset) {
-          endOffset = tmpLen;
-        }
-      }
-
-      seqno = 0;
-      
-      blockReader.initializeStream(offset, blockLength);
-    } catch (IOException ioe) {
-      IOUtils.closeStream(this);
-      throw ioe;
-    }
-  }
-
-  /**
-   * close opened files.
-   */
-  public void close() throws IOException {
-    if (blockReader != null) {
-      blockReader.close();
-    }
-  }
-
-  /**
-   * Converts an IOExcpetion (not subclasses) to SocketException.
-   * This is typically done to indicate to upper layers that the error 
-   * was a socket error rather than often more serious exceptions like 
-   * disk errors.
-   */
-  static IOException ioeToSocketException(IOException ioe) {
-    if (ioe.getClass().equals(IOException.class)) {
-      // "se" could be a new class in stead of SocketException.
-      IOException se = new SocketException("Original Exception : " + ioe);
-      se.initCause(ioe);
-      /* Change the stacktrace so that original trace is not truncated
-       * when printed.*/ 
-      se.setStackTrace(ioe.getStackTrace());
-      return se;
-    }
-    // otherwise just return the same exception.
-    return ioe;
-  }
-
-  /**
-   * Sends upto maxChunks chunks of data.
-   * 
-   * When blockInPosition is >= 0, assumes 'out' is a 
-   * {@link SocketOutputStream} and tries 
-   * {@link SocketOutputStream#transferToFully(FileChannel, long, int)} to
-   * send data (and updates blockInPosition).
-   */
-  private int sendChunks(ByteBuffer pkt, int maxChunks, OutputStream out) 
-                         throws IOException {
-    // Sends multiple chunks in one packet with a single write().
-
-    int len = (int) Math.min(endOffset - offset,
-                            (((long) bytesPerChecksum) * ((long) maxChunks)));
-
-    // truncate len so that any partial chunks will be sent as a final packet.
-    // this is not necessary for correctness, but partial chunks are 
-    // ones that may be recomputed and sent via buffer copy, so try to minimize
-    // those bytes
-    if (len > bytesPerChecksum && len % bytesPerChecksum != 0) {
-      len -= len % bytesPerChecksum;
-    }
-
-    if (len == 0) {
-      return 0;
-    }
-
-    int numChunks = (len + bytesPerChecksum - 1)/bytesPerChecksum;
-    int packetLen = len + numChunks*checksumSize + 4;
-    pkt.clear();
-
-    // write packet header
-    pkt.putInt(packetLen);
-    pkt.putLong(offset);
-    pkt.putLong(seqno);
-    pkt.put((byte)((offset + len >= endOffset) ? 1 : 0));
-               //why no ByteBuf.putBoolean()?
-    pkt.putInt(len);
-    
-    int checksumOff = pkt.position();
-    byte[] buf = pkt.array();
-    
-    blockReader.sendChunks(out, buf, offset, checksumOff,
-        numChunks, len);
-    
-    if (throttler != null) { // rebalancing so throttle
-      throttler.throttle(packetLen);
-    }
-    
-    return len;
-  }
-
-  /**
-   * sendBlock() is used to read block and its metadata and stream the data to
-   * either a client or to another datanode. 
-   * 
-   * @param out  stream to which the block is written to
-   * @param baseStream optional. if non-null, <code>out</code> is assumed to 
-   *        be a wrapper over this stream. This enables optimizations for
-   *        sending the data, e.g. 
-   *        {@link SocketOutputStream#transferToFully(FileChannel, 
-   *        long, int)}.
-   * @param throttler for sending data.
-   * @return total bytes reads, including crc.
-   */
-  public long sendBlock(DataOutputStream out, OutputStream baseStream, 
-                 DataTransferThrottler throttler) throws IOException {
-    return sendBlock(out, baseStream, throttler, null);
-  }
-
-  /**
-   * sendBlock() is used to read block and its metadata and stream the data to
-   * either a client or to another datanode. 
-   * 
-   * @param out  stream to which the block is written to
-   * @param baseStream optional. if non-null, <code>out</code> is assumed to 
-   *        be a wrapper over this stream. This enables optimizations for
-   *        sending the data, e.g. 
-   *        {@link SocketOutputStream#transferToFully(FileChannel, 
-   *        long, int)}.
-   * @param throttler for sending data.
-   * @param progress for signalling progress.
-   * @return total bytes reads, including crc.
-   */
-  public long sendBlock(DataOutputStream out, OutputStream baseStream, 
-       DataTransferThrottler throttler, Progressable progress) throws IOException {
-    if( out == null ) {
-      throw new IOException( "out stream is null" );
-    }
-    this.throttler = throttler;
-
-    long initialOffset = offset;
-    long totalRead = 0;
-    OutputStream streamForSendChunks = out;
-    
-    final long startTime = ClientTraceLog.isInfoEnabled() ? System.nanoTime() : 0; 
-    try {
-      try {
-        checksum.writeHeader(out);
-        if ( chunkOffsetOK ) {
-          out.writeLong( offset );
-        }
-        out.flush();
-      } catch (IOException e) { //socket error
-        throw ioeToSocketException(e);
-      }
-      
-      int maxChunksPerPacket;
-      int pktSize = SIZE_OF_INTEGER + DataNode.PKT_HEADER_LEN;
-      
-      if (transferToAllowed && !verifyChecksum && 
-          baseStream instanceof SocketOutputStream && 
-          blockReader.prepareTransferTo()) {
-        streamForSendChunks = baseStream;
         
-        // assure a mininum buffer size.
-        maxChunksPerPacket = (Math.max(BUFFER_SIZE,
-                                       MIN_BUFFER_WITH_TRANSFERTO)
-                              + bytesPerChecksum - 1)/bytesPerChecksum;
+        final int size = (value < 0) ? StringSerializer.stringSize(-value) + 1 : StringSerializer.stringSize(value);
         
-        // packet buffer has to be able to do a normal transfer in the case
-        // of recomputing checksum
-        pktSize += (bytesPerChecksum + checksumSize) * maxChunksPerPacket;
-      } else {
-        maxChunksPerPacket = Math.max(1,
-                 (BUFFER_SIZE + bytesPerChecksum - 1)/bytesPerChecksum);
-        pktSize += (bytesPerChecksum + checksumSize) * maxChunksPerPacket;
-      }
-
-      ByteBuffer pktBuf = ByteBuffer.allocate(pktSize);
-
-      while (endOffset > offset) {
-        long len = sendChunks(pktBuf, maxChunksPerPacket, 
-                              streamForSendChunks);
-        if (progress != null) {
-          progress.progress();
+        if(lb.offset + size > lb.buffer.length)
+        {
+            // not enough size
+            out.write(lb.buffer, lb.start, lb.offset-lb.start);
+            lb.offset = lb.start;
+            //lb = new LinkedBuffer(session.nextBufferSize, lb);
         }
-        offset += len;
-        totalRead += len + ((len + bytesPerChecksum - 1)/bytesPerChecksum*
-                            checksumSize);
-        seqno++;
-      }
-      try {
-        out.writeInt(0); // mark the end of block        
-        out.flush();
-      } catch (IOException e) { //socket error
-        throw ioeToSocketException(e);
-      }
+        
+        putBytesFromInt(value, lb.offset, size, lb.buffer);
+        
+        lb.offset += size;
+        session.size += size;
+        
+        return lb;
     }
-    catch (RuntimeException e) {
-      LOG.error("unexpected exception sending block", e);
-      
-      throw new IOException("unexpected runtime exception", e);
-    } 
-    finally {
-      if (clientTraceFmt != null) {
-        final long endTime = System.nanoTime();
-        ClientTraceLog.info(String.format(clientTraceFmt, totalRead, initialOffset, endTime - startTime));
-      }
-      close();
+    
+    /**
+     * Writes the stringified long into the {@link LinkedBuffer}.
+     */
+    public static LinkedBuffer writeLong(final long value, final WriteSession session, 
+            final OutputStream out, LinkedBuffer lb) throws IOException
+    {
+        if(value == Long.MIN_VALUE)
+        {
+            final int valueLen = LONG_MIN_VALUE.length;
+            if(lb.offset + valueLen > lb.buffer.length)
+            {
+                //TODO space efficiency (slower path)
+                // not enough size
+                out.write(lb.buffer, lb.start, lb.offset-lb.start);
+                lb.offset = lb.start;
+                //lb = new LinkedBuffer(session.nextBufferSize, lb);
+            }
+            
+            System.arraycopy(LONG_MIN_VALUE, 0, lb.buffer, lb.offset, valueLen);
+            
+            lb.offset += valueLen;
+            session.size += valueLen;
+            
+            return lb;
+        }
+        
+        final int size = (value < 0) ? StringSerializer.stringSize(-value) + 1 : StringSerializer.stringSize(value);
+        
+        if(lb.offset + size > lb.buffer.length)
+        {
+            //TODO space efficiency (slower path)
+            // not enough size
+            out.write(lb.buffer, lb.start, lb.offset-lb.start);
+            lb.offset = lb.start;
+            //lb = new LinkedBuffer(session.nextBufferSize, lb);
+        }
+        
+        putBytesFromLong(value, lb.offset, size, lb.buffer);
+        
+        lb.offset += size;
+        session.size += size;
+        
+        return lb;
+    }
+    
+    /**
+     * Writes the stringified float into the {@link LinkedBuffer}.
+     * TODO - skip string conversion and write directly to buffer
+     */
+    public static LinkedBuffer writeFloat(final float value, final WriteSession session, 
+            final OutputStream out, final LinkedBuffer lb) throws IOException
+    {
+        return writeAscii(Float.toString(value), session, out, lb);
+    }
+    
+    /**
+     * Writes the stringified double into the {@link LinkedBuffer}.
+     * TODO - skip string conversion and write directly to buffer
+     */
+    public static LinkedBuffer writeDouble(final double value, final WriteSession session, 
+            final OutputStream out, final LinkedBuffer lb) throws IOException
+    {
+        return writeAscii(Double.toString(value), session, out, lb);
+    }
+    
+    /**
+     * Writes the utf8-encoded bytes from the string into the {@link LinkedBuffer}.
+     */
+    public static LinkedBuffer writeUTF8(final String str, final WriteSession session, 
+            final OutputStream out, final LinkedBuffer lb) throws IOException
+    {
+        final int len = str.length();
+        if(len == 0)
+            return lb;
+        
+        final byte[] buffer = lb.buffer;
+        int limit = buffer.length, 
+            offset = lb.offset, 
+            i = 0;
+        
+        char c;
+        do
+        {
+            c = str.charAt(i++);
+            if(c < 0x0080)
+            {
+                if(offset == limit)
+                {
+                    out.write(buffer, lb.start, offset-lb.start);
+                    session.size += (offset-lb.offset);
+                    lb.offset = offset = lb.start;
+                }
+                // ascii
+                buffer[offset++] = (byte)c;
+            }
+            else if(c < 0x0800)
+            {
+                if(offset + 2 > limit)
+                {
+                    out.write(buffer, lb.start, offset-lb.start);
+                    session.size += (offset-lb.offset);
+                    lb.offset = offset = lb.start;
+                }
+                
+                buffer[offset++] = (byte) (0xC0 | ((c >>  6) & 0x1F));
+                buffer[offset++] = (byte) (0x80 | ((c >>  0) & 0x3F));
+            }
+            else
+            {
+                if(offset + 3 > limit)
+                {
+                    out.write(buffer, lb.start, offset-lb.start);
+                    session.size += (offset-lb.offset);
+                    lb.offset = offset = lb.start;
+                }
+                
+                buffer[offset++] = (byte) (0xE0 | ((c >> 12) & 0x0F));
+                buffer[offset++] = (byte) (0x80 | ((c >>  6) & 0x3F));
+                buffer[offset++] = (byte) (0x80 | ((c >>  0) & 0x3F));
+            }
+        }
+        while(i < len);
+        
+        session.size += (offset-lb.offset);
+        lb.offset = offset;
+        
+        return lb;
+    }
+    
+    /**
+     * Writes the ascii bytes from the string into the {@link LinkedBuffer}.
+     * It is the responsibility of the caller to know in advance that the string is 100% ascii.
+     * E.g if you convert a double/float to a string, you are sure it only contains ascii chars.
+     */
+    public static LinkedBuffer writeAscii(final String str, final WriteSession session, 
+            final OutputStream out, final LinkedBuffer lb) throws IOException
+    {
+        final int len = str.length();
+        if(len == 0)
+            return lb;
+        
+        int offset = lb.offset;
+        final int limit = lb.buffer.length;
+        final byte[] buffer = lb.buffer;
+        
+        // actual size
+        session.size += len;
+        
+        if(offset + len > limit)
+        {
+            // need to flush
+            int index = 0, 
+                start = lb.start, 
+                bufSize = limit - start, 
+                available = limit - offset, 
+                remaining = len - available,
+                loops = remaining/bufSize,
+                extra = remaining%bufSize;
+            
+            // write available space
+            while(available-->0)
+                buffer[offset++] = (byte)str.charAt(index++);
+            
+            // flush and reset
+            out.write(buffer, start, bufSize);
+            offset = start;
+            
+            while(loops-->0)
+            {
+                for(int i = 0; i < bufSize; i++)
+                    buffer[offset++] = (byte)str.charAt(index++);
+                
+                // flush and reset
+                out.write(buffer, start, bufSize);
+                offset = start;
+            }
+            
+            while(extra-->0)
+            {
+                buffer[offset++] = (byte)str.charAt(index++);
+            }
+
+        }
+        else
+        {
+            // fast path
+            for(int i = 0; i < len; i++)
+                buffer[offset++] = (byte)str.charAt(i);
+        }
+        
+        lb.offset = offset;
+        
+        return lb;
+    }
+    
+    private static void flushAndReset(LinkedBuffer node, final OutputStream out) 
+    throws IOException
+    {
+        int len;
+        do
+        {
+            if((len = node.offset - node.start) > 0)
+            {
+                out.write(node.buffer, node.start, len);
+                node.offset = node.start;
+            }
+        }
+        while((node=node.next) != null);
+    }
+    
+    /**
+     * The length of the utf8 bytes is written first (big endian) 
+     * before the string - which is fixed 2-bytes.
+     * Same behavior as {@link java.io.DataOutputStream#writeUTF(String)}.
+     */
+    public static LinkedBuffer writeUTF8FixedDelimited(final String str, 
+            final WriteSession session, final OutputStream out, 
+            LinkedBuffer lb) throws IOException
+    {
+        return writeUTF8FixedDelimited(str, false, session, out, lb);
+    }
+    
+    /**
+     * The length of the utf8 bytes is written first before the string - which is  
+     * fixed 2-bytes.
+     */
+    public static LinkedBuffer writeUTF8FixedDelimited(final String str, 
+            final boolean littleEndian, final WriteSession session, 
+            final OutputStream out, final LinkedBuffer lb) throws IOException
+    {
+        int lastSize = session.size, 
+            len = str.length(), 
+            withIntOffset = lb.offset + 2;
+        
+        // the buffer could very well be almost-full.
+        if(withIntOffset + len > lb.buffer.length)
+        {
+            // flush what we have.
+            out.write(lb.buffer, lb.start, lb.offset - lb.start);
+            lb.offset = lb.start;
+            withIntOffset = lb.offset + 2;
+            
+            if(len == 0)
+            {
+                writeFixed2ByteInt(0, lb.buffer, withIntOffset-2, littleEndian);
+                lb.offset = withIntOffset;
+                // update size
+                session.size += 2;
+                return lb;
+            }
+            
+            // if true, the string is too large to fit in the buffer
+            if(withIntOffset + len > lb.buffer.length)
+            {
+                lb.offset = withIntOffset;
+                
+                // slow path
+                final LinkedBuffer rb = StringSerializer.writeUTF8(str, 0, len, 
+                        lb.buffer, withIntOffset, lb.buffer.length, session, lb);
+                
+                writeFixed2ByteInt((session.size - lastSize), lb.buffer, 
+                        withIntOffset-2, littleEndian);
+                
+                // update size
+                session.size += 2;
+                
+                assert rb != lb;
+                // flush and reset nodes
+                flushAndReset(lb, out);
+                
+                return lb;
+            }
+        }
+        else if(len == 0)
+        {
+            writeFixed2ByteInt(0, lb.buffer, withIntOffset-2, littleEndian);
+            lb.offset = withIntOffset;
+            // update size
+            session.size += 2;
+            return lb;
+        }
+
+        // everything fits
+        lb.offset = withIntOffset;
+        
+        final LinkedBuffer rb = StringSerializer.writeUTF8(str, 0, len, session, lb);
+        
+        writeFixed2ByteInt((session.size - lastSize), lb.buffer, 
+                withIntOffset-2, littleEndian);
+        
+        // update size
+        session.size += 2;
+        
+        if(rb != lb)
+        {
+            // flush and reset nodes
+            flushAndReset(lb, out);
+        }
+        
+        return lb;
+    }
+    
+    private static LinkedBuffer writeUTF8OneByteDelimited(final String str, final int index, 
+            final int len, final WriteSession session, final OutputStream out, 
+            final LinkedBuffer lb) throws IOException
+    {
+        int lastSize = session.size, 
+            withIntOffset = lb.offset + 1;
+        
+        // the buffer could very well be almost-full.
+        if(withIntOffset + len > lb.buffer.length)
+        {
+            // flush what we have.
+            out.write(lb.buffer, lb.start, lb.offset - lb.start);
+            lb.offset = lb.start;
+            withIntOffset = lb.offset + 1;
+        }
+
+        // everything fits
+        lb.offset = withIntOffset;
+        
+        final LinkedBuffer rb = StringSerializer.writeUTF8(str, index, len, session, lb);
+        
+        lb.buffer[withIntOffset-1] = (byte)(session.size - lastSize);
+        
+        // update size
+        session.size++;
+        
+        if(rb != lb)
+        {
+            // flush and reset nodes
+            flushAndReset(lb, out);
+        }
+        
+        return lb;
+    }
+    
+    private static LinkedBuffer writeUTF8VarDelimited(final String str, final int index, 
+            final int len, final int lowerLimit, int expectedSize,
+            final WriteSession session, final OutputStream out, final LinkedBuffer lb)
+            throws IOException
+    {
+        int lastSize = session.size,
+            offset = lb.offset, 
+            withIntOffset = offset + expectedSize;
+        
+        // the buffer could very well be almost-full.
+        if(withIntOffset + len > lb.buffer.length)
+        {
+            // flush what we have.
+            out.write(lb.buffer, lb.start, lb.offset - lb.start);
+            offset = lb.start;
+            withIntOffset = offset + expectedSize;
+            
+            // if true, the string is too large to fit in the buffer
+            if(withIntOffset + len > lb.buffer.length)
+            {
+                // not enough space for the string.
+                lb.offset = withIntOffset;
+                
+                // slow path
+                final LinkedBuffer rb = StringSerializer.writeUTF8(str, index, len, 
+                        lb.buffer, withIntOffset, lb.buffer.length, session, lb);
+                
+                int size = session.size - lastSize;
+                
+                if(size < lowerLimit)
+                {
+                    session.size += (--expectedSize);
+                    
+                    // we've nothing existing to flush
+                    // move one slot to the right (re-using the withIntOffset variable)
+                    withIntOffset = ++offset;
+                    
+                    for (;--expectedSize > 0; size >>>= 7)
+                        lb.buffer[offset++] = (byte)((size & 0x7F) | 0x80);
+                    
+                    lb.buffer[offset] = (byte)(size);
+                    
+                    // flush
+                    out.write(lb.buffer, withIntOffset, lb.offset - withIntOffset);
+                    // reset
+                    lb.offset = lb.start;
+                    
+                    assert rb != lb;
+                    // flush and reset nodes
+                    flushAndReset(lb.next, out);
+                    
+                    return lb;
+                }
+
+                // update size
+                session.size += expectedSize;
+                
+                for (;--expectedSize > 0; size >>>= 7)
+                    lb.buffer[offset++] = (byte)((size & 0x7F) | 0x80);
+                
+                lb.buffer[offset] = (byte)(size);
+                
+                assert rb != lb;
+                // flush and reset nodes
+                flushAndReset(lb, out);
+                
+                return lb;
+            }
+        }
+
+        // everything fits
+        lb.offset = withIntOffset;
+        
+        final LinkedBuffer rb = StringSerializer.writeUTF8(str, index, len, session, lb);
+        
+        int size = session.size - lastSize;
+        
+        if(size < lowerLimit)
+        {
+            // if the buffer was fully used
+            // or if the string was atleast 683 bytes
+            // for this method, expected size only either be 2/3/4/5
+            if(rb != lb || expectedSize != 2) 
+            {
+                // flush it
+                session.size += (--expectedSize);
+                
+                // flush existing
+                if(offset != lb.start)
+                    out.write(lb.buffer, lb.start, offset - lb.start);
+                
+                // move one slot to the right (re-using the withIntOffset variable)
+                withIntOffset = ++offset;
+                
+                for (;--expectedSize > 0; size >>>= 7)
+                    lb.buffer[offset++] = (byte)((size & 0x7F) | 0x80);
+                
+                lb.buffer[offset] = (byte)(size);
+                
+                // flush
+                out.write(lb.buffer, withIntOffset, lb.offset - withIntOffset);
+                // reset
+                lb.offset = lb.start;
+                
+                if(rb != lb)
+                {
+                    // flush and reset nodes
+                    flushAndReset(lb.next, out);
+                }
+                
+                return lb;
+            }
+            
+            // move one slot to the left
+            System.arraycopy(lb.buffer, withIntOffset, lb.buffer, withIntOffset - 1, 
+                    lb.offset - withIntOffset);
+            
+            expectedSize--;
+            lb.offset--;
+        }
+
+        // update size
+        session.size += expectedSize;
+        
+        for (;--expectedSize > 0; size >>>= 7)
+            lb.buffer[offset++] = (byte)((size & 0x7F) | 0x80);
+        
+        lb.buffer[offset] = (byte)(size);
+        
+        if(rb != lb)
+        {
+            // flush and reset nodes
+            flushAndReset(lb, out);
+        }
+        
+        return lb;
+    }
+    
+    /**
+     * The length of the utf8 bytes is written first before the string - which is  
+     * a variable int (1 to 5 bytes).
+     */
+    public static LinkedBuffer writeUTF8VarDelimited(final String str, final WriteSession session, 
+            final OutputStream out, final LinkedBuffer lb) throws IOException
+    {
+        final int len = str.length();
+        if(len == 0)
+        {
+            if(lb.offset == lb.buffer.length)
+            {
+                // buffer full
+                // flush
+                out.write(lb.buffer, lb.start, lb.offset-lb.start);
+                lb.offset = lb.start; 
+            }
+            
+            // write zero
+            lb.buffer[lb.offset++] = 0x00;
+            // update size
+            session.size++;
+            return lb;
+        }
+        
+        if(len < ONE_BYTE_EXCLUSIVE)
+        {
+            // the varint will be max 1-byte. (even if all chars are non-ascii)
+            return writeUTF8OneByteDelimited(str, 0, len, session, out, lb);
+        }
+        
+        if(len < TWO_BYTE_EXCLUSIVE)
+        {
+            // the varint will be max 2-bytes and could be 1-byte. (even if all non-ascii)
+            return writeUTF8VarDelimited(str, 0, len, TWO_BYTE_LOWER_LIMIT, 2, 
+                    session, out, lb);
+        }
+        
+        if(len < THREE_BYTE_EXCLUSIVE)
+        {
+            // the varint will be max 3-bytes and could be 2-bytes. (even if all non-ascii)
+            return writeUTF8VarDelimited(str, 0, len, THREE_BYTE_LOWER_LIMIT, 3, 
+                    session, out, lb);
+        }
+        
+        if(len < FOUR_BYTE_EXCLUSIVE)
+        {
+            // the varint will be max 4-bytes and could be 3-bytes. (even if all non-ascii)
+            return writeUTF8VarDelimited(str, 0, len, FOUR_BYTE_LOWER_LIMIT, 4,
+                    session, out, lb);
+        }
+        
+        // the varint will be max 5-bytes and could be 4-bytes. (even if all non-ascii)
+        return writeUTF8VarDelimited(str, 0, len, FIVE_BYTE_LOWER_LIMIT, 5, session, out, lb);
     }
 
-    blockReadFully = (initialOffset == 0 && offset >= blockLength);
-
-    return totalRead;
-  }
-  
-  boolean isBlockReadFully() {
-    return blockReadFully;
-  }
-
-  public static interface InputStreamFactory {
-    public InputStream createStream(long offset) throws IOException; 
-  }
 }
+

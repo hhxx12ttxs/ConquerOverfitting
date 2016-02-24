@@ -6,7 +6,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.utils.ShellUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.MethodInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 import com.sun.org.apache.bcel.internal.generic.LUSHR;
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang.StringUtils;
 import org.junit.runner.JUnitCore;
 
 import java.io.IOException;
@@ -146,7 +146,7 @@ public class VariableTracer {
         System.out.print(StringUtils.join(arg," "));
         String shellResult = ShellUtils.shellRun(Arrays.asList(StringUtils.join(arg, " ")));
         if (shellResult.length() <= 0){
-            throw new IOException("Shell Run Error, Shell Args:"+StringUtils.join(arg," "));
+            throw new IOException("Shell Run Error, Shell Args:"+ StringUtils.join(arg," "));
         }
         return shellResult;
     }

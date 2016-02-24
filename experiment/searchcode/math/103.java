@@ -1,375 +1,149 @@
-/*
- *  Copyright (c) 2009 Julien Ponge. All rights reserved.
- *
- *  <julien.ponge@gmail.com>
- *  http://julien.ponge.info/
- *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
- *
- *  This work is based on the LZMA SDK by Igor Pavlov.
- *  The LZMA SDK is placed under the public domain, and can be obtained from
- *
- *      http://www.7-zip.org/sdk.html
- *
- *  The LzmaInputStream and LzmaOutputStream classes were inspired by the
- *  work of Christopher League, although they are not derivative works.
- *
- *      http://contrapunctus.net/league/haques/lzmajio/
- */
-
-package lzma.sdk.lz;
+package com.trilead.ssh2.crypto;
 
 import java.io.IOException;
-import java.util.Arrays;
+import java.math.BigInteger;
 
-public class BinTree extends InWindow {
-    int _cyclicBufferPos;
-    int _cyclicBufferSize = 0;
-    int _matchMaxLen;
+/**
+ * SimpleDERReader.
+ * 
+ * @author Christian Plattner, plattner@trilead.com
+ * @version $Id: SimpleDERReader.java,v 1.1 2007/10/15 12:49:56 cplattne Exp $
+ */
+public class SimpleDERReader {
+	byte[] buffer;
+	int pos;
+	int count;
 
-    int[] _son;
-    int[] _hash;
+	public SimpleDERReader(byte[] b) {
+		resetInput(b);
+	}
 
-    int _cutValue = 0xFF;
-    int _hashMask;
-    int _hashSizeSum = 0;
+	public SimpleDERReader(byte[] b, int off, int len) {
+		resetInput(b, off, len);
+	}
 
-    private final boolean HASH_ARRAY;
+	public int available() {
+		return count;
+	}
 
-    static final int kHash2Size = 1 << 10;
-    static final int kHash3Size = 1 << 16;
-    static final int kBT2HashSize = 1 << 16;
-    static final int kStartMaxLen = 1;
-    static final int kHash3Offset = kHash2Size;
-    static final int kEmptyHashValue = 0;
-    static final int kMaxValForNormalize = (1 << 30) - 1;
+	public int ignoreNextObject() throws IOException {
+		int type = readByte() & 0xff;
 
-    int kNumHashDirectBytes = 0;
-    int kMinMatchCheck = 4;
-    int kFixHashSize = kHash2Size + kHash3Size;
+		int len = readLength();
 
-    public BinTree(int numHashBytes) {
-        HASH_ARRAY = (numHashBytes > 2);
-        if (HASH_ARRAY) {
-            kNumHashDirectBytes = 0;
-            kMinMatchCheck = 4;
-            kFixHashSize = kHash2Size + kHash3Size;
-        } else {
-            kNumHashDirectBytes = 2;
-            kMinMatchCheck = 2 + 1;
-            kFixHashSize = 0;
-        }
-    }
+		if ((len < 0) || len > available())
+			throw new IOException("Illegal len in DER object (" + len + ")");
 
-    @Override
-    public void init() throws IOException {
-        super.init();
-        Arrays.fill(_hash, 0, _hashSizeSum, kEmptyHashValue);
-        _cyclicBufferPos = 0;
-        reduceOffsets(-1);
-    }
+		readBytes(len);
 
-    @Override
-    public void movePos() throws IOException {
-        if (++_cyclicBufferPos >= _cyclicBufferSize) {
-            _cyclicBufferPos = 0;
-        }
-        super.movePos();
-        if (_pos == kMaxValForNormalize) {
-            normalize();
-        }
-    }
+		return type;
+	}
 
-    public boolean create(int historySize, int keepAddBufferBefore,
-            int matchMaxLen, int keepAddBufferAfter) {
-        if (historySize > kMaxValForNormalize - 256) {
-            return false;
-        }
-        _cutValue = 16 + (matchMaxLen >> 1);
+	private byte readByte() throws IOException {
+		if (count <= 0)
+			throw new IOException("DER byte array: out of data");
+		count--;
+		return buffer[pos++];
+	}
 
-        int windowReservSize = (historySize + keepAddBufferBefore + matchMaxLen + keepAddBufferAfter) / 2 + 256;
+	private byte[] readBytes(int len) throws IOException {
+		if (len > count)
+			throw new IOException("DER byte array: out of data");
 
-        super.create(historySize + keepAddBufferBefore, matchMaxLen
-                + keepAddBufferAfter, windowReservSize);
+		byte[] b = new byte[len];
 
-        _matchMaxLen = matchMaxLen;
+		System.arraycopy(buffer, pos, b, 0, len);
 
-        int cyclicBufferSize = historySize + 1;
-        if (_cyclicBufferSize != cyclicBufferSize) {
-            _son = new int[(_cyclicBufferSize = cyclicBufferSize) * 2];
-        }
+		pos += len;
+		count -= len;
 
-        int hs = kBT2HashSize;
+		return b;
+	}
 
-        if (HASH_ARRAY) {
-            hs = historySize - 1;
-            hs |= (hs >> 1);
-            hs |= (hs >> 2);
-            hs |= (hs >> 4);
-            hs |= (hs >> 8);
-            hs >>= 1;
-            hs |= 0xFFFF;
-            if (hs > (1 << 24)) {
-                hs >>= 1;
-            }
-            _hashMask = hs;
-            hs++;
-            hs += kFixHashSize;
-        }
-        if (hs != _hashSizeSum) {
-            _hash = new int[_hashSizeSum = hs];
-        }
-        return true;
-    }
+	public BigInteger readInt() throws IOException {
+		int type = readByte() & 0xff;
 
-    public int getMatches(int[] distances) throws IOException {
-        int lenLimit;
-        if (_pos + _matchMaxLen <= _streamPos) {
-            lenLimit = _matchMaxLen;
-        } else {
-            lenLimit = _streamPos - _pos;
-            if (lenLimit < kMinMatchCheck) {
-                movePos();
-                return 0;
-            }
-        }
+		if (type != 0x02)
+			throw new IOException("Expected DER Integer, but found type "
+					+ type);
 
-        int offset = 0;
-        int matchMinPos = (_pos > _cyclicBufferSize) ? (_pos - _cyclicBufferSize)
-                : 0;
-        int cur = _bufferOffset + _pos;
-        int maxLen = kStartMaxLen; // to avoid items for len < hashSize;
-        int hashValue, hash2Value = 0, hash3Value = 0;
+		int len = readLength();
 
-        if (HASH_ARRAY) {
-            int temp = CrcTable[_bufferBase[cur] & 0xFF]
-                    ^ (_bufferBase[cur + 1] & 0xFF);
-            hash2Value = temp & (kHash2Size - 1);
-            temp ^= ((_bufferBase[cur + 2] & 0xFF) << 8);
-            hash3Value = temp & (kHash3Size - 1);
-            hashValue = (temp ^ (CrcTable[_bufferBase[cur + 3] & 0xFF] << 5))
-                    & _hashMask;
-        } else {
-            hashValue = ((_bufferBase[cur] & 0xFF) ^ ((_bufferBase[cur + 1] & 0xFF) << 8));
-        }
+		if ((len < 0) || len > available())
+			throw new IOException("Illegal len in DER object (" + len + ")");
 
-        int curMatch = _hash[kFixHashSize + hashValue];
-        if (HASH_ARRAY) {
-            int curMatch2 = _hash[hash2Value];
-            int curMatch3 = _hash[kHash3Offset + hash3Value];
-            _hash[hash2Value] = _pos;
-            _hash[kHash3Offset + hash3Value] = _pos;
-            if (curMatch2 > matchMinPos) {
-                if (_bufferBase[_bufferOffset + curMatch2] == _bufferBase[cur]) {
-                    distances[offset++] = maxLen = 2;
-                    distances[offset++] = _pos - curMatch2 - 1;
-                }
-            }
-            if (curMatch3 > matchMinPos) {
-                if (_bufferBase[_bufferOffset + curMatch3] == _bufferBase[cur]) {
-                    if (curMatch3 == curMatch2) {
-                        offset -= 2;
-                    }
-                    distances[offset++] = maxLen = 3;
-                    distances[offset++] = _pos - curMatch3 - 1;
-                    curMatch2 = curMatch3;
-                }
-            }
-            if (offset != 0 && curMatch2 == curMatch) {
-                offset -= 2;
-                maxLen = kStartMaxLen;
-            }
-        }
+		byte[] b = readBytes(len);
 
-        _hash[kFixHashSize + hashValue] = _pos;
+		BigInteger bi = new BigInteger(b);
 
-        int ptr0 = (_cyclicBufferPos << 1) + 1;
-        int ptr1 = (_cyclicBufferPos << 1);
+		return bi;
+	}
 
-        int len0, len1;
-        len0 = len1 = kNumHashDirectBytes;
+	private int readLength() throws IOException {
+		int len = readByte() & 0xff;
 
-        if (kNumHashDirectBytes != 0) {
-            if (curMatch > matchMinPos) {
-                if (_bufferBase[_bufferOffset + curMatch + kNumHashDirectBytes] != _bufferBase[cur
-                        + kNumHashDirectBytes]) {
-                    distances[offset++] = maxLen = kNumHashDirectBytes;
-                    distances[offset++] = _pos - curMatch - 1;
-                }
-            }
-        }
+		if ((len & 0x80) == 0)
+			return len;
 
-        int count = _cutValue;
+		int remain = len & 0x7F;
 
-        while (true) {
-            if (curMatch <= matchMinPos || count-- == 0) {
-                _son[ptr0] = _son[ptr1] = kEmptyHashValue;
-                break;
-            }
-            int delta = _pos - curMatch;
-            int cyclicPos = ((delta <= _cyclicBufferPos) ? (_cyclicBufferPos - delta)
-                    : (_cyclicBufferPos - delta + _cyclicBufferSize)) << 1;
+		if (remain == 0)
+			return -1;
 
-            int pby1 = _bufferOffset + curMatch;
-            int len = Math.min(len0, len1);
-            if (_bufferBase[pby1 + len] == _bufferBase[cur + len]) {
-                while (++len != lenLimit) {
-                    if (_bufferBase[pby1 + len] != _bufferBase[cur + len]) {
-                        break;
-                    }
-                }
-                if (maxLen < len) {
-                    distances[offset++] = maxLen = len;
-                    distances[offset++] = delta - 1;
-                    if (len == lenLimit) {
-                        _son[ptr1] = _son[cyclicPos];
-                        _son[ptr0] = _son[cyclicPos + 1];
-                        break;
-                    }
-                }
-            }
-            if ((_bufferBase[pby1 + len] & 0xFF) < (_bufferBase[cur + len] & 0xFF)) {
-                _son[ptr1] = curMatch;
-                ptr1 = cyclicPos + 1;
-                curMatch = _son[ptr1];
-                len1 = len;
-            } else {
-                _son[ptr0] = curMatch;
-                ptr0 = cyclicPos;
-                curMatch = _son[ptr0];
-                len0 = len;
-            }
-        }
-        movePos();
-        return offset;
-    }
+		len = 0;
 
-    public void skip(int num) throws IOException {
-        do {
-            int lenLimit;
-            if (_pos + _matchMaxLen <= _streamPos) {
-                lenLimit = _matchMaxLen;
-            } else {
-                lenLimit = _streamPos - _pos;
-                if (lenLimit < kMinMatchCheck) {
-                    movePos();
-                    continue;
-                }
-            }
+		while (remain > 0) {
+			len = len << 8;
+			len = len | (readByte() & 0xff);
+			remain--;
+		}
 
-            int matchMinPos = (_pos > _cyclicBufferSize) ? (_pos - _cyclicBufferSize)
-                    : 0;
-            int cur = _bufferOffset + _pos;
+		return len;
+	}
 
-            int hashValue;
+	public byte[] readOctetString() throws IOException {
+		int type = readByte() & 0xff;
 
-            if (HASH_ARRAY) {
-                int temp = CrcTable[_bufferBase[cur] & 0xFF]
-                        ^ (_bufferBase[cur + 1] & 0xFF);
-                int hash2Value = temp & (kHash2Size - 1);
-                _hash[hash2Value] = _pos;
-                temp ^= ((_bufferBase[cur + 2] & 0xFF) << 8);
-                int hash3Value = temp & (kHash3Size - 1);
-                _hash[kHash3Offset + hash3Value] = _pos;
-                hashValue = (temp ^ (CrcTable[_bufferBase[cur + 3] & 0xFF] << 5))
-                        & _hashMask;
-            } else {
-                hashValue = ((_bufferBase[cur] & 0xFF) ^ ((_bufferBase[cur + 1] & 0xFF) << 8));
-            }
+		if (type != 0x04)
+			throw new IOException("Expected DER Octetstring, but found type "
+					+ type);
 
-            int curMatch = _hash[kFixHashSize + hashValue];
-            _hash[kFixHashSize + hashValue] = _pos;
+		int len = readLength();
 
-            int ptr0 = (_cyclicBufferPos << 1) + 1;
-            int ptr1 = (_cyclicBufferPos << 1);
+		if ((len < 0) || len > available())
+			throw new IOException("Illegal len in DER object (" + len + ")");
 
-            int len0, len1;
-            len0 = len1 = kNumHashDirectBytes;
+		byte[] b = readBytes(len);
 
-            int count = _cutValue;
-            while (true) {
-                if (curMatch <= matchMinPos || count-- == 0) {
-                    _son[ptr0] = _son[ptr1] = kEmptyHashValue;
-                    break;
-                }
+		return b;
+	}
 
-                int delta = _pos - curMatch;
-                int cyclicPos = ((delta <= _cyclicBufferPos) ? (_cyclicBufferPos - delta)
-                        : (_cyclicBufferPos - delta + _cyclicBufferSize)) << 1;
+	public byte[] readSequenceAsByteArray() throws IOException {
+		int type = readByte() & 0xff;
 
-                int pby1 = _bufferOffset + curMatch;
-                int len = Math.min(len0, len1);
-                if (_bufferBase[pby1 + len] == _bufferBase[cur + len]) {
-                    while (++len != lenLimit) {
-                        if (_bufferBase[pby1 + len] != _bufferBase[cur + len]) {
-                            break;
-                        }
-                    }
-                    if (len == lenLimit) {
-                        _son[ptr1] = _son[cyclicPos];
-                        _son[ptr0] = _son[cyclicPos + 1];
-                        break;
-                    }
-                }
-                if ((_bufferBase[pby1 + len] & 0xFF) < (_bufferBase[cur + len] & 0xFF)) {
-                    _son[ptr1] = curMatch;
-                    ptr1 = cyclicPos + 1;
-                    curMatch = _son[ptr1];
-                    len1 = len;
-                } else {
-                    _son[ptr0] = curMatch;
-                    ptr0 = cyclicPos;
-                    curMatch = _son[ptr0];
-                    len0 = len;
-                }
-            }
-            movePos();
-        } while (--num != 0);
-    }
+		if (type != 0x30)
+			throw new IOException("Expected DER Sequence, but found type "
+					+ type);
 
-    void normalizeLinks(int[] items, int numItems, int subValue) {
-        for (int i = 0; i < numItems; i++) {
-            int value = items[i];
-            if (value <= subValue) {
-                value = kEmptyHashValue;
-            } else {
-                value -= subValue;
-            }
-            items[i] = value;
-        }
-    }
+		int len = readLength();
 
-    void normalize() {
-        int subValue = _pos - _cyclicBufferSize;
-        normalizeLinks(_son, _cyclicBufferSize * 2, subValue);
-        normalizeLinks(_hash, _hashSizeSum, subValue);
-        reduceOffsets(subValue);
-    }
+		if ((len < 0) || len > available())
+			throw new IOException("Illegal len in DER object (" + len + ")");
 
-    private static final int[] CrcTable = new int[256];
+		byte[] b = readBytes(len);
 
-    static {
-        for (int i = 0; i < 256; i++) {
-            int r = i;
-            for (int j = 0; j < 8; j++) {
-                if ((r & 1) != 0) {
-                    r = (r >>> 1) ^ 0xEDB88320;
-                } else {
-                    r >>>= 1;
-                }
-            }
-            CrcTable[i] = r;
-        }
-    }
+		return b;
+	}
+
+	public void resetInput(byte[] b) {
+		resetInput(b, 0, b.length);
+	}
+
+	public void resetInput(byte[] b, int off, int len) {
+		buffer = b;
+		pos = off;
+		count = len;
+	}
+
 }
 

@@ -1,160 +1,177 @@
-package com.trilead.ssh2.crypto;
+
+package com.trilead.ssh2.packets;
 
 import java.io.IOException;
-
 import java.math.BigInteger;
 
+import com.trilead.ssh2.util.Tokenizer;
+
+
 /**
- * SimpleDERReader.
+ * TypesReader.
  * 
  * @author Christian Plattner, plattner@trilead.com
- * @version $Id: SimpleDERReader.java,v 1.1 2007/10/15 12:49:56 cplattne Exp $
+ * @version $Id: TypesReader.java,v 1.2 2008/04/01 12:38:09 cplattne Exp $
  */
-public class SimpleDERReader
+public class TypesReader
 {
-	byte[] buffer;
-	int pos;
-	int count;
+	byte[] arr;
+	int pos = 0;
+	int max = 0;
 
-	public SimpleDERReader(byte[] b)
+	public TypesReader(byte[] arr)
 	{
-		resetInput(b);
-	}
-	
-	public SimpleDERReader(byte[] b, int off, int len)
-	{
-		resetInput(b, off, len);
+		this.arr = arr;
+		pos = 0;
+		max = arr.length;
 	}
 
-	public void resetInput(byte[] b)
+	public TypesReader(byte[] arr, int off)
 	{
-		resetInput(b, 0, b.length);
-	}
-	
-	public void resetInput(byte[] b, int off, int len)
-	{
-		buffer = b;
-		pos = off;
-		count = len;
+		this.arr = arr;
+		this.pos = off;
+		this.max = arr.length;
+
+		if ((pos < 0) || (pos > arr.length))
+			throw new IllegalArgumentException("Illegal offset.");
 	}
 
-	private byte readByte() throws IOException
+	public TypesReader(byte[] arr, int off, int len)
 	{
-		if (count <= 0)
-			throw new IOException("DER byte array: out of data");
-		count--;
-		return buffer[pos++];
+		this.arr = arr;
+		this.pos = off;
+		this.max = off + len;
+
+		if ((pos < 0) || (pos > arr.length))
+			throw new IllegalArgumentException("Illegal offset.");
+
+		if ((max < 0) || (max > arr.length))
+			throw new IllegalArgumentException("Illegal length.");
 	}
 
-	private byte[] readBytes(int len) throws IOException
+	public int readByte() throws IOException
 	{
-		if (len > count)
-			throw new IOException("DER byte array: out of data");
+		if (pos >= max)
+			throw new IOException("Packet too short.");
 
-		byte[] b = new byte[len];
+		return (arr[pos++] & 0xff);
+	}
 
-		System.arraycopy(buffer, pos, b, 0, len);
+	public byte[] readBytes(int len) throws IOException
+	{
+		if ((pos + len) > max)
+			throw new IOException("Packet too short.");
 
+		byte[] res = new byte[len];
+
+		System.arraycopy(arr, pos, res, 0, len);
 		pos += len;
-		count -= len;
+
+		return res;
+	}
+
+	public void readBytes(byte[] dst, int off, int len) throws IOException
+	{
+		if ((pos + len) > max)
+			throw new IOException("Packet too short.");
+
+		System.arraycopy(arr, pos, dst, off, len);
+		pos += len;
+	}
+
+	public boolean readBoolean() throws IOException
+	{
+		if (pos >= max)
+			throw new IOException("Packet too short.");
+
+		return (arr[pos++] != 0);
+	}
+
+	public int readUINT32() throws IOException
+	{
+		if ((pos + 4) > max)
+			throw new IOException("Packet too short.");
+
+		return ((arr[pos++] & 0xff) << 24) | ((arr[pos++] & 0xff) << 16) | ((arr[pos++] & 0xff) << 8)
+				| (arr[pos++] & 0xff);
+	}
+
+	public long readUINT64() throws IOException
+	{
+		if ((pos + 8) > max)
+			throw new IOException("Packet too short.");
+
+		long high = ((arr[pos++] & 0xff) << 24) | ((arr[pos++] & 0xff) << 16) | ((arr[pos++] & 0xff) << 8)
+				| (arr[pos++] & 0xff); /* sign extension may take place - will be shifted away =) */
+
+		long low = ((arr[pos++] & 0xff) << 24) | ((arr[pos++] & 0xff) << 16) | ((arr[pos++] & 0xff) << 8)
+				| (arr[pos++] & 0xff); /* sign extension may take place - handle below */
+
+		return (high << 32) | (low & 0xffffffffl); /* see Java language spec (15.22.1, 5.6.2) */
+	}
+
+	public BigInteger readMPINT() throws IOException
+	{
+		BigInteger b;
+
+		byte raw[] = readByteString();
+
+		if (raw.length == 0)
+			b = BigInteger.ZERO;
+		else
+			b = new BigInteger(raw);
 
 		return b;
 	}
 
-	public int available()
+	public byte[] readByteString() throws IOException
 	{
-		return count;
+		int len = readUINT32();
+
+		if ((len + pos) > max)
+			throw new IOException("Malformed SSH byte string.");
+
+		byte[] res = new byte[len];
+		System.arraycopy(arr, pos, res, 0, len);
+		pos += len;
+		return res;
 	}
 
-	private int readLength() throws IOException
+	public String readString(String charsetName) throws IOException
 	{
-		int len = readByte() & 0xff;
+		int len = readUINT32();
 
-		if ((len & 0x80) == 0)
-			return len;
+		if ((len + pos) > max)
+			throw new IOException("Malformed SSH string.");
 
-		int remain = len & 0x7F;
+		String res = (charsetName == null) ? new String(arr, pos, len) : new String(arr, pos, len, charsetName);
+		pos += len;
 
-		if (remain == 0)
-			return -1;
-
-		len = 0;
-		
-		while (remain > 0)
-		{
-			len = len << 8;
-			len = len | (readByte() & 0xff);
-			remain--;
-		}
-
-		return len;
+		return res;
 	}
 
-	public int ignoreNextObject() throws IOException
+	public String readString() throws IOException
 	{
-		int type = readByte() & 0xff;
+		int len = readUINT32();
 
-		int len = readLength();
+		if ((len + pos) > max)
+			throw new IOException("Malformed SSH string.");
 
-		if ((len < 0) || len > available())
-			throw new IOException("Illegal len in DER object (" + len  + ")");
+		String res = new String(arr, pos, len, "ISO-8859-1");
+		
+		pos += len;
 
-		readBytes(len);
-		
-		return type;
-	}
-	
-	public BigInteger readInt() throws IOException
-	{
-		int type = readByte() & 0xff;
-		
-		if (type != 0x02)
-			throw new IOException("Expected DER Integer, but found type " + type);
-		
-		int len = readLength();
-
-		if ((len < 0) || len > available())
-			throw new IOException("Illegal len in DER object (" + len  + ")");
-
-		byte[] b = readBytes(len);
-		
-		BigInteger bi = new BigInteger(b);
-		
-		return bi;
+		return res;
 	}
 
-	public byte[] readSequenceAsByteArray() throws IOException
+	public String[] readNameList() throws IOException
 	{
-		int type = readByte() & 0xff;
-		
-		if (type != 0x30)
-			throw new IOException("Expected DER Sequence, but found type " + type);
-		
-		int len = readLength();
-
-		if ((len < 0) || len > available())
-			throw new IOException("Illegal len in DER object (" + len  + ")");
-
-		byte[] b = readBytes(len);
-
-		return b;
+		return Tokenizer.parseTokens(readString(), ',');
 	}
-	
-	public byte[] readOctetString() throws IOException
+
+	public int remain()
 	{
-		int type = readByte() & 0xff;
-		
-		if (type != 0x04)
-			throw new IOException("Expected DER Octetstring, but found type " + type);
-		
-		int len = readLength();
-
-		if ((len < 0) || len > available())
-			throw new IOException("Illegal len in DER object (" + len  + ")");
-
-		byte[] b = readBytes(len);
-
-		return b;
+		return max - pos;
 	}
 
 }

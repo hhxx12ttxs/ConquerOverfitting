@@ -1,1929 +1,1416 @@
-/*
- * Copyright 2009 the original author or authors.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-package org.codehaus.groovy.grails.web.util;
+package ru.atomation.utils.sevenzip.compression.lzma;
 
-import groovy.lang.Writable;
-
-import java.io.EOFException;
-import java.io.Externalizable;
 import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
-import java.io.Reader;
-import java.io.Writer;
-import java.lang.ref.SoftReference;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.springframework.util.ReflectionUtils;
-import org.springframework.web.util.HtmlUtils;
-
-/**
- * <p>
- * StreamCharBuffer is a multipurpose in-memory buffer that can replace JDK
- * in-memory buffers (StringBuffer, StringBuilder, StringWriter).
- * </p>
- *
- * <p>
- * Grails GSP rendering uses this class as a buffer that is optimized for performance.
- * </p>
- *
- * <p>
- * StreamCharBuffer keeps the buffer in a linked list of "chunks". The main
- * difference compared to JDK in-memory buffers (StringBuffer, StringBuilder &
- * StringWriter) is that the buffer can be held in several smaller buffers
- * ("chunks" here). In JDK in-memory buffers, the buffer has to be expanded
- * whenever it gets filled up. The old buffer's data is copied to the new one
- * and the old one is discarded. In StreamCharBuffer, there are several ways to
- * prevent unnecessary allocation & copy operations. The StreamCharBuffer
- * contains a linked list of different type of chunks: char arrays,
- * java.lang.String chunks and other StreamCharBuffers as sub chunks. A
- * StringChunk is appended to the linked list whenever a java.lang.String of a
- * length that exceeds the "stringChunkMinSize" value is written to the buffer.
- * </p>
- *
- * <p>
- * Grails tag libraries also use a StreamCharBuffer to "capture" the output of
- * the taglib and return it to the caller. The buffer can be appended to it's
- * parent buffer directly without extra object generation (like converting to
- * java.lang.String in between).
- *
- * for example this line of code in a taglib would just append the buffer
- * returned from the body closure evaluation to the buffer of the taglib:<br>
- * <code>
- * out << body()
- * </code><br>
- * other example:<br>
- * <code>
- * out << g.render(template: '/some/template', model:[somebean: somebean])
- * </code><br>
- * There's no extra java.lang.String generation overhead.
- *
- * </p>
- *
- * <p>
- * There's a java.io.Writer interface for appending character data to the buffer
- * and a java.io.Reader interface for reading data.
- * </p>
- *
- * <p>
- * Each {@link #getReader()} call will create a new reader instance that keeps
- * it own state.<br>
- * There is a alternative method {@link #getReader(boolean)} for creating the
- * reader. When reader is created by calling getReader(true), the reader will
- * remove already read characters from the buffer. In this mode only a single
- * reader instance is supported.
- * </p>
- *
- * <p>
- * There's also several other options for reading data:<br>
- * {@link #readAsCharArray()} reads the buffer to a char[] array<br>
- * {@link #readAsString()} reads the buffer and wraps the char[] data as a
- * String<br>
- * {@link #writeTo(Writer)} writes the buffer to a java.io.Writer<br>
- * {@link #toCharArray()} returns the buffer as a char[] array, caches the
- * return value internally so that this method can be called several times.<br>
- * {@link #toString()} returns the buffer as a String, caches the return value
- * internally<br>
- * </p>
- *
- * <p>
- * By using the "connectTo" method, one can connect the buffer directly to a
- * target java.io.Writer. The internal buffer gets flushed automaticly to the
- * target whenever the buffer gets filled up. See connectTo(Writer).
- * </p>
- *
- * <p>
- * <b>This class is not thread-safe.</b> Object instances of this class are
- * intended to be used by a single Thread. The Reader and Writer interfaces can
- * be open simultaneous and the same Thread can write and read several times.
- * </p>
- *
- * <p>
- * Main operation principle:<br>
- * </p>
- * <p>
- * StreamCharBuffer keeps the buffer in a linked link of "chunks".<br>
- * The main difference compared to JDK in-memory buffers (StringBuffer,
- * StringBuilder & StringWriter) is that the buffer can be held in several
- * smaller buffers ("chunks" here).<br>
- * In JDK in-memory buffers, the buffer has to be expanded whenever it gets
- * filled up. The old buffer's data is copied to the new one and the old one is
- * discarded.<br>
- * In StreamCharBuffer, there are several ways to prevent unnecessary allocation
- * & copy operations.
- * </p>
- * <p>
- * There can be several different type of chunks: char arrays (
- * {@code CharBufferChunk}), String chunks ({@code StringChunk}) and other
- * StreamCharBuffers as sub chunks ({@code StreamCharBufferSubChunk}).
- * </p>
- * <p>
- * Child StreamCharBuffers can be changed after adding to parent buffer. The
- * flush() method must be called on the child buffer's Writer to notify the
- * parent that the child buffer's content has been changed (used for calculating
- * total size).
- * </p>
- * <p>
- * A StringChunk is appended to the linked list whenever a java.lang.String of a
- * length that exceeds the "stringChunkMinSize" value is written to the buffer.
- * </p>
- * <p>
- * If the buffer is in "connectTo" mode, any String or char[] that's length is
- * over writeDirectlyToConnectedMinSize gets written directly to the target. The
- * buffer content will get fully flushed to the target before writing the String
- * or char[].
- * </p>
- * <p>
- * There can be several targets "listening" the buffer in "connectTo" mode. The
- * same content will be written to all targets.
- * <p>
- * <p>
- * Growable chunksize: By default, a newly allocated chunk's size will grow
- * based on the total size of all written chunks.<br>
- * The default growProcent value is 100. If the total size is currently 1024,
- * the newly created chunk will have a internal buffer that's size is 1024.<br>
- * Growable chunksize can be turned off by setting the growProcent to 0.<br>
- * There's a default maximum chunksize of 1MB by default. The minimum size is
- * the initial chunksize size.<br>
- * </p>
- *
- * <p>
- * System properties to change default configuration parameters:<br>
- * <table>
- * <tr>
- * <th>System Property name</th>
- * <th>Description</th>
- * <th>Default value</th>
- * </tr>
- * <tr>
- * <td>streamcharbuffer.chunksize</td>
- * <td>default chunk size - the size the first allocated buffer</td>
- * <td>512</td>
- * </tr>
- * <tr>
- * <td>streamcharbuffer.maxchunksize</td>
- * <td>maximum chunk size - the maximum size of the allocated buffer</td>
- * <td>1048576</td>
- * </tr>
- * <tr>
- * <td>streamcharbuffer.growprocent</td>
- * <td>growing buffer percentage - the newly allocated buffer is defined by
- * total_size * (growpercent/100)</td>
- * <td>100</td>
- * </tr>
- * <tr>
- * <td>streamcharbuffer.subbufferchunkminsize</td>
- * <td>minimum size of child StreamCharBuffer chunk - if the size is smaller,
- * the content is copied to the parent buffer</td>
- * <td>512</td>
- * </tr>
- * <tr>
- * <td>streamcharbuffer.substringchunkminsize</td>
- * <td>minimum size of String chunks - if the size is smaller, the content is
- * copied to the buffer</td>
- * <td>512</td>
- * </tr>
- * <tr>
- * <td>streamcharbuffer.chunkminsize</td>
- * <td>minimum size of chunk that gets written directly to the target in
- * connected mode.</td>
- * <td>256</td>
- * </tr>
- * </table>
- *
- * Configuration values can also be changed for each instance of
- * StreamCharBuffer individually. Default values are defined with System
- * Properties.
- *
- * </p>
- *
- * @author Lari Hotari, Sagire Software Oy
- */
-public class StreamCharBuffer implements Writable, CharSequence, Externalizable {
-    static final long serialVersionUID = 5486972234419632945L;
-    private static final Log log=LogFactory.getLog(StreamCharBuffer.class);
-
-    private static final int DEFAULT_CHUNK_SIZE = Integer.getInteger("streamcharbuffer.chunksize", 512);
-    private static final int DEFAULT_MAX_CHUNK_SIZE = Integer.getInteger("streamcharbuffer.maxchunksize", 1024*1024);
-    private static final int DEFAULT_CHUNK_SIZE_GROW_PROCENT = Integer.getInteger("streamcharbuffer.growprocent", 100);
-    private static final int SUB_BUFFERCHUNK_MIN_SIZE = Integer.getInteger("streamcharbuffer.subbufferchunkminsize", 512);
-    private static final int SUB_STRINGCHUNK_MIN_SIZE = Integer.getInteger("streamcharbuffer.substringchunkminsize", 512);
-    private static final int WRITE_DIRECT_MIN_SIZE = Integer.getInteger("streamcharbuffer.writedirectminsize", 1024);
-    private static final int CHUNK_MIN_SIZE = Integer.getInteger("streamcharbuffer.chunkminsize", 256);
-
-    private final int firstChunkSize;
-    private final int growProcent;
-    private final int maxChunkSize;
-    private int subStringChunkMinSize = SUB_STRINGCHUNK_MIN_SIZE;
-    private int subBufferChunkMinSize = SUB_BUFFERCHUNK_MIN_SIZE;
-    private int writeDirectlyToConnectedMinSize = WRITE_DIRECT_MIN_SIZE;
-    private int chunkMinSize = CHUNK_MIN_SIZE;
-
-    private int chunkSize;
-    private int totalChunkSize;
-
-    private final StreamCharBufferWriter writer;
-    private List<ConnectedWriter> connectedWriters;
-    private Writer connectedWritersWriter;
-
-    boolean preferSubChunkWhenWritingToOtherBuffer=false;
-
-    private AllocatedBuffer allocBuffer;
-    private AbstractChunk firstChunk;
-    private AbstractChunk lastChunk;
-    private int totalCharsInList;
-    private int totalCharsInDynamicChunks;
-    private int sizeAtLeast;
-    private StreamCharBufferKey bufferKey = new StreamCharBufferKey();
-    private Map<StreamCharBufferKey, StreamCharBufferSubChunk> dynamicChunkMap;
-
-    private Set<SoftReference<StreamCharBufferKey>> parentBuffers;
-    int allocatedBufferIdSequence = 0;
-    int readerCount = 0;
-    boolean hasReaders = false;
-
-    public StreamCharBuffer() {
-        this(DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_SIZE_GROW_PROCENT, DEFAULT_MAX_CHUNK_SIZE);
-    }
-
-    public StreamCharBuffer(int chunkSize) {
-        this(chunkSize, DEFAULT_CHUNK_SIZE_GROW_PROCENT, DEFAULT_MAX_CHUNK_SIZE);
-    }
-
-    public StreamCharBuffer(int chunkSize, int growProcent) {
-        this(chunkSize, growProcent, DEFAULT_MAX_CHUNK_SIZE);
-    }
-
-    public StreamCharBuffer(int chunkSize, int growProcent, int maxChunkSize) {
-        this.firstChunkSize = chunkSize;
-        this.growProcent = growProcent;
-        this.maxChunkSize = maxChunkSize;
-        writer = new StreamCharBufferWriter();
-        reset(true);
-    }
-
-    private class StreamCharBufferKey {
-        StreamCharBuffer getBuffer() { return StreamCharBuffer.this; }
-    }
-
-    public boolean isPreferSubChunkWhenWritingToOtherBuffer() {
-        return preferSubChunkWhenWritingToOtherBuffer;
-    }
-
-    public void setPreferSubChunkWhenWritingToOtherBuffer(boolean prefer) {
-        preferSubChunkWhenWritingToOtherBuffer = prefer;
-    }
-
-    public final void reset() {
-        reset(true);
-    }
-
-    /**
-     * resets the state of this buffer (empties it)
-     *
-     * @param resetChunkSize
-     */
-    public final void reset(boolean resetChunkSize) {
-        firstChunk = null;
-        lastChunk = null;
-        totalCharsInList = 0;
-        totalCharsInDynamicChunks = -1;
-        sizeAtLeast = -1;
-        if (resetChunkSize) {
-            chunkSize = firstChunkSize;
-            totalChunkSize = 0;
-        }
-        allocBuffer = new AllocatedBuffer(chunkSize);
-        dynamicChunkMap = new HashMap<StreamCharBufferKey, StreamCharBufferSubChunk>();
-    }
-
-    /**
-     * Clears the buffer and notifies the parents of this buffer of the change.
-     */
-    public final void clear() {
-        reset();
-        notifyBufferChange();
-    }
-
-    /**
-     * Connect this buffer to a target Writer.
-     *
-     * When the buffer (a chunk) get filled up, it will automaticly write it's content to the Writer
-     *
-     * @param w
-     */
-    public final void connectTo(Writer w) {
-        connectTo(w, true);
-    }
-
-    public final void connectTo(Writer w, boolean autoFlush) {
-        initConnected();
-        connectedWriters.add(new ConnectedWriter(w, autoFlush));
-        initConnectedWritersWriter();
-    }
-
-    private void initConnectedWritersWriter() {
-        if (connectedWriters.size() > 1) {
-            connectedWritersWriter = new MultiOutputWriter(connectedWriters);
-        }
-        else {
-            connectedWritersWriter = new SingleOutputWriter(connectedWriters.get(0));
-        }
-    }
-
-    public final void connectTo(LazyInitializingWriter w) {
-        connectTo(w, true);
-    }
-
-    public final void connectTo(LazyInitializingWriter w, boolean autoFlush) {
-        initConnected();
-        connectedWriters.add(new ConnectedWriter(w, autoFlush));
-        initConnectedWritersWriter();
-    }
-
-    public final void removeConnections() {
-        if (connectedWriters != null) {
-            connectedWriters.clear();
-            connectedWritersWriter = null;
-        }
-    }
-
-    private void initConnected() {
-        if (connectedWriters == null) {
-            connectedWriters = new ArrayList<ConnectedWriter>(2);
-        }
-    }
-
-    public int getSubStringChunkMinSize() {
-        return subStringChunkMinSize;
-    }
-
-    /**
-     * Minimum size for a String to be added as a StringChunk instead of copying content to the char[] buffer of the current StreamCharBufferChunk
-     *
-     * @param size
-     */
-    public void setSubStringChunkMinSize(int size) {
-        subStringChunkMinSize = size;
-    }
-
-    public int getSubBufferChunkMinSize() {
-        return subBufferChunkMinSize;
-    }
-
-    public void setSubBufferChunkMinSize(int size) {
-        subBufferChunkMinSize = size;
-    }
-
-    public int getWriteDirectlyToConnectedMinSize() {
-        return writeDirectlyToConnectedMinSize;
-    }
-
-    /**
-     * Minimum size for a String or char[] to get written directly to connected writer (in "connectTo" mode).
-     *
-     * @param size
-     */
-    public void setWriteDirectlyToConnectedMinSize(int size) {
-        writeDirectlyToConnectedMinSize = size;
-    }
-
-    public int getChunkMinSize() {
-        return chunkMinSize;
-    }
-
-    public void setChunkMinSize(int size) {
-        chunkMinSize = size;
-    }
-
-    /**
-     * Writer interface for adding/writing data to the buffer.
-     *
-     * @return the Writer
-     */
-    public Writer getWriter() {
-        return writer;
-    }
-
-    /**
-     * Creates a new Reader instance for reading/consuming data from the buffer.
-     * Each call creates a new instance that will keep it's reading state. There can be several readers on the buffer. (single thread only supported)
-     *
-     * @return the Reader
-     */
-    public Reader getReader() {
-        return getReader(false);
-    }
-
-    /**
-     * Like getReader(), but when removeAfterReading is true, the read data will be removed from the buffer.
-     *
-     * @param removeAfterReading
-     * @return the Reader
-     */
-    public Reader getReader(boolean removeAfterReading) {
-        readerCount++;
-        hasReaders = true;
-        return new StreamCharBufferReader(removeAfterReading);
-    }
-
-    /**
-     * Writes the buffer content to a target java.io.Writer
-     *
-     * @param target
-     * @throws IOException
-     */
-    public Writer writeTo(Writer target) throws IOException {
-        writeTo(target, false, false);
-        return getWriter();
-    }
-
-    /**
-     * Writes the buffer content to a target java.io.Writer
-     *
-     * @param target Writer
-     * @param flushTarget calls target.flush() before finishing
-     * @param emptyAfter empties the buffer if true
-     * @throws IOException
-     */
-    public void writeTo(Writer target, boolean flushTarget, boolean emptyAfter) throws IOException {
-        if (target instanceof GrailsWrappedWriter) {
-            target = ((GrailsWrappedWriter)target).unwrap();
-        }
-        if (target instanceof StreamCharBufferWriter) {
-            if (target == writer) {
-                throw new IllegalArgumentException("Cannot write buffer to itself.");
-            }
-            ((StreamCharBufferWriter)target).write(this);
-            return;
-        }
-        writeToImpl(target, flushTarget, emptyAfter);
-    }
-
-    private void writeToImpl(Writer target, boolean flushTarget, boolean emptyAfter) throws IOException {
-        AbstractChunk current = firstChunk;
-        while (current != null) {
-            current.writeTo(target);
-            current = current.next;
-        }
-        if (emptyAfter) {
-            firstChunk = null;
-            lastChunk = null;
-            totalCharsInList = 0;
-            totalCharsInDynamicChunks = -1;
-            sizeAtLeast = -1;
-            dynamicChunkMap.clear();
-        }
-        allocBuffer.writeTo(target);
-        if (emptyAfter) {
-            allocBuffer.reuseBuffer();
-        }
-        if (flushTarget) {
-            target.flush();
-        }
-    }
-
-    /**
-     * Reads the buffer to a char[].
-     *
-     * @return the chars
-     */
-    public char[] readAsCharArray() {
-        int currentSize = size();
-        if (currentSize == 0) {
-            return new char[0];
-        }
-
-        FixedCharArrayWriter target=new FixedCharArrayWriter(currentSize);
-        try {
-            writeTo(target);
-        }
-        catch (IOException e) {
-            throw new RuntimeException("Unexpected IOException", e);
-        }
-        return target.getCharArray();
-    }
-
-    /**
-     * Reads the buffer to a String.
-     *
-     * @return the String
-     */
-    public String readAsString() {
-        char[] buf = readAsCharArray();
-        if (buf.length > 0) {
-            return StringCharArrayAccessor.createString(buf);
-        }
-
-        return "";
-    }
-
-    /**
-     * {@inheritDoc}
-     *
-     * Reads (and empties) the buffer to a String, but caches the return value for subsequent calls.
-     * If more content has been added between 2 calls, the returned value will be joined from the previously cached value and the data read from the buffer.
-     *
-     * @see java.lang.Object#toString()
-     */
-    @Override
-    public String toString() {
-        if (firstChunk == lastChunk && firstChunk instanceof StringChunk && allocBuffer.charsUsed() == 0 &&
-                ((StringChunk)firstChunk).isSingleBuffer()) {
-            return ((StringChunk)firstChunk).str;
-        }
-
-        int initialReaderCount = readerCount;
-        String str=readAsString();
-        if (initialReaderCount == 0) {
-            // if there are no readers, the result can be cached
-            reset();
-            if (str.length() > 0) {
-                addChunk(new StringChunk(str, 0, str.length()));
-            }
-        }
-        return str;
-    }
-
-    /**
-     * {@inheritDoc}
-     *
-     * Uses String's hashCode to support compatibility with String instances in maps, sets, etc.
-     *
-     * @see java.lang.Object#hashCode()
-     */
-    @Override
-    public int hashCode() {
-        return toString().hashCode();
-    }
-
-    /**
-     * equals uses String.equals to check for equality to support compatibility with String instances in maps, sets, etc.
-     *
-     * @see java.lang.Object#equals(java.lang.Object)
-     */
-    @Override
-    public boolean equals(Object o) {
-        if (o==this) return true;
-
-        if (!(o instanceof CharSequence)) return false;
-
-        CharSequence other = (CharSequence) o;
-
-        return toString().equals(other.toString());
-    }
-
-    public String plus(String value) {
-        return toString() + value;
-    }
-
-    public String plus(Object value) {
-        return toString() + value;
-    }
-
-    /**
-     * Reads the buffer to a char[].
-     *
-     * Caches the result if there aren't any readers.
-     *
-     * @return the chars
-     */
-    public char[] toCharArray() {
-        // check if there is a cached single charbuffer
-        if (firstChunk == lastChunk && firstChunk instanceof CharBufferChunk && allocBuffer.charsUsed()==0 && ((CharBufferChunk)firstChunk).isSingleBuffer()) {
-            return ((CharBufferChunk)firstChunk).buffer;
-        }
-
-        int initialReaderCount = readerCount;
-        char[] buf = readAsCharArray();
-        if (initialReaderCount == 0) {
-            // if there are no readers, the result can be cached
-            reset();
-            if (buf.length > 0) {
-                addChunk(new CharBufferChunk(-1, buf, 0, buf.length));
-            }
-        }
-        return buf;
-    }
-
-    public int size() {
-        int total = totalCharsInList;
-        if (totalCharsInDynamicChunks == -1) {
-            totalCharsInDynamicChunks = 0;
-            for (StreamCharBufferSubChunk chunk : dynamicChunkMap.values()) {
-                totalCharsInDynamicChunks += chunk.size();
-            }
-        }
-        total += totalCharsInDynamicChunks;
-        total += allocBuffer.charsUsed();
-        sizeAtLeast = total;
-        return total;
-    }
-
-    public boolean isEmpty() {
-        return !isNotEmpty();
-    }
-
-    boolean isNotEmpty() {
-        if (totalCharsInList > 0) {
-            return true;
-        }
-        if (totalCharsInDynamicChunks > 0) {
-            return true;
-        }
-        if (allocBuffer.charsUsed() > 0) {
-            return true;
-        }
-        if (totalCharsInDynamicChunks == -1) {
-            for (StreamCharBufferSubChunk chunk : dynamicChunkMap.values()) {
-                if (chunk.getSubBuffer().isNotEmpty()) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    boolean isSizeLarger(int minSize) {
-        if (minSize <= sizeAtLeast) {
-            return true;
-        }
-
-        boolean retval = calculateIsSizeLarger(minSize);
-        if (retval && minSize > sizeAtLeast) {
-            sizeAtLeast = minSize;
-        }
-        return retval;
-    }
-
-    private boolean calculateIsSizeLarger(int minSize) {
-        int total = totalCharsInList;
-        total += allocBuffer.charsUsed();
-        if (total > minSize) {
-            return true;
-        }
-        if (totalCharsInDynamicChunks != -1) {
-            total += totalCharsInDynamicChunks;
-            if (total > minSize) {
-                return true;
-            }
-        } else {
-            for (StreamCharBufferSubChunk chunk : dynamicChunkMap.values()) {
-                if (!chunk.hasCachedSize() && chunk.getSubBuffer().isSizeLarger(minSize-total)) {
-                    return true;
-                }
-                total += chunk.size();
-                if (total > minSize) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    int allocateSpace() throws IOException {
-        int spaceLeft = allocBuffer.spaceLeft();
-        if (spaceLeft == 0) {
-            spaceLeft = appendCharBufferChunk(true);
-        }
-        return spaceLeft;
-    }
-
-    private int appendCharBufferChunk(boolean flushInConnected) throws IOException {
-        int spaceLeft = 0;
-        if (flushInConnected && isConnectedMode()) {
-            flushToConnected();
-            if (!isChunkSizeResizeable()) {
-                allocBuffer.reuseBuffer();
-                spaceLeft = allocBuffer.spaceLeft();
-            }
-            else {
-                spaceLeft = 0;
-            }
-        }
-        else {
-            if (allocBuffer.hasChunk()) {
-                addChunk(allocBuffer.createChunk());
-            }
-            spaceLeft = allocBuffer.spaceLeft();
-        }
-        if (spaceLeft == 0) {
-            totalChunkSize += allocBuffer.chunkSize();
-            resizeChunkSizeAsProcentageOfTotalSize();
-            allocBuffer = new AllocatedBuffer(chunkSize);
-            spaceLeft = allocBuffer.spaceLeft();
-        }
-        return spaceLeft;
-    }
-
-    void appendStringChunk(String str, int off, int len) throws IOException {
-        appendCharBufferChunk(false);
-        addChunk(new StringChunk(str, off, len));
-    }
-
-    public void appendStreamCharBufferChunk(StreamCharBuffer subBuffer) throws IOException {
-        appendCharBufferChunk(false);
-        addChunk(new StreamCharBufferSubChunk(subBuffer));
-    }
-
-    void addChunk(AbstractChunk newChunk) {
-        if (lastChunk != null) {
-            lastChunk.next = newChunk;
-            if (hasReaders) {
-                // double link only if there are active readers since backwards iterating is only required for simultaneous writer & reader
-                newChunk.prev = lastChunk;
-            }
-        }
-        lastChunk = newChunk;
-        if (firstChunk == null) {
-            firstChunk = newChunk;
-        }
-        if (newChunk instanceof StreamCharBufferSubChunk) {
-            StreamCharBufferSubChunk bufSubChunk = (StreamCharBufferSubChunk)newChunk;
-            dynamicChunkMap.put(bufSubChunk.streamCharBuffer.bufferKey, bufSubChunk);
-        }
-        else {
-            totalCharsInList += newChunk.size();
-        }
-    }
-
-    public boolean isConnectedMode() {
-        return connectedWriters != null && !connectedWriters.isEmpty();
-    }
-
-    private void flushToConnected() throws IOException {
-        writeTo(connectedWritersWriter, true, true);
-    }
-
-    protected boolean isChunkSizeResizeable() {
-        return (growProcent > 0);
-    }
-
-    protected void resizeChunkSizeAsProcentageOfTotalSize() {
-        if (growProcent == 0) {
-            return;
-        }
-
-        if (growProcent==100) {
-            chunkSize = Math.min(totalChunkSize, maxChunkSize);
-        }
-        else if (growProcent == 200) {
-            chunkSize = Math.min(totalChunkSize << 1, maxChunkSize);
-        }
-        else if (growProcent > 0) {
-            chunkSize = Math.max(Math.min((totalChunkSize * growProcent)/100, maxChunkSize), firstChunkSize);
-        }
-    }
-
-    protected static final void arrayCopy(char[] src, int srcPos, char[] dest, int destPos, int length) {
-        if (length == 1) {
-            dest[destPos]=src[srcPos];
-        }
-        else {
-            System.arraycopy(src, srcPos, dest, destPos, length);
-        }
-    }
-
-    /**
-     * This is the java.io.Writer implementation for StreamCharBuffer
-     *
-     * @author Lari Hotari, Sagire Software Oy
-     */
-    public final class StreamCharBufferWriter extends Writer {
-        boolean closed = false;
-        int writerUsedCounter = 0;
-        boolean increaseCounter = true;
-
-        @Override
-        public final void write(final char[] b, final int off, final int len) throws IOException {
-            if (b == null) {
-                throw new NullPointerException();
-            }
-
-            if ((off < 0) || (off > b.length) || (len < 0) ||
-                    ((off + len) > b.length) || ((off + len) < 0)) {
-                throw new IndexOutOfBoundsException();
-            }
-
-            if (len == 0) {
-                return;
-            }
-
-            markUsed();
-            if (shouldWriteDirectly(len)) {
-                appendCharBufferChunk(true);
-                connectedWritersWriter.write(b, off, len);
-            }
-            else {
-                int charsLeft = len;
-                int currentOffset = off;
-                while (charsLeft > 0) {
-                    int spaceLeft = allocateSpace();
-                    int writeChars = Math.min(spaceLeft, charsLeft);
-                    allocBuffer.write(b, currentOffset, writeChars);
-                    charsLeft -= writeChars;
-                    currentOffset += writeChars;
-                }
-            }
-        }
-
-        private final boolean shouldWriteDirectly(final int len) {
-            if (!isConnectedMode()) {
-                return false;
-            }
-
-            if (!(writeDirectlyToConnectedMinSize >= 0 && len >= writeDirectlyToConnectedMinSize)) {
-                return false;
-            }
-
-            return isNextChunkBigEnough(len);
-        }
-
-        private final boolean isNextChunkBigEnough(final int len) {
-            return (len > getNewChunkMinSize());
-        }
-
-        private final int getDirectChunkMinSize() {
-            if (!isConnectedMode()) {
-                return -1;
-            }
-            if (writeDirectlyToConnectedMinSize >= 0) {
-                return writeDirectlyToConnectedMinSize;
-            }
-
-            return getNewChunkMinSize();
-        }
-
-        private final int getNewChunkMinSize() {
-            if (chunkMinSize <= 0 || allocBuffer.charsUsed() == 0 || allocBuffer.charsUsed() >= chunkMinSize) {
-                return 0;
-            }
-            return allocBuffer.spaceLeft();
-        }
-
-        @Override
-        public final void write(final String str) throws IOException {
-            write(str, 0, str.length());
-        }
-
-        @Override
-        public final void write(final String str, final int off, final int len) throws IOException {
-            if (len==0) return;
-            markUsed();
-            if (shouldWriteDirectly(len)) {
-                appendCharBufferChunk(true);
-                connectedWritersWriter.write(str, off, len);
-            }
-            else if (len >= subStringChunkMinSize && isNextChunkBigEnough(len)) {
-                appendStringChunk(str, off, len);
-            }
-            else {
-                int charsLeft = len;
-                int currentOffset = off;
-                while (charsLeft > 0) {
-                    int spaceLeft = allocateSpace();
-                    int writeChars = Math.min(spaceLeft, charsLeft);
-                    allocBuffer.writeString(str, currentOffset, writeChars);
-                    charsLeft -= writeChars;
-                    currentOffset += writeChars;
-                }
-            }
-        }
-
-        public final void write(StreamCharBuffer subBuffer) throws IOException {
-            markUsed();
-            int directChunkMinSize = getDirectChunkMinSize();
-            if (directChunkMinSize != -1 && subBuffer.isSizeLarger(directChunkMinSize)) {
-                appendCharBufferChunk(true);
-                subBuffer.writeToImpl(connectedWritersWriter,false,false);
-            }
-            else if (subBuffer.preferSubChunkWhenWritingToOtherBuffer ||
-                    subBuffer.isSizeLarger(Math.max(subBufferChunkMinSize, getNewChunkMinSize()))) {
-                if (subBuffer.preferSubChunkWhenWritingToOtherBuffer) {
-                    StreamCharBuffer.this.preferSubChunkWhenWritingToOtherBuffer = true;
-                }
-                appendStreamCharBufferChunk(subBuffer);
-                subBuffer.addParentBuffer(StreamCharBuffer.this);
-            }
-            else {
-                subBuffer.writeToImpl(this,false,false);
-            }
-        }
-
-        @Override
-        public final Writer append(final CharSequence csq, final int start, final int end)
-                throws IOException {
-            markUsed();
-            if (csq == null) {
-                write("null");
-            }
-            else {
-                if (csq instanceof String || csq instanceof StringBuffer || csq instanceof StringBuilder) {
-                    int len = end-start;
-                    int charsLeft = len;
-                    int currentOffset = start;
-                    while (charsLeft > 0) {
-                        int spaceLeft = allocateSpace();
-                        int writeChars = Math.min(spaceLeft, charsLeft);
-                        if (csq instanceof String) {
-                            allocBuffer.writeString((String)csq, currentOffset, writeChars);
-                        }
-                        else if (csq instanceof StringBuffer) {
-                            allocBuffer.writeStringBuffer((StringBuffer)csq, currentOffset, writeChars);
-                        }
-                        else if (csq instanceof StringBuilder) {
-                            allocBuffer.writeStringBuilder((StringBuilder)csq, currentOffset, writeChars);
-                        }
-                        charsLeft -= writeChars;
-                        currentOffset += writeChars;
-                    }
-                } else {
-                    write(csq.subSequence(start, end).toString());
-                }
-            }
-            return this;
-        }
-
-        @Override
-        public final Writer append(final CharSequence csq) throws IOException {
-            markUsed();
-            if (csq==null) {
-                write("null");
-            } else {
-                append(csq, 0, csq.length());
-
-            }
-            return this;
-        }
-
-        @Override
-        public void close() throws IOException {
-            closed = true;
-            flush();
-        }
-
-        public boolean isClosed() {
-            return closed;
-        }
-
-        public boolean isUsed() {
-            return writerUsedCounter > 0;
-        }
-
-        public final void markUsed() {
-            if (increaseCounter) {
-                writerUsedCounter++;
-                if (!hasReaders) {
-                    increaseCounter=false;
-                }
-            }
-        }
-
-        public int resetUsed() {
-            int prevUsed = writerUsedCounter;
-            writerUsedCounter = 0;
-            increaseCounter = true;
-            return prevUsed;
-        }
-
-        @Override
-        public void write(final int b) throws IOException {
-            markUsed();
-            allocateSpace();
-            allocBuffer.write((char) b);
-        }
-
-        @Override
-        public void flush() throws IOException {
-            if (isConnectedMode()) {
-                flushToConnected();
-            }
-            notifyBufferChange();
-        }
-
-        public final StreamCharBuffer getBuffer() {
-            return StreamCharBuffer.this;
-        }
-    }
-
-    /**
-     * This is the java.io.Reader implementation for StreamCharBuffer
-     *
-     * @author Lari Hotari, Sagire Software Oy
-     */
-
-    final public class StreamCharBufferReader extends Reader {
-        boolean eofException=false;
-        int eofReachedCounter=0;
-        ChunkReader chunkReader;
-        ChunkReader lastChunkReader;
-        boolean removeAfterReading;
-
-        public StreamCharBufferReader(boolean remove) {
-            removeAfterReading = remove;
-        }
-
-        private int prepareRead(int len) {
-            if (hasReaders && eofReachedCounter != 0) {
-                if (eofReachedCounter != writer.writerUsedCounter) {
-                    eofReachedCounter = 0;
-                    eofException = false;
-                    repositionChunkReader();
-                }
-            }
-            if (chunkReader == null && eofReachedCounter == 0) {
-                if (firstChunk != null) {
-                    chunkReader = firstChunk.getChunkReader(removeAfterReading);
-                    if (removeAfterReading) {
-                        firstChunk.subtractFromTotalCount();
-                    }
-                }
-                else {
-                    chunkReader = new AllocatedBufferReader(allocBuffer, removeAfterReading);
-                }
-            }
-            int available = 0;
-            if (chunkReader != null) {
-                available = chunkReader.getReadLenLimit(len);
-                while (available == 0 && chunkReader != null) {
-                    chunkReader = chunkReader.next();
-                    if (chunkReader != null) {
-                        available = chunkReader.getReadLenLimit(len);
-                    } else {
-                        available = 0;
-                    }
-                }
-            }
-            if (chunkReader == null) {
-                if (hasReaders) {
-                    eofReachedCounter=writer.writerUsedCounter;
-                } else {
-                    eofReachedCounter = 1;
-                }
-            } else if (hasReaders) {
-                lastChunkReader=chunkReader;
-            }
-            return available;
-        }
-
-        /* adds support for reading and writing simultaneously in the same thread */
-        private void repositionChunkReader() {
-            if (lastChunkReader instanceof AllocatedBufferReader) {
-                if (lastChunkReader.isValid()) {
-                    chunkReader=lastChunkReader;
-                } else {
-                    AllocatedBufferReader allocBufferReader = (AllocatedBufferReader)lastChunkReader;
-                    // find out what is the CharBufferChunk that was read by the AllocatedBufferReader already
-                    int currentPosition = allocBufferReader.position;
-                    AbstractChunk chunk = lastChunk;
-                    while (chunk != null && chunk.writerUsedCounter >= lastChunkReader.getWriterUsedCounter()) {
-                        if (chunk instanceof CharBufferChunk) {
-                            CharBufferChunk charBufChunk = (CharBufferChunk)chunk;
-                            if (charBufChunk.allocatedBufferId == allocBufferReader.parent.id) {
-                                if (currentPosition >= charBufChunk.offset && currentPosition <= charBufChunk.lastposition) {
-                                    CharBufferChunkReader charBufChunkReader = (CharBufferChunkReader)charBufChunk.getChunkReader(removeAfterReading);
-                                    int oldpointer = charBufChunkReader.pointer;
-                                    // skip the already chars
-                                    charBufChunkReader.pointer = currentPosition;
-                                    if (removeAfterReading) {
-                                        int diff = charBufChunkReader.pointer - oldpointer;
-                                        totalCharsInList -= diff;
-                                        charBufChunk.subtractFromTotalCount();
-                                    }
-                                    chunkReader = charBufChunkReader;
-                                    break;
-                                }
-                            }
-                        }
-                        chunk = chunk.prev;
-                    }
-                }
-            }
-        }
-
-        @Override
-        public boolean ready() throws IOException {
-            return true;
-        }
-
-        @Override
-        public final int read(final char[] b, final int off, final int len) throws IOException {
-            return readImpl(b, off, len);
-        }
-
-        final int readImpl(final char[] b, final int off, final int len) throws IOException {
-            if (b == null) {
-                throw new NullPointerException();
-            }
-
-            if ((off < 0) || (off > b.length) || (len < 0) ||
-                    ((off + len) > b.length) || ((off + len) < 0)) {
-                throw new IndexOutOfBoundsException();
-            }
-
-            if (len == 0) {
-                return 0;
-            }
-
-            int charsLeft = len;
-            int currentOffset = off;
-            int readChars = prepareRead(charsLeft);
-            if (eofException) {
-                throw new EOFException();
-            }
-
-            int totalCharsRead = 0;
-            while (charsLeft > 0 && readChars > 0) {
-                chunkReader.read(b, currentOffset, readChars);
-                charsLeft -= readChars;
-                currentOffset += readChars;
-                totalCharsRead += readChars;
-                if (charsLeft > 0) {
-                    readChars = prepareRead(charsLeft);
-                }
-            }
-
-            if (totalCharsRead > 0) {
-                return totalCharsRead;
-            }
-
-            eofException = true;
-            return -1;
-        }
-
-        @Override
-        public void close() throws IOException {
-            // do nothing
-        }
-
-        public final StreamCharBuffer getBuffer() {
-            return StreamCharBuffer.this;
-        }
-
-        public int getReadLenLimit(int askedAmount) {
-            return prepareRead(askedAmount);
-        }
-    }
-
-    abstract class AbstractChunk {
-        AbstractChunk next;
-        AbstractChunk prev;
-        int writerUsedCounter;
-
-        public AbstractChunk() {
-            if (hasReaders) {
-                writerUsedCounter = writer.writerUsedCounter;
-            }
-            else {
-                writerUsedCounter = 1;
-            }
-        }
-
-        public abstract void writeTo(Writer target) throws IOException;
-        public abstract ChunkReader getChunkReader(boolean removeAfterReading);
-        public abstract int size();
-        public int getWriterUsedCounter() {
-            return writerUsedCounter;
-        }
-
-        public void subtractFromTotalCount() {
-            totalCharsInList -= size();
-        }
-    }
-
-    // keep read state in this class
-    static abstract class ChunkReader {
-        public abstract int read(char[] ch, int off, int len) throws IOException;
-        public abstract int getReadLenLimit(int askedAmount);
-        public abstract ChunkReader next();
-        public abstract int getWriterUsedCounter();
-        public abstract boolean isValid();
-    }
-
-    final class AllocatedBuffer {
-        private int id=allocatedBufferIdSequence++;
-        private int size;
-        private char[] buffer;
-        private int used = 0;
-        private int chunkStart = 0;
-
-        public AllocatedBuffer(int size) {
-            this.size = size;
-            buffer = new char[size];
-        }
-
-        public int charsUsed() {
-            return used-chunkStart;
-        }
-
-        public void writeTo(Writer target) throws IOException {
-            if (used-chunkStart > 0) {
-                target.write(buffer, chunkStart, used-chunkStart);
-            }
-        }
-
-        public void reuseBuffer() {
-            used=0;
-            chunkStart=0;
-        }
-
-        public int chunkSize() {
-            return buffer.length;
-        }
-
-        public int spaceLeft() {
-            return size - used;
-        }
-
-        public boolean write(final char ch) {
-            if (used < size) {
-                buffer[used++] = ch;
-                return true;
-            }
-
-            return false;
-        }
-
-        public final void write(final char[] ch, final int off, final int len) {
-            arrayCopy(ch, off, buffer, used, len);
-            used += len;
-        }
-
-        public final void writeString(final String str, final int off, final int len) {
-            str.getChars(off, off+len, buffer, used);
-            used += len;
-        }
-
-        public final void writeStringBuilder(final StringBuilder stringBuilder, final int off, final int len) {
-            stringBuilder.getChars(off, off+len, buffer, used);
-            used += len;
-        }
-
-        public final void writeStringBuffer(final StringBuffer stringBuffer, final int off, final int len) {
-            stringBuffer.getChars(off, off+len, buffer, used);
-            used += len;
-        }
-
-        /**
-         * Creates a new chunk from the content written to the buffer (used before adding StringChunk or StreamCharBufferChunk).
-         *
-         * @return the chunk
-         */
-        public CharBufferChunk createChunk() {
-            CharBufferChunk chunk=new CharBufferChunk(id, buffer, chunkStart, used-chunkStart);
-            chunkStart=used;
-            return chunk;
-        }
-
-        public boolean hasChunk() {
-            return (used > chunkStart);
-        }
-
-    }
-
-    /**
-     * The data in the buffer is stored in a linked list of StreamCharBufferChunks.
-     *
-     * This class contains data & read/write state for the "chunk level".
-     * It contains methods for reading & writing to the chunk level.
-     *
-     * Underneath the chunk is one more level, the StringChunkGroup + StringChunk.
-     * StringChunk makes it possible to directly store the java.lang.String objects.
-     *
-     * @author Lari Hotari
-     *
-     */
-    final class CharBufferChunk extends AbstractChunk {
-        int allocatedBufferId;
-        char[] buffer;
-        int offset;
-        int lastposition;
-        int length;
-
-        public CharBufferChunk(int allocatedBufferId, char[] buffer, int offset, int len) {
-            super();
-            this.allocatedBufferId = allocatedBufferId;
-            this.buffer = buffer;
-            this.offset = offset;
-            this.lastposition = offset + len;
-            this.length = len;
-        }
-
-        @Override
-        public void writeTo(final Writer target) throws IOException {
-            target.write(buffer, offset, length);
-        }
-
-        @Override
-        public ChunkReader getChunkReader(boolean removeAfterReading) {
-            return new CharBufferChunkReader(this, removeAfterReading);
-        }
-
-        @Override
-        public int size() {
-            return length;
-        }
-
-        public boolean isSingleBuffer() {
-            return offset == 0 && length == buffer.length;
-        }
-    }
-
-    abstract class AbstractChunkReader extends ChunkReader {
-        private AbstractChunk parentChunk;
-        private boolean removeAfterReading;
-
-        public AbstractChunkReader(AbstractChunk parentChunk, boolean removeAfterReading) {
-            this.parentChunk = parentChunk;
-            this.removeAfterReading = removeAfterReading;
-        }
-
-        @Override
-        public boolean isValid() {
-            return true;
-        }
-
-        @Override
-        public ChunkReader next() {
-            if (removeAfterReading) {
-                if (firstChunk == parentChunk) {
-                    firstChunk = null;
-                }
-                if (lastChunk == parentChunk) {
-                    lastChunk = null;
-                }
-            }
-            AbstractChunk nextChunk=parentChunk.next;
-            if (nextChunk != null) {
-                if (removeAfterReading) {
-                    if (firstChunk==null) {
-                        firstChunk=nextChunk;
-                    }
-                    if (lastChunk==null) {
-                        lastChunk=nextChunk;
-                    }
-                    nextChunk.prev=null;
-                    nextChunk.subtractFromTotalCount();
-                }
-                return nextChunk.getChunkReader(removeAfterReading);
-            }
-
-            return new AllocatedBufferReader(allocBuffer, removeAfterReading);
-        }
-
-        @Override
-        public int getWriterUsedCounter() {
-            return parentChunk.getWriterUsedCounter();
-        }
-    }
-
-    final class CharBufferChunkReader extends AbstractChunkReader {
-        CharBufferChunk parent;
-        int pointer;
-
-        public CharBufferChunkReader(CharBufferChunk parent, boolean removeAfterReading) {
-            super(parent, removeAfterReading);
-            this.parent = parent;
-            pointer = parent.offset;
-        }
-
-        @Override
-        public int read(final char[] ch, final int off, final int len) throws IOException {
-            arrayCopy(parent.buffer, pointer, ch, off, len);
-            pointer += len;
-            return len;
-        }
-
-        @Override
-        public int getReadLenLimit(int askedAmount) {
-            return Math.min(parent.lastposition-pointer, askedAmount);
-        }
-    }
-
-    /**
-     * StringChunk is a wrapper for java.lang.String.
-     *
-     * It also keeps state of the read offset and the number of unread characters.
-     *
-     * There's methods that StringChunkGroup uses for reading data.
-     *
-     * @author Lari Hotari
-     *
-     */
-    final class StringChunk extends AbstractChunk {
-        String str;
-        int offset;
-        int lastposition;
-        int length;
-
-        public StringChunk(String str, int offset, int length) {
-            this.str = str;
-            this.offset = offset;
-            this.length = length;
-            this.lastposition = offset + length;
-        }
-
-        @Override
-        public ChunkReader getChunkReader(boolean removeAfterReading) {
-            return new StringChunkReader(this, removeAfterReading);
-        }
-
-        @Override
-        public void writeTo(Writer target) throws IOException {
-            target.write(str, offset, length);
-        }
-
-        @Override
-        public int size() {
-            return length;
-        }
-
-        public boolean isSingleBuffer() {
-            return offset==0 && length==str.length();
-        }
-    }
-
-    final class StringChunkReader extends AbstractChunkReader {
-        StringChunk parent;
-        int position;
-
-        public StringChunkReader(StringChunk parent, boolean removeAfterReading) {
-            super(parent, removeAfterReading);
-            this.parent = parent;
-            this.position = parent.offset;
-        }
-
-        @Override
-        public int read(final char[] ch, final int off, final int len) {
-            parent.str.getChars(position, (position + len), ch, off);
-            position += len;
-            return len;
-        }
-
-        @Override
-        public int getReadLenLimit(int askedAmount) {
-            return Math.min(parent.lastposition - position, askedAmount);
-        }
-    }
-
-    final class StreamCharBufferSubChunk extends AbstractChunk {
-        StreamCharBuffer streamCharBuffer;
-        int cachedSize;
-
-        public StreamCharBufferSubChunk(StreamCharBuffer streamCharBuffer) {
-            this.streamCharBuffer = streamCharBuffer;
-            if (totalCharsInDynamicChunks != -1) {
-                cachedSize = streamCharBuffer.size();
-                totalCharsInDynamicChunks += cachedSize;
-            } else {
-                cachedSize = -1;
-            }
-        }
-
-        @Override
-        public void writeTo(Writer target) throws IOException {
-            streamCharBuffer.writeTo(target);
-        }
-
-        @Override
-        public ChunkReader getChunkReader(boolean removeAfterReading) {
-            return new StreamCharBufferSubChunkReader(this, removeAfterReading);
-        }
-
-        @Override
-        public int size() {
-            if (cachedSize == -1) {
-                cachedSize=streamCharBuffer.size();
-            }
-            return cachedSize;
-        }
-
-        public boolean hasCachedSize() {
-            return (cachedSize != -1);
-        }
-
-        public StreamCharBuffer getSubBuffer() {
-            return streamCharBuffer;
-        }
-
-        public boolean resetSize() {
-            if (cachedSize != -1) {
-                cachedSize = -1;
-                return true;
-            }
-            return false;
-        }
-
-        @Override
-        public void subtractFromTotalCount() {
-            if (totalCharsInDynamicChunks != -1) {
-                totalCharsInDynamicChunks -= size();
-            }
-            dynamicChunkMap.remove(streamCharBuffer.bufferKey);
-        }
-    }
-
-    final class StreamCharBufferSubChunkReader extends AbstractChunkReader {
-        StreamCharBufferSubChunk parent;
-        private StreamCharBufferReader reader;
-
-        public StreamCharBufferSubChunkReader(StreamCharBufferSubChunk parent, boolean removeAfterReading) {
-            super(parent, removeAfterReading);
-            this.parent = parent;
-            reader = (StreamCharBufferReader)parent.streamCharBuffer.getReader();
-        }
-
-        @Override
-        public int getReadLenLimit(int askedAmount) {
-            return reader.getReadLenLimit(askedAmount);
-        }
-
-        @Override
-        public int read(char[] ch, int off, int len) throws IOException {
-            return reader.read(ch, off, len);
-        }
-    }
-
-    final class AllocatedBufferReader extends ChunkReader {
-        AllocatedBuffer parent;
-        int position;
-        int writerUsedCounter;
-        boolean removeAfterReading;
-
-        public AllocatedBufferReader(AllocatedBuffer parent, boolean removeAfterReading) {
-            this.parent = parent;
-            position = parent.chunkStart;
-            if (hasReaders) {
-                writerUsedCounter = writer.writerUsedCounter;
-            } else {
-                writerUsedCounter = 1;
-            }
-            this.removeAfterReading = removeAfterReading;
-        }
-
-        @Override
-        public int getReadLenLimit(int askedAmount) {
-            return Math.min(parent.used - position, askedAmount);
-        }
-
-        @Override
-        public int read(char[] ch, int off, int len) throws IOException {
-            arrayCopy(parent.buffer, position, ch, off, len);
-            position += len;
-            if (removeAfterReading) {
-                parent.chunkStart = position;
-            }
-            return len;
-        }
-
-        @Override
-        public ChunkReader next() {
-            return null;
-        }
-
-        @Override
-        public int getWriterUsedCounter() {
-            return writerUsedCounter;
-        }
-
-        @Override
-        public boolean isValid() {
-            return (allocBuffer == parent && (lastChunk == null || lastChunk.writerUsedCounter < writerUsedCounter));
-        }
-    }
-
-    /**
-     * Simplified version of a CharArrayWriter used internally in readAsCharArray method.
-     *
-     * Doesn't do any bound checks since size shouldn't change during writing in readAsCharArray.
-     */
-    private static final class FixedCharArrayWriter extends Writer {
-        char buf[];
-        int count = 0;
-
-        public FixedCharArrayWriter(int fixedSize) {
-            buf = new char[fixedSize];
-        }
-
-        @Override
-        public void write(char[] cbuf, int off, int len) throws IOException {
-            arrayCopy(cbuf, off, buf, count, len);
-            count += len;
-        }
-
-        @Override
-        public void write(char[] cbuf) throws IOException {
-            write(cbuf, 0, cbuf.length);
-        }
-
-        @Override
-        public void write(String str, int off, int len) throws IOException {
-            str.getChars(off, off + len, buf, count);
-            count += len;
-        }
-
-        @Override
-        public void write(String str) throws IOException {
-            write(str, 0, str.length());
-        }
-
-        @Override
-        public void close() throws IOException {
-            // do nothing
-        }
-
-        @Override
-        public void flush() throws IOException {
-            // do nothing
-        }
-
-        public char[] getCharArray() {
-            return buf;
-        }
-    }
-
-    /**
-     * Interface for a Writer that gets initialized if it is used
-     * Can be used for passing in to "connectTo" method of StreamCharBuffer
-     *
-     * @author Lari Hotari
-     *
-     */
-    public static interface LazyInitializingWriter {
-        public Writer getWriter() throws IOException;
-    }
-
-    /**
-     * Simple holder class for the connected writer
-     *
-     * @author Lari Hotari
-     *
-     */
-    static final class ConnectedWriter {
-        Writer writer;
-        LazyInitializingWriter lazyInitializingWriter;
-        final boolean autoFlush;
-
-        ConnectedWriter(final Writer writer, final boolean autoFlush) {
-            this.writer = writer;
-            this.autoFlush = autoFlush;
-        }
-
-        ConnectedWriter(final LazyInitializingWriter lazyInitializingWriter, final boolean autoFlush) {
-            this.lazyInitializingWriter = lazyInitializingWriter;
-            this.autoFlush = autoFlush;
-        }
-
-        Writer getWriter() throws IOException {
-            if (writer == null && lazyInitializingWriter != null) {
-                writer = lazyInitializingWriter.getWriter();
-            }
-            return writer;
-        }
-
-        public void flush() throws IOException {
-            if (writer != null && isAutoFlush()) {
-                writer.flush();
-            }
-        }
-
-        public boolean isAutoFlush() {
-            return autoFlush;
-        }
-    }
-
-    static final class SingleOutputWriter extends Writer {
-        private ConnectedWriter writer;
-
-        public SingleOutputWriter(ConnectedWriter writer) {
-            this.writer = writer;
-        }
-
-        @Override
-        public void close() throws IOException {
-            // do nothing
-        }
-
-        @Override
-        public void flush() throws IOException {
-            writer.flush();
-        }
-
-        @Override
-        public void write(final char[] cbuf, final int off, final int len) throws IOException {
-            writer.getWriter().write(cbuf, off, len);
-        }
-
-        @Override
-        public Writer append(final CharSequence csq, final int start, final int end)
-                throws IOException {
-            writer.getWriter().append(csq, start, end);
-            return this;
-        }
-
-        @Override
-        public void write(String str, int off, int len) throws IOException {
-            StringCharArrayAccessor.writeStringAsCharArray(writer.getWriter(), str, off, len);
-        }
-    }
-
-    /**
-     * delegates to several writers, used in "connectTo" mode.
-     *
-     */
-    static final class MultiOutputWriter extends Writer {
-        final List<ConnectedWriter> writers;
-
-        public MultiOutputWriter(final List<ConnectedWriter> writers) {
-            this.writers = writers;
-        }
-
-        @Override
-        public void close() throws IOException {
-            // do nothing
-        }
-
-        @Override
-        public void flush() throws IOException {
-            for (ConnectedWriter writer : writers) {
-                writer.flush();
-            }
-        }
-
-        @Override
-        public void write(final char[] cbuf, final int off, final int len) throws IOException {
-            for (ConnectedWriter writer : writers) {
-                writer.getWriter().write(cbuf, off, len);
-            }
-        }
-
-        @Override
-        public Writer append(final CharSequence csq, final int start, final int end)
-                throws IOException {
-            for (ConnectedWriter writer : writers) {
-                writer.getWriter().append(csq, start, end);
-            }
-            return this;
-        }
-
-        @Override
-        public void write(String str, int off, int len) throws IOException {
-            for (ConnectedWriter writer : writers) {
-                StringCharArrayAccessor.writeStringAsCharArray(writer.getWriter(), str, off, len);
-            }
-        }
-    }
-
-    /* Compatibility methods so that StreamCharBuffer will behave more like java.lang.String in groovy code */
-
-    public char charAt(int index) {
-        return toString().charAt(index);
-    }
-
-    public int length() {
-        return size();
-    }
-
-    public CharSequence subSequence(int start, int end) {
-        return toString().subSequence(start, end);
-    }
-
-    public boolean asBoolean() {
-        return isNotEmpty();
-    }
-
-    /* methods for notifying child (sub) StreamCharBuffer changes to the parent StreamCharBuffer */
-
-    void addParentBuffer(StreamCharBuffer parent) {
-        if (parentBuffers==null) {
-            parentBuffers=new HashSet<SoftReference<StreamCharBufferKey>>();
-        }
-        parentBuffers.add(new SoftReference<StreamCharBufferKey>(parent.bufferKey));
-    }
-
-    boolean bufferChanged(StreamCharBuffer buffer) {
-        StreamCharBufferSubChunk subChunk=dynamicChunkMap.get(buffer.bufferKey);
-        if (subChunk==null) {
-            // buffer isn't a subchunk in this buffer any more
-            return false;
-        }
-        // reset cached size;
-        if (subChunk.resetSize()) {
-            totalCharsInDynamicChunks=-1;
-            sizeAtLeast=-1;
-            // notify parents too
-            notifyBufferChange();
-        }
-        return true;
-    }
-
-    void notifyBufferChange() {
-        if (parentBuffers == null) {
-            return;
-        }
-
-        for (Iterator<SoftReference<StreamCharBufferKey>> i = parentBuffers.iterator(); i.hasNext();) {
-            SoftReference<StreamCharBufferKey> ref = i.next();
-            final StreamCharBuffer.StreamCharBufferKey parentKey = ref.get();
-            boolean removeIt = true;
-            if (parentKey != null) {
-                StreamCharBuffer parent = parentKey.getBuffer();
-                removeIt = !parent.bufferChanged(this);
-            }
-            if (removeIt) {
-                i.remove();
-            }
-        }
-    }
-
-    public void readExternal(ObjectInput in) throws IOException,
-            ClassNotFoundException {
-        String str=in.readUTF();
-        reset();
-        if (str.length() > 0) {
-            addChunk(new StringChunk(str, 0, str.length()));
-        }
-    }
-
-    public void writeExternal(ObjectOutput out) throws IOException {
-        String str=toString();
-        out.writeUTF(str);
-    }
-
-    public StreamCharBuffer encodeAsHTML() {
-        StreamCharBuffer coded = new StreamCharBuffer(Math.min(Math.max(totalChunkSize, chunkSize) * 12 / 10, maxChunkSize));
-        Writer codedWriter = coded.getWriter();
-        if (StreamingHTMLEncoderHelper.disabled) {
-            try {
-                codedWriter.write(HtmlUtils.htmlEscape(toString()));
-            } catch (IOException e) {
-                // Should not ever happen
-                log.error("IOException in StreamCharBuffer.encodeAsHTML", e);
-            }
-        } else {
-            Reader reader = getReader();
-            char[] buf = new char[1];
-            try {
-                while (reader.read(buf) != -1) {
-                    String reference = StreamingHTMLEncoderHelper.convertToReference(buf[0]);
-                    if (reference != null) {
-                        codedWriter.write(reference);
-                    } else {
-                        codedWriter.write(buf);
-                    }
-                }
-            } catch (IOException e) {
-                // Should not ever happen
-                log.error("IOException in StreamCharBuffer.encodeAsHTML", e);
-            }
-        }
-        return coded;
-    }
-
-    private static class StreamingHTMLEncoderHelper {
-        private static Object instance;
-        private static Method mapMethod;
-        private static boolean disabled=false;
-        static {
-            try {
-                Field instanceField=ReflectionUtils.findField(HtmlUtils.class, "characterEntityReferences");
-                ReflectionUtils.makeAccessible(instanceField);
-                instance = instanceField.get(null);
-                mapMethod = ReflectionUtils.findMethod(instance.getClass(), "convertToReference", char.class);
-                if (mapMethod != null)
-                    ReflectionUtils.makeAccessible(mapMethod);
-            } catch (Exception e) {
-                log.warn("Couldn't use reflection for resolving characterEntityReferences in HtmlUtils class", e);
-                disabled = true;
-            }
-        }
-
-        public static String convertToReference(char c) {
-            return (String)ReflectionUtils.invokeMethod(mapMethod, instance, c);
-        }
-    }
+
+import ru.atomation.utils.sevenzip.ICodeProgress;
+import ru.atomation.utils.sevenzip.compression.rangecoder.BitTreeEncoder;
+
+public class Encoder
+{
+	public static final int EMatchFinderTypeBT2 = 0;
+	public static final int EMatchFinderTypeBT4 = 1;
+
+
+
+
+	static final int kIfinityPrice = 0xFFFFFFF;
+
+	static byte[] g_FastPos = new byte[1 << 11];
+
+	static
+	{
+		int kFastSlots = 22;
+		int c = 2;
+		g_FastPos[0] = 0;
+		g_FastPos[1] = 1;
+		for (int slotFast = 2; slotFast < kFastSlots; slotFast++)
+		{
+			int k = (1 << ((slotFast >> 1) - 1));
+			for (int j = 0; j < k; j++, c++)
+				g_FastPos[c] = (byte)slotFast;
+		}
+	}
+
+	static int GetPosSlot(int pos)
+	{
+		if (pos < (1 << 11))
+			return g_FastPos[pos];
+		if (pos < (1 << 21))
+			return (g_FastPos[pos >> 10] + 20);
+		return (g_FastPos[pos >> 20] + 40);
+	}
+
+	static int GetPosSlot2(int pos)
+	{
+		if (pos < (1 << 17))
+			return (g_FastPos[pos >> 6] + 12);
+		if (pos < (1 << 27))
+			return (g_FastPos[pos >> 16] + 32);
+		return (g_FastPos[pos >> 26] + 52);
+	}
+
+	int _state = Base.StateInit();
+	byte _previousByte;
+	int[] _repDistances = new int[Base.kNumRepDistances];
+
+	void BaseInit()
+	{
+		_state = Base.StateInit();
+		_previousByte = 0;
+		for (int i = 0; i < Base.kNumRepDistances; i++)
+			_repDistances[i] = 0;
+	}
+
+	static final int kDefaultDictionaryLogSize = 22;
+	static final int kNumFastBytesDefault = 0x20;
+
+	class LiteralEncoder
+	{
+		class Encoder2
+		{
+			short[] m_Encoders = new short[0x300];
+
+			public void Init() { ru.atomation.utils.sevenzip.compression.rangecoder.Encoder.InitBitModels(m_Encoders); }
+
+
+
+			public void Encode(ru.atomation.utils.sevenzip.compression.rangecoder.Encoder rangeEncoder, byte symbol) throws IOException
+			{
+				int context = 1;
+				for (int i = 7; i >= 0; i--)
+				{
+					int bit = ((symbol >> i) & 1);
+					rangeEncoder.Encode(m_Encoders, context, bit);
+					context = (context << 1) | bit;
+				}
+			}
+
+			public void EncodeMatched(ru.atomation.utils.sevenzip.compression.rangecoder.Encoder rangeEncoder, byte matchByte, byte symbol) throws IOException
+			{
+				int context = 1;
+				boolean same = true;
+				for (int i = 7; i >= 0; i--)
+				{
+					int bit = ((symbol >> i) & 1);
+					int state = context;
+					if (same)
+					{
+						int matchBit = ((matchByte >> i) & 1);
+						state += ((1 + matchBit) << 8);
+						same = (matchBit == bit);
+					}
+					rangeEncoder.Encode(m_Encoders, state, bit);
+					context = (context << 1) | bit;
+				}
+			}
+
+			public int GetPrice(boolean matchMode, byte matchByte, byte symbol)
+			{
+				int price = 0;
+				int context = 1;
+				int i = 7;
+				if (matchMode)
+				{
+					for (; i >= 0; i--)
+					{
+						int matchBit = (matchByte >> i) & 1;
+						int bit = (symbol >> i) & 1;
+						price += ru.atomation.utils.sevenzip.compression.rangecoder.Encoder.GetPrice(m_Encoders[((1 + matchBit) << 8) + context], bit);
+						context = (context << 1) | bit;
+						if (matchBit != bit)
+						{
+							i--;
+							break;
+						}
+					}
+				}
+				for (; i >= 0; i--)
+				{
+					int bit = (symbol >> i) & 1;
+					price += ru.atomation.utils.sevenzip.compression.rangecoder.Encoder.GetPrice(m_Encoders[context], bit);
+					context = (context << 1) | bit;
+				}
+				return price;
+			}
+		}
+
+		Encoder2[] m_Coders;
+		int m_NumPrevBits;
+		int m_NumPosBits;
+		int m_PosMask;
+
+		public void Create(int numPosBits, int numPrevBits)
+		{
+			if (m_Coders != null && m_NumPrevBits == numPrevBits && m_NumPosBits == numPosBits)
+				return;
+			m_NumPosBits = numPosBits;
+			m_PosMask = (1 << numPosBits) - 1;
+			m_NumPrevBits = numPrevBits;
+			int numStates = 1 << (m_NumPrevBits + m_NumPosBits);
+			m_Coders = new Encoder2[numStates];
+			for (int i = 0; i < numStates; i++)
+				m_Coders[i] = new Encoder2();
+		}
+
+		public void Init()
+		{
+			int numStates = 1 << (m_NumPrevBits + m_NumPosBits);
+			for (int i = 0; i < numStates; i++)
+				m_Coders[i].Init();
+		}
+
+		public Encoder2 GetSubCoder(int pos, byte prevByte)
+		{ return m_Coders[((pos & m_PosMask) << m_NumPrevBits) + ((prevByte & 0xFF) >>> (8 - m_NumPrevBits))]; }
+	}
+
+	class LenEncoder
+	{
+		short[] _choice = new short[2];
+		BitTreeEncoder[] _lowCoder = new BitTreeEncoder[Base.kNumPosStatesEncodingMax];
+		BitTreeEncoder[] _midCoder = new BitTreeEncoder[Base.kNumPosStatesEncodingMax];
+		BitTreeEncoder _highCoder = new BitTreeEncoder(Base.kNumHighLenBits);
+
+
+		public LenEncoder()
+		{
+			for (int posState = 0; posState < Base.kNumPosStatesEncodingMax; posState++)
+			{
+				_lowCoder[posState] = new BitTreeEncoder(Base.kNumLowLenBits);
+				_midCoder[posState] = new BitTreeEncoder(Base.kNumMidLenBits);
+			}
+		}
+
+		public void Init(int numPosStates)
+		{
+			ru.atomation.utils.sevenzip.compression.rangecoder.Encoder.InitBitModels(_choice);
+
+			for (int posState = 0; posState < numPosStates; posState++)
+			{
+				_lowCoder[posState].Init();
+				_midCoder[posState].Init();
+			}
+			_highCoder.Init();
+		}
+
+		public void Encode(ru.atomation.utils.sevenzip.compression.rangecoder.Encoder rangeEncoder, int symbol, int posState) throws IOException
+		{
+			if (symbol < Base.kNumLowLenSymbols)
+			{
+				rangeEncoder.Encode(_choice, 0, 0);
+				_lowCoder[posState].Encode(rangeEncoder, symbol);
+			}
+			else
+			{
+				symbol -= Base.kNumLowLenSymbols;
+				rangeEncoder.Encode(_choice, 0, 1);
+				if (symbol < Base.kNumMidLenSymbols)
+				{
+					rangeEncoder.Encode(_choice, 1, 0);
+					_midCoder[posState].Encode(rangeEncoder, symbol);
+				}
+				else
+				{
+					rangeEncoder.Encode(_choice, 1, 1);
+					_highCoder.Encode(rangeEncoder, symbol - Base.kNumMidLenSymbols);
+				}
+			}
+		}
+
+		public void SetPrices(int posState, int numSymbols, int[] prices, int st)
+		{
+			int a0 = ru.atomation.utils.sevenzip.compression.rangecoder.Encoder.GetPrice0(_choice[0]);
+			int a1 = ru.atomation.utils.sevenzip.compression.rangecoder.Encoder.GetPrice1(_choice[0]);
+			int b0 = a1 + ru.atomation.utils.sevenzip.compression.rangecoder.Encoder.GetPrice0(_choice[1]);
+			int b1 = a1 + ru.atomation.utils.sevenzip.compression.rangecoder.Encoder.GetPrice1(_choice[1]);
+			int i = 0;
+			for (i = 0; i < Base.kNumLowLenSymbols; i++)
+			{
+				if (i >= numSymbols)
+					return;
+				prices[st + i] = a0 + _lowCoder[posState].GetPrice(i);
+			}
+			for (; i < Base.kNumLowLenSymbols + Base.kNumMidLenSymbols; i++)
+			{
+				if (i >= numSymbols)
+					return;
+				prices[st + i] = b0 + _midCoder[posState].GetPrice(i - Base.kNumLowLenSymbols);
+			}
+			for (; i < numSymbols; i++)
+				prices[st + i] = b1 + _highCoder.GetPrice(i - Base.kNumLowLenSymbols - Base.kNumMidLenSymbols);
+		}
+	};
+
+	public static final int kNumLenSpecSymbols = Base.kNumLowLenSymbols + Base.kNumMidLenSymbols;
+
+	class LenPriceTableEncoder extends LenEncoder
+	{
+		int[] _prices = new int[Base.kNumLenSymbols<<Base.kNumPosStatesBitsEncodingMax];
+		int _tableSize;
+		int[] _counters = new int[Base.kNumPosStatesEncodingMax];
+
+		public void SetTableSize(int tableSize) { _tableSize = tableSize; }
+
+		public int GetPrice(int symbol, int posState)
+		{
+			return _prices[posState * Base.kNumLenSymbols + symbol];
+		}
+
+		void UpdateTable(int posState)
+		{
+			SetPrices(posState, _tableSize, _prices, posState * Base.kNumLenSymbols);
+			_counters[posState] = _tableSize;
+		}
+
+		public void UpdateTables(int numPosStates)
+		{
+			for (int posState = 0; posState < numPosStates; posState++)
+				UpdateTable(posState);
+		}
+
+		public void Encode(ru.atomation.utils.sevenzip.compression.rangecoder.Encoder rangeEncoder, int symbol, int posState) throws IOException
+		{
+			super.Encode(rangeEncoder, symbol, posState);
+			if (--_counters[posState] == 0)
+				UpdateTable(posState);
+		}
+	}
+
+	static final int kNumOpts = 1 << 12;
+	class Optimal
+	{
+		public int State;
+
+		public boolean Prev1IsChar;
+		public boolean Prev2;
+
+		public int PosPrev2;
+		public int BackPrev2;
+
+		public int Price;
+		public int PosPrev;
+		public int BackPrev;
+
+		public int Backs0;
+		public int Backs1;
+		public int Backs2;
+		public int Backs3;
+
+		public void MakeAsChar() { BackPrev = -1; Prev1IsChar = false; }
+		public void MakeAsShortRep() { BackPrev = 0; ; Prev1IsChar = false; }
+		public boolean IsShortRep() { return (BackPrev == 0); }
+	};
+	Optimal[] _optimum = new Optimal[kNumOpts];
+	ru.atomation.utils.sevenzip.compression.lz.BinTree _matchFinder = null;
+	ru.atomation.utils.sevenzip.compression.rangecoder.Encoder _rangeEncoder = new ru.atomation.utils.sevenzip.compression.rangecoder.Encoder();
+
+	short[] _isMatch = new short[Base.kNumStates<<Base.kNumPosStatesBitsMax];
+	short[] _isRep = new short[Base.kNumStates];
+	short[] _isRepG0 = new short[Base.kNumStates];
+	short[] _isRepG1 = new short[Base.kNumStates];
+	short[] _isRepG2 = new short[Base.kNumStates];
+	short[] _isRep0Long = new short[Base.kNumStates<<Base.kNumPosStatesBitsMax];
+
+	BitTreeEncoder[] _posSlotEncoder = new BitTreeEncoder[Base.kNumLenToPosStates]; // kNumPosSlotBits
+
+	short[] _posEncoders = new short[Base.kNumFullDistances-Base.kEndPosModelIndex];
+	BitTreeEncoder _posAlignEncoder = new BitTreeEncoder(Base.kNumAlignBits);
+
+	LenPriceTableEncoder _lenEncoder = new LenPriceTableEncoder();
+	LenPriceTableEncoder _repMatchLenEncoder = new LenPriceTableEncoder();
+
+	LiteralEncoder _literalEncoder = new LiteralEncoder();
+
+	int[] _matchDistances = new int[Base.kMatchMaxLen*2+2];
+
+	int _numFastBytes = kNumFastBytesDefault;
+	int _longestMatchLength;
+	int _numDistancePairs;
+
+	int _additionalOffset;
+
+	int _optimumEndIndex;
+	int _optimumCurrentIndex;
+
+	boolean _longestMatchWasFound;
+
+	int[] _posSlotPrices = new int[1<<(Base.kNumPosSlotBits+Base.kNumLenToPosStatesBits)];
+	int[] _distancesPrices = new int[Base.kNumFullDistances<<Base.kNumLenToPosStatesBits];
+	int[] _alignPrices = new int[Base.kAlignTableSize];
+	int _alignPriceCount;
+
+	int _distTableSize = (kDefaultDictionaryLogSize * 2);
+
+	int _posStateBits = 2;
+	int _posStateMask = (4 - 1);
+	int _numLiteralPosStateBits = 0;
+	int _numLiteralContextBits = 3;
+
+	int _dictionarySize = (1 << kDefaultDictionaryLogSize);
+	int _dictionarySizePrev = -1;
+	int _numFastBytesPrev = -1;
+
+	long nowPos64;
+	boolean _finished;
+	java.io.InputStream _inStream;
+
+	int _matchFinderType = EMatchFinderTypeBT4;
+	boolean _writeEndMark = false;
+
+	boolean _needReleaseMFStream = false;
+
+	void Create()
+	{
+		if (_matchFinder == null)
+		{
+			ru.atomation.utils.sevenzip.compression.lz.BinTree bt = new ru.atomation.utils.sevenzip.compression.lz.BinTree();
+			int numHashBytes = 4;
+			if (_matchFinderType == EMatchFinderTypeBT2)
+				numHashBytes = 2;
+			bt.SetType(numHashBytes);
+			_matchFinder = bt;
+		}
+		_literalEncoder.Create(_numLiteralPosStateBits, _numLiteralContextBits);
+
+		if (_dictionarySize == _dictionarySizePrev && _numFastBytesPrev == _numFastBytes)
+			return;
+		_matchFinder.Create(_dictionarySize, kNumOpts, _numFastBytes, Base.kMatchMaxLen + 1);
+		_dictionarySizePrev = _dictionarySize;
+		_numFastBytesPrev = _numFastBytes;
+	}
+
+	public Encoder()
+	{
+		for (int i = 0; i < kNumOpts; i++)
+			_optimum[i] = new Optimal();
+		for (int i = 0; i < Base.kNumLenToPosStates; i++)
+			_posSlotEncoder[i] = new BitTreeEncoder(Base.kNumPosSlotBits);
+	}
+
+	void SetWriteEndMarkerMode(boolean writeEndMarker)
+	{
+		_writeEndMark = writeEndMarker;
+	}
+
+	void Init()
+	{
+		BaseInit();
+		_rangeEncoder.Init();
+
+		ru.atomation.utils.sevenzip.compression.rangecoder.Encoder.InitBitModels(_isMatch);
+		ru.atomation.utils.sevenzip.compression.rangecoder.Encoder.InitBitModels(_isRep0Long);
+		ru.atomation.utils.sevenzip.compression.rangecoder.Encoder.InitBitModels(_isRep);
+		ru.atomation.utils.sevenzip.compression.rangecoder.Encoder.InitBitModels(_isRepG0);
+		ru.atomation.utils.sevenzip.compression.rangecoder.Encoder.InitBitModels(_isRepG1);
+		ru.atomation.utils.sevenzip.compression.rangecoder.Encoder.InitBitModels(_isRepG2);
+		ru.atomation.utils.sevenzip.compression.rangecoder.Encoder.InitBitModels(_posEncoders);
+
+
+
+
+
+
+
+		_literalEncoder.Init();
+		for (int i = 0; i < Base.kNumLenToPosStates; i++)
+			_posSlotEncoder[i].Init();
+
+
+
+		_lenEncoder.Init(1 << _posStateBits);
+		_repMatchLenEncoder.Init(1 << _posStateBits);
+
+		_posAlignEncoder.Init();
+
+		_longestMatchWasFound = false;
+		_optimumEndIndex = 0;
+		_optimumCurrentIndex = 0;
+		_additionalOffset = 0;
+	}
+
+	int ReadMatchDistances() throws java.io.IOException
+	{
+		int lenRes = 0;
+		_numDistancePairs = _matchFinder.GetMatches(_matchDistances);
+		if (_numDistancePairs > 0)
+		{
+			lenRes = _matchDistances[_numDistancePairs - 2];
+			if (lenRes == _numFastBytes)
+				lenRes += _matchFinder.GetMatchLen((int)lenRes - 1, _matchDistances[_numDistancePairs - 1],
+					Base.kMatchMaxLen - lenRes);
+		}
+		_additionalOffset++;
+		return lenRes;
+	}
+
+	void MovePos(int num) throws java.io.IOException
+	{
+		if (num > 0)
+		{
+			_matchFinder.Skip(num);
+			_additionalOffset += num;
+		}
+	}
+
+	int GetRepLen1Price(int state, int posState)
+	{
+		return ru.atomation.utils.sevenzip.compression.rangecoder.Encoder.GetPrice0(_isRepG0[state]) +
+		ru.atomation.utils.sevenzip.compression.rangecoder.Encoder.GetPrice0(_isRep0Long[(state << Base.kNumPosStatesBitsMax) + posState]);
+	}
+
+	int GetPureRepPrice(int repIndex, int state, int posState)
+	{
+		int price;
+		if (repIndex == 0)
+		{
+			price = ru.atomation.utils.sevenzip.compression.rangecoder.Encoder.GetPrice0(_isRepG0[state]);
+			price += ru.atomation.utils.sevenzip.compression.rangecoder.Encoder.GetPrice1(_isRep0Long[(state << Base.kNumPosStatesBitsMax) + posState]);
+		}
+		else
+		{
+			price = ru.atomation.utils.sevenzip.compression.rangecoder.Encoder.GetPrice1(_isRepG0[state]);
+			if (repIndex == 1)
+				price += ru.atomation.utils.sevenzip.compression.rangecoder.Encoder.GetPrice0(_isRepG1[state]);
+			else
+			{
+				price += ru.atomation.utils.sevenzip.compression.rangecoder.Encoder.GetPrice1(_isRepG1[state]);
+				price += ru.atomation.utils.sevenzip.compression.rangecoder.Encoder.GetPrice(_isRepG2[state], repIndex - 2);
+			}
+		}
+		return price;
+	}
+
+	int GetRepPrice(int repIndex, int len, int state, int posState)
+	{
+		int price = _repMatchLenEncoder.GetPrice(len - Base.kMatchMinLen, posState);
+		return price + GetPureRepPrice(repIndex, state, posState);
+	}
+
+	int GetPosLenPrice(int pos, int len, int posState)
+	{
+		int price;
+		int lenToPosState = Base.GetLenToPosState(len);
+		if (pos < Base.kNumFullDistances)
+			price = _distancesPrices[(lenToPosState * Base.kNumFullDistances) + pos];
+		else
+			price = _posSlotPrices[(lenToPosState << Base.kNumPosSlotBits) + GetPosSlot2(pos)] +
+				_alignPrices[pos & Base.kAlignMask];
+		return price + _lenEncoder.GetPrice(len - Base.kMatchMinLen, posState);
+	}
+
+	int Backward(int cur)
+	{
+		_optimumEndIndex = cur;
+		int posMem = _optimum[cur].PosPrev;
+		int backMem = _optimum[cur].BackPrev;
+		do
+		{
+			if (_optimum[cur].Prev1IsChar)
+			{
+				_optimum[posMem].MakeAsChar();
+				_optimum[posMem].PosPrev = posMem - 1;
+				if (_optimum[cur].Prev2)
+				{
+					_optimum[posMem - 1].Prev1IsChar = false;
+					_optimum[posMem - 1].PosPrev = _optimum[cur].PosPrev2;
+					_optimum[posMem - 1].BackPrev = _optimum[cur].BackPrev2;
+				}
+			}
+			int posPrev = posMem;
+			int backCur = backMem;
+
+			backMem = _optimum[posPrev].BackPrev;
+			posMem = _optimum[posPrev].PosPrev;
+
+			_optimum[posPrev].BackPrev = backCur;
+			_optimum[posPrev].PosPrev = cur;
+			cur = posPrev;
+		}
+		while (cur > 0);
+		backRes = _optimum[0].BackPrev;
+		_optimumCurrentIndex = _optimum[0].PosPrev;
+		return _optimumCurrentIndex;
+	}
+
+	int[] reps = new int[Base.kNumRepDistances];
+	int[] repLens = new int[Base.kNumRepDistances];
+	int backRes;
+
+	int GetOptimum(int position) throws IOException
+	{
+		if (_optimumEndIndex != _optimumCurrentIndex)
+		{
+			int lenRes = _optimum[_optimumCurrentIndex].PosPrev - _optimumCurrentIndex;
+			backRes = _optimum[_optimumCurrentIndex].BackPrev;
+			_optimumCurrentIndex = _optimum[_optimumCurrentIndex].PosPrev;
+			return lenRes;
+		}
+		_optimumCurrentIndex = _optimumEndIndex = 0;
+
+		int lenMain, numDistancePairs;
+		if (!_longestMatchWasFound)
+		{
+			lenMain = ReadMatchDistances();
+		}
+		else
+		{
+			lenMain = _longestMatchLength;
+			_longestMatchWasFound = false;
+		}
+		numDistancePairs = _numDistancePairs;
+
+		int numAvailableBytes = _matchFinder.GetNumAvailableBytes() + 1;
+		if (numAvailableBytes < 2)
+		{
+			backRes = -1;
+			return 1;
+		}
+		if (numAvailableBytes > Base.kMatchMaxLen)
+			numAvailableBytes = Base.kMatchMaxLen;
+
+		int repMaxIndex = 0;
+		int i;
+		for (i = 0; i < Base.kNumRepDistances; i++)
+		{
+			reps[i] = _repDistances[i];
+			repLens[i] = _matchFinder.GetMatchLen(0 - 1, reps[i], Base.kMatchMaxLen);
+			if (repLens[i] > repLens[repMaxIndex])
+				repMaxIndex = i;
+		}
+		if (repLens[repMaxIndex] >= _numFastBytes)
+		{
+			backRes = repMaxIndex;
+			int lenRes = repLens[repMaxIndex];
+			MovePos(lenRes - 1);
+			return lenRes;
+		}
+
+		if (lenMain >= _numFastBytes)
+		{
+			backRes = _matchDistances[numDistancePairs - 1] + Base.kNumRepDistances;
+			MovePos(lenMain - 1);
+			return lenMain;
+		}
+
+		byte currentByte = _matchFinder.GetIndexByte(0 - 1);
+		byte matchByte = _matchFinder.GetIndexByte(0 - _repDistances[0] - 1 - 1);
+
+		if (lenMain < 2 && currentByte != matchByte && repLens[repMaxIndex] < 2)
+		{
+			backRes = -1;
+			return 1;
+		}
+
+		_optimum[0].State = _state;
+
+		int posState = (position & _posStateMask);
+
+		_optimum[1].Price = ru.atomation.utils.sevenzip.compression.rangecoder.Encoder.GetPrice0(_isMatch[(_state << Base.kNumPosStatesBitsMax) + posState]) +
+				_literalEncoder.GetSubCoder(position, _previousByte).GetPrice(!Base.StateIsCharState(_state), matchByte, currentByte);
+		_optimum[1].MakeAsChar();
+
+		int matchPrice = ru.atomation.utils.sevenzip.compression.rangecoder.Encoder.GetPrice1(_isMatch[(_state << Base.kNumPosStatesBitsMax) + posState]);
+		int repMatchPrice = matchPrice + ru.atomation.utils.sevenzip.compression.rangecoder.Encoder.GetPrice1(_isRep[_state]);
+
+		if (matchByte == currentByte)
+		{
+			int shortRepPrice = repMatchPrice + GetRepLen1Price(_state, posState);
+			if (shortRepPrice < _optimum[1].Price)
+			{
+				_optimum[1].Price = shortRepPrice;
+				_optimum[1].MakeAsShortRep();
+			}
+		}
+
+		int lenEnd = ((lenMain >= repLens[repMaxIndex]) ? lenMain : repLens[repMaxIndex]);
+
+		if (lenEnd < 2)
+		{
+			backRes = _optimum[1].BackPrev;
+			return 1;
+		}
+
+		_optimum[1].PosPrev = 0;
+
+		_optimum[0].Backs0 = reps[0];
+		_optimum[0].Backs1 = reps[1];
+		_optimum[0].Backs2 = reps[2];
+		_optimum[0].Backs3 = reps[3];
+
+		int len = lenEnd;
+		do
+			_optimum[len--].Price = kIfinityPrice;
+		while (len >= 2);
+
+		for (i = 0; i < Base.kNumRepDistances; i++)
+		{
+			int repLen = repLens[i];
+			if (repLen < 2)
+				continue;
+			int price = repMatchPrice + GetPureRepPrice(i, _state, posState);
+			do
+			{
+				int curAndLenPrice = price + _repMatchLenEncoder.GetPrice(repLen - 2, posState);
+				Optimal optimum = _optimum[repLen];
+				if (curAndLenPrice < optimum.Price)
+				{
+					optimum.Price = curAndLenPrice;
+					optimum.PosPrev = 0;
+					optimum.BackPrev = i;
+					optimum.Prev1IsChar = false;
+				}
+			}
+			while (--repLen >= 2);
+		}
+
+		int normalMatchPrice = matchPrice + ru.atomation.utils.sevenzip.compression.rangecoder.Encoder.GetPrice0(_isRep[_state]);
+
+		len = ((repLens[0] >= 2) ? repLens[0] + 1 : 2);
+		if (len <= lenMain)
+		{
+			int offs = 0;
+			while (len > _matchDistances[offs])
+				offs += 2;
+			for (; ; len++)
+			{
+				int distance = _matchDistances[offs + 1];
+				int curAndLenPrice = normalMatchPrice + GetPosLenPrice(distance, len, posState);
+				Optimal optimum = _optimum[len];
+				if (curAndLenPrice < optimum.Price)
+				{
+					optimum.Price = curAndLenPrice;
+					optimum.PosPrev = 0;
+					optimum.BackPrev = distance + Base.kNumRepDistances;
+					optimum.Prev1IsChar = false;
+				}
+				if (len == _matchDistances[offs])
+				{
+					offs += 2;
+					if (offs == numDistancePairs)
+						break;
+				}
+			}
+		}
+
+		int cur = 0;
+
+		while (true)
+		{
+			cur++;
+			if (cur == lenEnd)
+				return Backward(cur);
+			int newLen = ReadMatchDistances();
+			numDistancePairs = _numDistancePairs;
+			if (newLen >= _numFastBytes)
+			{
+
+				_longestMatchLength = newLen;
+				_longestMatchWasFound = true;
+				return Backward(cur);
+			}
+			position++;
+			int posPrev = _optimum[cur].PosPrev;
+			int state;
+			if (_optimum[cur].Prev1IsChar)
+			{
+				posPrev--;
+				if (_optimum[cur].Prev2)
+				{
+					state = _optimum[_optimum[cur].PosPrev2].State;
+					if (_optimum[cur].BackPrev2 < Base.kNumRepDistances)
+						state = Base.StateUpdateRep(state);
+					else
+						state = Base.StateUpdateMatch(state);
+				}
+				else
+					state = _optimum[posPrev].State;
+				state = Base.StateUpdateChar(state);
+			}
+			else
+				state = _optimum[posPrev].State;
+			if (posPrev == cur - 1)
+			{
+				if (_optimum[cur].IsShortRep())
+					state = Base.StateUpdateShortRep(state);
+				else
+					state = Base.StateUpdateChar(state);
+			}
+			else
+			{
+				int pos;
+				if (_optimum[cur].Prev1IsChar && _optimum[cur].Prev2)
+				{
+					posPrev = _optimum[cur].PosPrev2;
+					pos = _optimum[cur].BackPrev2;
+					state = Base.StateUpdateRep(state);
+				}
+				else
+				{
+					pos = _optimum[cur].BackPrev;
+					if (pos < Base.kNumRepDistances)
+						state = Base.StateUpdateRep(state);
+					else
+						state = Base.StateUpdateMatch(state);
+				}
+				Optimal opt = _optimum[posPrev];
+				if (pos < Base.kNumRepDistances)
+				{
+					if (pos == 0)
+					{
+						reps[0] = opt.Backs0;
+						reps[1] = opt.Backs1;
+						reps[2] = opt.Backs2;
+						reps[3] = opt.Backs3;
+					}
+					else if (pos == 1)
+					{
+						reps[0] = opt.Backs1;
+						reps[1] = opt.Backs0;
+						reps[2] = opt.Backs2;
+						reps[3] = opt.Backs3;
+					}
+					else if (pos == 2)
+					{
+						reps[0] = opt.Backs2;
+						reps[1] = opt.Backs0;
+						reps[2] = opt.Backs1;
+						reps[3] = opt.Backs3;
+					}
+					else
+					{
+						reps[0] = opt.Backs3;
+						reps[1] = opt.Backs0;
+						reps[2] = opt.Backs1;
+						reps[3] = opt.Backs2;
+					}
+				}
+				else
+				{
+					reps[0] = (pos - Base.kNumRepDistances);
+					reps[1] = opt.Backs0;
+					reps[2] = opt.Backs1;
+					reps[3] = opt.Backs2;
+				}
+			}
+			_optimum[cur].State = state;
+			_optimum[cur].Backs0 = reps[0];
+			_optimum[cur].Backs1 = reps[1];
+			_optimum[cur].Backs2 = reps[2];
+			_optimum[cur].Backs3 = reps[3];
+			int curPrice = _optimum[cur].Price;
+
+			currentByte = _matchFinder.GetIndexByte(0 - 1);
+			matchByte = _matchFinder.GetIndexByte(0 - reps[0] - 1 - 1);
+
+			posState = (position & _posStateMask);
+
+			int curAnd1Price = curPrice +
+			ru.atomation.utils.sevenzip.compression.rangecoder.Encoder.GetPrice0(_isMatch[(state << Base.kNumPosStatesBitsMax) + posState]) +
+				_literalEncoder.GetSubCoder(position, _matchFinder.GetIndexByte(0 - 2)).
+				GetPrice(!Base.StateIsCharState(state), matchByte, currentByte);
+
+			Optimal nextOptimum = _optimum[cur + 1];
+
+			boolean nextIsChar = false;
+			if (curAnd1Price < nextOptimum.Price)
+			{
+				nextOptimum.Price = curAnd1Price;
+				nextOptimum.PosPrev = cur;
+				nextOptimum.MakeAsChar();
+				nextIsChar = true;
+			}
+
+			matchPrice = curPrice + ru.atomation.utils.sevenzip.compression.rangecoder.Encoder.GetPrice1(_isMatch[(state << Base.kNumPosStatesBitsMax) + posState]);
+			repMatchPrice = matchPrice + ru.atomation.utils.sevenzip.compression.rangecoder.Encoder.GetPrice1(_isRep[state]);
+
+			if (matchByte == currentByte &&
+				!(nextOptimum.PosPrev < cur && nextOptimum.BackPrev == 0))
+			{
+				int shortRepPrice = repMatchPrice + GetRepLen1Price(state, posState);
+				if (shortRepPrice <= nextOptimum.Price)
+				{
+					nextOptimum.Price = shortRepPrice;
+					nextOptimum.PosPrev = cur;
+					nextOptimum.MakeAsShortRep();
+					nextIsChar = true;
+				}
+			}
+
+			int numAvailableBytesFull = _matchFinder.GetNumAvailableBytes() + 1;
+			numAvailableBytesFull = Math.min(kNumOpts - 1 - cur, numAvailableBytesFull);
+			numAvailableBytes = numAvailableBytesFull;
+
+			if (numAvailableBytes < 2)
+				continue;
+			if (numAvailableBytes > _numFastBytes)
+				numAvailableBytes = _numFastBytes;
+			if (!nextIsChar && matchByte != currentByte)
+			{
+				// try Literal + rep0
+				int t = Math.min(numAvailableBytesFull - 1, _numFastBytes);
+				int lenTest2 = _matchFinder.GetMatchLen(0, reps[0], t);
+				if (lenTest2 >= 2)
+				{
+					int state2 = Base.StateUpdateChar(state);
+
+					int posStateNext = (position + 1) & _posStateMask;
+					int nextRepMatchPrice = curAnd1Price +
+						ru.atomation.utils.sevenzip.compression.rangecoder.Encoder.GetPrice1(_isMatch[(state2 << Base.kNumPosStatesBitsMax) + posStateNext]) +
+						ru.atomation.utils.sevenzip.compression.rangecoder.Encoder.GetPrice1(_isRep[state2]);
+					{
+						int offset = cur + 1 + lenTest2;
+						while (lenEnd < offset)
+							_optimum[++lenEnd].Price = kIfinityPrice;
+						int curAndLenPrice = nextRepMatchPrice + GetRepPrice(
+								0, lenTest2, state2, posStateNext);
+						Optimal optimum = _optimum[offset];
+						if (curAndLenPrice < optimum.Price)
+						{
+							optimum.Price = curAndLenPrice;
+							optimum.PosPrev = cur + 1;
+							optimum.BackPrev = 0;
+							optimum.Prev1IsChar = true;
+							optimum.Prev2 = false;
+						}
+					}
+				}
+			}
+
+			int startLen = 2; // speed optimization 
+
+			for (int repIndex = 0; repIndex < Base.kNumRepDistances; repIndex++)
+			{
+				int lenTest = _matchFinder.GetMatchLen(0 - 1, reps[repIndex], numAvailableBytes);
+				if (lenTest < 2)
+					continue;
+				int lenTestTemp = lenTest;
+				do
+				{
+					while (lenEnd < cur + lenTest)
+						_optimum[++lenEnd].Price = kIfinityPrice;
+					int curAndLenPrice = repMatchPrice + GetRepPrice(repIndex, lenTest, state, posState);
+					Optimal optimum = _optimum[cur + lenTest];
+					if (curAndLenPrice < optimum.Price)
+					{
+						optimum.Price = curAndLenPrice;
+						optimum.PosPrev = cur;
+						optimum.BackPrev = repIndex;
+						optimum.Prev1IsChar = false;
+					}
+				}
+				while (--lenTest >= 2);
+				lenTest = lenTestTemp;
+
+				if (repIndex == 0)
+					startLen = lenTest + 1;
+
+				// if (_maxMode)
+				if (lenTest < numAvailableBytesFull)
+				{
+					int t = Math.min(numAvailableBytesFull - 1 - lenTest, _numFastBytes);
+					int lenTest2 = _matchFinder.GetMatchLen(lenTest, reps[repIndex], t);
+					if (lenTest2 >= 2)
+					{
+						int state2 = Base.StateUpdateRep(state);
+
+						int posStateNext = (position + lenTest) & _posStateMask;
+						int curAndLenCharPrice =
+								repMatchPrice + GetRepPrice(repIndex, lenTest, state, posState) +
+								ru.atomation.utils.sevenzip.compression.rangecoder.Encoder.GetPrice0(_isMatch[(state2 << Base.kNumPosStatesBitsMax) + posStateNext]) +
+								_literalEncoder.GetSubCoder(position + lenTest,
+								_matchFinder.GetIndexByte(lenTest - 1 - 1)).GetPrice(true,
+								_matchFinder.GetIndexByte(lenTest - 1 - (reps[repIndex] + 1)),
+								_matchFinder.GetIndexByte(lenTest - 1));
+						state2 = Base.StateUpdateChar(state2);
+						posStateNext = (position + lenTest + 1) & _posStateMask;
+						int nextMatchPrice = curAndLenCharPrice + ru.atomation.utils.sevenzip.compression.rangecoder.Encoder.GetPrice1(_isMatch[(state2 << Base.kNumPosStatesBitsMax) + posStateNext]);
+						int nextRepMatchPrice = nextMatchPrice + ru.atomation.utils.sevenzip.compression.rangecoder.Encoder.GetPrice1(_isRep[state2]);
+
+						// for(; lenTest2 >= 2; lenTest2--)
+						{
+							int offset = lenTest + 1 + lenTest2;
+							while (lenEnd < cur + offset)
+								_optimum[++lenEnd].Price = kIfinityPrice;
+							int curAndLenPrice = nextRepMatchPrice + GetRepPrice(0, lenTest2, state2, posStateNext);
+							Optimal optimum = _optimum[cur + offset];
+							if (curAndLenPrice < optimum.Price)
+							{
+								optimum.Price = curAndLenPrice;
+								optimum.PosPrev = cur + lenTest + 1;
+								optimum.BackPrev = 0;
+								optimum.Prev1IsChar = true;
+								optimum.Prev2 = true;
+								optimum.PosPrev2 = cur;
+								optimum.BackPrev2 = repIndex;
+							}
+						}
+					}
+				}
+			}
+
+			if (newLen > numAvailableBytes)
+			{
+				newLen = numAvailableBytes;
+				for (numDistancePairs = 0; newLen > _matchDistances[numDistancePairs]; numDistancePairs += 2) ;
+				_matchDistances[numDistancePairs] = newLen;
+				numDistancePairs += 2;
+			}
+			if (newLen >= startLen)
+			{
+				normalMatchPrice = matchPrice + ru.atomation.utils.sevenzip.compression.rangecoder.Encoder.GetPrice0(_isRep[state]);
+				while (lenEnd < cur + newLen)
+					_optimum[++lenEnd].Price = kIfinityPrice;
+
+				int offs = 0;
+				while (startLen > _matchDistances[offs])
+					offs += 2;
+
+				for (int lenTest = startLen; ; lenTest++)
+				{
+					int curBack = _matchDistances[offs + 1];
+					int curAndLenPrice = normalMatchPrice + GetPosLenPrice(curBack, lenTest, posState);
+					Optimal optimum = _optimum[cur + lenTest];
+					if (curAndLenPrice < optimum.Price)
+					{
+						optimum.Price = curAndLenPrice;
+						optimum.PosPrev = cur;
+						optimum.BackPrev = curBack + Base.kNumRepDistances;
+						optimum.Prev1IsChar = false;
+					}
+
+					if (lenTest == _matchDistances[offs])
+					{
+						if (lenTest < numAvailableBytesFull)
+						{
+							int t = Math.min(numAvailableBytesFull - 1 - lenTest, _numFastBytes);
+							int lenTest2 = _matchFinder.GetMatchLen(lenTest, curBack, t);
+							if (lenTest2 >= 2)
+							{
+								int state2 = Base.StateUpdateMatch(state);
+
+								int posStateNext = (position + lenTest) & _posStateMask;
+								int curAndLenCharPrice = curAndLenPrice +
+									ru.atomation.utils.sevenzip.compression.rangecoder.Encoder.GetPrice0(_isMatch[(state2 << Base.kNumPosStatesBitsMax) + posStateNext]) +
+									_literalEncoder.GetSubCoder(position + lenTest,
+									_matchFinder.GetIndexByte(lenTest - 1 - 1)).
+									GetPrice(true,
+									_matchFinder.GetIndexByte(lenTest - (curBack + 1) - 1),
+									_matchFinder.GetIndexByte(lenTest - 1));
+								state2 = Base.StateUpdateChar(state2);
+								posStateNext = (position + lenTest + 1) & _posStateMask;
+								int nextMatchPrice = curAndLenCharPrice + ru.atomation.utils.sevenzip.compression.rangecoder.Encoder.GetPrice1(_isMatch[(state2 << Base.kNumPosStatesBitsMax) + posStateNext]);
+								int nextRepMatchPrice = nextMatchPrice + ru.atomation.utils.sevenzip.compression.rangecoder.Encoder.GetPrice1(_isRep[state2]);
+
+								int offset = lenTest + 1 + lenTest2;
+								while (lenEnd < cur + offset)
+									_optimum[++lenEnd].Price = kIfinityPrice;
+								curAndLenPrice = nextRepMatchPrice + GetRepPrice(0, lenTest2, state2, posStateNext);
+								optimum = _optimum[cur + offset];
+								if (curAndLenPrice < optimum.Price)
+								{
+									optimum.Price = curAndLenPrice;
+									optimum.PosPrev = cur + lenTest + 1;
+									optimum.BackPrev = 0;
+									optimum.Prev1IsChar = true;
+									optimum.Prev2 = true;
+									optimum.PosPrev2 = cur;
+									optimum.BackPrev2 = curBack + Base.kNumRepDistances;
+								}
+							}
+						}
+						offs += 2;
+						if (offs == numDistancePairs)
+							break;
+					}
+				}
+			}
+		}
+	}
+
+	boolean ChangePair(int smallDist, int bigDist)
+	{
+		int kDif = 7;
+		return (smallDist < (1 << (32 - kDif)) && bigDist >= (smallDist << kDif));
+	}
+
+	void WriteEndMarker(int posState) throws IOException
+	{
+		if (!_writeEndMark)
+			return;
+
+		_rangeEncoder.Encode(_isMatch, (_state << Base.kNumPosStatesBitsMax) + posState, 1);
+		_rangeEncoder.Encode(_isRep, _state, 0);
+		_state = Base.StateUpdateMatch(_state);
+		int len = Base.kMatchMinLen;
+		_lenEncoder.Encode(_rangeEncoder, len - Base.kMatchMinLen, posState);
+		int posSlot = (1 << Base.kNumPosSlotBits) - 1;
+		int lenToPosState = Base.GetLenToPosState(len);
+		_posSlotEncoder[lenToPosState].Encode(_rangeEncoder, posSlot);
+		int footerBits = 30;
+		int posReduced = (1 << footerBits) - 1;
+		_rangeEncoder.EncodeDirectBits(posReduced >> Base.kNumAlignBits, footerBits - Base.kNumAlignBits);
+		_posAlignEncoder.ReverseEncode(_rangeEncoder, posReduced & Base.kAlignMask);
+	}
+
+	void Flush(int nowPos) throws IOException
+	{
+		ReleaseMFStream();
+		WriteEndMarker(nowPos & _posStateMask);
+		_rangeEncoder.FlushData();
+		_rangeEncoder.FlushStream();
+	}
+
+	public void CodeOneBlock(long[] inSize, long[] outSize, boolean[] finished) throws IOException
+	{
+		inSize[0] = 0;
+		outSize[0] = 0;
+		finished[0] = true;
+
+		if (_inStream != null)
+		{
+			_matchFinder.SetStream(_inStream);
+			_matchFinder.Init();
+			_needReleaseMFStream = true;
+			_inStream = null;
+		}
+
+		if (_finished)
+			return;
+		_finished = true;
+
+
+		long progressPosValuePrev = nowPos64;
+		if (nowPos64 == 0)
+		{
+			if (_matchFinder.GetNumAvailableBytes() == 0)
+			{
+				Flush((int)nowPos64);
+				return;
+			}
+
+			ReadMatchDistances();
+			int posState = (int)(nowPos64) & _posStateMask;
+			_rangeEncoder.Encode(_isMatch, (_state << Base.kNumPosStatesBitsMax) + posState, 0);
+			_state = Base.StateUpdateChar(_state);
+			byte curByte = _matchFinder.GetIndexByte(0 - _additionalOffset);
+			_literalEncoder.GetSubCoder((int)(nowPos64), _previousByte).Encode(_rangeEncoder, curByte);
+			_previousByte = curByte;
+			_additionalOffset--;
+			nowPos64++;
+		}
+		if (_matchFinder.GetNumAvailableBytes() == 0)
+		{
+			Flush((int)nowPos64);
+			return;
+		}
+		while (true)
+		{
+
+			int len = GetOptimum((int)nowPos64);
+			int pos = backRes;
+			int posState = ((int)nowPos64) & _posStateMask;
+			int complexState = (_state << Base.kNumPosStatesBitsMax) + posState;
+			if (len == 1 && pos == -1)
+			{
+				_rangeEncoder.Encode(_isMatch, complexState, 0);
+				byte curByte = _matchFinder.GetIndexByte((int)(0 - _additionalOffset));
+				LiteralEncoder.Encoder2 subCoder = _literalEncoder.GetSubCoder((int)nowPos64, _previousByte);
+				if (!Base.StateIsCharState(_state))
+				{
+					byte matchByte = _matchFinder.GetIndexByte((int)(0 - _repDistances[0] - 1 - _additionalOffset));
+					subCoder.EncodeMatched(_rangeEncoder, matchByte, curByte);
+				}
+				else
+					subCoder.Encode(_rangeEncoder, curByte);
+				_previousByte = curByte;
+				_state = Base.StateUpdateChar(_state);
+			}
+			else
+			{
+				_rangeEncoder.Encode(_isMatch, complexState, 1);
+				if (pos < Base.kNumRepDistances)
+				{
+					_rangeEncoder.Encode(_isRep, _state, 1);
+					if (pos == 0)
+					{
+						_rangeEncoder.Encode(_isRepG0, _state, 0);
+						if (len == 1)
+							_rangeEncoder.Encode(_isRep0Long, complexState, 0);
+						else
+							_rangeEncoder.Encode(_isRep0Long, complexState, 1);
+					}
+					else
+					{
+						_rangeEncoder.Encode(_isRepG0, _state, 1);
+						if (pos == 1)
+							_rangeEncoder.Encode(_isRepG1, _state, 0);
+						else
+						{
+							_rangeEncoder.Encode(_isRepG1, _state, 1);
+							_rangeEncoder.Encode(_isRepG2, _state, pos - 2);
+						}
+					}
+					if (len == 1)
+						_state = Base.StateUpdateShortRep(_state);
+					else
+					{
+						_repMatchLenEncoder.Encode(_rangeEncoder, len - Base.kMatchMinLen, posState);
+						_state = Base.StateUpdateRep(_state);
+					}
+					int distance = _repDistances[pos];
+					if (pos != 0)
+					{
+						for (int i = pos; i >= 1; i--)
+							_repDistances[i] = _repDistances[i - 1];
+						_repDistances[0] = distance;
+					}
+				}
+				else
+				{
+					_rangeEncoder.Encode(_isRep, _state, 0);
+					_state = Base.StateUpdateMatch(_state);
+					_lenEncoder.Encode(_rangeEncoder, len - Base.kMatchMinLen, posState);
+					pos -= Base.kNumRepDistances;
+					int posSlot = GetPosSlot(pos);
+					int lenToPosState = Base.GetLenToPosState(len);
+					_posSlotEncoder[lenToPosState].Encode(_rangeEncoder, posSlot);
+
+					if (posSlot >= Base.kStartPosModelIndex)
+					{
+						int footerBits = (int)((posSlot >> 1) - 1);
+						int baseVal = ((2 | (posSlot & 1)) << footerBits);
+						int posReduced = pos - baseVal;
+
+						if (posSlot < Base.kEndPosModelIndex)
+							BitTreeEncoder.ReverseEncode(_posEncoders,
+									baseVal - posSlot - 1, _rangeEncoder, footerBits, posReduced);
+						else
+						{
+							_rangeEncoder.EncodeDirectBits(posReduced >> Base.kNumAlignBits, footerBits - Base.kNumAlignBits);
+							_posAlignEncoder.ReverseEncode(_rangeEncoder, posReduced & Base.kAlignMask);
+							_alignPriceCount++;
+						}
+					}
+					int distance = pos;
+					for (int i = Base.kNumRepDistances - 1; i >= 1; i--)
+						_repDistances[i] = _repDistances[i - 1];
+					_repDistances[0] = distance;
+					_matchPriceCount++;
+				}
+				_previousByte = _matchFinder.GetIndexByte(len - 1 - _additionalOffset);
+			}
+			_additionalOffset -= len;
+			nowPos64 += len;
+			if (_additionalOffset == 0)
+			{
+				// if (!_fastMode)
+				if (_matchPriceCount >= (1 << 7))
+					FillDistancesPrices();
+				if (_alignPriceCount >= Base.kAlignTableSize)
+					FillAlignPrices();
+				inSize[0] = nowPos64;
+				outSize[0] = _rangeEncoder.GetProcessedSizeAdd();
+				if (_matchFinder.GetNumAvailableBytes() == 0)
+				{
+					Flush((int)nowPos64);
+					return;
+				}
+
+				if (nowPos64 - progressPosValuePrev >= (1 << 12))
+				{
+					_finished = false;
+					finished[0] = false;
+					return;
+				}
+			}
+		}
+	}
+
+	void ReleaseMFStream()
+	{
+		if (_matchFinder != null && _needReleaseMFStream)
+		{
+			_matchFinder.ReleaseStream();
+			_needReleaseMFStream = false;
+		}
+	}
+
+	void SetOutStream(java.io.OutputStream outStream)
+	{ _rangeEncoder.SetStream(outStream); }
+	void ReleaseOutStream()
+	{ _rangeEncoder.ReleaseStream(); }
+
+	void ReleaseStreams()
+	{
+		ReleaseMFStream();
+		ReleaseOutStream();
+	}
+
+	void SetStreams(java.io.InputStream inStream, java.io.OutputStream outStream,
+			long inSize, long outSize)
+	{
+		_inStream = inStream;
+		_finished = false;
+		Create();
+		SetOutStream(outStream);
+		Init();
+
+		// if (!_fastMode)
+		{
+			FillDistancesPrices();
+			FillAlignPrices();
+		}
+
+		_lenEncoder.SetTableSize(_numFastBytes + 1 - Base.kMatchMinLen);
+		_lenEncoder.UpdateTables(1 << _posStateBits);
+		_repMatchLenEncoder.SetTableSize(_numFastBytes + 1 - Base.kMatchMinLen);
+		_repMatchLenEncoder.UpdateTables(1 << _posStateBits);
+
+		nowPos64 = 0;
+	}
+
+	long[] processedInSize = new long[1]; long[] processedOutSize = new long[1]; boolean[] finished = new boolean[1];
+	public void Code(java.io.InputStream inStream, java.io.OutputStream outStream,
+			long inSize, long outSize, ICodeProgress progress) throws IOException
+	{
+		_needReleaseMFStream = false;
+		try
+		{
+			SetStreams(inStream, outStream, inSize, outSize);
+			while (true)
+			{
+
+
+
+				CodeOneBlock(processedInSize, processedOutSize, finished);
+				if (finished[0])
+					return;
+				if (progress != null)
+				{
+					progress.SetProgress(processedInSize[0], processedOutSize[0]);
+				}
+			}
+		}
+		finally
+		{
+			ReleaseStreams();
+		}
+	}
+
+	public static final int kPropSize = 5;
+	byte[] properties = new byte[kPropSize];
+
+	public void WriteCoderProperties(java.io.OutputStream outStream) throws IOException
+	{
+		properties[0] = (byte)((_posStateBits * 5 + _numLiteralPosStateBits) * 9 + _numLiteralContextBits);
+		for (int i = 0; i < 4; i++)
+			properties[1 + i] = (byte)(_dictionarySize >> (8 * i));
+		outStream.write(properties, 0, kPropSize);
+	}
+
+	int[] tempPrices = new int[Base.kNumFullDistances];
+	int _matchPriceCount;
+
+	void FillDistancesPrices()
+	{
+		for (int i = Base.kStartPosModelIndex; i < Base.kNumFullDistances; i++)
+		{
+			int posSlot = GetPosSlot(i);
+			int footerBits = (int)((posSlot >> 1) - 1);
+			int baseVal = ((2 | (posSlot & 1)) << footerBits);
+			tempPrices[i] = BitTreeEncoder.ReverseGetPrice(_posEncoders,
+				baseVal - posSlot - 1, footerBits, i - baseVal);
+		}
+
+		for (int lenToPosState = 0; lenToPosState < Base.kNumLenToPosStates; lenToPosState++)
+		{
+			int posSlot;
+			BitTreeEncoder encoder = _posSlotEncoder[lenToPosState];
+
+			int st = (lenToPosState << Base.kNumPosSlotBits);
+			for (posSlot = 0; posSlot < _distTableSize; posSlot++)
+				_posSlotPrices[st + posSlot] = encoder.GetPrice(posSlot);
+			for (posSlot = Base.kEndPosModelIndex; posSlot < _distTableSize; posSlot++)
+				_posSlotPrices[st + posSlot] += ((((posSlot >> 1) - 1) - Base.kNumAlignBits) << ru.atomation.utils.sevenzip.compression.rangecoder.Encoder.kNumBitPriceShiftBits);
+
+			int st2 = lenToPosState * Base.kNumFullDistances;
+			int i;
+			for (i = 0; i < Base.kStartPosModelIndex; i++)
+				_distancesPrices[st2 + i] = _posSlotPrices[st + i];
+			for (; i < Base.kNumFullDistances; i++)
+				_distancesPrices[st2 + i] = _posSlotPrices[st + GetPosSlot(i)] + tempPrices[i];
+		}
+		_matchPriceCount = 0;
+	}
+
+	void FillAlignPrices()
+	{
+		for (int i = 0; i < Base.kAlignTableSize; i++)
+			_alignPrices[i] = _posAlignEncoder.ReverseGetPrice(i);
+		_alignPriceCount = 0;
+	}
+
+
+	public boolean SetAlgorithm(int algorithm)
+	{
+		/*
+		_fastMode = (algorithm == 0);
+		_maxMode = (algorithm >= 2);
+		*/
+		return true;
+	}
+
+	public boolean SetDictionarySize(int dictionarySize)
+	{
+		int kDicLogSizeMaxCompress = 29;
+		if (dictionarySize < (1 << Base.kDicLogSizeMin) || dictionarySize > (1 << kDicLogSizeMaxCompress))
+			return false;
+		_dictionarySize = dictionarySize;
+		int dicLogSize;
+		for (dicLogSize = 0; dictionarySize > (1 << dicLogSize); dicLogSize++) ;
+		_distTableSize = dicLogSize * 2;
+		return true;
+	}
+
+	public boolean SetNumFastBytes(int numFastBytes)
+	{
+		if (numFastBytes < 5 || numFastBytes > Base.kMatchMaxLen)
+			return false;
+		_numFastBytes = numFastBytes;
+		return true;
+	}
+
+	public boolean SetMatchFinder(int matchFinderIndex)
+	{
+		if (matchFinderIndex < 0 || matchFinderIndex > 2)
+			return false;
+		int matchFinderIndexPrev = _matchFinderType;
+		_matchFinderType = matchFinderIndex;
+		if (_matchFinder != null && matchFinderIndexPrev != _matchFinderType)
+		{
+			_dictionarySizePrev = -1;
+			_matchFinder = null;
+		}
+		return true;
+	}
+
+	public boolean SetLcLpPb(int lc, int lp, int pb)
+	{
+		if (
+				lp < 0 || lp > Base.kNumLitPosStatesBitsEncodingMax ||
+				lc < 0 || lc > Base.kNumLitContextBitsMax ||
+				pb < 0 || pb > Base.kNumPosStatesBitsEncodingMax)
+			return false;
+		_numLiteralPosStateBits = lp;
+		_numLiteralContextBits = lc;
+		_posStateBits = pb;
+		_posStateMask = ((1) << _posStateBits) - 1;
+		return true;
+	}
+
+	public void SetEndMarkerMode(boolean endMarkerMode)
+	{
+		_writeEndMark = endMarkerMode;
+	}
 }
+
 

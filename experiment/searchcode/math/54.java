@@ -7,128 +7,97 @@
 package org.h2.compress;
 
 import java.io.IOException;
-import java.io.InputStream;
-import org.h2.message.DbException;
-import org.h2.mvstore.DataUtils;
+import java.io.OutputStream;
+import org.h2.engine.Constants;
 
 /**
- * An input stream to read from an LZF stream.
- * The data is automatically expanded.
+ * An output stream to write an LZF stream.
+ * The data is automatically compressed.
  */
-public class LZFInputStream extends InputStream {
+public class LZFOutputStream extends OutputStream {
 
-    private final InputStream in;
-    private CompressLZF decompress = new CompressLZF();
+    /**
+     * The file header of a LZF file.
+     */
+    static final int MAGIC = ('H' << 24) | ('2' << 16) | ('I' << 8) | 'S';
+
+    private final OutputStream out;
+    private final CompressLZF compress = new CompressLZF();
+    private final byte[] buffer;
     private int pos;
-    private int bufferLength;
-    private byte[] inBuffer;
-    private byte[] buffer;
+    private byte[] outBuffer;
 
-    public LZFInputStream(InputStream in) throws IOException {
-        this.in = in;
-        if (readInt() != LZFOutputStream.MAGIC) {
-            throw new IOException("Not an LZFInputStream");
+    public LZFOutputStream(OutputStream out) throws IOException {
+        this.out = out;
+        int len = Constants.IO_BUFFER_SIZE_COMPRESS;
+        buffer = new byte[len];
+        ensureOutput(len);
+        writeInt(MAGIC);
+    }
+
+    private void ensureOutput(int len) {
+        // TODO calculate the maximum overhead (worst case) for the output
+        // buffer
+        int outputLen = (len < 100 ? len + 100 : len) * 2;
+        if (outBuffer == null || outBuffer.length < outputLen) {
+            outBuffer = new byte[outputLen];
         }
     }
 
-    private static byte[] ensureSize(byte[] buff, int len) {
-        return buff == null || buff.length < len ? DataUtils.newBytes(len) : buff;
+    @Override
+    public void write(int b) throws IOException {
+        if (pos >= buffer.length) {
+            flush();
+        }
+        buffer[pos++] = (byte) b;
     }
 
-    private void fillBuffer() throws IOException {
-        if (buffer != null && pos < bufferLength) {
-            return;
-        }
-        int len = readInt();
-        if (decompress == null) {
-            // EOF
-            this.bufferLength = 0;
-        } else if (len < 0) {
-            len = -len;
-            buffer = ensureSize(buffer, len);
-            readFully(buffer, len);
-            this.bufferLength = len;
-        } else {
-            inBuffer = ensureSize(inBuffer, len);
-            int size = readInt();
-            readFully(inBuffer, len);
-            buffer = ensureSize(buffer, size);
-            try {
-                decompress.expand(inBuffer, 0, len, buffer, 0, size);
-            } catch (ArrayIndexOutOfBoundsException e) {
-                DbException.convertToIOException(e);
+    private void compressAndWrite(byte[] buff, int len) throws IOException {
+        if (len > 0) {
+            ensureOutput(len);
+            int compressed = compress.compress(buff, len, outBuffer, 0);
+            if (compressed > len) {
+                writeInt(-len);
+                out.write(buff, 0, len);
+            } else {
+                writeInt(compressed);
+                writeInt(len);
+                out.write(outBuffer, 0, compressed);
             }
-            this.bufferLength = size;
         }
+    }
+
+    private void writeInt(int x) throws IOException {
+        out.write((byte) (x >> 24));
+        out.write((byte) (x >> 16));
+        out.write((byte) (x >> 8));
+        out.write((byte) x);
+    }
+
+    @Override
+    public void write(byte[] buff, int off, int len) throws IOException {
+        while (len > 0) {
+            int copy = Math.min(buffer.length - pos, len);
+            System.arraycopy(buff, off, buffer, pos, copy);
+            pos += copy;
+            if (pos >= buffer.length) {
+                flush();
+            }
+            off += copy;
+            len -= copy;
+        }
+    }
+
+    @Override
+    public void flush() throws IOException {
+        compressAndWrite(buffer, pos);
         pos = 0;
-    }
-
-    private void readFully(byte[] buff, int len) throws IOException {
-        int off = 0;
-        while (len > 0) {
-            int l = in.read(buff, off, len);
-            len -= l;
-            off += l;
-        }
-    }
-
-    private int readInt() throws IOException {
-        int x = in.read();
-        if (x < 0) {
-            decompress = null;
-            return 0;
-        }
-        x = (x << 24) + (in.read() << 16) + (in.read() << 8) + in.read();
-        return x;
-    }
-
-    @Override
-    public int read() throws IOException {
-        fillBuffer();
-        if (pos >= bufferLength) {
-            return -1;
-        }
-        return buffer[pos++] & 255;
-    }
-
-    @Override
-    public int read(byte[] b) throws IOException {
-        return read(b, 0, b.length);
-    }
-
-    @Override
-    public int read(byte[] b, int off, int len) throws IOException {
-        if (len == 0) {
-            return 0;
-        }
-        int read = 0;
-        while (len > 0) {
-            int r = readBlock(b, off, len);
-            if (r < 0) {
-                break;
-            }
-            read += r;
-            off += r;
-            len -= r;
-        }
-        return read == 0 ? -1 : read;
-    }
-
-    private int readBlock(byte[] b, int off, int len) throws IOException {
-        fillBuffer();
-        if (pos >= bufferLength) {
-            return -1;
-        }
-        int max = Math.min(len, bufferLength - pos);
-        max = Math.min(max, b.length - off);
-        System.arraycopy(buffer, pos, b, off, max);
-        pos += max;
-        return max;
     }
 
     @Override
     public void close() throws IOException {
-        in.close();
+        flush();
+        out.close();
     }
 
 }

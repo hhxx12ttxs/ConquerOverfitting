@@ -22,16 +22,18 @@ package whitespace;
 
 
 import javax.swing.text.Segment;
-import org.gjt.sp.jedit.buffer.JEditBuffer;
 
-import org.gjt.sp.util.StandardUtilities;
+import org.gjt.sp.jedit.Buffer;
+import org.gjt.sp.jedit.MiscUtilities;
+
+import org.gjt.sp.util.Log;
 
 
 public class DocumentUtilities {
     private DocumentUtilities() {}
 
 
-    public static void untabifyLeading(JEditBuffer buffer, int tabSize) {
+    public static void untabifyLeading(Buffer buffer, int tabSize) {
         WhiteSpaceInfo whiteSpaceInfo = new WhiteSpaceInfo();
 
         for (int i = buffer.getLineCount() - 1; i >= 0; i--) {
@@ -48,7 +50,7 @@ public class DocumentUtilities {
             getLeadingWhiteSpaceInfo(s.array, s.offset, s.count, tabSize, whiteSpaceInfo);
 
             if (whiteSpaceInfo.hasTabs && whiteSpaceInfo.len > 0) {
-                String textOut = StandardUtilities.createWhiteSpace(whiteSpaceInfo.expandedLen, 0);
+                String textOut = MiscUtilities.createWhiteSpace(whiteSpaceInfo.expandedLen, 0);
 
                 buffer.remove(start, whiteSpaceInfo.len);
                 buffer.insert(start, textOut);
@@ -57,7 +59,7 @@ public class DocumentUtilities {
     }
 
 
-    public static void tabifyLeading(JEditBuffer buffer, int tabSize) {
+    public static void tabifyLeading(Buffer buffer, int tabSize) {
         WhiteSpaceInfo whiteSpaceInfo = new WhiteSpaceInfo();
 
         for (int i = buffer.getLineCount() - 1; i >= 0; i--) {
@@ -74,7 +76,7 @@ public class DocumentUtilities {
             getLeadingWhiteSpaceInfo(s.array, s.offset, s.count, tabSize, whiteSpaceInfo);
 
             if (whiteSpaceInfo.hasSpaces && whiteSpaceInfo.len > 0) {
-                String textOut = StandardUtilities.createWhiteSpace(whiteSpaceInfo.expandedLen, tabSize);
+                String textOut = MiscUtilities.createWhiteSpace(whiteSpaceInfo.expandedLen, tabSize);
 
                 buffer.remove(start, whiteSpaceInfo.len);
                 buffer.insert(start, textOut);
@@ -83,7 +85,7 @@ public class DocumentUtilities {
     }
 
 
-    public static void removeTrailingWhiteSpace(JEditBuffer buffer, String escapeChars) {
+    public static void removeTrailingWhiteSpace(Buffer buffer, String escapeChars) {
         for (int i = buffer.getLineCount() - 1; i >= 0; i--) {
             int start = buffer.getLineStartOffset(i);
             int end   = buffer.getLineEndOffset(i);

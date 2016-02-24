@@ -4,465 +4,778 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.h2.util;
+package org.h2.value;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.Closeable;
-import java.io.EOFException;
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
 import java.io.Reader;
-import java.io.StringWriter;
-import java.io.Writer;
+import java.math.BigDecimal;
+import java.net.InetAddress;
+import java.net.Socket;
+import java.sql.Date;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.sql.Time;
+import java.sql.Timestamp;
+
+import org.h2.api.ErrorCode;
 import org.h2.engine.Constants;
-import org.h2.engine.SysProperties;
+import org.h2.engine.SessionInterface;
 import org.h2.message.DbException;
-import org.h2.store.fs.FileUtils;
+import org.h2.message.TraceSystem;
+import org.h2.mvstore.DataUtils;
+import org.h2.security.SHA256;
+import org.h2.store.Data;
+import org.h2.store.DataReader;
+import org.h2.tools.SimpleResultSet;
+import org.h2.util.DateTimeUtils;
+import org.h2.util.IOUtils;
+import org.h2.util.MathUtils;
+import org.h2.util.NetUtils;
+import org.h2.util.StringUtils;
+import org.h2.util.Utils;
 
 /**
- * This utility class contains input/output functions.
+ * The transfer class is used to send and receive Value objects.
+ * It is used on both the client side, and on the server side.
  */
-public class IOUtils {
+public class Transfer {
 
-    private IOUtils() {
-        // utility class
+    private static final int BUFFER_SIZE = 16 * 1024;
+    private static final int LOB_MAGIC = 0x1234;
+    private static final int LOB_MAC_SALT_LENGTH = 16;
+
+    private Socket socket;
+    private DataInputStream in;
+    private DataOutputStream out;
+    private SessionInterface session;
+    private boolean ssl;
+    private int version;
+    private byte[] lobMacSalt;
+
+    /**
+     * Create a new transfer object for the specified session.
+     *
+     * @param session the session
+     */
+    public Transfer(SessionInterface session) {
+        this.session = session;
     }
 
     /**
-     * Close an output stream without throwing an exception.
+     * Set the socket this object uses.
      *
-     * @param out the output stream or null
+     * @param s the socket
      */
-    public static void closeSilently(Closeable out) {
-        if (out != null) {
-            try {
-                trace("closeSilently", null, out);
-                out.close();
-            } catch (Exception e) {
-                // ignore
-            }
+    public void setSocket(Socket s) {
+        socket = s;
+    }
+
+    /**
+     * Initialize the transfer object. This method will try to open an input and
+     * output stream.
+     */
+    public synchronized void init() throws IOException {
+        if (socket != null) {
+            in = new DataInputStream(
+                    new BufferedInputStream(
+                            socket.getInputStream(), Transfer.BUFFER_SIZE));
+            out = new DataOutputStream(
+                    new BufferedOutputStream(
+                            socket.getOutputStream(), Transfer.BUFFER_SIZE));
         }
     }
 
     /**
-     * Skip a number of bytes in an input stream.
-     *
-     * @param in the input stream
-     * @param skip the number of bytes to skip
-     * @throws EOFException if the end of file has been reached before all bytes
-     *             could be skipped
-     * @throws IOException if an IO exception occurred while skipping
+     * Write pending changes.
      */
-    public static void skipFully(InputStream in, long skip) throws IOException {
-        try {
-            while (skip > 0) {
-                long skipped = in.skip(skip);
-                if (skipped <= 0) {
-                    throw new EOFException();
-                }
-                skip -= skipped;
-            }
-        } catch (Exception e) {
-            throw DbException.convertToIOException(e);
-        }
+    public void flush() throws IOException {
+        out.flush();
     }
 
     /**
-     * Skip a number of characters in a reader.
+     * Write a boolean.
      *
-     * @param reader the reader
-     * @param skip the number of characters to skip
-     * @throws EOFException if the end of file has been reached before all
-     *             characters could be skipped
-     * @throws IOException if an IO exception occurred while skipping
+     * @param x the value
+     * @return itself
      */
-    public static void skipFully(Reader reader, long skip) throws IOException {
-        try {
-            while (skip > 0) {
-                long skipped = reader.skip(skip);
-                if (skipped <= 0) {
-                    throw new EOFException();
-                }
-                skip -= skipped;
-            }
-        } catch (Exception e) {
-            throw DbException.convertToIOException(e);
-        }
+    public Transfer writeBoolean(boolean x) throws IOException {
+        out.writeByte((byte) (x ? 1 : 0));
+        return this;
     }
 
     /**
-     * Copy all data from the input stream to the output stream and close both
-     * streams. Exceptions while closing are ignored.
+     * Read a boolean.
      *
-     * @param in the input stream
-     * @param out the output stream
-     * @return the number of bytes copied
+     * @return the value
      */
-    public static long copyAndClose(InputStream in, OutputStream out)
-            throws IOException {
-        try {
-            long len = copyAndCloseInput(in, out);
-            out.close();
-            return len;
-        } catch (Exception e) {
-            throw DbException.convertToIOException(e);
-        } finally {
-            closeSilently(out);
-        }
+    public boolean readBoolean() throws IOException {
+        return in.readByte() == 1;
     }
 
     /**
-     * Copy all data from the input stream to the output stream and close the
-     * input stream. Exceptions while closing are ignored.
+     * Write a byte.
      *
-     * @param in the input stream
-     * @param out the output stream (null if writing is not required)
-     * @return the number of bytes copied
+     * @param x the value
+     * @return itself
      */
-    public static long copyAndCloseInput(InputStream in, OutputStream out)
-            throws IOException {
-        try {
-            return copy(in, out);
-        } catch (Exception e) {
-            throw DbException.convertToIOException(e);
-        } finally {
-            closeSilently(in);
-        }
+    private Transfer writeByte(byte x) throws IOException {
+        out.writeByte(x);
+        return this;
     }
 
     /**
-     * Copy all data from the input stream to the output stream. Both streams
-     * are kept open.
+     * Read a byte.
      *
-     * @param in the input stream
-     * @param out the output stream (null if writing is not required)
-     * @return the number of bytes copied
+     * @return the value
      */
-    public static long copy(InputStream in, OutputStream out)
-            throws IOException {
-        return copy(in, out, Long.MAX_VALUE);
+    private byte readByte() throws IOException {
+        return in.readByte();
     }
 
     /**
-     * Copy all data from the input stream to the output stream. Both streams
-     * are kept open.
+     * Write an int.
      *
-     * @param in the input stream
-     * @param out the output stream (null if writing is not required)
-     * @param length the maximum number of bytes to copy
-     * @return the number of bytes copied
+     * @param x the value
+     * @return itself
      */
-    public static long copy(InputStream in, OutputStream out, long length)
-            throws IOException {
-        try {
-            long copied = 0;
-            int len = (int) Math.min(length, Constants.IO_BUFFER_SIZE);
-            byte[] buffer = new byte[len];
-            while (length > 0) {
-                len = in.read(buffer, 0, len);
-                if (len < 0) {
-                    break;
-                }
-                if (out != null) {
-                    out.write(buffer, 0, len);
-                }
-                copied += len;
-                length -= len;
-                len = (int) Math.min(length, Constants.IO_BUFFER_SIZE);
-            }
-            return copied;
-        } catch (Exception e) {
-            throw DbException.convertToIOException(e);
-        }
+    public Transfer writeInt(int x) throws IOException {
+        out.writeInt(x);
+        return this;
     }
 
     /**
-     * Copy all data from the reader to the writer and close the reader.
-     * Exceptions while closing are ignored.
+     * Read an int.
      *
-     * @param in the reader
-     * @param out the writer (null if writing is not required)
-     * @param length the maximum number of bytes to copy
-     * @return the number of characters copied
+     * @return the value
      */
-    public static long copyAndCloseInput(Reader in, Writer out, long length)
-            throws IOException {
-        try {
-            long copied = 0;
-            int len = (int) Math.min(length, Constants.IO_BUFFER_SIZE);
-            char[] buffer = new char[len];
-            while (length > 0) {
-                len = in.read(buffer, 0, len);
-                if (len < 0) {
-                    break;
-                }
-                if (out != null) {
-                    out.write(buffer, 0, len);
-                }
-                length -= len;
-                len = (int) Math.min(length, Constants.IO_BUFFER_SIZE);
-                copied += len;
-            }
-            return copied;
-        } catch (Exception e) {
-            throw DbException.convertToIOException(e);
-        } finally {
-            in.close();
-        }
+    public int readInt() throws IOException {
+        return in.readInt();
     }
 
     /**
-     * Close an input stream without throwing an exception.
+     * Write a long.
      *
-     * @param in the input stream or null
+     * @param x the value
+     * @return itself
      */
-    public static void closeSilently(InputStream in) {
-        if (in != null) {
-            try {
-                trace("closeSilently", null, in);
-                in.close();
-            } catch (Exception e) {
-                // ignore
-            }
-        }
+    public Transfer writeLong(long x) throws IOException {
+        out.writeLong(x);
+        return this;
     }
 
     /**
-     * Close a reader without throwing an exception.
+     * Read a long.
      *
-     * @param reader the reader or null
+     * @return the value
      */
-    public static void closeSilently(Reader reader) {
-        if (reader != null) {
-            try {
-                reader.close();
-            } catch (Exception e) {
-                // ignore
-            }
-        }
+    public long readLong() throws IOException {
+        return in.readLong();
     }
 
     /**
-     * Close a writer without throwing an exception.
+     * Write a double.
      *
-     * @param writer the writer or null
+     * @param i the value
+     * @return itself
      */
-    public static void closeSilently(Writer writer) {
-        if (writer != null) {
-            try {
-                writer.flush();
-                writer.close();
-            } catch (Exception e) {
-                // ignore
-            }
-        }
+    private Transfer writeDouble(double i) throws IOException {
+        out.writeDouble(i);
+        return this;
     }
 
     /**
-     * Read a number of bytes from an input stream and close the stream.
+     * Write a float.
      *
-     * @param in the input stream
-     * @param length the maximum number of bytes to read, or -1 to read until
-     *            the end of file
-     * @return the bytes read
+     * @param i the value
+     * @return itself
      */
-    public static byte[] readBytesAndClose(InputStream in, int length)
-            throws IOException {
-        try {
-            if (length <= 0) {
-                length = Integer.MAX_VALUE;
-            }
-            int block = Math.min(Constants.IO_BUFFER_SIZE, length);
-            ByteArrayOutputStream out = new ByteArrayOutputStream(block);
-            copy(in, out, length);
-            return out.toByteArray();
-        } catch (Exception e) {
-            throw DbException.convertToIOException(e);
-        } finally {
-            in.close();
-        }
+    private Transfer writeFloat(float i) throws IOException {
+        out.writeFloat(i);
+        return this;
     }
 
     /**
-     * Read a number of characters from a reader and close it.
+     * Read a double.
      *
-     * @param in the reader
-     * @param length the maximum number of characters to read, or -1 to read
-     *            until the end of file
-     * @return the string read
+     * @return the value
      */
-    public static String readStringAndClose(Reader in, int length)
-            throws IOException {
-        try {
-            if (length <= 0) {
-                length = Integer.MAX_VALUE;
-            }
-            int block = Math.min(Constants.IO_BUFFER_SIZE, length);
-            StringWriter out = new StringWriter(block);
-            copyAndCloseInput(in, out, length);
-            return out.toString();
-        } finally {
-            in.close();
-        }
+    private double readDouble() throws IOException {
+        return in.readDouble();
     }
 
     /**
-     * Try to read the given number of bytes to the buffer. This method reads
-     * until the maximum number of bytes have been read or until the end of
-     * file.
+     * Read a float.
      *
-     * @param in the input stream
-     * @param buffer the output buffer
-     * @param max the number of bytes to read at most
-     * @return the number of bytes read, 0 meaning EOF
+     * @return the value
      */
-    public static int readFully(InputStream in, byte[] buffer, int max)
-            throws IOException {
-        try {
-            int result = 0, len = Math.min(max, buffer.length);
-            while (len > 0) {
-                int l = in.read(buffer, result, len);
-                if (l < 0) {
-                    break;
-                }
-                result += l;
-                len -= l;
-            }
-            return result;
-        } catch (Exception e) {
-            throw DbException.convertToIOException(e);
-        }
+    private float readFloat() throws IOException {
+        return in.readFloat();
     }
 
     /**
-     * Try to read the given number of characters to the buffer. This method
-     * reads until the maximum number of characters have been read or until the
-     * end of file.
+     * Write a string. The maximum string length is Integer.MAX_VALUE.
      *
-     * @param in the reader
-     * @param buffer the output buffer
-     * @param max the number of characters to read at most
-     * @return the number of characters read, 0 meaning EOF
+     * @param s the value
+     * @return itself
      */
-    public static int readFully(Reader in, char[] buffer, int max)
-            throws IOException {
-        try {
-            int result = 0, len = Math.min(max, buffer.length);
-            while (len > 0) {
-                int l = in.read(buffer, result, len);
-                if (l < 0) {
-                    break;
-                }
-                result += l;
-                len -= l;
-            }
-            return result;
-        } catch (Exception e) {
-            throw DbException.convertToIOException(e);
-        }
-    }
-
-    /**
-     * Create a buffered reader to read from an input stream using the UTF-8
-     * format. If the input stream is null, this method returns null. The
-     * InputStreamReader that is used here is not exact, that means it may read
-     * some additional bytes when buffering.
-     *
-     * @param in the input stream or null
-     * @return the reader
-     */
-    public static Reader getBufferedReader(InputStream in) {
-        return in == null ? null : new BufferedReader(
-                new InputStreamReader(in, Constants.UTF8));
-    }
-
-    /**
-     * Create a reader to read from an input stream using the UTF-8 format. If
-     * the input stream is null, this method returns null. The InputStreamReader
-     * that is used here is not exact, that means it may read some additional
-     * bytes when buffering.
-     *
-     * @param in the input stream or null
-     * @return the reader
-     */
-    public static Reader getReader(InputStream in) {
-        // InputStreamReader may read some more bytes
-        return in == null ? null : new BufferedReader(
-                new InputStreamReader(in, Constants.UTF8));
-    }
-
-    /**
-     * Create a buffered writer to write to an output stream using the UTF-8
-     * format. If the output stream is null, this method returns null.
-     *
-     * @param out the output stream or null
-     * @return the writer
-     */
-    public static Writer getBufferedWriter(OutputStream out) {
-        return out == null ? null : new BufferedWriter(
-                new OutputStreamWriter(out, Constants.UTF8));
-    }
-
-    /**
-     * Wrap an input stream in a reader. The bytes are converted to characters
-     * using the US-ASCII character set.
-     *
-     * @param in the input stream
-     * @return the reader
-     */
-    public static Reader getAsciiReader(InputStream in) {
-        try {
-            return in == null ? null : new InputStreamReader(in, "US-ASCII");
-        } catch (Exception e) {
-            // UnsupportedEncodingException
-            throw DbException.convert(e);
-        }
-    }
-
-    /**
-     * Trace input or output operations if enabled.
-     *
-     * @param method the method from where this method was called
-     * @param fileName the file name
-     * @param o the object to append to the message
-     */
-    public static void trace(String method, String fileName, Object o) {
-        if (SysProperties.TRACE_IO) {
-            System.out.println("IOUtils." + method + " " + fileName + " " + o);
-        }
-    }
-
-    /**
-     * Create an input stream to read from a string. The string is converted to
-     * a byte array using UTF-8 encoding.
-     * If the string is null, this method returns null.
-     *
-     * @param s the string
-     * @return the input stream
-     */
-    public static InputStream getInputStreamFromString(String s) {
+    public Transfer writeString(String s) throws IOException {
         if (s == null) {
+            out.writeInt(-1);
+        } else {
+            int len = s.length();
+            out.writeInt(len);
+            for (int i = 0; i < len; i++) {
+                out.writeChar(s.charAt(i));
+            }
+        }
+        return this;
+    }
+
+    /**
+     * Read a string.
+     *
+     * @return the value
+     */
+    public String readString() throws IOException {
+        int len = in.readInt();
+        if (len == -1) {
             return null;
         }
-        return new ByteArrayInputStream(s.getBytes(Constants.UTF8));
+        StringBuilder buff = new StringBuilder(len);
+        for (int i = 0; i < len; i++) {
+            buff.append(in.readChar());
+        }
+        String s = buff.toString();
+        s = StringUtils.cache(s);
+        return s;
     }
 
     /**
-     * Copy a file from one directory to another, or to another file.
+     * Write a byte array.
      *
-     * @param original the original file name
-     * @param copy the file name of the copy
+     * @param data the value
+     * @return itself
      */
-    public static void copyFiles(String original, String copy) throws IOException {
-        InputStream in = FileUtils.newInputStream(original);
-        OutputStream out = FileUtils.newOutputStream(copy, false);
-        copyAndClose(in, out);
+    public Transfer writeBytes(byte[] data) throws IOException {
+        if (data == null) {
+            writeInt(-1);
+        } else {
+            writeInt(data.length);
+            out.write(data);
+        }
+        return this;
+    }
+
+    /**
+     * Write a number of bytes.
+     *
+     * @param buff the value
+     * @param off the offset
+     * @param len the length
+     * @return itself
+     */
+    public Transfer writeBytes(byte[] buff, int off, int len) throws IOException {
+        out.write(buff, off, len);
+        return this;
+    }
+
+    /**
+     * Read a byte array.
+     *
+     * @return the value
+     */
+    public byte[] readBytes() throws IOException {
+        int len = readInt();
+        if (len == -1) {
+            return null;
+        }
+        byte[] b = DataUtils.newBytes(len);
+        in.readFully(b);
+        return b;
+    }
+
+    /**
+     * Read a number of bytes.
+     *
+     * @param buff the target buffer
+     * @param off the offset
+     * @param len the number of bytes to read
+     */
+    public void readBytes(byte[] buff, int off, int len) throws IOException {
+        in.readFully(buff, off, len);
+    }
+
+    /**
+     * Close the transfer object and the socket.
+     */
+    public synchronized void close() {
+        if (socket != null) {
+            try {
+                if (out != null) {
+                    out.flush();
+                }
+                if (socket != null) {
+                    socket.close();
+                }
+            } catch (IOException e) {
+                TraceSystem.traceThrowable(e);
+            } finally {
+                socket = null;
+            }
+        }
+    }
+
+    /**
+     * Write a value.
+     *
+     * @param v the value
+     */
+    public void writeValue(Value v) throws IOException {
+        int type = v.getType();
+        writeInt(type);
+        switch (type) {
+        case Value.NULL:
+            break;
+        case Value.BYTES:
+        case Value.JAVA_OBJECT:
+            writeBytes(v.getBytesNoCopy());
+            break;
+        case Value.UUID: {
+            ValueUuid uuid = (ValueUuid) v;
+            writeLong(uuid.getHigh());
+            writeLong(uuid.getLow());
+            break;
+        }
+        case Value.BOOLEAN:
+            writeBoolean(v.getBoolean().booleanValue());
+            break;
+        case Value.BYTE:
+            writeByte(v.getByte());
+            break;
+        case Value.TIME:
+            if (version >= Constants.TCP_PROTOCOL_VERSION_9) {
+                writeLong(((ValueTime) v).getNanos());
+            } else if (version >= Constants.TCP_PROTOCOL_VERSION_7) {
+                writeLong(DateTimeUtils.getTimeLocalWithoutDst(v.getTime()));
+            } else {
+                writeLong(v.getTime().getTime());
+            }
+            break;
+        case Value.DATE:
+            if (version >= Constants.TCP_PROTOCOL_VERSION_9) {
+                writeLong(((ValueDate) v).getDateValue());
+            } else if (version >= Constants.TCP_PROTOCOL_VERSION_7) {
+                writeLong(DateTimeUtils.getTimeLocalWithoutDst(v.getDate()));
+            } else {
+                writeLong(v.getDate().getTime());
+            }
+            break;
+        case Value.TIMESTAMP: {
+            if (version >= Constants.TCP_PROTOCOL_VERSION_9) {
+                ValueTimestamp ts = (ValueTimestamp) v;
+                writeLong(ts.getDateValue());
+                writeLong(ts.getNanos());
+            } else if (version >= Constants.TCP_PROTOCOL_VERSION_7) {
+                Timestamp ts = v.getTimestamp();
+                writeLong(DateTimeUtils.getTimeLocalWithoutDst(ts));
+                writeInt(ts.getNanos());
+            } else {
+                Timestamp ts = v.getTimestamp();
+                writeLong(ts.getTime());
+                writeInt(ts.getNanos());
+            }
+            break;
+        }
+        case Value.DECIMAL:
+            writeString(v.getString());
+            break;
+        case Value.DOUBLE:
+            writeDouble(v.getDouble());
+            break;
+        case Value.FLOAT:
+            writeFloat(v.getFloat());
+            break;
+        case Value.INT:
+            writeInt(v.getInt());
+            break;
+        case Value.LONG:
+            writeLong(v.getLong());
+            break;
+        case Value.SHORT:
+            writeInt(v.getShort());
+            break;
+        case Value.STRING:
+        case Value.STRING_IGNORECASE:
+        case Value.STRING_FIXED:
+            writeString(v.getString());
+            break;
+        case Value.BLOB: {
+            if (version >= Constants.TCP_PROTOCOL_VERSION_11) {
+                if (v instanceof ValueLobDb) {
+                    ValueLobDb lob = (ValueLobDb) v;
+                    if (lob.isStored()) {
+                        writeLong(-1);
+                        writeInt(lob.getTableId());
+                        writeLong(lob.getLobId());
+                        if (version >= Constants.TCP_PROTOCOL_VERSION_12) {
+                            writeBytes(calculateLobMac(lob.getLobId()));
+                        }
+                        writeLong(lob.getPrecision());
+                        break;
+                    }
+                }
+            }
+            long length = v.getPrecision();
+            if (length < 0) {
+                throw DbException.get(
+                        ErrorCode.CONNECTION_BROKEN_1, "length=" + length);
+            }
+            writeLong(length);
+            long written = IOUtils.copyAndCloseInput(v.getInputStream(), out);
+            if (written != length) {
+                throw DbException.get(
+                        ErrorCode.CONNECTION_BROKEN_1, "length:" + length + " written:" + written);
+            }
+            writeInt(LOB_MAGIC);
+            break;
+        }
+        case Value.CLOB: {
+            if (version >= Constants.TCP_PROTOCOL_VERSION_11) {
+                if (v instanceof ValueLobDb) {
+                    ValueLobDb lob = (ValueLobDb) v;
+                    if (lob.isStored()) {
+                        writeLong(-1);
+                        writeInt(lob.getTableId());
+                        writeLong(lob.getLobId());
+                        if (version >= Constants.TCP_PROTOCOL_VERSION_12) {
+                            writeBytes(calculateLobMac(lob.getLobId()));
+                        }
+                        writeLong(lob.getPrecision());
+                        break;
+                    }
+                }
+            }
+            long length = v.getPrecision();
+            if (length < 0) {
+                throw DbException.get(
+                        ErrorCode.CONNECTION_BROKEN_1, "length=" + length);
+            }
+            writeLong(length);
+            Reader reader = v.getReader();
+            Data.copyString(reader, out);
+            writeInt(LOB_MAGIC);
+            break;
+        }
+        case Value.ARRAY: {
+            ValueArray va = (ValueArray) v;
+            Value[] list = va.getList();
+            int len = list.length;
+            Class<?> componentType = va.getComponentType();
+            if (componentType == Object.class) {
+                writeInt(len);
+            } else {
+                writeInt(-(len + 1));
+                writeString(componentType.getName());
+            }
+            for (Value value : list) {
+                writeValue(value);
+            }
+            break;
+        }
+        case Value.RESULT_SET: {
+            try {
+                ResultSet rs = ((ValueResultSet) v).getResultSet();
+                rs.beforeFirst();
+                ResultSetMetaData meta = rs.getMetaData();
+                int columnCount = meta.getColumnCount();
+                writeInt(columnCount);
+                for (int i = 0; i < columnCount; i++) {
+                    writeString(meta.getColumnName(i + 1));
+                    writeInt(meta.getColumnType(i + 1));
+                    writeInt(meta.getPrecision(i + 1));
+                    writeInt(meta.getScale(i + 1));
+                }
+                while (rs.next()) {
+                    writeBoolean(true);
+                    for (int i = 0; i < columnCount; i++) {
+                        int t = DataType.getValueTypeFromResultSet(meta, i + 1);
+                        Value val = DataType.readValue(session, rs, i + 1, t);
+                        writeValue(val);
+                    }
+                }
+                writeBoolean(false);
+                rs.beforeFirst();
+            } catch (SQLException e) {
+                throw DbException.convertToIOException(e);
+            }
+            break;
+        }
+        case Value.GEOMETRY:
+            if (version >= Constants.TCP_PROTOCOL_VERSION_14) {
+                writeBytes(v.getBytesNoCopy());
+            } else {
+                writeString(v.getString());
+            }
+            break;
+        default:
+            throw DbException.get(ErrorCode.CONNECTION_BROKEN_1, "type=" + type);
+        }
+    }
+
+    /**
+     * Read a value.
+     *
+     * @return the value
+     */
+    public Value readValue() throws IOException {
+        int type = readInt();
+        switch(type) {
+        case Value.NULL:
+            return ValueNull.INSTANCE;
+        case Value.BYTES:
+            return ValueBytes.getNoCopy(readBytes());
+        case Value.UUID:
+            return ValueUuid.get(readLong(), readLong());
+        case Value.JAVA_OBJECT:
+            return ValueJavaObject.getNoCopy(null, readBytes(), session.getDataHandler());
+        case Value.BOOLEAN:
+            return ValueBoolean.get(readBoolean());
+        case Value.BYTE:
+            return ValueByte.get(readByte());
+        case Value.DATE:
+            if (version >= Constants.TCP_PROTOCOL_VERSION_9) {
+                return ValueDate.fromDateValue(readLong());
+            } else if (version >= Constants.TCP_PROTOCOL_VERSION_7) {
+                return ValueDate.get(new Date(DateTimeUtils.getTimeUTCWithoutDst(readLong())));
+            }
+            return ValueDate.get(new Date(readLong()));
+        case Value.TIME:
+            if (version >= Constants.TCP_PROTOCOL_VERSION_9) {
+                return ValueTime.fromNanos(readLong());
+            } else if (version >= Constants.TCP_PROTOCOL_VERSION_7) {
+                return ValueTime.get(new Time(DateTimeUtils.getTimeUTCWithoutDst(readLong())));
+            }
+            return ValueTime.get(new Time(readLong()));
+        case Value.TIMESTAMP: {
+            if (version >= Constants.TCP_PROTOCOL_VERSION_9) {
+                return ValueTimestamp.fromDateValueAndNanos(readLong(), readLong());
+            } else if (version >= Constants.TCP_PROTOCOL_VERSION_7) {
+                Timestamp ts = new Timestamp(DateTimeUtils.getTimeUTCWithoutDst(readLong()));
+                ts.setNanos(readInt());
+                return ValueTimestamp.get(ts);
+            }
+            Timestamp ts = new Timestamp(readLong());
+            ts.setNanos(readInt());
+            return ValueTimestamp.get(ts);
+        }
+        case Value.DECIMAL:
+            return ValueDecimal.get(new BigDecimal(readString()));
+        case Value.DOUBLE:
+            return ValueDouble.get(readDouble());
+        case Value.FLOAT:
+            return ValueFloat.get(readFloat());
+        case Value.INT:
+            return ValueInt.get(readInt());
+        case Value.LONG:
+            return ValueLong.get(readLong());
+        case Value.SHORT:
+            return ValueShort.get((short) readInt());
+        case Value.STRING:
+            return ValueString.get(readString());
+        case Value.STRING_IGNORECASE:
+            return ValueStringIgnoreCase.get(readString());
+        case Value.STRING_FIXED:
+            return ValueStringFixed.get(readString());
+        case Value.BLOB: {
+            long length = readLong();
+            if (version >= Constants.TCP_PROTOCOL_VERSION_11) {
+                if (length == -1) {
+                    int tableId = readInt();
+                    long id = readLong();
+                    byte[] hmac;
+                    if (version >= Constants.TCP_PROTOCOL_VERSION_12) {
+                        hmac = readBytes();
+                    } else {
+                        hmac = null;
+                    }
+                    long precision = readLong();
+                    return ValueLobDb.create(
+                            Value.BLOB, session.getDataHandler(), tableId, id, hmac, precision);
+                }
+                int len = (int) length;
+                byte[] small = new byte[len];
+                IOUtils.readFully(in, small, len);
+                int magic = readInt();
+                if (magic != LOB_MAGIC) {
+                    throw DbException.get(
+                            ErrorCode.CONNECTION_BROKEN_1, "magic=" + magic);
+                }
+                return ValueLobDb.createSmallLob(Value.BLOB, small, length);
+            }
+            Value v = session.getDataHandler().getLobStorage().createBlob(in, length);
+            int magic = readInt();
+            if (magic != LOB_MAGIC) {
+                throw DbException.get(
+                        ErrorCode.CONNECTION_BROKEN_1, "magic=" + magic);
+            }
+            return v;
+        }
+        case Value.CLOB: {
+            long length = readLong();
+            if (version >= Constants.TCP_PROTOCOL_VERSION_11) {
+                if (length == -1) {
+                    int tableId = readInt();
+                    long id = readLong();
+                    byte[] hmac;
+                    if (version >= Constants.TCP_PROTOCOL_VERSION_12) {
+                        hmac = readBytes();
+                    } else {
+                        hmac = null;
+                    }
+                    long precision = readLong();
+                    return ValueLobDb.create(
+                            Value.CLOB, session.getDataHandler(), tableId, id, hmac, precision);
+                }
+                DataReader reader = new DataReader(in);
+                int len = (int) length;
+                char[] buff = new char[len];
+                IOUtils.readFully(reader, buff, len);
+                int magic = readInt();
+                if (magic != LOB_MAGIC) {
+                    throw DbException.get(
+                            ErrorCode.CONNECTION_BROKEN_1, "magic=" + magic);
+                }
+                byte[] small = new String(buff).getBytes(Constants.UTF8);
+                return ValueLobDb.createSmallLob(Value.CLOB, small, length);
+            }
+            Value v = session.getDataHandler().getLobStorage().
+                    createClob(new DataReader(in), length);
+            int magic = readInt();
+            if (magic != LOB_MAGIC) {
+                throw DbException.get(
+                        ErrorCode.CONNECTION_BROKEN_1, "magic=" + magic);
+            }
+            return v;
+        }
+        case Value.ARRAY: {
+            int len = readInt();
+            Class<?> componentType = Object.class;
+            if (len < 0) {
+                len = -(len + 1);
+                componentType = Utils.loadUserClass(readString());
+            }
+            Value[] list = new Value[len];
+            for (int i = 0; i < len; i++) {
+                list[i] = readValue();
+            }
+            return ValueArray.get(componentType, list);
+        }
+        case Value.RESULT_SET: {
+            SimpleResultSet rs = new SimpleResultSet();
+            rs.setAutoClose(false);
+            int columns = readInt();
+            for (int i = 0; i < columns; i++) {
+                rs.addColumn(readString(), readInt(), readInt(), readInt());
+            }
+            while (true) {
+                if (!readBoolean()) {
+                    break;
+                }
+                Object[] o = new Object[columns];
+                for (int i = 0; i < columns; i++) {
+                    o[i] = readValue().getObject();
+                }
+                rs.addRow(o);
+            }
+            return ValueResultSet.get(rs);
+        }
+        case Value.GEOMETRY:
+            if (version >= Constants.TCP_PROTOCOL_VERSION_14) {
+                return ValueGeometry.get(readBytes());
+            }
+            return ValueGeometry.get(readString());
+        default:
+            throw DbException.get(ErrorCode.CONNECTION_BROKEN_1, "type=" + type);
+        }
+    }
+
+    /**
+     * Get the socket.
+     *
+     * @return the socket
+     */
+    public Socket getSocket() {
+        return socket;
+    }
+
+    /**
+     * Set the session.
+     *
+     * @param session the session
+     */
+    public void setSession(SessionInterface session) {
+        this.session = session;
+    }
+
+    /**
+     * Enable or disable SSL.
+     *
+     * @param ssl the new value
+     */
+    public void setSSL(boolean ssl) {
+        this.ssl = ssl;
+    }
+
+    /**
+     * Open a new new connection to the same address and port as this one.
+     *
+     * @return the new transfer object
+     */
+    public Transfer openNewConnection() throws IOException {
+        InetAddress address = socket.getInetAddress();
+        int port = socket.getPort();
+        Socket s2 = NetUtils.createSocket(address, port, ssl);
+        Transfer trans = new Transfer(null);
+        trans.setSocket(s2);
+        trans.setSSL(ssl);
+        return trans;
+    }
+
+    public void setVersion(int version) {
+        this.version = version;
+    }
+
+    public synchronized boolean isClosed() {
+        return socket == null || socket.isClosed();
+    }
+
+    /**
+     * Verify the HMAC.
+     *
+     * @param hmac the message authentication code
+     * @param lobId the lobId
+     * @throws DbException if the HMAC does not match
+     */
+    public void verifyLobMac(byte[] hmac, long lobId) {
+        byte[] result = calculateLobMac(lobId);
+        if (!Utils.compareSecure(hmac,  result)) {
+            throw DbException.get(ErrorCode.REMOTE_CONNECTION_NOT_ALLOWED);
+        }
+    }
+
+    private byte[] calculateLobMac(long lobId) {
+        if (lobMacSalt == null) {
+            lobMacSalt = MathUtils.secureRandomBytes(LOB_MAC_SALT_LENGTH);
+        }
+        byte[] data = new byte[8];
+        Utils.writeLong(data, 0, lobId);
+        byte[] hmacData = SHA256.getHashWithSalt(data, lobMacSalt);
+        return hmacData;
     }
 
 }

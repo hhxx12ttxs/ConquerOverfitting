@@ -1,371 +1,141 @@
-/*
- * Copyright 2004-2011 H2 Group. Multiple-Licensed under the H2 License,
- * Version 1.0, and under the Eclipse Public License, Version 1.0
- * (http://h2database.com/html/license.html).
- *
- * This code is based on the LZF algorithm from Marc Lehmann. It is a
- * re-implementation of the C code:
- * http://cvs.schmorp.de/liblzf/lzf_c.c?view=markup
- * http://cvs.schmorp.de/liblzf/lzf_d.c?view=markup
- *
- * According to a mail from Marc Lehmann, it's OK to use his algorithm:
- * Date: 2010-07-15 15:57
- * Subject: Re: Question about LZF licensing
- * ...
- * The algorithm is not copyrighted (and cannot be copyrighted afaik) - as long
- * as you wrote everything yourself, without copying my code, that's just fine
- * (looking is of course fine too).
- * ...
- *
- * Still I would like to keep his copyright info:
- *
- * Copyright (c) 2000-2005 Marc Alexander Lehmann <schmorp@schmorp.de>
- * Copyright (c) 2005 Oren J. Maurice <oymaurice@hazorea.org.il>
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *
- *   1.  Redistributions of source code must retain the above copyright notice,
- *       this list of conditions and the following disclaimer.
- *
- *   2.  Redistributions in binary form must reproduce the above copyright
- *       notice, this list of conditions and the following disclaimer in the
- *       documentation and/or other materials provided with the distribution.
- *
- *   3.  The name of the author may not be used to endorse or promote products
- *       derived from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ''AS IS'' AND ANY EXPRESS OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO
- * EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
- * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
- * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
- * OF THE POSSIBILITY OF SUCH DAMAGE.
- */
-
-package org.mapdb;
-
-import java.io.DataInput;
-import java.io.DataOutput;
-import java.io.IOException;
-import java.io.Serializable;
-import java.util.Arrays;
-
+package com.objectwave.crypto;
 /**
- * <p>
- * This class implements the LZF lossless data compression algorithm. LZF is a
- * Lempel-Ziv variant with byte-aligned output, and optimized for speed.
- * </p>
- * <p>
- * Safety/Use Notes:
- * </p>
- * <ul>
- * <li>Each instance should be used by a single thread only.</li>
- * <li>The data buffers should be smaller than 1 GB.</li>
- * <li>For performance reasons, safety checks on expansion are omitted.</li>
- * <li>Invalid compressed data can cause an ArrayIndexOutOfBoundsException.</li>
- * </ul>
- * <p>
- * The LZF compressed format knows literal runs and back-references:
- * </p>
- * <ul>
- * <li>Literal run: directly copy bytes from input to output.</li>
- * <li>Back-reference: copy previous data to output stream, with specified
- * offset from location and length. The length is at least 3 bytes.</li>
- * </ul>
- *<p>
- * The first byte of the compressed stream is the control byte. For literal
- * runs, the highest three bits of the control byte are not set, the the lower
- * bits are the literal run length, and the next bytes are data to copy directly
- * into the output. For back-references, the highest three bits of the control
- * byte are the back-reference length. If all three bits are set, then the
- * back-reference length is stored in the next byte. The lower bits of the
- * control byte combined with the next byte form the offset for the
- * back-reference.
- * </p>
+ * Ciphertext stealing (CTS) support for the Square block cipher.
+ *
+ * @author Public domain implementation by Paulo Barreto <pbarreto@nw.com.br>
+ *
+ * Version 2.1 (1997.08.11)
+ *
+ * =============================================================================
+ *
+ * Differences from version 2.0 (1997.07.28)
+ *
+ * -- Fixed the decryption method (ciphertext stealing offset was wrong).
+ * -- Slightly changed the loop form to increase speed.
+ *
+ * =============================================================================
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ''AS IS'' AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+ * BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+ * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+ * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
  */
-public final class CompressLZF{
 
-    /**
-     * The number of entries in the hash table. The size is a trade-off between
-     * hash collisions (reduced compression) and speed (amount that fits in CPU
-     * cache).
-     */
-    private static final int HASH_SIZE = 1 << 14;
+import java.lang.*;
 
-    /**
-     * The maximum number of literals in a chunk (32).
-     */
-    private static final int MAX_LITERAL = 1 << 5;
+public final class SquareCts implements SquareMode {
 
-    /**
-     * The maximum offset allowed for a back-reference (8192).
-     */
-    private static final int MAX_OFF = 1 << 13;
+    private Square sq;
+	private final byte[] mask = new byte[Square.BLOCK_LENGTH];
 
-    /**
-     * The maximum back-reference length (264).
-     */
-    private static final int MAX_REF = (1 << 8) + (1 << 3);
 
-    /**
-     * Hash table for matching byte sequences (reused for performance).
-     */
-    private int[] cachedHashTable;
-
-    /**
-     * Return byte with lower 2 bytes being byte at index, then index+1.
-     */
-    private static int first(byte[] in, int inPos) {
-        return (in[inPos] << 8) | (in[inPos + 1] & 255);
-    }
-
-    /**
-     * Shift v 1 byte left, add value at index inPos+2.
-     */
-    private static int next(int v, byte[] in, int inPos) {
-        return (v << 8) | (in[inPos + 2] & 255);
-    }
-
-    /**
-     * Compute the address in the hash table.
-     */
-    private static int hash(int h) {
-        return ((h * 2777) >> 9) & (HASH_SIZE - 1);
-    }
-
-    public int compress(byte[] in, int inLen, byte[] out, int outPos) {
-        int inPos = 0;
-        if (cachedHashTable == null) {
-            cachedHashTable = new int[HASH_SIZE];
+    public final void setKey (byte[] key)
+    	// throws IndexOutOfBoundsException
+    {
+        sq = new Square (key);
+        for (int i = 0; i < Square.BLOCK_LENGTH; i++) {
+            mask[i] = 0;
         }
-        int[] hashTab = cachedHashTable;
-        int literals = 0;
-        outPos++;
-        int future = first(in, 0);
-        while (inPos < inLen - 4) {
-            byte p2 = in[inPos + 2];
-            // next
-            future = (future << 8) + (p2 & 255);
-            int off = hash(future);
-            int ref = hashTab[off];
-            hashTab[off] = inPos;
-            // if (ref < inPos
-            //       && ref > 0
-            //       && (off = inPos - ref - 1) < MAX_OFF
-            //       && in[ref + 2] == p2
-            //       && (((in[ref] & 255) << 8) | (in[ref + 1] & 255)) ==
-            //           ((future >> 8) & 0xffff)) {
-            if (ref < inPos
-                        && ref > 0
-                        && (off = inPos - ref - 1) < MAX_OFF
-                        && in[ref + 2] == p2
-                        && in[ref + 1] == (byte) (future >> 8)
-                        && in[ref] == (byte) (future >> 16)) {
-                // match
-                int maxLen = inLen - inPos - 2;
-                if (maxLen > MAX_REF) {
-                    maxLen = MAX_REF;
-                }
-                if (literals == 0) {
-                    // multiple back-references,
-                    // so there is no literal run control byte
-                    outPos--;
-                } else {
-                    // set the control byte at the start of the literal run
-                    // to store the number of literals
-                    out[outPos - literals - 1] = (byte) (literals - 1);
-                    literals = 0;
-                }
-                int len = 3;
-                while (len < maxLen && in[ref + len] == in[inPos + len]) {
-                    len++;
-                }
-                len -= 2;
-                if (len < 7) {
-                    out[outPos++] = (byte) ((off >> 8) + (len << 5));
-                } else {
-                    out[outPos++] = (byte) ((off >> 8) + (7 << 5));
-                    out[outPos++] = (byte) (len - 7);
-                }
-                out[outPos++] = (byte) off;
-                // move one byte forward to allow for a literal run control byte
-                outPos++;
-                inPos += len;
-                // rebuild the future, and store the last bytes to the hashtable.
-                // Storing hashes of the last bytes in back-reference improves
-                // the compression ratio and only reduces speed slightly.
-                future = first(in, inPos);
-                future = next(future, in, inPos);
-                hashTab[hash(future)] = inPos++;
-                future = next(future, in, inPos);
-                hashTab[hash(future)] = inPos++;
-            } else {
-                // copy one byte from input to output as part of literal
-                out[outPos++] = in[inPos++];
-                literals++;
-                // at the end of this literal chunk, write the length
-                // to the control byte and start a new chunk
-                if (literals == MAX_LITERAL) {
-                    out[outPos - literals - 1] = (byte) (literals - 1);
-                    literals = 0;
-                    // move ahead one byte to allow for the
-                    // literal run control byte
-                    outPos++;
-                }
+    } // setKey
+
+
+    public final void setIV (byte[] iv)
+    	// throws IndexOutOfBoundsException
+    {
+        System.arraycopy (iv, 0, mask, 0, Square.BLOCK_LENGTH);
+    	// encrypt the IV so that possibility of correlation with ciphertext is avoided (this is done for compatibility with Pegwit):
+    	sq.blockEncrypt (mask, 0, mask, 0);
+    } // setIV
+
+
+    public final void encrypt (byte[] buf, int off, int len)
+    	// throws IndexOutOfBoundsException
+    {
+        if (len < Square.BLOCK_LENGTH) {
+            throw new IndexOutOfBoundsException ();
+        }
+    	while (len >= Square.BLOCK_LENGTH) {
+    		// mask and encrypt the current block:
+    		for (int i = 0; i < Square.BLOCK_LENGTH; i++) {
+    		    buf[off + i] ^= mask[i];
+    		}
+    		sq.blockEncrypt (buf, off, buf, off);
+    		for (int i = 0; i < Square.BLOCK_LENGTH; i++) {
+    		    mask[i] = buf[off++];
+    		}
+    		len -= Square.BLOCK_LENGTH;
+    	}
+        if (len != 0) {
+            // mask the last, *incomplete* block:
+            for (int i = 0; i < len; i++) {
+                mask[i] ^= buf[off + i];
             }
+            // encrypt the masking result:
+    		sq.blockEncrypt (mask, 0, mask, 0);
+    		// shift ciphertext pieces to suitable offsets:
+    		System.arraycopy (buf, off - Square.BLOCK_LENGTH, buf, off, len);
+    		System.arraycopy (mask, 0, buf, off - Square.BLOCK_LENGTH, Square.BLOCK_LENGTH);
         }
-        // write the remaining few bytes as literals
-        while (inPos < inLen) {
-            out[outPos++] = in[inPos++];
-            literals++;
-            if (literals == MAX_LITERAL) {
-                out[outPos - literals - 1] = (byte) (literals - 1);
-                literals = 0;
-                outPos++;
-            }
+    } // encrypt
+
+
+    public final void decrypt (byte[] buf, int off, int len)
+    	// throws IndexOutOfBoundsException
+    {
+        if (len < Square.BLOCK_LENGTH) {
+            throw new IndexOutOfBoundsException ();
         }
-        // writes the final literal run length to the control byte
-        out[outPos - literals - 1] = (byte) (literals - 1);
-        if (literals == 0) {
-            outPos--;
+    	byte[] temp = new byte[Square.BLOCK_LENGTH];
+    	while (len >= 2*Square.BLOCK_LENGTH) {
+    	    for (int i = 0; i < Square.BLOCK_LENGTH; i++) {
+    	        temp[i] = buf[off + i];
+    	    }
+    		// decrypt and unmask the block:
+    		sq.blockDecrypt (buf, off, buf, off);
+    		for (int i = 0; i < Square.BLOCK_LENGTH; i++) {
+    		    buf[off++] ^= mask[i]; mask[i] = temp[i];
+    	    }
+    		len -= Square.BLOCK_LENGTH;
+    	}
+    	// now Square.BLOCK_LENGTH <= len < 2*Square.BLOCK_LENGTH;
+    	// save the current block for chaining:
+   		System.arraycopy (buf, off, temp, 0, Square.BLOCK_LENGTH);
+        if (len > Square.BLOCK_LENGTH) {
+    		// decrypt and unmask the last *incomplete* block:
+    		sq.blockDecrypt (buf, off, buf, off);
+    		for (int i = 0; i < len - Square.BLOCK_LENGTH; i++) {
+    			// at this point, buf[off + Square.BLOCK_LENGTH + i] contains
+    			// a cipherbyte, and buf[off + i] contains the exclusive-or of
+    			// this cipherbyte with the corresponding plainbyte...
+    			buf[off + i] ^= buf[off + Square.BLOCK_LENGTH + i] ^= buf[off + i];
+    			// ... now buf[off + i] contains the pure cipherbyte and
+    			// buf[off + Square.BLOCK_LENGTH + i] contains the plainbyte.
+    		}
         }
-        return outPos;
-    }
+		// decrypt and unmask the last *complete* block:
+		sq.blockDecrypt (buf, off, buf, off);
+		for (int i = 0; i < Square.BLOCK_LENGTH; i++) {
+		    buf[off++] ^= mask[i]; mask[i] = temp[i];
+		}
+    } // decrypt
 
-    public void expand(byte[] in, int inPos, int inLen, byte[] out, int outPos, int outLen) {
-        // if ((inPos | outPos | outLen) < 0) {
-        if (inPos < 0 || outPos < 0 || outLen < 0) {
-            throw new IllegalArgumentException();
+
+    protected final void finalize ()
+        throws Throwable
+    {
+        for (int i = 0; i < Square.BLOCK_LENGTH; i++) {
+            mask[i] = 0;
         }
-        do {
-            int ctrl = in[inPos++] & 255;
-            if (ctrl < MAX_LITERAL) {
-                // literal run of length = ctrl + 1,
-                ctrl++;
-                // copy to output and move forward this many bytes
-                System.arraycopy(in, inPos, out, outPos, ctrl);
-                outPos += ctrl;
-                inPos += ctrl;
-            } else {
-                // back reference
-                // the highest 3 bits are the match length
-                int len = ctrl >> 5;
-                // if the length is maxed, add the next byte to the length
-                if (len == 7) {
-                    len += in[inPos++] & 255;
-                }
-                // minimum back-reference is 3 bytes,
-                // so 2 was subtracted before storing size
-                len += 2;
+        super.finalize ();
+    } // finalize
 
-                // ctrl is now the offset for a back-reference...
-                // the logical AND operation removes the length bits
-                ctrl = -((ctrl & 0x1f) << 8) - 1;
+} // SquareCts
 
-                // the next byte augments/increases the offset
-                ctrl -= in[inPos++] & 255;
-
-                // copy the back-reference bytes from the given
-                // location in output to current position
-                ctrl += outPos;
-                if (outPos + len >= out.length) {
-                    // reduce array bounds checking
-                    throw new ArrayIndexOutOfBoundsException();
-                }
-                for (int i = 0; i < len; i++) {
-                    out[outPos++] = out[ctrl++];
-                }
-            }
-        } while (outPos < outLen);
-    }
-
-
-    public static final Serializer<byte[]> SERIALIZER = new Serializer<byte[]>() {
-
-        final ThreadLocal<CompressLZF> LZF = new ThreadLocal<CompressLZF>() {
-            @Override
-            protected CompressLZF initialValue() {
-                return new CompressLZF();
-            }
-        };
-
-        @Override
-        public void serialize(DataOutput out, byte[] value) throws IOException {
-            if (value == null) return;
-
-            CompressLZF lzf = LZF.get();
-            byte[] outbuf = new byte[value.length + 40];
-            int len = lzf.compress(value, value.length, outbuf, 0);
-            //check if compressed data are larger then original
-            if (value.length <= len) {
-                //in this case do not compress data, write 0 as indicator
-                Utils.packInt(out, 0);
-                out.write(value);
-            } else {
-                Utils.packInt(out, value.length); //write original decompressed size
-                out.write(outbuf, 0, len);
-            }
-        }
-
-        @Override
-        public byte[] deserialize(DataInput in, int available) throws IOException {
-            if (available == 0) return null;
-            //get original decompressed size
-            DataInput2 in2 = (DataInput2) in;
-            int origPos = in2.pos;
-            int expendedLen = Utils.unpackInt(in);
-            byte[] inbuf = new byte[available - (in2.pos - origPos)];
-            in.readFully(inbuf);
-            if (expendedLen == 0) {
-                //special case, data are not compressed
-                return inbuf;
-            }
-            byte[] outbuf = new byte[expendedLen + 40];
-
-            CompressLZF lzf = LZF.get();
-            lzf.expand(inbuf, 0, inbuf.length, outbuf, 0, expendedLen);
-            outbuf = Arrays.copyOf(outbuf, expendedLen);
-
-            return outbuf;
-        }
-
-
-    };
-
-    /**
-     * Wraps existing serializer and compresses its input/output
-     */
-    public static <E> Serializer<E> serializerCompressWrapper(Serializer<E> serializer) {
-        return new SerializerCompressWrapper<E>(serializer);
-    }
-
-
-    protected static class SerializerCompressWrapper<E> implements Serializer<E>, Serializable {
-        protected final Serializer<E> serializer;
-        public SerializerCompressWrapper(Serializer<E> serializer) {
-            this.serializer = serializer;
-        }
-
-        @Override
-        public void serialize(DataOutput out, E value) throws IOException {
-            //serialize to byte[]
-            DataOutput2 out2 = new DataOutput2();
-            serializer.serialize(out2, value);
-            byte[] b = out2.copyBytes();
-            CompressLZF.SERIALIZER.serialize(out, b);
-        }
-
-        @Override
-        public E deserialize(DataInput in, int available) throws IOException {
-            byte[] b = CompressLZF.SERIALIZER.deserialize(in, available);
-            DataInput2 in2 = new DataInput2(b);
-            return serializer.deserialize(in2, b.length);
-        }
-    }
-
-}

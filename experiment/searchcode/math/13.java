@@ -1,1756 +1,1388 @@
 
-package com.trilead.ssh2.channel;
+package com.trilead.ssh2;
 
+import java.io.BufferedOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.PrintStream;
+import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Vector;
 
-import com.trilead.ssh2.AuthAgentCallback;
-import com.trilead.ssh2.ChannelCondition;
-import com.trilead.ssh2.log.Logger;
-import com.trilead.ssh2.packets.PacketChannelAuthAgentReq;
-import com.trilead.ssh2.packets.PacketChannelOpenConfirmation;
-import com.trilead.ssh2.packets.PacketChannelOpenFailure;
-import com.trilead.ssh2.packets.PacketChannelTrileadPing;
-import com.trilead.ssh2.packets.PacketGlobalCancelForwardRequest;
-import com.trilead.ssh2.packets.PacketGlobalForwardRequest;
-import com.trilead.ssh2.packets.PacketGlobalTrileadPing;
-import com.trilead.ssh2.packets.PacketOpenDirectTCPIPChannel;
-import com.trilead.ssh2.packets.PacketOpenSessionChannel;
-import com.trilead.ssh2.packets.PacketSessionExecCommand;
-import com.trilead.ssh2.packets.PacketSessionPtyRequest;
-import com.trilead.ssh2.packets.PacketSessionPtyResize;
-import com.trilead.ssh2.packets.PacketSessionStartShell;
-import com.trilead.ssh2.packets.PacketSessionSubsystemRequest;
-import com.trilead.ssh2.packets.PacketSessionX11Request;
-import com.trilead.ssh2.packets.Packets;
 import com.trilead.ssh2.packets.TypesReader;
-import com.trilead.ssh2.transport.MessageHandler;
-import com.trilead.ssh2.transport.TransportManager;
+import com.trilead.ssh2.packets.TypesWriter;
+import com.trilead.ssh2.sftp.AttribFlags;
+import com.trilead.ssh2.sftp.ErrorCodes;
+import com.trilead.ssh2.sftp.Packet;
+
 
 /**
- * ChannelManager. Please read the comments in Channel.java.
+ * A <code>SFTPv3Client</code> represents a SFTP (protocol version 3)
+ * client connection tunnelled over a SSH-2 connection. This is a very simple
+ * (synchronous) implementation.
  * <p>
- * Besides the crypto part, this is the core of the library.
+ * Basically, most methods in this class map directly to one of
+ * the packet types described in draft-ietf-secsh-filexfer-02.txt.
+ * <p>
+ * Note: this is experimental code.
+ * <p>
+ * Error handling: the methods of this class throw IOExceptions. However, unless
+ * there is catastrophic failure, exceptions of the type {@link SFTPv3Client} will
+ * be thrown (a subclass of IOException). Therefore, you can implement more verbose
+ * behavior by checking if a thrown exception if of this type. If yes, then you
+ * can cast the exception and access detailed information about the failure. 
+ * <p>
+ * Notes about file names, directory names and paths, copy-pasted
+ * from the specs:
+ * <ul>
+ * <li>SFTP v3 represents file names as strings. File names are
+ * assumed to use the slash ('/') character as a directory separator.</li>
+ * <li>File names starting with a slash are "absolute", and are relative to
+ * the root of the file system.  Names starting with any other character
+ * are relative to the user's default directory (home directory).</li>
+ * <li>Servers SHOULD interpret a path name component ".." as referring to
+ * the parent directory, and "." as referring to the current directory.
+ * If the server implementation limits access to certain parts of the
+ * file system, it must be extra careful in parsing file names when
+ * enforcing such restrictions.  There have been numerous reported
+ * security bugs where a ".." in a path name has allowed access outside
+ * the intended area.</li>
+ * <li>An empty path name is valid, and it refers to the user's default
+ * directory (usually the user's home directory).</li>
+ * </ul>
+ * <p>
+ * If you are still not tired then please go on and read the comment for
+ * {@link #setCharset(String)}.
  * 
  * @author Christian Plattner, plattner@trilead.com
- * @version $Id: ChannelManager.java,v 1.2 2008/03/03 07:01:36 cplattne Exp $
+ * @version $Id: SFTPv3Client.java,v 1.3 2008/04/01 12:38:09 cplattne Exp $
  */
-public class ChannelManager implements MessageHandler
+public class SFTPv3Client
 {
-	private static final Logger log = Logger.getLogger(ChannelManager.class);
+	final Connection conn;
+	final Session sess;
+	final PrintStream debug;
 
-	private HashMap x11_magic_cookies = new HashMap();
+	boolean flag_closed = false;
 
-	private TransportManager tm;
+	InputStream is;
+	OutputStream os;
 
-	private Vector channels = new Vector();
-	private int nextLocalChannel = 100;
-	private boolean shutdown = false;
-	private int globalSuccessCounter = 0;
-	private int globalFailedCounter = 0;
+	int protocol_version = 0;
+	HashMap server_extensions = new HashMap();
 
-	private HashMap remoteForwardings = new HashMap();
+	int next_request_id = 1000;
 
-	private AuthAgentCallback authAgent;
+	String charsetName = null;
 
-	private Vector listenerThreads = new Vector();
-
-	private boolean listenerThreadsAllowed = true;
-
-	public ChannelManager(TransportManager tm)
+	/**
+	 * Create a SFTP v3 client.
+	 * 
+	 * @param conn The underlying SSH-2 connection to be used.
+	 * @param debug
+	 * @throws IOException
+	 * 
+	 * @deprecated this constructor (debug version) will disappear in the future,
+	 *             use {@link #SFTPv3Client(Connection)} instead.
+	 */
+	public SFTPv3Client(Connection conn, PrintStream debug) throws IOException
 	{
-		this.tm = tm;
-		tm.registerMessageHandler(this, 80, 100);
+		if (conn == null)
+			throw new IllegalArgumentException("Cannot accept null argument!");
+
+		this.conn = conn;
+		this.debug = debug;
+
+		if (debug != null)
+			debug.println("Opening session and starting SFTP subsystem.");
+
+		sess = conn.openSession();
+		sess.startSubSystem("sftp");
+
+		is = sess.getStdout();
+		os = new BufferedOutputStream(sess.getStdin(), 2048);
+
+		if ((is == null) || (os == null))
+			throw new IOException("There is a problem with the streams of the underlying channel.");
+
+		init();
 	}
 
-	private Channel getChannel(int id)
+	/**
+	 * Create a SFTP v3 client.
+	 * 
+	 * @param conn The underlying SSH-2 connection to be used.
+	 * @throws IOException
+	 */
+	public SFTPv3Client(Connection conn) throws IOException
 	{
-		synchronized (channels)
-		{
-			for (int i = 0; i < channels.size(); i++)
-			{
-				Channel c = (Channel) channels.elementAt(i);
-				if (c.localID == id)
-					return c;
-			}
-		}
-		return null;
+		this(conn, null);
 	}
 
-	private void removeChannel(int id)
+	/**
+	 * Set the charset used to convert between Java Unicode Strings and byte encodings
+	 * used by the server for paths and file names. Unfortunately, the SFTP v3 draft
+	 * says NOTHING about such conversions (well, with the exception of error messages
+	 * which have to be in UTF-8). Newer drafts specify to use UTF-8 for file names
+	 * (if I remember correctly). However, a quick test using OpenSSH serving a EXT-3
+	 * filesystem has shown that UTF-8 seems to be a bad choice for SFTP v3 (tested with
+	 * filenames containing german umlauts). "windows-1252" seems to work better for Europe.
+	 * Luckily, "windows-1252" is the platform default in my case =).
+	 * <p>
+	 * If you don't set anything, then the platform default will be used (this is the default
+	 * behavior).
+	 * 
+	 * @see #getCharset()
+	 * 
+	 * @param charset the name of the charset to be used or <code>null</code> to use the platform's
+	 *        default encoding.
+	 * @throws IOException
+	 */
+	public void setCharset(String charset) throws IOException
 	{
-		synchronized (channels)
+		if (charset == null)
 		{
-			for (int i = 0; i < channels.size(); i++)
-			{
-				Channel c = (Channel) channels.elementAt(i);
-				if (c.localID == id)
-				{
-					channels.removeElementAt(i);
-					break;
-				}
-			}
-		}
-	}
-
-	private int addChannel(Channel c)
-	{
-		synchronized (channels)
-		{
-			channels.addElement(c);
-			return nextLocalChannel++;
-		}
-	}
-
-	private void waitUntilChannelOpen(Channel c) throws IOException
-	{
-		synchronized (c)
-		{
-			while (c.state == Channel.STATE_OPENING)
-			{
-				try
-				{
-					c.wait();
-				}
-				catch (InterruptedException ignore)
-				{
-				}
-			}
-
-			if (c.state != Channel.STATE_OPEN)
-			{
-				removeChannel(c.localID);
-
-				String detail = c.getReasonClosed();
-
-				if (detail == null)
-					detail = "state: " + c.state;
-
-				throw new IOException("Could not open channel (" + detail + ")");
-			}
-		}
-	}
-
-	private final boolean waitForGlobalRequestResult() throws IOException
-	{
-		synchronized (channels)
-		{
-			while ((globalSuccessCounter == 0) && (globalFailedCounter == 0))
-			{
-				if (shutdown)
-				{
-					throw new IOException("The connection is being shutdown");
-				}
-
-				try
-				{
-					channels.wait();
-				}
-				catch (InterruptedException ignore)
-				{
-				}
-			}
-
-			if ((globalFailedCounter == 0) && (globalSuccessCounter == 1))
-				return true;
-
-			if ((globalFailedCounter == 1) && (globalSuccessCounter == 0))
-				return false;
-
-			throw new IOException("Illegal state. The server sent " + globalSuccessCounter
-					+ " SSH_MSG_REQUEST_SUCCESS and " + globalFailedCounter + " SSH_MSG_REQUEST_FAILURE messages.");
-		}
-	}
-
-	private final boolean waitForChannelRequestResult(Channel c) throws IOException
-	{
-		synchronized (c)
-		{
-			while ((c.successCounter == 0) && (c.failedCounter == 0))
-			{
-				if (c.state != Channel.STATE_OPEN)
-				{
-					String detail = c.getReasonClosed();
-
-					if (detail == null)
-						detail = "state: " + c.state;
-
-					throw new IOException("This SSH2 channel is not open (" + detail + ")");
-				}
-
-				try
-				{
-					c.wait();
-				}
-				catch (InterruptedException ignore)
-				{
-				}
-			}
-
-			if ((c.failedCounter == 0) && (c.successCounter == 1))
-				return true;
-
-			if ((c.failedCounter == 1) && (c.successCounter == 0))
-				return false;
-
-			throw new IOException("Illegal state. The server sent " + c.successCounter
-					+ " SSH_MSG_CHANNEL_SUCCESS and " + c.failedCounter + " SSH_MSG_CHANNEL_FAILURE messages.");
-		}
-	}
-
-	public void registerX11Cookie(String hexFakeCookie, X11ServerData data)
-	{
-		synchronized (x11_magic_cookies)
-		{
-			x11_magic_cookies.put(hexFakeCookie, data);
-		}
-	}
-
-	public void unRegisterX11Cookie(String hexFakeCookie, boolean killChannels)
-	{
-		if (hexFakeCookie == null)
-			throw new IllegalStateException("hexFakeCookie may not be null");
-
-		synchronized (x11_magic_cookies)
-		{
-			x11_magic_cookies.remove(hexFakeCookie);
-		}
-
-		if (killChannels == false)
+			charsetName = charset;
 			return;
-
-		if (log.isEnabled())
-			log.log(50, "Closing all X11 channels for the given fake cookie");
-
-		Vector channel_copy;
-
-		synchronized (channels)
-		{
-			channel_copy = (Vector) channels.clone();
 		}
 
-		for (int i = 0; i < channel_copy.size(); i++)
+		try
 		{
-			Channel c = (Channel) channel_copy.elementAt(i);
-
-			synchronized (c)
-			{
-				if (hexFakeCookie.equals(c.hexX11FakeCookie) == false)
-					continue;
-			}
-
-			try
-			{
-				closeChannel(c, "Closing X11 channel since the corresponding session is closing", true);
-			}
-			catch (IOException e)
-			{
-			}
+			Charset.forName(charset);
 		}
+		catch (Exception e)
+		{
+			throw (IOException) new IOException("This charset is not supported").initCause(e);
+		}
+		charsetName = charset;
 	}
 
-	public X11ServerData checkX11Cookie(String hexFakeCookie)
+	/**
+	 * The currently used charset for filename encoding/decoding.
+	 * 
+	 * @see #setCharset(String)
+	 * 
+	 * @return The name of the charset (<code>null</code> if the platform's default charset is being used)
+	 */
+	public String getCharset()
 	{
-		synchronized (x11_magic_cookies)
-		{
-			if (hexFakeCookie != null)
-				return (X11ServerData) x11_magic_cookies.get(hexFakeCookie);
-		}
-		return null;
+		return charsetName;
 	}
 
-	public void closeAllChannels()
+	private final void checkHandleValidAndOpen(SFTPv3FileHandle handle) throws IOException
 	{
-		if (log.isEnabled())
-			log.log(50, "Closing all channels");
+		if (handle.client != this)
+			throw new IOException("The file handle was created with another SFTPv3FileHandle instance.");
 
-		Vector channel_copy;
-
-		synchronized (channels)
-		{
-			channel_copy = (Vector) channels.clone();
-		}
-
-		for (int i = 0; i < channel_copy.size(); i++)
-		{
-			Channel c = (Channel) channel_copy.elementAt(i);
-			try
-			{
-				closeChannel(c, "Closing all channels", true);
-			}
-			catch (IOException e)
-			{
-			}
-		}
+		if (handle.isClosed == true)
+			throw new IOException("The file handle is closed.");
 	}
 
-	public void closeChannel(Channel c, String reason, boolean force) throws IOException
+	private final void sendMessage(int type, int requestId, byte[] msg, int off, int len) throws IOException
 	{
-		byte msg[] = new byte[5];
+		int msglen = len + 1;
 
-		synchronized (c)
+		if (type != Packet.SSH_FXP_INIT)
+			msglen += 4;
+
+		os.write(msglen >> 24);
+		os.write(msglen >> 16);
+		os.write(msglen >> 8);
+		os.write(msglen);
+		os.write(type);
+
+		if (type != Packet.SSH_FXP_INIT)
 		{
-			if (force)
-			{
-				c.state = Channel.STATE_CLOSED;
-				c.EOF = true;
-			}
-
-			c.setReasonClosed(reason);
-
-			msg[0] = Packets.SSH_MSG_CHANNEL_CLOSE;
-			msg[1] = (byte) (c.remoteID >> 24);
-			msg[2] = (byte) (c.remoteID >> 16);
-			msg[3] = (byte) (c.remoteID >> 8);
-			msg[4] = (byte) (c.remoteID);
-
-			c.notifyAll();
+			os.write(requestId >> 24);
+			os.write(requestId >> 16);
+			os.write(requestId >> 8);
+			os.write(requestId);
 		}
 
-		synchronized (c.channelSendLock)
-		{
-			if (c.closeMessageSent == true)
-				return;
-			tm.sendMessage(msg);
-			c.closeMessageSent = true;
-		}
-
-		if (log.isEnabled())
-			log.log(50, "Sent SSH_MSG_CHANNEL_CLOSE (channel " + c.localID + ")");
+		os.write(msg, off, len);
+		os.flush();
 	}
 
-	public void sendEOF(Channel c) throws IOException
+	private final void sendMessage(int type, int requestId, byte[] msg) throws IOException
 	{
-		byte[] msg = new byte[5];
-
-		synchronized (c)
-		{
-			if (c.state != Channel.STATE_OPEN)
-				return;
-
-			msg[0] = Packets.SSH_MSG_CHANNEL_EOF;
-			msg[1] = (byte) (c.remoteID >> 24);
-			msg[2] = (byte) (c.remoteID >> 16);
-			msg[3] = (byte) (c.remoteID >> 8);
-			msg[4] = (byte) (c.remoteID);
-		}
-
-		synchronized (c.channelSendLock)
-		{
-			if (c.closeMessageSent == true)
-				return;
-			tm.sendMessage(msg);
-		}
-
-		if (log.isEnabled())
-			log.log(50, "Sent EOF (Channel " + c.localID + "/" + c.remoteID + ")");
+		sendMessage(type, requestId, msg, 0, msg.length);
 	}
 
-	public void sendOpenConfirmation(Channel c) throws IOException
-	{
-		PacketChannelOpenConfirmation pcoc = null;
-
-		synchronized (c)
-		{
-			if (c.state != Channel.STATE_OPENING)
-				return;
-
-			c.state = Channel.STATE_OPEN;
-
-			pcoc = new PacketChannelOpenConfirmation(c.remoteID, c.localID, c.localWindow, c.localMaxPacketSize);
-		}
-
-		synchronized (c.channelSendLock)
-		{
-			if (c.closeMessageSent == true)
-				return;
-			tm.sendMessage(pcoc.getPayload());
-		}
-	}
-
-	public void sendData(Channel c, byte[] buffer, int pos, int len) throws IOException
+	private final void readBytes(byte[] buff, int pos, int len) throws IOException
 	{
 		while (len > 0)
 		{
-			int thislen = 0;
-			byte[] msg;
-
-			synchronized (c)
-			{
-				while (true)
-				{
-					if (c.state == Channel.STATE_CLOSED)
-						throw new IOException("SSH channel is closed. (" + c.getReasonClosed() + ")");
-
-					if (c.state != Channel.STATE_OPEN)
-						throw new IOException("SSH channel in strange state. (" + c.state + ")");
-
-					if (c.remoteWindow != 0)
-						break;
-
-					try
-					{
-						c.wait();
-					}
-					catch (InterruptedException ignore)
-					{
-					}
-				}
-
-				/* len > 0, no sign extension can happen when comparing */
-
-				thislen = (c.remoteWindow >= len) ? len : (int) c.remoteWindow;
-
-				int estimatedMaxDataLen = c.remoteMaxPacketSize - (tm.getPacketOverheadEstimate() + 9);
-
-				/* The worst case scenario =) a true bottleneck */
-
-				if (estimatedMaxDataLen <= 0)
-				{
-					estimatedMaxDataLen = 1;
-				}
-
-				if (thislen > estimatedMaxDataLen)
-					thislen = estimatedMaxDataLen;
-
-				c.remoteWindow -= thislen;
-
-				msg = new byte[1 + 8 + thislen];
-
-				msg[0] = Packets.SSH_MSG_CHANNEL_DATA;
-				msg[1] = (byte) (c.remoteID >> 24);
-				msg[2] = (byte) (c.remoteID >> 16);
-				msg[3] = (byte) (c.remoteID >> 8);
-				msg[4] = (byte) (c.remoteID);
-				msg[5] = (byte) (thislen >> 24);
-				msg[6] = (byte) (thislen >> 16);
-				msg[7] = (byte) (thislen >> 8);
-				msg[8] = (byte) (thislen);
-
-				System.arraycopy(buffer, pos, msg, 9, thislen);
-			}
-
-			synchronized (c.channelSendLock)
-			{
-				if (c.closeMessageSent == true)
-					throw new IOException("SSH channel is closed. (" + c.getReasonClosed() + ")");
-
-				tm.sendMessage(msg);
-			}
-
-			pos += thislen;
-			len -= thislen;
+			int count = is.read(buff, pos, len);
+			if (count < 0)
+				throw new IOException("Unexpected end of sftp stream.");
+			if ((count == 0) || (count > len))
+				throw new IOException("Underlying stream implementation is bogus!");
+			len -= count;
+			pos += count;
 		}
 	}
 
-	public int requestGlobalForward(String bindAddress, int bindPort, String targetAddress, int targetPort)
-			throws IOException
+	/**
+	 * Read a message and guarantee that the <b>contents</b> is not larger than
+	 * <code>maxlen</code> bytes.
+	 * <p>
+	 * Note: receiveMessage(34000) actually means that the message may be up to 34004
+	 * bytes (the length attribute preceeding the contents is 4 bytes).
+	 * 
+	 * @param maxlen
+	 * @return the message contents
+	 * @throws IOException
+	 */
+	private final byte[] receiveMessage(int maxlen) throws IOException
 	{
-		RemoteForwardingData rfd = new RemoteForwardingData();
+		byte[] msglen = new byte[4];
 
-		rfd.bindAddress = bindAddress;
-		rfd.bindPort = bindPort;
-		rfd.targetAddress = targetAddress;
-		rfd.targetPort = targetPort;
+		readBytes(msglen, 0, 4);
 
-		synchronized (remoteForwardings)
-		{
-			Integer key = new Integer(bindPort);
+		int len = (((msglen[0] & 0xff) << 24) | ((msglen[1] & 0xff) << 16) | ((msglen[2] & 0xff) << 8) | (msglen[3] & 0xff));
 
-			if (remoteForwardings.get(key) != null)
-			{
-				throw new IOException("There is already a forwarding for remote port " + bindPort);
-			}
+		if ((len > maxlen) || (len <= 0))
+			throw new IOException("Illegal sftp packet len: " + len);
 
-			remoteForwardings.put(key, rfd);
-		}
+		byte[] msg = new byte[len];
 
-		synchronized (channels)
-		{
-			globalSuccessCounter = globalFailedCounter = 0;
-		}
+		readBytes(msg, 0, len);
 
-		PacketGlobalForwardRequest pgf = new PacketGlobalForwardRequest(true, bindAddress, bindPort);
-		tm.sendMessage(pgf.getPayload());
-
-		if (log.isEnabled())
-			log.log(50, "Requesting a remote forwarding ('" + bindAddress + "', " + bindPort + ")");
-
-		try
-		{
-			if (waitForGlobalRequestResult() == false)
-				throw new IOException("The server denied the request (did you enable port forwarding?)");
-		}
-		catch (IOException e)
-		{
-			synchronized (remoteForwardings)
-			{
-				remoteForwardings.remove(rfd);
-			}
-			throw e;
-		}
-
-		return bindPort;
+		return msg;
 	}
 
-	public void requestCancelGlobalForward(int bindPort) throws IOException
+	private final int generateNextRequestID()
 	{
-		RemoteForwardingData rfd = null;
-
-		synchronized (remoteForwardings)
+		synchronized (this)
 		{
-			rfd = (RemoteForwardingData) remoteForwardings.get(new Integer(bindPort));
+			return next_request_id++;
+		}
+	}
 
-			if (rfd == null)
-				throw new IOException("Sorry, there is no known remote forwarding for remote port " + bindPort);
+	private final void closeHandle(byte[] handle) throws IOException
+	{
+		int req_id = generateNextRequestID();
+
+		TypesWriter tw = new TypesWriter();
+		tw.writeString(handle, 0, handle.length);
+
+		sendMessage(Packet.SSH_FXP_CLOSE, req_id, tw.getBytes());
+
+		expectStatusOKMessage(req_id);
+	}
+
+	private SFTPv3FileAttributes readAttrs(TypesReader tr) throws IOException
+	{
+		/*
+		 * uint32   flags
+		 * uint64   size           present only if flag SSH_FILEXFER_ATTR_SIZE
+		 * uint32   uid            present only if flag SSH_FILEXFER_ATTR_V3_UIDGID
+		 * uint32   gid            present only if flag SSH_FILEXFER_ATTR_V3_UIDGID
+		 * uint32   permissions    present only if flag SSH_FILEXFER_ATTR_PERMISSIONS
+		 * uint32   atime          present only if flag SSH_FILEXFER_ATTR_V3_ACMODTIME
+		 * uint32   mtime          present only if flag SSH_FILEXFER_ATTR_V3_ACMODTIME
+		 * uint32   extended_count present only if flag SSH_FILEXFER_ATTR_EXTENDED
+		 * string   extended_type
+		 * string   extended_data
+		 * ...      more extended data (extended_type - extended_data pairs),
+		 *          so that number of pairs equals extended_count
+		 */
+
+		SFTPv3FileAttributes fa = new SFTPv3FileAttributes();
+
+		int flags = tr.readUINT32();
+
+		if ((flags & AttribFlags.SSH_FILEXFER_ATTR_SIZE) != 0)
+		{
+			if (debug != null)
+				debug.println("SSH_FILEXFER_ATTR_SIZE");
+			fa.size = new Long(tr.readUINT64());
 		}
 
-		synchronized (channels)
+		if ((flags & AttribFlags.SSH_FILEXFER_ATTR_V3_UIDGID) != 0)
 		{
-			globalSuccessCounter = globalFailedCounter = 0;
+			if (debug != null)
+				debug.println("SSH_FILEXFER_ATTR_V3_UIDGID");
+			fa.uid = new Integer(tr.readUINT32());
+			fa.gid = new Integer(tr.readUINT32());
 		}
 
-		PacketGlobalCancelForwardRequest pgcf = new PacketGlobalCancelForwardRequest(true, rfd.bindAddress,
-				rfd.bindPort);
-		tm.sendMessage(pgcf.getPayload());
+		if ((flags & AttribFlags.SSH_FILEXFER_ATTR_PERMISSIONS) != 0)
+		{
+			if (debug != null)
+				debug.println("SSH_FILEXFER_ATTR_PERMISSIONS");
+			fa.permissions = new Integer(tr.readUINT32());
+		}
 
-		if (log.isEnabled())
-			log.log(50, "Requesting cancelation of remote forward ('" + rfd.bindAddress + "', " + rfd.bindPort + ")");
+		if ((flags & AttribFlags.SSH_FILEXFER_ATTR_V3_ACMODTIME) != 0)
+		{
+			if (debug != null)
+				debug.println("SSH_FILEXFER_ATTR_V3_ACMODTIME");
+			fa.atime = new Long(((long)tr.readUINT32()) & 0xffffffffl);
+			fa.mtime = new Long(((long)tr.readUINT32()) & 0xffffffffl);
+
+		}
+
+		if ((flags & AttribFlags.SSH_FILEXFER_ATTR_EXTENDED) != 0)
+		{
+			int count = tr.readUINT32();
+
+			if (debug != null)
+				debug.println("SSH_FILEXFER_ATTR_EXTENDED (" + count + ")");
+
+			/* Read it anyway to detect corrupt packets */
+
+			while (count > 0)
+			{
+				tr.readByteString();
+				tr.readByteString();
+				count--;
+			}
+		}
+
+		return fa;
+	}
+
+	/**
+	 * Retrieve the file attributes of an open file.
+	 * 
+	 * @param handle a SFTPv3FileHandle handle.
+	 * @return a SFTPv3FileAttributes object.
+	 * @throws IOException
+	 */
+	public SFTPv3FileAttributes fstat(SFTPv3FileHandle handle) throws IOException
+	{
+		checkHandleValidAndOpen(handle);
+
+		int req_id = generateNextRequestID();
+
+		TypesWriter tw = new TypesWriter();
+		tw.writeString(handle.fileHandle, 0, handle.fileHandle.length);
+
+		if (debug != null)
+		{
+			debug.println("Sending SSH_FXP_FSTAT...");
+			debug.flush();
+		}
+
+		sendMessage(Packet.SSH_FXP_FSTAT, req_id, tw.getBytes());
+
+		byte[] resp = receiveMessage(34000);
+
+		if (debug != null)
+		{
+			debug.println("Got REPLY.");
+			debug.flush();
+		}
+
+		TypesReader tr = new TypesReader(resp);
+
+		int t = tr.readByte();
+
+		int rep_id = tr.readUINT32();
+		if (rep_id != req_id)
+			throw new IOException("The server sent an invalid id field.");
+
+		if (t == Packet.SSH_FXP_ATTRS)
+		{
+			return readAttrs(tr);
+		}
+
+		if (t != Packet.SSH_FXP_STATUS)
+			throw new IOException("The SFTP server sent an unexpected packet type (" + t + ")");
+
+		int errorCode = tr.readUINT32();
+
+		throw new SFTPException(tr.readString(), errorCode);
+	}
+
+	private SFTPv3FileAttributes statBoth(String path, int statMethod) throws IOException
+	{
+		int req_id = generateNextRequestID();
+
+		TypesWriter tw = new TypesWriter();
+		tw.writeString(path, charsetName);
+
+		if (debug != null)
+		{
+			debug.println("Sending SSH_FXP_STAT/SSH_FXP_LSTAT...");
+			debug.flush();
+		}
+
+		sendMessage(statMethod, req_id, tw.getBytes());
+
+		byte[] resp = receiveMessage(34000);
+
+		if (debug != null)
+		{
+			debug.println("Got REPLY.");
+			debug.flush();
+		}
+
+		TypesReader tr = new TypesReader(resp);
+
+		int t = tr.readByte();
+
+		int rep_id = tr.readUINT32();
+		if (rep_id != req_id)
+			throw new IOException("The server sent an invalid id field.");
+
+		if (t == Packet.SSH_FXP_ATTRS)
+		{
+			return readAttrs(tr);
+		}
+
+		if (t != Packet.SSH_FXP_STATUS)
+			throw new IOException("The SFTP server sent an unexpected packet type (" + t + ")");
+
+		int errorCode = tr.readUINT32();
+
+		throw new SFTPException(tr.readString(), errorCode);
+	}
+
+	/**
+	 * Retrieve the file attributes of a file. This method
+	 * follows symbolic links on the server.
+	 * 
+	 * @see #lstat(String)
+	 * 
+	 * @param path See the {@link SFTPv3Client comment} for the class for more details.
+	 * @return a SFTPv3FileAttributes object.
+	 * @throws IOException
+	 */
+	public SFTPv3FileAttributes stat(String path) throws IOException
+	{
+		return statBoth(path, Packet.SSH_FXP_STAT);
+	}
+
+	/**
+	 * Retrieve the file attributes of a file. This method
+	 * does NOT follow symbolic links on the server.
+	 * 
+	 * @see #stat(String)
+	 * 
+	 * @param path See the {@link SFTPv3Client comment} for the class for more details.
+	 * @return a SFTPv3FileAttributes object.
+	 * @throws IOException
+	 */
+	public SFTPv3FileAttributes lstat(String path) throws IOException
+	{
+		return statBoth(path, Packet.SSH_FXP_LSTAT);
+	}
+
+	/**
+	 * Read the target of a symbolic link.
+	 * 
+	 * @param path See the {@link SFTPv3Client comment} for the class for more details.
+	 * @return The target of the link.
+	 * @throws IOException
+	 */
+	public String readLink(String path) throws IOException
+	{
+		int req_id = generateNextRequestID();
+
+		TypesWriter tw = new TypesWriter();
+		tw.writeString(path, charsetName);
+
+		if (debug != null)
+		{
+			debug.println("Sending SSH_FXP_READLINK...");
+			debug.flush();
+		}
+
+		sendMessage(Packet.SSH_FXP_READLINK, req_id, tw.getBytes());
+
+		byte[] resp = receiveMessage(34000);
+
+		if (debug != null)
+		{
+			debug.println("Got REPLY.");
+			debug.flush();
+		}
+
+		TypesReader tr = new TypesReader(resp);
+
+		int t = tr.readByte();
+
+		int rep_id = tr.readUINT32();
+		if (rep_id != req_id)
+			throw new IOException("The server sent an invalid id field.");
+
+		if (t == Packet.SSH_FXP_NAME)
+		{
+			int count = tr.readUINT32();
+
+			if (count != 1)
+				throw new IOException("The server sent an invalid SSH_FXP_NAME packet.");
+
+			return tr.readString(charsetName);
+		}
+
+		if (t != Packet.SSH_FXP_STATUS)
+			throw new IOException("The SFTP server sent an unexpected packet type (" + t + ")");
+
+		int errorCode = tr.readUINT32();
+
+		throw new SFTPException(tr.readString(), errorCode);
+	}
+
+	private void expectStatusOKMessage(int id) throws IOException
+	{
+		byte[] resp = receiveMessage(34000);
+
+		if (debug != null)
+		{
+			debug.println("Got REPLY.");
+			debug.flush();
+		}
+
+		TypesReader tr = new TypesReader(resp);
+
+		int t = tr.readByte();
+
+		int rep_id = tr.readUINT32();
+		if (rep_id != id)
+			throw new IOException("The server sent an invalid id field.");
+
+		if (t != Packet.SSH_FXP_STATUS)
+			throw new IOException("The SFTP server sent an unexpected packet type (" + t + ")");
+
+		int errorCode = tr.readUINT32();
+
+		if (errorCode == ErrorCodes.SSH_FX_OK)
+			return;
+
+		throw new SFTPException(tr.readString(), errorCode);
+	}
+
+	/**
+	 *  Modify the attributes of a file. Used for operations such as changing
+	 *  the ownership, permissions or access times, as well as for truncating a file.
+	 * 
+	 * @param path See the {@link SFTPv3Client comment} for the class for more details.
+	 * @param attr A SFTPv3FileAttributes object. Specifies the modifications to be
+	 *             made to the attributes of the file. Empty fields will be ignored.
+	 * @throws IOException
+	 */
+	public void setstat(String path, SFTPv3FileAttributes attr) throws IOException
+	{
+		int req_id = generateNextRequestID();
+
+		TypesWriter tw = new TypesWriter();
+		tw.writeString(path, charsetName);
+		tw.writeBytes(createAttrs(attr));
+
+		if (debug != null)
+		{
+			debug.println("Sending SSH_FXP_SETSTAT...");
+			debug.flush();
+		}
+
+		sendMessage(Packet.SSH_FXP_SETSTAT, req_id, tw.getBytes());
+
+		expectStatusOKMessage(req_id);
+	}
+
+	/**
+	 * 	Modify the attributes of a file. Used for operations such as changing
+	 *  the ownership, permissions or access times, as well as for truncating a file.
+	 * 
+	 * @param handle a SFTPv3FileHandle handle
+	 * @param attr A SFTPv3FileAttributes object. Specifies the modifications to be
+	 *             made to the attributes of the file. Empty fields will be ignored.
+	 * @throws IOException
+	 */
+	public void fsetstat(SFTPv3FileHandle handle, SFTPv3FileAttributes attr) throws IOException
+	{
+		checkHandleValidAndOpen(handle);
+
+		int req_id = generateNextRequestID();
+
+		TypesWriter tw = new TypesWriter();
+		tw.writeString(handle.fileHandle, 0, handle.fileHandle.length);
+		tw.writeBytes(createAttrs(attr));
+
+		if (debug != null)
+		{
+			debug.println("Sending SSH_FXP_FSETSTAT...");
+			debug.flush();
+		}
+
+		sendMessage(Packet.SSH_FXP_FSETSTAT, req_id, tw.getBytes());
+
+		expectStatusOKMessage(req_id);
+	}
+
+	/**
+	 * Create a symbolic link on the server. Creates a link "src" that points
+	 * to "target".
+	 * 
+	 * @param src See the {@link SFTPv3Client comment} for the class for more details.
+	 * @param target See the {@link SFTPv3Client comment} for the class for more details.
+	 * @throws IOException
+	 */
+	public void createSymlink(String src, String target) throws IOException
+	{
+		int req_id = generateNextRequestID();
+
+		/* Either I am too stupid to understand the SFTP draft
+		 * or the OpenSSH guys changed the semantics of src and target.
+		 */
+
+		TypesWriter tw = new TypesWriter();
+		tw.writeString(target, charsetName);
+		tw.writeString(src, charsetName);
+
+		if (debug != null)
+		{
+			debug.println("Sending SSH_FXP_SYMLINK...");
+			debug.flush();
+		}
+
+		sendMessage(Packet.SSH_FXP_SYMLINK, req_id, tw.getBytes());
+
+		expectStatusOKMessage(req_id);
+	}
+
+	/**
+	 * Have the server canonicalize any given path name to an absolute path.
+	 * This is useful for converting path names containing ".." components or
+	 * relative pathnames without a leading slash into absolute paths.
+	 * 
+	 * @param path See the {@link SFTPv3Client comment} for the class for more details.
+	 * @return An absolute path.
+	 * @throws IOException
+	 */
+	public String canonicalPath(String path) throws IOException
+	{
+		int req_id = generateNextRequestID();
+
+		TypesWriter tw = new TypesWriter();
+		tw.writeString(path, charsetName);
+
+		if (debug != null)
+		{
+			debug.println("Sending SSH_FXP_REALPATH...");
+			debug.flush();
+		}
+
+		sendMessage(Packet.SSH_FXP_REALPATH, req_id, tw.getBytes());
+
+		byte[] resp = receiveMessage(34000);
+
+		if (debug != null)
+		{
+			debug.println("Got REPLY.");
+			debug.flush();
+		}
+
+		TypesReader tr = new TypesReader(resp);
+
+		int t = tr.readByte();
+
+		int rep_id = tr.readUINT32();
+		if (rep_id != req_id)
+			throw new IOException("The server sent an invalid id field.");
+
+		if (t == Packet.SSH_FXP_NAME)
+		{
+			int count = tr.readUINT32();
+
+			if (count != 1)
+				throw new IOException("The server sent an invalid SSH_FXP_NAME packet.");
+
+			return tr.readString(charsetName);
+		}
+
+		if (t != Packet.SSH_FXP_STATUS)
+			throw new IOException("The SFTP server sent an unexpected packet type (" + t + ")");
+
+		int errorCode = tr.readUINT32();
+
+		throw new SFTPException(tr.readString(), errorCode);
+	}
+
+	private final Vector scanDirectory(byte[] handle) throws IOException
+	{
+		Vector files = new Vector();
+
+		while (true)
+		{
+			int req_id = generateNextRequestID();
+
+			TypesWriter tw = new TypesWriter();
+			tw.writeString(handle, 0, handle.length);
+
+			if (debug != null)
+			{
+				debug.println("Sending SSH_FXP_READDIR...");
+				debug.flush();
+			}
+
+			sendMessage(Packet.SSH_FXP_READDIR, req_id, tw.getBytes());
+		
+			/* Some servers send here a packet with size > 34000 */
+			/* To whom it may concern: please learn to read the specs. */
+			
+			byte[] resp = receiveMessage(65536);
+
+			if (debug != null)
+			{
+				debug.println("Got REPLY.");
+				debug.flush();
+			}
+
+			TypesReader tr = new TypesReader(resp);
+
+			int t = tr.readByte();
+
+			int rep_id = tr.readUINT32();
+			if (rep_id != req_id)
+				throw new IOException("The server sent an invalid id field.");
+
+			if (t == Packet.SSH_FXP_NAME)
+			{
+				int count = tr.readUINT32();
+
+				if (debug != null)
+					debug.println("Parsing " + count + " name entries...");
+
+				while (count > 0)
+				{
+					SFTPv3DirectoryEntry dirEnt = new SFTPv3DirectoryEntry();
+
+					dirEnt.filename = tr.readString(charsetName);
+					dirEnt.longEntry = tr.readString(charsetName);
+
+					dirEnt.attributes = readAttrs(tr);
+					files.addElement(dirEnt);
+
+					if (debug != null)
+						debug.println("File: '" + dirEnt.filename + "'");
+					count--;
+				}
+				continue;
+			}
+
+			if (t != Packet.SSH_FXP_STATUS)
+				throw new IOException("The SFTP server sent an unexpected packet type (" + t + ")");
+
+			int errorCode = tr.readUINT32();
+
+			if (errorCode == ErrorCodes.SSH_FX_EOF)
+				return files;
+
+			throw new SFTPException(tr.readString(), errorCode);
+		}
+	}
+
+	private final byte[] openDirectory(String path) throws IOException
+	{
+		int req_id = generateNextRequestID();
+
+		TypesWriter tw = new TypesWriter();
+		tw.writeString(path, charsetName);
+
+		if (debug != null)
+		{
+			debug.println("Sending SSH_FXP_OPENDIR...");
+			debug.flush();
+		}
+
+		sendMessage(Packet.SSH_FXP_OPENDIR, req_id, tw.getBytes());
+
+		byte[] resp = receiveMessage(34000);
+
+		TypesReader tr = new TypesReader(resp);
+
+		int t = tr.readByte();
+
+		int rep_id = tr.readUINT32();
+		if (rep_id != req_id)
+			throw new IOException("The server sent an invalid id field.");
+
+		if (t == Packet.SSH_FXP_HANDLE)
+		{
+			if (debug != null)
+			{
+				debug.println("Got SSH_FXP_HANDLE.");
+				debug.flush();
+			}
+
+			byte[] handle = tr.readByteString();
+			return handle;
+		}
+
+		if (t != Packet.SSH_FXP_STATUS)
+			throw new IOException("The SFTP server sent an unexpected packet type (" + t + ")");
+
+		int errorCode = tr.readUINT32();
+		String errorMessage = tr.readString();
+
+		throw new SFTPException(errorMessage, errorCode);
+	}
+
+	private final String expandString(byte[] b, int off, int len)
+	{
+		StringBuffer sb = new StringBuffer();
+
+		for (int i = 0; i < len; i++)
+		{
+			int c = b[off + i] & 0xff;
+
+			if ((c >= 32) && (c <= 126))
+			{
+				sb.append((char) c);
+			}
+			else
+			{
+				sb.append("{0x" + Integer.toHexString(c) + "}");
+			}
+		}
+
+		return sb.toString();
+	}
+
+	private void init() throws IOException
+	{
+		/* Send SSH_FXP_INIT (version 3) */
+
+		final int client_version = 3;
+
+		if (debug != null)
+			debug.println("Sending SSH_FXP_INIT (" + client_version + ")...");
+
+		TypesWriter tw = new TypesWriter();
+		tw.writeUINT32(client_version);
+		sendMessage(Packet.SSH_FXP_INIT, 0, tw.getBytes());
+
+		/* Receive SSH_FXP_VERSION */
+
+		if (debug != null)
+			debug.println("Waiting for SSH_FXP_VERSION...");
+
+		TypesReader tr = new TypesReader(receiveMessage(34000)); /* Should be enough for any reasonable server */
+
+		int type = tr.readByte();
+
+		if (type != Packet.SSH_FXP_VERSION)
+		{
+			throw new IOException("The server did not send a SSH_FXP_VERSION packet (got " + type + ")");
+		}
+
+		protocol_version = tr.readUINT32();
+
+		if (debug != null)
+			debug.println("SSH_FXP_VERSION: protocol_version = " + protocol_version);
+
+		if (protocol_version != 3)
+			throw new IOException("Server version " + protocol_version + " is currently not supported");
+
+		/* Read and save extensions (if any) for later use */
+
+		while (tr.remain() != 0)
+		{
+			String name = tr.readString();
+			byte[] value = tr.readByteString();
+			server_extensions.put(name, value);
+
+			if (debug != null)
+				debug.println("SSH_FXP_VERSION: extension: " + name + " = '" + expandString(value, 0, value.length)
+						+ "'");
+		}
+	}
+
+	/**
+	 * Returns the negotiated SFTP protocol version between the client and the server.
+	 * 
+	 * @return SFTP protocol version, i.e., "3".
+	 * 
+	 */
+	public int getProtocolVersion()
+	{
+		return protocol_version;
+	}
+
+	/**
+	 * Close this SFTP session. NEVER forget to call this method to free up
+	 * resources - even if you got an exception from one of the other methods.
+	 * Sometimes these other methods may throw an exception, saying that the
+	 * underlying channel is closed (this can happen, e.g., if the other server
+	 * sent a close message.) However, as long as you have not called the
+	 * <code>close()</code> method, you are likely wasting resources.
+	 * 
+	 */
+	public void close()
+	{
+		sess.close();
+	}
+
+	/**
+	 * List the contents of a directory.
+	 * 
+	 * @param dirName See the {@link SFTPv3Client comment} for the class for more details.
+	 * @return A Vector containing {@link SFTPv3DirectoryEntry} objects.
+	 * @throws IOException
+	 */
+	public Vector ls(String dirName) throws IOException
+	{
+		byte[] handle = openDirectory(dirName);
+		Vector result = scanDirectory(handle);
+		closeHandle(handle);
+		return result;
+	}
+
+	/**
+	 * Create a new directory.
+	 * 
+	 * @param dirName See the {@link SFTPv3Client comment} for the class for more details.
+	 * @param posixPermissions the permissions for this directory, e.g., "0700" (remember that
+	 *                         this is octal noation). The server will likely apply a umask.
+	 * 
+	 * @throws IOException
+	 */
+	public void mkdir(String dirName, int posixPermissions) throws IOException
+	{
+		int req_id = generateNextRequestID();
+
+		TypesWriter tw = new TypesWriter();
+		tw.writeString(dirName, charsetName);
+		tw.writeUINT32(AttribFlags.SSH_FILEXFER_ATTR_PERMISSIONS);
+		tw.writeUINT32(posixPermissions);
+
+		sendMessage(Packet.SSH_FXP_MKDIR, req_id, tw.getBytes());
+
+		expectStatusOKMessage(req_id);
+	}
+
+	/**
+	 * Remove a file.
+	 * 
+	 * @param fileName See the {@link SFTPv3Client comment} for the class for more details.
+	 * @throws IOException
+	 */
+	public void rm(String fileName) throws IOException
+	{
+		int req_id = generateNextRequestID();
+
+		TypesWriter tw = new TypesWriter();
+		tw.writeString(fileName, charsetName);
+
+		sendMessage(Packet.SSH_FXP_REMOVE, req_id, tw.getBytes());
+
+		expectStatusOKMessage(req_id);
+	}
+
+	/**
+	 * Remove an empty directory. 
+	 * 
+	 * @param dirName See the {@link SFTPv3Client comment} for the class for more details.
+	 * @throws IOException
+	 */
+	public void rmdir(String dirName) throws IOException
+	{
+		int req_id = generateNextRequestID();
+
+		TypesWriter tw = new TypesWriter();
+		tw.writeString(dirName, charsetName);
+
+		sendMessage(Packet.SSH_FXP_RMDIR, req_id, tw.getBytes());
+
+		expectStatusOKMessage(req_id);
+	}
+
+	/**
+	 * Move a file or directory.
+	 * 
+	 * @param oldPath See the {@link SFTPv3Client comment} for the class for more details.
+	 * @param newPath See the {@link SFTPv3Client comment} for the class for more details.
+	 * @throws IOException
+	 */
+	public void mv(String oldPath, String newPath) throws IOException
+	{
+		int req_id = generateNextRequestID();
+
+		TypesWriter tw = new TypesWriter();
+		tw.writeString(oldPath, charsetName);
+		tw.writeString(newPath, charsetName);
+
+		sendMessage(Packet.SSH_FXP_RENAME, req_id, tw.getBytes());
+
+		expectStatusOKMessage(req_id);
+	}
+
+	/**
+	 * Open a file for reading.
+	 * 
+	 * @param fileName See the {@link SFTPv3Client comment} for the class for more details.
+	 * @return a SFTPv3FileHandle handle
+	 * @throws IOException
+	 */
+	public SFTPv3FileHandle openFileRO(String fileName) throws IOException
+	{
+		return openFile(fileName, 0x00000001, null); // SSH_FXF_READ	
+	}
+
+	/**
+	 * Open a file for reading and writing.
+	 * 
+	 * @param fileName See the {@link SFTPv3Client comment} for the class for more details.
+	 * @return a SFTPv3FileHandle handle
+	 * @throws IOException
+	 */
+	public SFTPv3FileHandle openFileRW(String fileName) throws IOException
+	{
+		return openFile(fileName, 0x00000003, null); // SSH_FXF_READ | SSH_FXF_WRITE
+	}
+
+	// Append is broken (already in the specification, because there is no way to
+	// send a write operation (what offset to use??))
+	//	public SFTPv3FileHandle openFileRWAppend(String fileName) throws IOException
+	//	{
+	//		return openFile(fileName, 0x00000007, null); // SSH_FXF_READ | SSH_FXF_WRITE | SSH_FXF_APPEND
+	//	}
+
+	/**
+	 * Create a file and open it for reading and writing.
+	 * Same as {@link #createFile(String, SFTPv3FileAttributes) createFile(fileName, null)}.
+	 * 
+	 * @param fileName See the {@link SFTPv3Client comment} for the class for more details.
+	 * @return a SFTPv3FileHandle handle
+	 * @throws IOException
+	 */
+	public SFTPv3FileHandle createFile(String fileName) throws IOException
+	{
+		return createFile(fileName, null);
+	}
+
+	/**
+	 * Create a file and open it for reading and writing.
+	 * You can specify the default attributes of the file (the server may or may
+	 * not respect your wishes).
+	 * 
+	 * @param fileName See the {@link SFTPv3Client comment} for the class for more details.
+	 * @param attr may be <code>null</code> to use server defaults. Probably only
+	 *             the <code>uid</code>, <code>gid</code> and <code>permissions</code>
+	 *             (remember the server may apply a umask) entries of the {@link SFTPv3FileHandle}
+	 *             structure make sense. You need only to set those fields where you want
+	 *             to override the server's defaults.
+	 * @return a SFTPv3FileHandle handle
+	 * @throws IOException
+	 */
+	public SFTPv3FileHandle createFile(String fileName, SFTPv3FileAttributes attr) throws IOException
+	{
+		return openFile(fileName, 0x00000008 | 0x00000003, attr); // SSH_FXF_CREAT | SSH_FXF_READ | SSH_FXF_WRITE
+	}
+
+	/**
+	 * Create a file (truncate it if it already exists) and open it for reading and writing.
+	 * Same as {@link #createFileTruncate(String, SFTPv3FileAttributes) createFileTruncate(fileName, null)}.
+	 * 
+	 * @param fileName See the {@link SFTPv3Client comment} for the class for more details.
+	 * @return a SFTPv3FileHandle handle
+	 * @throws IOException
+	 */
+	public SFTPv3FileHandle createFileTruncate(String fileName) throws IOException
+	{
+		return createFileTruncate(fileName, null);
+	}
+
+	/**
+	 * reate a file (truncate it if it already exists) and open it for reading and writing.
+	 * You can specify the default attributes of the file (the server may or may
+	 * not respect your wishes).
+	 * 
+	 * @param fileName See the {@link SFTPv3Client comment} for the class for more details.
+	 * @param attr may be <code>null</code> to use server defaults. Probably only
+	 *             the <code>uid</code>, <code>gid</code> and <code>permissions</code>
+	 *             (remember the server may apply a umask) entries of the {@link SFTPv3FileHandle}
+	 *             structure make sense. You need only to set those fields where you want
+	 *             to override the server's defaults.
+	 * @return a SFTPv3FileHandle handle
+	 * @throws IOException
+	 */
+	public SFTPv3FileHandle createFileTruncate(String fileName, SFTPv3FileAttributes attr) throws IOException
+	{
+		return openFile(fileName, 0x00000018 | 0x00000003, attr); // SSH_FXF_CREAT | SSH_FXF_TRUNC | SSH_FXF_READ | SSH_FXF_WRITE
+	}
+
+	private byte[] createAttrs(SFTPv3FileAttributes attr)
+	{
+		TypesWriter tw = new TypesWriter();
+
+		int attrFlags = 0;
+
+		if (attr == null)
+		{
+			tw.writeUINT32(0);
+		}
+		else
+		{
+			if (attr.size != null)
+				attrFlags = attrFlags | AttribFlags.SSH_FILEXFER_ATTR_SIZE;
+
+			if ((attr.uid != null) && (attr.gid != null))
+				attrFlags = attrFlags | AttribFlags.SSH_FILEXFER_ATTR_V3_UIDGID;
+
+			if (attr.permissions != null)
+				attrFlags = attrFlags | AttribFlags.SSH_FILEXFER_ATTR_PERMISSIONS;
+
+			if ((attr.atime != null) && (attr.mtime != null))
+				attrFlags = attrFlags | AttribFlags.SSH_FILEXFER_ATTR_V3_ACMODTIME;
+
+			tw.writeUINT32(attrFlags);
+
+			if (attr.size != null)
+				tw.writeUINT64(attr.size.longValue());
+
+			if ((attr.uid != null) && (attr.gid != null))
+			{
+				tw.writeUINT32(attr.uid.intValue());
+				tw.writeUINT32(attr.gid.intValue());
+			}
+
+			if (attr.permissions != null)
+				tw.writeUINT32(attr.permissions.intValue());
+
+			if ((attr.atime != null) && (attr.mtime != null))
+			{
+				tw.writeUINT32(attr.atime.intValue());
+				tw.writeUINT32(attr.mtime.intValue());
+			}
+		}
+
+		return tw.getBytes();
+	}
+
+	private SFTPv3FileHandle openFile(String fileName, int flags, SFTPv3FileAttributes attr) throws IOException
+	{
+		int req_id = generateNextRequestID();
+
+		TypesWriter tw = new TypesWriter();
+		tw.writeString(fileName, charsetName);
+		tw.writeUINT32(flags);
+		tw.writeBytes(createAttrs(attr));
+
+		if (debug != null)
+		{
+			debug.println("Sending SSH_FXP_OPEN...");
+			debug.flush();
+		}
+
+		sendMessage(Packet.SSH_FXP_OPEN, req_id, tw.getBytes());
+
+		byte[] resp = receiveMessage(34000);
+
+		TypesReader tr = new TypesReader(resp);
+
+		int t = tr.readByte();
+
+		int rep_id = tr.readUINT32();
+		if (rep_id != req_id)
+			throw new IOException("The server sent an invalid id field.");
+
+		if (t == Packet.SSH_FXP_HANDLE)
+		{
+			if (debug != null)
+			{
+				debug.println("Got SSH_FXP_HANDLE.");
+				debug.flush();
+			}
+
+			return new SFTPv3FileHandle(this, tr.readByteString());
+		}
+
+		if (t != Packet.SSH_FXP_STATUS)
+			throw new IOException("The SFTP server sent an unexpected packet type (" + t + ")");
+
+		int errorCode = tr.readUINT32();
+		String errorMessage = tr.readString();
+
+		throw new SFTPException(errorMessage, errorCode);
+	}
+
+	/**
+	 * Read bytes from a file. No more than 32768 bytes may be read at once.
+	 * Be aware that the semantics of read() are different than for Java streams.
+	 * <p>
+	 * <ul>
+	 * <li>The server will read as many bytes as it can from the file (up to <code>len</code>),
+	 * and return them.</li>
+	 * <li>If EOF is encountered before reading any data, <code>-1</code> is returned.
+	 * <li>If an error occurs, an exception is thrown</li>.
+	 * <li>For normal disk files, it is guaranteed that the server will return the specified
+	 * number of bytes, or up to end of file. For, e.g., device files this may return
+	 * fewer bytes than requested.</li>
+	 * </ul>
+	 * 
+	 * @param handle a SFTPv3FileHandle handle
+	 * @param fileOffset offset (in bytes) in the file
+	 * @param dst the destination byte array
+	 * @param dstoff offset in the destination byte array
+	 * @param len how many bytes to read, 0 &lt; len &lt;= 32768 bytes
+	 * @return the number of bytes that could be read, may be less than requested if
+	 *         the end of the file is reached, -1 is returned in case of <code>EOF</code>
+	 * @throws IOException
+	 */
+	public int read(SFTPv3FileHandle handle, long fileOffset, byte[] dst, int dstoff, int len) throws IOException
+	{
+		checkHandleValidAndOpen(handle);
+
+		if ((len > 32768) || (len <= 0))
+			throw new IllegalArgumentException("invalid len argument");
+
+		int req_id = generateNextRequestID();
+
+		TypesWriter tw = new TypesWriter();
+		tw.writeString(handle.fileHandle, 0, handle.fileHandle.length);
+		tw.writeUINT64(fileOffset);
+		tw.writeUINT32(len);
+
+		if (debug != null)
+		{
+			debug.println("Sending SSH_FXP_READ...");
+			debug.flush();
+		}
+
+		sendMessage(Packet.SSH_FXP_READ, req_id, tw.getBytes());
+
+		byte[] resp = receiveMessage(34000);
+
+		TypesReader tr = new TypesReader(resp);
+
+		int t = tr.readByte();
+
+		int rep_id = tr.readUINT32();
+		if (rep_id != req_id)
+			throw new IOException("The server sent an invalid id field.");
+
+		if (t == Packet.SSH_FXP_DATA)
+		{
+			if (debug != null)
+			{
+				debug.println("Got SSH_FXP_DATA...");
+				debug.flush();
+			}
+
+			int readLen = tr.readUINT32();
+
+			if ((readLen < 0) || (readLen > len))
+				throw new IOException("The server sent an invalid length field.");
+
+			tr.readBytes(dst, dstoff, readLen);
+
+			return readLen;
+		}
+
+		if (t != Packet.SSH_FXP_STATUS)
+			throw new IOException("The SFTP server sent an unexpected packet type (" + t + ")");
+
+		int errorCode = tr.readUINT32();
+
+		if (errorCode == ErrorCodes.SSH_FX_EOF)
+		{
+			if (debug != null)
+			{
+				debug.println("Got SSH_FX_EOF.");
+				debug.flush();
+			}
+
+			return -1;
+		}
+
+		String errorMessage = tr.readString();
+
+		throw new SFTPException(errorMessage, errorCode);
+	}
+
+	/**
+	 * Write bytes to a file. If <code>len</code> &gt; 32768, then the write operation will
+	 * be split into multiple writes.
+	 * 
+	 * @param handle a SFTPv3FileHandle handle.
+	 * @param fileOffset offset (in bytes) in the file.
+	 * @param src the source byte array.
+	 * @param srcoff offset in the source byte array.
+	 * @param len how many bytes to write.
+	 * @throws IOException
+	 */
+	public void write(SFTPv3FileHandle handle, long fileOffset, byte[] src, int srcoff, int len) throws IOException
+	{
+		checkHandleValidAndOpen(handle);
+
+		while (len > 0)
+		{
+			int writeRequestLen = len;
+
+			if (writeRequestLen > 32768)
+				writeRequestLen = 32768;
+
+			int req_id = generateNextRequestID();
+
+			TypesWriter tw = new TypesWriter();
+			tw.writeString(handle.fileHandle, 0, handle.fileHandle.length);
+			tw.writeUINT64(fileOffset);
+			tw.writeString(src, srcoff, writeRequestLen);
+
+			if (debug != null)
+			{
+				debug.println("Sending SSH_FXP_WRITE...");
+				debug.flush();
+			}
+
+			sendMessage(Packet.SSH_FXP_WRITE, req_id, tw.getBytes());
+
+			fileOffset += writeRequestLen;
+
+			srcoff += writeRequestLen;
+			len -= writeRequestLen;
+
+			byte[] resp = receiveMessage(34000);
+
+			TypesReader tr = new TypesReader(resp);
+
+			int t = tr.readByte();
+
+			int rep_id = tr.readUINT32();
+			if (rep_id != req_id)
+				throw new IOException("The server sent an invalid id field.");
+
+			if (t != Packet.SSH_FXP_STATUS)
+				throw new IOException("The SFTP server sent an unexpected packet type (" + t + ")");
+
+			int errorCode = tr.readUINT32();
+
+			if (errorCode == ErrorCodes.SSH_FX_OK)
+				continue;
+
+			String errorMessage = tr.readString();
+
+			throw new SFTPException(errorMessage, errorCode);
+		}
+	}
+
+	/**
+	 * Close a file.
+	 * 
+	 * @param handle a SFTPv3FileHandle handle
+	 * @throws IOException
+	 */
+	public void closeFile(SFTPv3FileHandle handle) throws IOException
+	{
+		if (handle == null)
+			throw new IllegalArgumentException("the handle argument may not be null");
 
 		try
 		{
-			if (waitForGlobalRequestResult() == false)
-				throw new IOException("The server denied the request.");
+			if (handle.isClosed == false)
+			{
+				closeHandle(handle.fileHandle);
+			}
 		}
 		finally
 		{
-			synchronized (remoteForwardings)
-			{
-				/* Only now we are sure that no more forwarded connections will arrive */
-				remoteForwardings.remove(rfd);
-			}
-		}
-
-	}
-
-	/**
-	 * @param agent
-	 * @throws IOException
-	 */
-	public boolean requestChannelAgentForwarding(Channel c, AuthAgentCallback authAgent) throws IOException {
-		synchronized (this)
-		{
-			if (this.authAgent != null)
-				throw new IllegalStateException("Auth agent already exists");
-
-			this.authAgent = authAgent;
-		}
-
-		synchronized (channels)
-		{
-			globalSuccessCounter = globalFailedCounter = 0;
-		}
-
-		if (log.isEnabled())
-			log.log(50, "Requesting agent forwarding");
-
-		PacketChannelAuthAgentReq aar = new PacketChannelAuthAgentReq(c.remoteID);
-		tm.sendMessage(aar.getPayload());
-
-		if (waitForChannelRequestResult(c) == false) {
-			authAgent = null;
-			return false;
-		}
-
-		return true;
-	}
-
-	public void registerThread(IChannelWorkerThread thr) throws IOException
-	{
-		synchronized (listenerThreads)
-		{
-			if (listenerThreadsAllowed == false)
-				throw new IOException("Too late, this connection is closed.");
-			listenerThreads.addElement(thr);
-		}
-	}
-
-	public Channel openDirectTCPIPChannel(String host_to_connect, int port_to_connect, String originator_IP_address,
-			int originator_port) throws IOException
-	{
-		Channel c = new Channel(this);
-
-		synchronized (c)
-		{
-			c.localID = addChannel(c);
-			// end of synchronized block forces writing out to main memory
-		}
-
-		PacketOpenDirectTCPIPChannel dtc = new PacketOpenDirectTCPIPChannel(c.localID, c.localWindow,
-				c.localMaxPacketSize, host_to_connect, port_to_connect, originator_IP_address, originator_port);
-
-		tm.sendMessage(dtc.getPayload());
-
-		waitUntilChannelOpen(c);
-
-		return c;
-	}
-
-	public Channel openSessionChannel() throws IOException
-	{
-		Channel c = new Channel(this);
-
-		synchronized (c)
-		{
-			c.localID = addChannel(c);
-			// end of synchronized block forces the writing out to main memory
-		}
-
-		if (log.isEnabled())
-			log.log(50, "Sending SSH_MSG_CHANNEL_OPEN (Channel " + c.localID + ")");
-
-		PacketOpenSessionChannel smo = new PacketOpenSessionChannel(c.localID, c.localWindow, c.localMaxPacketSize);
-		tm.sendMessage(smo.getPayload());
-
-		waitUntilChannelOpen(c);
-
-		return c;
-	}
-
-	public void requestGlobalTrileadPing() throws IOException
-	{
-		synchronized (channels)
-		{
-			globalSuccessCounter = globalFailedCounter = 0;
-		}
-
-		PacketGlobalTrileadPing pgtp = new PacketGlobalTrileadPing();
-
-		tm.sendMessage(pgtp.getPayload());
-
-		if (log.isEnabled())
-			log.log(50, "Sending SSH_MSG_GLOBAL_REQUEST 'trilead-ping'.");
-
-		try
-		{
-			if (waitForGlobalRequestResult() == true)
-				throw new IOException("Your server is alive - but buggy. "
-						+ "It replied with SSH_MSG_REQUEST_SUCCESS when it actually should not.");
-
-		}
-		catch (IOException e)
-		{
-			throw (IOException) new IOException("The ping request failed.").initCause(e);
-		}
-	}
-
-	public void requestChannelTrileadPing(Channel c) throws IOException
-	{
-		PacketChannelTrileadPing pctp;
-
-		synchronized (c)
-		{
-			if (c.state != Channel.STATE_OPEN)
-				throw new IOException("Cannot ping this channel (" + c.getReasonClosed() + ")");
-
-			pctp = new PacketChannelTrileadPing(c.remoteID);
-
-			c.successCounter = c.failedCounter = 0;
-		}
-
-		synchronized (c.channelSendLock)
-		{
-			if (c.closeMessageSent)
-				throw new IOException("Cannot ping this channel (" + c.getReasonClosed() + ")");
-			tm.sendMessage(pctp.getPayload());
-		}
-
-		try
-		{
-			if (waitForChannelRequestResult(c) == true)
-				throw new IOException("Your server is alive - but buggy. "
-						+ "It replied with SSH_MSG_SESSION_SUCCESS when it actually should not.");
-
-		}
-		catch (IOException e)
-		{
-			throw (IOException) new IOException("The ping request failed.").initCause(e);
-		}
-	}
-
-	public void requestPTY(Channel c, String term, int term_width_characters, int term_height_characters,
-			int term_width_pixels, int term_height_pixels, byte[] terminal_modes) throws IOException
-	{
-		PacketSessionPtyRequest spr;
-
-		synchronized (c)
-		{
-			if (c.state != Channel.STATE_OPEN)
-				throw new IOException("Cannot request PTY on this channel (" + c.getReasonClosed() + ")");
-
-			spr = new PacketSessionPtyRequest(c.remoteID, true, term, term_width_characters, term_height_characters,
-					term_width_pixels, term_height_pixels, terminal_modes);
-
-			c.successCounter = c.failedCounter = 0;
-		}
-
-		synchronized (c.channelSendLock)
-		{
-			if (c.closeMessageSent)
-				throw new IOException("Cannot request PTY on this channel (" + c.getReasonClosed() + ")");
-			tm.sendMessage(spr.getPayload());
-		}
-
-		try
-		{
-			if (waitForChannelRequestResult(c) == false)
-				throw new IOException("The server denied the request.");
-		}
-		catch (IOException e)
-		{
-			throw (IOException) new IOException("PTY request failed").initCause(e);
-		}
-	}
-	
-	
-	public void resizePTY(Channel c, int term_width_characters, int term_height_characters,
-			int term_width_pixels, int term_height_pixels) throws IOException {
-		PacketSessionPtyResize spr;
-
-		synchronized (c) {
-			if (c.state != Channel.STATE_OPEN)
-				throw new IOException("Cannot request PTY on this channel ("
-						+ c.getReasonClosed() + ")");
-
-			spr = new PacketSessionPtyResize(c.remoteID, term_width_characters, term_height_characters,
-					term_width_pixels, term_height_pixels);
-			c.successCounter = c.failedCounter = 0;
-		}
-
-		synchronized (c.channelSendLock) {
-			if (c.closeMessageSent)
-				throw new IOException("Cannot request PTY on this channel ("
-						+ c.getReasonClosed() + ")");
-			tm.sendMessage(spr.getPayload());
-		}
-	}
-	
-
-	public void requestX11(Channel c, boolean singleConnection, String x11AuthenticationProtocol,
-			String x11AuthenticationCookie, int x11ScreenNumber) throws IOException
-	{
-		PacketSessionX11Request psr;
-
-		synchronized (c)
-		{
-			if (c.state != Channel.STATE_OPEN)
-				throw new IOException("Cannot request X11 on this channel (" + c.getReasonClosed() + ")");
-
-			psr = new PacketSessionX11Request(c.remoteID, true, singleConnection, x11AuthenticationProtocol,
-					x11AuthenticationCookie, x11ScreenNumber);
-
-			c.successCounter = c.failedCounter = 0;
-		}
-
-		synchronized (c.channelSendLock)
-		{
-			if (c.closeMessageSent)
-				throw new IOException("Cannot request X11 on this channel (" + c.getReasonClosed() + ")");
-			tm.sendMessage(psr.getPayload());
-		}
-
-		if (log.isEnabled())
-			log.log(50, "Requesting X11 forwarding (Channel " + c.localID + "/" + c.remoteID + ")");
-
-		try
-		{
-			if (waitForChannelRequestResult(c) == false)
-				throw new IOException("The server denied the request.");
-		}
-		catch (IOException e)
-		{
-			throw (IOException) new IOException("The X11 request failed.").initCause(e);
-		}
-	}
-
-	public void requestSubSystem(Channel c, String subSystemName) throws IOException
-	{
-		PacketSessionSubsystemRequest ssr;
-
-		synchronized (c)
-		{
-			if (c.state != Channel.STATE_OPEN)
-				throw new IOException("Cannot request subsystem on this channel (" + c.getReasonClosed() + ")");
-
-			ssr = new PacketSessionSubsystemRequest(c.remoteID, true, subSystemName);
-
-			c.successCounter = c.failedCounter = 0;
-		}
-
-		synchronized (c.channelSendLock)
-		{
-			if (c.closeMessageSent)
-				throw new IOException("Cannot request subsystem on this channel (" + c.getReasonClosed() + ")");
-			tm.sendMessage(ssr.getPayload());
-		}
-
-		try
-		{
-			if (waitForChannelRequestResult(c) == false)
-				throw new IOException("The server denied the request.");
-		}
-		catch (IOException e)
-		{
-			throw (IOException) new IOException("The subsystem request failed.").initCause(e);
-		}
-	}
-
-	public void requestExecCommand(Channel c, String cmd) throws IOException
-	{
-		PacketSessionExecCommand sm;
-
-		synchronized (c)
-		{
-			if (c.state != Channel.STATE_OPEN)
-				throw new IOException("Cannot execute command on this channel (" + c.getReasonClosed() + ")");
-
-			sm = new PacketSessionExecCommand(c.remoteID, true, cmd);
-
-			c.successCounter = c.failedCounter = 0;
-		}
-
-		synchronized (c.channelSendLock)
-		{
-			if (c.closeMessageSent)
-				throw new IOException("Cannot execute command on this channel (" + c.getReasonClosed() + ")");
-			tm.sendMessage(sm.getPayload());
-		}
-
-		if (log.isEnabled())
-			log.log(50, "Executing command (channel " + c.localID + ", '" + cmd + "')");
-
-		try
-		{
-			if (waitForChannelRequestResult(c) == false)
-				throw new IOException("The server denied the request.");
-		}
-		catch (IOException e)
-		{
-			throw (IOException) new IOException("The execute request failed.").initCause(e);
-		}
-	}
-
-	public void requestShell(Channel c) throws IOException
-	{
-		PacketSessionStartShell sm;
-
-		synchronized (c)
-		{
-			if (c.state != Channel.STATE_OPEN)
-				throw new IOException("Cannot start shell on this channel (" + c.getReasonClosed() + ")");
-
-			sm = new PacketSessionStartShell(c.remoteID, true);
-
-			c.successCounter = c.failedCounter = 0;
-		}
-
-		synchronized (c.channelSendLock)
-		{
-			if (c.closeMessageSent)
-				throw new IOException("Cannot start shell on this channel (" + c.getReasonClosed() + ")");
-			tm.sendMessage(sm.getPayload());
-		}
-
-		try
-		{
-			if (waitForChannelRequestResult(c) == false)
-				throw new IOException("The server denied the request.");
-		}
-		catch (IOException e)
-		{
-			throw (IOException) new IOException("The shell request failed.").initCause(e);
-		}
-	}
-
-	public void msgChannelExtendedData(byte[] msg, int msglen) throws IOException
-	{
-		if (msglen <= 13)
-			throw new IOException("SSH_MSG_CHANNEL_EXTENDED_DATA message has wrong size (" + msglen + ")");
-
-		int id = ((msg[1] & 0xff) << 24) | ((msg[2] & 0xff) << 16) | ((msg[3] & 0xff) << 8) | (msg[4] & 0xff);
-		int dataType = ((msg[5] & 0xff) << 24) | ((msg[6] & 0xff) << 16) | ((msg[7] & 0xff) << 8) | (msg[8] & 0xff);
-		int len = ((msg[9] & 0xff) << 24) | ((msg[10] & 0xff) << 16) | ((msg[11] & 0xff) << 8) | (msg[12] & 0xff);
-
-		Channel c = getChannel(id);
-
-		if (c == null)
-			throw new IOException("Unexpected SSH_MSG_CHANNEL_EXTENDED_DATA message for non-existent channel " + id);
-
-		if (dataType != Packets.SSH_EXTENDED_DATA_STDERR)
-			throw new IOException("SSH_MSG_CHANNEL_EXTENDED_DATA message has unknown type (" + dataType + ")");
-
-		if (len != (msglen - 13))
-			throw new IOException("SSH_MSG_CHANNEL_EXTENDED_DATA message has wrong len (calculated " + (msglen - 13)
-					+ ", got " + len + ")");
-
-		if (log.isEnabled())
-			log.log(80, "Got SSH_MSG_CHANNEL_EXTENDED_DATA (channel " + id + ", " + len + ")");
-
-		synchronized (c)
-		{
-			if (c.state == Channel.STATE_CLOSED)
-				return; // ignore
-
-			if (c.state != Channel.STATE_OPEN)
-				throw new IOException("Got SSH_MSG_CHANNEL_EXTENDED_DATA, but channel is not in correct state ("
-						+ c.state + ")");
-
-			if (c.localWindow < len)
-				throw new IOException("Remote sent too much data, does not fit into window.");
-
-			c.localWindow -= len;
-
-			System.arraycopy(msg, 13, c.stderrBuffer, c.stderrWritepos, len);
-			c.stderrWritepos += len;
-
-			c.notifyAll();
-		}
-	}
-
-	/**
-	 * Wait until for a condition.
-	 * 
-	 * @param c
-	 *            Channel
-	 * @param timeout
-	 *            in ms, 0 means no timeout.
-	 * @param condition_mask
-	 *            minimum event mask
-	 * @return all current events
-	 * 
-	 */
-	public int waitForCondition(Channel c, long timeout, int condition_mask)
-	{
-		long end_time = 0;
-		boolean end_time_set = false;
-
-		synchronized (c)
-		{
-			while (true)
-			{
-				int current_cond = 0;
-
-				int stdoutAvail = c.stdoutWritepos - c.stdoutReadpos;
-				int stderrAvail = c.stderrWritepos - c.stderrReadpos;
-
-				if (stdoutAvail > 0)
-					current_cond = current_cond | ChannelCondition.STDOUT_DATA;
-
-				if (stderrAvail > 0)
-					current_cond = current_cond | ChannelCondition.STDERR_DATA;
-
-				if (c.EOF)
-					current_cond = current_cond | ChannelCondition.EOF;
-
-				if (c.getExitStatus() != null)
-					current_cond = current_cond | ChannelCondition.EXIT_STATUS;
-
-				if (c.getExitSignal() != null)
-					current_cond = current_cond | ChannelCondition.EXIT_SIGNAL;
-
-				if (c.state == Channel.STATE_CLOSED)
-					return current_cond | ChannelCondition.CLOSED | ChannelCondition.EOF;
-
-				if ((current_cond & condition_mask) != 0)
-					return current_cond;
-
-				if (timeout > 0)
-				{
-					if (!end_time_set)
-					{
-						end_time = System.currentTimeMillis() + timeout;
-						end_time_set = true;
-					}
-					else
-					{
-						timeout = end_time - System.currentTimeMillis();
-
-						if (timeout <= 0)
-							return current_cond | ChannelCondition.TIMEOUT;
-					}
-				}
-
-				try
-				{
-					if (timeout > 0)
-						c.wait(timeout);
-					else
-						c.wait();
-				}
-				catch (InterruptedException e)
-				{
-				}
-			}
-		}
-	}
-
-	public int getAvailable(Channel c, boolean extended) throws IOException
-	{
-		synchronized (c)
-		{
-			int avail;
-
-			if (extended)
-				avail = c.stderrWritepos - c.stderrReadpos;
-			else
-				avail = c.stdoutWritepos - c.stdoutReadpos;
-
-			return ((avail > 0) ? avail : (c.EOF ? -1 : 0));
-		}
-	}
-
-	public int getChannelData(Channel c, boolean extended, byte[] target, int off, int len) throws IOException
-	{
-		int copylen = 0;
-		int increment = 0;
-		int remoteID = 0;
-		int localID = 0;
-
-		synchronized (c)
-		{
-			int stdoutAvail = 0;
-			int stderrAvail = 0;
-
-			while (true)
-			{
-				/*
-				 * Data available? We have to return remaining data even if the
-				 * channel is already closed.
-				 */
-
-				stdoutAvail = c.stdoutWritepos - c.stdoutReadpos;
-				stderrAvail = c.stderrWritepos - c.stderrReadpos;
-
-				if ((!extended) && (stdoutAvail != 0))
-					break;
-
-				if ((extended) && (stderrAvail != 0))
-					break;
-
-				/* Do not wait if more data will never arrive (EOF or CLOSED) */
-
-				if ((c.EOF) || (c.state != Channel.STATE_OPEN))
-					return -1;
-
-				try
-				{
-					c.wait();
-				}
-				catch (InterruptedException ignore)
-				{
-				}
-			}
-
-			/* OK, there is some data. Return it. */
-
-			if (!extended)
-			{
-				copylen = (stdoutAvail > len) ? len : stdoutAvail;
-				System.arraycopy(c.stdoutBuffer, c.stdoutReadpos, target, off, copylen);
-				c.stdoutReadpos += copylen;
-
-				if (c.stdoutReadpos != c.stdoutWritepos)
-
-					System.arraycopy(c.stdoutBuffer, c.stdoutReadpos, c.stdoutBuffer, 0, c.stdoutWritepos
-							- c.stdoutReadpos);
-
-				c.stdoutWritepos -= c.stdoutReadpos;
-				c.stdoutReadpos = 0;
-			}
-			else
-			{
-				copylen = (stderrAvail > len) ? len : stderrAvail;
-				System.arraycopy(c.stderrBuffer, c.stderrReadpos, target, off, copylen);
-				c.stderrReadpos += copylen;
-
-				if (c.stderrReadpos != c.stderrWritepos)
-
-					System.arraycopy(c.stderrBuffer, c.stderrReadpos, c.stderrBuffer, 0, c.stderrWritepos
-							- c.stderrReadpos);
-
-				c.stderrWritepos -= c.stderrReadpos;
-				c.stderrReadpos = 0;
-			}
-
-			if (c.state != Channel.STATE_OPEN)
-				return copylen;
-
-			if (c.localWindow < ((Channel.CHANNEL_BUFFER_SIZE + 1) / 2))
-			{
-				int minFreeSpace = Math.min(Channel.CHANNEL_BUFFER_SIZE - c.stdoutWritepos, Channel.CHANNEL_BUFFER_SIZE
-						- c.stderrWritepos);
-
-				increment = minFreeSpace - c.localWindow;
-				c.localWindow = minFreeSpace;
-			}
-
-			remoteID = c.remoteID; /* read while holding the lock */
-			localID = c.localID; /* read while holding the lock */
-		}
-
-		/*
-		 * If a consumer reads stdout and stdin in parallel, we may end up with
-		 * sending two msgWindowAdjust messages. Luckily, it
-		 * does not matter in which order they arrive at the server.
-		 */
-
-		if (increment > 0)
-		{
-			if (log.isEnabled())
-				log.log(80, "Sending SSH_MSG_CHANNEL_WINDOW_ADJUST (channel " + localID + ", " + increment + ")");
-
-			synchronized (c.channelSendLock)
-			{
-				byte[] msg = c.msgWindowAdjust;
-
-				msg[0] = Packets.SSH_MSG_CHANNEL_WINDOW_ADJUST;
-				msg[1] = (byte) (remoteID >> 24);
-				msg[2] = (byte) (remoteID >> 16);
-				msg[3] = (byte) (remoteID >> 8);
-				msg[4] = (byte) (remoteID);
-				msg[5] = (byte) (increment >> 24);
-				msg[6] = (byte) (increment >> 16);
-				msg[7] = (byte) (increment >> 8);
-				msg[8] = (byte) (increment);
-
-				if (c.closeMessageSent == false)
-					tm.sendMessage(msg);
-			}
-		}
-
-		return copylen;
-	}
-
-	public void msgChannelData(byte[] msg, int msglen) throws IOException
-	{
-		if (msglen <= 9)
-			throw new IOException("SSH_MSG_CHANNEL_DATA message has wrong size (" + msglen + ")");
-
-		int id = ((msg[1] & 0xff) << 24) | ((msg[2] & 0xff) << 16) | ((msg[3] & 0xff) << 8) | (msg[4] & 0xff);
-		int len = ((msg[5] & 0xff) << 24) | ((msg[6] & 0xff) << 16) | ((msg[7] & 0xff) << 8) | (msg[8] & 0xff);
-
-		Channel c = getChannel(id);
-
-		if (c == null)
-			throw new IOException("Unexpected SSH_MSG_CHANNEL_DATA message for non-existent channel " + id);
-
-		if (len != (msglen - 9))
-			throw new IOException("SSH_MSG_CHANNEL_DATA message has wrong len (calculated " + (msglen - 9) + ", got "
-					+ len + ")");
-
-		if (log.isEnabled())
-			log.log(80, "Got SSH_MSG_CHANNEL_DATA (channel " + id + ", " + len + ")");
-
-		synchronized (c)
-		{
-			if (c.state == Channel.STATE_CLOSED)
-				return; // ignore
-
-			if (c.state != Channel.STATE_OPEN)
-				throw new IOException("Got SSH_MSG_CHANNEL_DATA, but channel is not in correct state (" + c.state + ")");
-
-			if (c.localWindow < len)
-				throw new IOException("Remote sent too much data, does not fit into window.");
-
-			c.localWindow -= len;
-
-			System.arraycopy(msg, 9, c.stdoutBuffer, c.stdoutWritepos, len);
-			c.stdoutWritepos += len;
-
-			c.notifyAll();
-		}
-	}
-
-	public void msgChannelWindowAdjust(byte[] msg, int msglen) throws IOException
-	{
-		if (msglen != 9)
-			throw new IOException("SSH_MSG_CHANNEL_WINDOW_ADJUST message has wrong size (" + msglen + ")");
-
-		int id = ((msg[1] & 0xff) << 24) | ((msg[2] & 0xff) << 16) | ((msg[3] & 0xff) << 8) | (msg[4] & 0xff);
-		int windowChange = ((msg[5] & 0xff) << 24) | ((msg[6] & 0xff) << 16) | ((msg[7] & 0xff) << 8) | (msg[8] & 0xff);
-
-		Channel c = getChannel(id);
-
-		if (c == null)
-			throw new IOException("Unexpected SSH_MSG_CHANNEL_WINDOW_ADJUST message for non-existent channel " + id);
-
-		synchronized (c)
-		{
-			final long huge = 0xFFFFffffL; /* 2^32 - 1 */
-
-			c.remoteWindow += (windowChange & huge); /* avoid sign extension */
-
-			/* TODO - is this a good heuristic? */
-
-			if ((c.remoteWindow > huge))
-				c.remoteWindow = huge;
-
-			c.notifyAll();
-		}
-
-		if (log.isEnabled())
-			log.log(80, "Got SSH_MSG_CHANNEL_WINDOW_ADJUST (channel " + id + ", " + windowChange + ")");
-	}
-
-	public void msgChannelOpen(byte[] msg, int msglen) throws IOException
-	{
-		TypesReader tr = new TypesReader(msg, 0, msglen);
-
-		tr.readByte(); // skip packet type
-		String channelType = tr.readString();
-		int remoteID = tr.readUINT32(); /* sender channel */
-		int remoteWindow = tr.readUINT32(); /* initial window size */
-		int remoteMaxPacketSize = tr.readUINT32(); /* maximum packet size */
-
-		if ("x11".equals(channelType))
-		{
-			synchronized (x11_magic_cookies)
-			{
-				/* If we did not request X11 forwarding, then simply ignore this bogus request. */
-
-				if (x11_magic_cookies.size() == 0)
-				{
-					PacketChannelOpenFailure pcof = new PacketChannelOpenFailure(remoteID,
-							Packets.SSH_OPEN_ADMINISTRATIVELY_PROHIBITED, "X11 forwarding not activated", "");
-
-					tm.sendAsynchronousMessage(pcof.getPayload());
-
-					if (log.isEnabled())
-						log.log(20, "Unexpected X11 request, denying it!");
-
-					return;
-				}
-			}
-
-			String remoteOriginatorAddress = tr.readString();
-			int remoteOriginatorPort = tr.readUINT32();
-
-			Channel c = new Channel(this);
-
-			synchronized (c)
-			{
-				c.remoteID = remoteID;
-				c.remoteWindow = remoteWindow & 0xFFFFffffL; /* properly convert UINT32 to long */
-				c.remoteMaxPacketSize = remoteMaxPacketSize;
-				c.localID = addChannel(c);
-			}
-
-			/*
-			 * The open confirmation message will be sent from another thread
-			 */
-
-			RemoteX11AcceptThread rxat = new RemoteX11AcceptThread(c, remoteOriginatorAddress, remoteOriginatorPort);
-			rxat.setDaemon(true);
-			rxat.start();
-
-			return;
-		}
-
-		if ("forwarded-tcpip".equals(channelType))
-		{
-			String remoteConnectedAddress = tr.readString(); /* address that was connected */
-			int remoteConnectedPort = tr.readUINT32(); /* port that was connected */
-			String remoteOriginatorAddress = tr.readString(); /* originator IP address */
-			int remoteOriginatorPort = tr.readUINT32(); /* originator port */
-
-			RemoteForwardingData rfd = null;
-
-			synchronized (remoteForwardings)
-			{
-				rfd = (RemoteForwardingData) remoteForwardings.get(new Integer(remoteConnectedPort));
-			}
-
-			if (rfd == null)
-			{
-				PacketChannelOpenFailure pcof = new PacketChannelOpenFailure(remoteID,
-						Packets.SSH_OPEN_ADMINISTRATIVELY_PROHIBITED,
-						"No thanks, unknown port in forwarded-tcpip request", "");
-
-				/* Always try to be polite. */
-
-				tm.sendAsynchronousMessage(pcof.getPayload());
-
-				if (log.isEnabled())
-					log.log(20, "Unexpected forwarded-tcpip request, denying it!");
-
-				return;
-			}
-
-			Channel c = new Channel(this);
-
-			synchronized (c)
-			{
-				c.remoteID = remoteID;
-				c.remoteWindow = remoteWindow & 0xFFFFffffL; /* convert UINT32 to long */
-				c.remoteMaxPacketSize = remoteMaxPacketSize;
-				c.localID = addChannel(c);
-			}
-
-			/*
-			 * The open confirmation message will be sent from another thread.
-			 */
-
-			RemoteAcceptThread rat = new RemoteAcceptThread(c, remoteConnectedAddress, remoteConnectedPort,
-					remoteOriginatorAddress, remoteOriginatorPort, rfd.targetAddress, rfd.targetPort);
-
-			rat.setDaemon(true);
-			rat.start();
-
-			return;
-		}
-
-		if ("auth-agent@openssh.com".equals(channelType)) {
-			Channel c = new Channel(this);
-
-			synchronized (c)
-			{
-				c.remoteID = remoteID;
-				c.remoteWindow = remoteWindow & 0xFFFFffffL; /* properly convert UINT32 to long */
-				c.remoteMaxPacketSize = remoteMaxPacketSize;
-				c.localID = addChannel(c);
-			}
-
-			AuthAgentForwardThread aat = new AuthAgentForwardThread(c, authAgent);
-
-			aat.setDaemon(true);
-			aat.start();
-
-			return;
-		}
-
-		/* Tell the server that we have no idea what it is talking about */
-
-		PacketChannelOpenFailure pcof = new PacketChannelOpenFailure(remoteID, Packets.SSH_OPEN_UNKNOWN_CHANNEL_TYPE,
-				"Unknown channel type", "");
-
-		tm.sendAsynchronousMessage(pcof.getPayload());
-
-		if (log.isEnabled())
-			log.log(20, "The peer tried to open an unsupported channel type (" + channelType + ")");
-	}
-
-	public void msgChannelRequest(byte[] msg, int msglen) throws IOException
-	{
-		TypesReader tr = new TypesReader(msg, 0, msglen);
-
-		tr.readByte(); // skip packet type
-		int id = tr.readUINT32();
-
-		Channel c = getChannel(id);
-
-		if (c == null)
-			throw new IOException("Unexpected SSH_MSG_CHANNEL_REQUEST message for non-existent channel " + id);
-
-		String type = tr.readString("US-ASCII");
-		boolean wantReply = tr.readBoolean();
-
-		if (log.isEnabled())
-			log.log(80, "Got SSH_MSG_CHANNEL_REQUEST (channel " + id + ", '" + type + "')");
-
-		if (type.equals("exit-status"))
-		{
-			if (wantReply != false)
-				throw new IOException("Badly formatted SSH_MSG_CHANNEL_REQUEST message, 'want reply' is true");
-
-			int exit_status = tr.readUINT32();
-
-			if (tr.remain() != 0)
-				throw new IOException("Badly formatted SSH_MSG_CHANNEL_REQUEST message");
-
-			synchronized (c)
-			{
-				c.exit_status = new Integer(exit_status);
-				c.notifyAll();
-			}
-
-			if (log.isEnabled())
-				log.log(50, "Got EXIT STATUS (channel " + id + ", status " + exit_status + ")");
-
-			return;
-		}
-
-		if (type.equals("exit-signal"))
-		{
-			if (wantReply != false)
-				throw new IOException("Badly formatted SSH_MSG_CHANNEL_REQUEST message, 'want reply' is true");
-
-			String signame = tr.readString("US-ASCII");
-			tr.readBoolean();
-			tr.readString();
-			tr.readString();
-
-			if (tr.remain() != 0)
-				throw new IOException("Badly formatted SSH_MSG_CHANNEL_REQUEST message");
-
-			synchronized (c)
-			{
-				c.exit_signal = signame;
-				c.notifyAll();
-			}
-
-			if (log.isEnabled())
-				log.log(50, "Got EXIT SIGNAL (channel " + id + ", signal " + signame + ")");
-
-			return;
-		}
-
-		/* We simply ignore unknown channel requests, however, if the server wants a reply,
-		 * then we signal that we have no idea what it is about.
-		 */
-
-		if (wantReply)
-		{
-			byte[] reply = new byte[5];
-
-			reply[0] = Packets.SSH_MSG_CHANNEL_FAILURE;
-			reply[1] = (byte) (c.remoteID >> 24);
-			reply[2] = (byte) (c.remoteID >> 16);
-			reply[3] = (byte) (c.remoteID >> 8);
-			reply[4] = (byte) (c.remoteID);
-
-			tm.sendAsynchronousMessage(reply);
-		}
-
-		if (log.isEnabled())
-			log.log(50, "Channel request '" + type + "' is not known, ignoring it");
-	}
-
-	public void msgChannelEOF(byte[] msg, int msglen) throws IOException
-	{
-		if (msglen != 5)
-			throw new IOException("SSH_MSG_CHANNEL_EOF message has wrong size (" + msglen + ")");
-
-		int id = ((msg[1] & 0xff) << 24) | ((msg[2] & 0xff) << 16) | ((msg[3] & 0xff) << 8) | (msg[4] & 0xff);
-
-		Channel c = getChannel(id);
-
-		if (c == null)
-			throw new IOException("Unexpected SSH_MSG_CHANNEL_EOF message for non-existent channel " + id);
-
-		synchronized (c)
-		{
-			c.EOF = true;
-			c.notifyAll();
-		}
-
-		if (log.isEnabled())
-			log.log(50, "Got SSH_MSG_CHANNEL_EOF (channel " + id + ")");
-	}
-
-	public void msgChannelClose(byte[] msg, int msglen) throws IOException
-	{
-		if (msglen != 5)
-			throw new IOException("SSH_MSG_CHANNEL_CLOSE message has wrong size (" + msglen + ")");
-
-		int id = ((msg[1] & 0xff) << 24) | ((msg[2] & 0xff) << 16) | ((msg[3] & 0xff) << 8) | (msg[4] & 0xff);
-
-		Channel c = getChannel(id);
-
-		if (c == null)
-			throw new IOException("Unexpected SSH_MSG_CHANNEL_CLOSE message for non-existent channel " + id);
-
-		synchronized (c)
-		{
-			c.EOF = true;
-			c.state = Channel.STATE_CLOSED;
-			c.setReasonClosed("Close requested by remote");
-			c.closeMessageRecv = true;
-
-			removeChannel(c.localID);
-
-			c.notifyAll();
-		}
-
-		if (log.isEnabled())
-			log.log(50, "Got SSH_MSG_CHANNEL_CLOSE (channel " + id + ")");
-	}
-
-	public void msgChannelSuccess(byte[] msg, int msglen) throws IOException
-	{
-		if (msglen != 5)
-			throw new IOException("SSH_MSG_CHANNEL_SUCCESS message has wrong size (" + msglen + ")");
-
-		int id = ((msg[1] & 0xff) << 24) | ((msg[2] & 0xff) << 16) | ((msg[3] & 0xff) << 8) | (msg[4] & 0xff);
-
-		Channel c = getChannel(id);
-
-		if (c == null)
-			throw new IOException("Unexpected SSH_MSG_CHANNEL_SUCCESS message for non-existent channel " + id);
-
-		synchronized (c)
-		{
-			c.successCounter++;
-			c.notifyAll();
-		}
-
-		if (log.isEnabled())
-			log.log(80, "Got SSH_MSG_CHANNEL_SUCCESS (channel " + id + ")");
-	}
-
-	public void msgChannelFailure(byte[] msg, int msglen) throws IOException
-	{
-		if (msglen != 5)
-			throw new IOException("SSH_MSG_CHANNEL_FAILURE message has wrong size (" + msglen + ")");
-
-		int id = ((msg[1] & 0xff) << 24) | ((msg[2] & 0xff) << 16) | ((msg[3] & 0xff) << 8) | (msg[4] & 0xff);
-
-		Channel c = getChannel(id);
-
-		if (c == null)
-			throw new IOException("Unexpected SSH_MSG_CHANNEL_FAILURE message for non-existent channel " + id);
-
-		synchronized (c)
-		{
-			c.failedCounter++;
-			c.notifyAll();
-		}
-
-		if (log.isEnabled())
-			log.log(50, "Got SSH_MSG_CHANNEL_FAILURE (channel " + id + ")");
-	}
-
-	public void msgChannelOpenConfirmation(byte[] msg, int msglen) throws IOException
-	{
-		PacketChannelOpenConfirmation sm = new PacketChannelOpenConfirmation(msg, 0, msglen);
-
-		Channel c = getChannel(sm.recipientChannelID);
-
-		if (c == null)
-			throw new IOException("Unexpected SSH_MSG_CHANNEL_OPEN_CONFIRMATION message for non-existent channel "
-					+ sm.recipientChannelID);
-
-		synchronized (c)
-		{
-			if (c.state != Channel.STATE_OPENING)
-				throw new IOException("Unexpected SSH_MSG_CHANNEL_OPEN_CONFIRMATION message for channel "
-						+ sm.recipientChannelID);
-
-			c.remoteID = sm.senderChannelID;
-			c.remoteWindow = sm.initialWindowSize & 0xFFFFffffL; /* convert UINT32 to long */
-			c.remoteMaxPacketSize = sm.maxPacketSize;
-			c.state = Channel.STATE_OPEN;
-			c.notifyAll();
-		}
-
-		if (log.isEnabled())
-			log.log(50, "Got SSH_MSG_CHANNEL_OPEN_CONFIRMATION (channel " + sm.recipientChannelID + " / remote: "
-					+ sm.senderChannelID + ")");
-	}
-
-	public void msgChannelOpenFailure(byte[] msg, int msglen) throws IOException
-	{
-		if (msglen < 5)
-			throw new IOException("SSH_MSG_CHANNEL_OPEN_FAILURE message has wrong size (" + msglen + ")");
-
-		TypesReader tr = new TypesReader(msg, 0, msglen);
-
-		tr.readByte(); // skip packet type
-		int id = tr.readUINT32(); /* sender channel */
-
-		Channel c = getChannel(id);
-
-		if (c == null)
-			throw new IOException("Unexpected SSH_MSG_CHANNEL_OPEN_FAILURE message for non-existent channel " + id);
-
-		int reasonCode = tr.readUINT32();
-		String description = tr.readString("UTF-8");
-
-		String reasonCodeSymbolicName = null;
-
-		switch (reasonCode)
-		{
-		case 1:
-			reasonCodeSymbolicName = "SSH_OPEN_ADMINISTRATIVELY_PROHIBITED";
-			break;
-		case 2:
-			reasonCodeSymbolicName = "SSH_OPEN_CONNECT_FAILED";
-			break;
-		case 3:
-			reasonCodeSymbolicName = "SSH_OPEN_UNKNOWN_CHANNEL_TYPE";
-			break;
-		case 4:
-			reasonCodeSymbolicName = "SSH_OPEN_RESOURCE_SHORTAGE";
-			break;
-		default:
-			reasonCodeSymbolicName = "UNKNOWN REASON CODE (" + reasonCode + ")";
-		}
-
-		StringBuffer descriptionBuffer = new StringBuffer();
-		descriptionBuffer.append(description);
-
-		for (int i = 0; i < descriptionBuffer.length(); i++)
-		{
-			char cc = descriptionBuffer.charAt(i);
-
-			if ((cc >= 32) && (cc <= 126))
-				continue;
-			descriptionBuffer.setCharAt(i, '\uFFFD');
-		}
-
-		synchronized (c)
-		{
-			c.EOF = true;
-			c.state = Channel.STATE_CLOSED;
-			c.setReasonClosed("The server refused to open the channel (" + reasonCodeSymbolicName + ", '"
-					+ descriptionBuffer.toString() + "')");
-			c.notifyAll();
-		}
-
-		if (log.isEnabled())
-			log.log(50, "Got SSH_MSG_CHANNEL_OPEN_FAILURE (channel " + id + ")");
-	}
-
-	public void msgGlobalRequest(byte[] msg, int msglen) throws IOException
-	{
-		/* Currently we do not support any kind of global request */
-
-		TypesReader tr = new TypesReader(msg, 0, msglen);
-
-		tr.readByte(); // skip packet type
-		String requestName = tr.readString();
-		boolean wantReply = tr.readBoolean();
-
-		if (wantReply)
-		{
-			byte[] reply_failure = new byte[1];
-			reply_failure[0] = Packets.SSH_MSG_REQUEST_FAILURE;
-
-			tm.sendAsynchronousMessage(reply_failure);
-		}
-
-		/* We do not clean up the requestName String - that is OK for debug */
-
-		if (log.isEnabled())
-			log.log(80, "Got SSH_MSG_GLOBAL_REQUEST (" + requestName + ")");
-	}
-
-	public void msgGlobalSuccess() throws IOException
-	{
-		synchronized (channels)
-		{
-			globalSuccessCounter++;
-			channels.notifyAll();
-		}
-
-		if (log.isEnabled())
-			log.log(80, "Got SSH_MSG_REQUEST_SUCCESS");
-	}
-
-	public void msgGlobalFailure() throws IOException
-	{
-		synchronized (channels)
-		{
-			globalFailedCounter++;
-			channels.notifyAll();
-		}
-
-		if (log.isEnabled())
-			log.log(80, "Got SSH_MSG_REQUEST_FAILURE");
-	}
-
-	public void handleMessage(byte[] msg, int msglen) throws IOException
-	{
-		if (msg == null)
-		{
-			if (log.isEnabled())
-				log.log(50, "HandleMessage: got shutdown");
-
-			synchronized (listenerThreads)
-			{
-				for (int i = 0; i < listenerThreads.size(); i++)
-				{
-					IChannelWorkerThread lat = (IChannelWorkerThread) listenerThreads.elementAt(i);
-					lat.stopWorking();
-				}
-				listenerThreadsAllowed = false;
-			}
-
-			synchronized (channels)
-			{
-				shutdown = true;
-
-				for (int i = 0; i < channels.size(); i++)
-				{
-					Channel c = (Channel) channels.elementAt(i);
-					synchronized (c)
-					{
-						c.EOF = true;
-						c.state = Channel.STATE_CLOSED;
-						c.setReasonClosed("The connection is being shutdown");
-						c.closeMessageRecv = true; /*
-																															 * You never know, perhaps
-																															 * we are waiting for a
-																															 * pending close message
-																															 * from the server...
-																															 */
-						c.notifyAll();
-					}
-				}
-				/* Works with J2ME */
-				channels.setSize(0);
-				channels.trimToSize();
-				channels.notifyAll(); /* Notify global response waiters */
-				return;
-			}
-		}
-
-		switch (msg[0])
-		{
-		case Packets.SSH_MSG_CHANNEL_OPEN_CONFIRMATION:
-			msgChannelOpenConfirmation(msg, msglen);
-			break;
-		case Packets.SSH_MSG_CHANNEL_WINDOW_ADJUST:
-			msgChannelWindowAdjust(msg, msglen);
-			break;
-		case Packets.SSH_MSG_CHANNEL_DATA:
-			msgChannelData(msg, msglen);
-			break;
-		case Packets.SSH_MSG_CHANNEL_EXTENDED_DATA:
-			msgChannelExtendedData(msg, msglen);
-			break;
-		case Packets.SSH_MSG_CHANNEL_REQUEST:
-			msgChannelRequest(msg, msglen);
-			break;
-		case Packets.SSH_MSG_CHANNEL_EOF:
-			msgChannelEOF(msg, msglen);
-			break;
-		case Packets.SSH_MSG_CHANNEL_OPEN:
-			msgChannelOpen(msg, msglen);
-			break;
-		case Packets.SSH_MSG_CHANNEL_CLOSE:
-			msgChannelClose(msg, msglen);
-			break;
-		case Packets.SSH_MSG_CHANNEL_SUCCESS:
-			msgChannelSuccess(msg, msglen);
-			break;
-		case Packets.SSH_MSG_CHANNEL_FAILURE:
-			msgChannelFailure(msg, msglen);
-			break;
-		case Packets.SSH_MSG_CHANNEL_OPEN_FAILURE:
-			msgChannelOpenFailure(msg, msglen);
-			break;
-		case Packets.SSH_MSG_GLOBAL_REQUEST:
-			msgGlobalRequest(msg, msglen);
-			break;
-		case Packets.SSH_MSG_REQUEST_SUCCESS:
-			msgGlobalSuccess();
-			break;
-		case Packets.SSH_MSG_REQUEST_FAILURE:
-			msgGlobalFailure();
-			break;
-		default:
-			throw new IOException("Cannot handle unknown channel message " + (msg[0] & 0xff));
+			handle.isClosed = true;
 		}
 	}
 }

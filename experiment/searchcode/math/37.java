@@ -1,1144 +1,2848 @@
-package com.xrefactory.jedit;
-
-import org.gjt.sp.jedit.*;
-import java.io.*;
-import org.gjt.sp.jedit.help.*;
-import javax.swing.*;
-import org.gjt.sp.jedit.io.*;
-import java.awt.*;
-
-
-public class Dispatch {
-
-
-	static String currentTag;
-
-	static int attrLen;
-	static int attrLine;
-	static int attrCol;
-	static int attrOffset;
-	static int attrVal;
-	static int attrLevel;
-	static int attrNumber;
-	static int attrBeep;
-	static int attrSelected;
-	static int attrMType;
-	static int attrBase;
-	static int attrDRefn;
-	static int attrRefn;
-	static int attrIndent;
-	static int attrInterface;
-	static int attrDefinition;
-	static int attrTreeUp;
-	static int attrContinue;
-	static int attrNoFocus;
-
-	static String attrTreeDeps;
-	static String attrType;
-	static String attrVClass;
-	static String attrSymbol;
-
-	static String stringVal;
-
-	static String block;
-
-	static void clearAttributes() {
-		attrLen = 0;
-		attrLine = 0;
-		attrCol = 0;
-		attrOffset = 0;
-		attrVal = 0;
-		attrLevel = 0;
-		attrNumber = 0;
-		attrBeep = 0;
-		attrSelected = 0;
-		attrMType = 0;
-		attrBase = 0;
-		attrDRefn = 0;
-		attrRefn = 0;
-		attrIndent = 0;
-		attrInterface = 0;
-		attrDefinition = 0;
-		attrTreeUp = 0;
-		attrNoFocus = 0;
-
-		attrTreeDeps = null;
-		attrType = null;
-		attrVClass = null;
-	}
-
-	static void browseUrlIfConfirmed(String url, DispatchData data) {
-		// sometimes it throws exception FileNotFoundor or what
-		try {
-			int confirm = JOptionPane.YES_OPTION;
-			if (Opt.askBeforeBrowsingJavadoc()) {
-				confirm = JOptionPane.showConfirmDialog(
-					s.getProbableParent(data.callerComponent), 
-					"Browse URL: "+url+"?", "Confirmation", 
-					JOptionPane.YES_NO_OPTION,
-					JOptionPane.QUESTION_MESSAGE);
-			}
-			if (confirm == JOptionPane.YES_OPTION) {
-				s.browseUrl(url, false, s.getParentView(data.callerComponent));
-			}
-		} catch (Exception e) {}
-	}
-
-	public static void editorPreCheck(String str) throws XrefException {
-		Buffer buffer = s.getBuffer();
-		int caret = s.getCaretPosition();
-		String text = buffer.getText(caret, str.length());
-		if (! text.equals(str)) {
-			throw new XrefException("expecting string "+str+" at this place, probably not updated references?");
-		}
-	}
-
-	public static void editorReplace(String str, String with) throws XrefException {
-		Buffer buffer = s.getBuffer();
-		int caret = s.getCaretPosition();
-		String text = buffer.getText(caret, str.length());
-		if (! text.equals(str)) {
-			throw new XrefException("should replace "+str+" with "+with+", but find "+text+" on this place");
-		}
-		buffer.remove(caret, str.length());
-		buffer.insert(caret, with);
-	}
-
-	static void protocolCheckEq(String s1, String s2) throws Exception {
-		if (! s1.equals(s2)) {
-			throw new XrefException("Internal protocol error, got '"+s1+"' while expecting '"+s2+"'");
-		}
-	}
-
-	public static int skipMyXmlIdentifier(XrefCharBuffer ss, int i, int len) {
-		char	c;
-		c = ss.buf[i];
-		while (i<len && (Character.isLetterOrDigit(c) || c=='-')) {
-			i++;
-			c = ss.buf[i];
-		}
-		return(i);
-	}
-
-	public static int skipAttribute(XrefCharBuffer ss, int i, int len) {
-		char	c;
-		c = ss.buf[i];
-		if (c=='"') {
-			c = ' ';
-			while (i<len && c!='"' && c!='\n') {
-				i++;
-				c = ss.buf[i];
-			}
-			if (i<len && c=='"') i++;
-		} else {
-			while (i<len && c!='>' && (! Character.isWhitespace(c))) {
-				i++;
-				c = ss.buf[i];
-			}
-		}
-		return(i);
-	}
-
-	public static String unquote(String a) {
-		int len = a.length();
-		if (len>=2 && a.charAt(0)=='"' && a.charAt(len-1)=='"') {
-			return(a.substring(1,len-1));
-		} else {
-			return(a);
-		}
-	}
-
-	public static String getContext(XrefCharBuffer ss, int i, int len) {
-		int j = i+20;
-		String suffix="";
-		if (j>=len) j=len;
-		else suffix=" ...";
-		return(ss.substring(i,j)+suffix);
-	}
-
-	public static int parseXmlTag(XrefCharBuffer ss, int i, int len) throws Exception {
-		int 	j;
-		char	c;
-		String	attrib, attrval;
-		i = s.skipBlank(ss, i, len);
-		if (i>=len) throw new XrefException("parsing beyond end of communication string");
-		if (ss.buf[i]!='<') {
-			throw new XrefException("tag does not start with '<' ("+getContext(ss,i,len)+")");
-		}
-		i++;
-		j = i;
-		if (ss.buf[i]=='/') {
-			// closing tag
-			i++;
-		}
-		i = skipMyXmlIdentifier(ss, i, len);
-		currentTag = ss.substring(j, i);
-//&System.err.println("Tag == " + currentTag + "\n");		
-		i = s.skipBlank(ss, i, len);
-		while (ss.buf[i]!='>') {
-			j=i; i=skipMyXmlIdentifier(ss, i, len);
-			attrib = ss.substring(j,i);
-			i = s.skipBlank(ss, i, len);
-			if (ss.buf[i]!='=') throw new XrefException("= expected after attribute " + attrib);
-			i++;
-			j=i; i = skipAttribute(ss, i, len);
-			attrval = ss.substring(j,i);
-			// Integer.parseInt(ss.substring(j,i));
-			// TODO!!!! do this via some hash table or what
-			// this is pretty inefficient
-			if (false) {
-			} else if (attrib.equals(Protocol.PPCA_VCLASS)) {
-				attrVClass = unquote(attrval);
-			} else if (attrib.equals(Protocol.PPCA_BASE)) {
-				attrBase = Integer.parseInt(attrval);
-			} else if (attrib.equals(Protocol.PPCA_COL)) {
-				attrCol = Integer.parseInt(attrval);
-			} else if (attrib.equals(Protocol.PPCA_DEFINITION)) {
-				attrDefinition = Integer.parseInt(attrval);
-			} else if (attrib.equals(Protocol.PPCA_DEF_REFN)) {
-				attrDRefn = Integer.parseInt(attrval);
-			} else if (attrib.equals(Protocol.PPCA_INDENT)) {
-				attrIndent = Integer.parseInt(attrval);
-			} else if (attrib.equals(Protocol.PPCA_INTERFACE)) {
-				attrInterface = Integer.parseInt(attrval);
-			} else if (attrib.equals(Protocol.PPCA_LEN)) {
-				attrLen = Integer.parseInt(attrval);
-			} else if (attrib.equals(Protocol.PPCA_LINE)) {
-				attrLine = Integer.parseInt(attrval);
-			} else if (attrib.equals(Protocol.PPCA_OFFSET)) {
-				attrOffset = Integer.parseInt(attrval);
-			} else if (attrib.equals(Protocol.PPCA_REFN)) {
-				attrRefn = Integer.parseInt(attrval);
-			} else if (attrib.equals(Protocol.PPCA_SELECTED)) {
-				attrSelected = Integer.parseInt(attrval);
-			} else if (attrib.equals(Protocol.PPCA_TREE_DEPS)) {
-				attrTreeDeps = unquote(attrval);
-			} else if (attrib.equals(Protocol.PPCA_TREE_UP)) {
-				attrTreeUp = Integer.parseInt(attrval);
-			} else if (attrib.equals(Protocol.PPCA_MTYPE)) {
-				attrMType = Integer.parseInt(attrval);
-			} else if (attrib.equals(Protocol.PPCA_TYPE)) {
-				attrType = unquote(attrval);
-			} else if (attrib.equals(Protocol.PPCA_BEEP)) {
-				attrBeep = Integer.parseInt(attrval);
-			} else if (attrib.equals(Protocol.PPCA_VALUE)) {
-				attrVal = Integer.parseInt(attrval);
-			} else if (attrib.equals(Protocol.PPCA_LEVEL)) {
-				attrLevel = Integer.parseInt(attrval);
-			} else if (attrib.equals(Protocol.PPCA_NUMBER)) {
-				attrNumber = Integer.parseInt(attrval);
-			} else if (attrib.equals(Protocol.PPCA_CONTINUE)) {
-				attrContinue = Integer.parseInt(attrval);
-			} else if (attrib.equals(Protocol.PPCA_NO_FOCUS)) {
-				attrNoFocus = Integer.parseInt(attrval);
-			} else if (attrib.equals(Protocol.PPCA_SYMBOL)) {
-				attrSymbol = unquote(attrval);
-			} else if (s.debug) {
-				throw new XrefException("unknown XML attribute '" + attrib + "'");
-			}
-			i = s.skipBlank(ss, i, len);
-		}
-		i++;
-		return(i);
-	}
-
-	public static int parseXmlTagHandleMessages(XrefCharBuffer ss, int i, int len, DispatchData data) throws Exception {
-		boolean loop = true;
-		while (loop) {
-			clearAttributes();
-			i = parseXmlTag(ss, i, len);
-			if (false) {
-			} else if (currentTag.equals(Protocol.PPC_ERROR)) {
-				i = dispatchError(ss, i, len, data);
-			} else if (currentTag.equals(Protocol.PPC_FATAL_ERROR)) {
-				i = dispatchFatalError(ss, i, len, data);
-			} else if (currentTag.equals(Protocol.PPC_WARNING)) {
-				i = dispatchWarning(ss, i, len, data);
-			} else if (currentTag.equals(Protocol.PPC_DEBUG_INFORMATION)) {
-				i = dispatchDebugMessage(ss, i, len, data);
-			} else if (currentTag.equals(Protocol.PPC_INFORMATION)) {
-				i = dispatchMessage(ss, i, len, data);
-			} else if (currentTag.equals(Protocol.PPC_BOTTOM_INFORMATION)) {
-				i = dispatchBottomMessage(ss, i, len, data, Protocol.PPC_BOTTOM_INFORMATION);
-			} else if (currentTag.equals(Protocol.PPC_BOTTOM_WARNING)) {
-				i = dispatchBottomMessage(ss, i, len, data, Protocol.PPC_BOTTOM_WARNING);
-			} else if (currentTag.equals(Protocol.PPC_IGNORE)) {
-				i = dispatchIgnore(ss, i, len, data);
-			} else if (currentTag.equals(Protocol.PPC_LICENSE_ERROR)) {
-				i = dispatchLicenseError(ss, i, len, data);
-			} else {
-				loop = false;
-			}
-			if (loop) {
-				i = s.skipBlank(ss, i, len);
-				if (i>=len) loop = false;
-			}
-		}
-		return(i);
-	}
-
-	public static int dispatchError(XrefCharBuffer ss, int i, int len, DispatchData data) throws Exception {
-		String message = ss.substring(i, i+attrLen);
-		i += attrLen;
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		protocolCheckEq(currentTag, "/"+Protocol.PPC_ERROR);
-		throw new XrefErrorException(message);
-		//&return(i);
-	}
-
-	public static int dispatchLicenseError(XrefCharBuffer ss, int i, int len, DispatchData data) throws Exception {
-		String message = ss.substring(i, i+attrLen);
-		i += attrLen;
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		protocolCheckEq(currentTag, "/"+Protocol.PPC_LICENSE_ERROR);
-		int answer = JOptionPane.showOptionDialog(s.getProbableParent(data.callerComponent), 
-												  message, 
-												  "Xrefactory Warning", 
-												  JOptionPane.OK_CANCEL_OPTION,
-												  JOptionPane.WARNING_MESSAGE,
-												  null,
-												  new String[]{"Browse Url","Continue"},
-												  "Continue"
-			);
-		if (answer == 0) {
-			s.browseUrl(s.xrefRegistrationUrl, true, s.getParentView(data.callerComponent));
-		}
-		return(i);
-	}
-
-	public static int dispatchFatalError(XrefCharBuffer ss, int i, int len, DispatchData data) throws Exception {
-		String message = ss.substring(i, i+attrLen);
-		i += attrLen;
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		protocolCheckEq(currentTag, "/"+Protocol.PPC_FATAL_ERROR);
-		throw new XrefErrorException(message);
-		//&return(i);
-	}
-
-	public static int dispatchWarning(XrefCharBuffer ss, int i, int len, DispatchData data) throws Exception {
-		String message = ss.substring(i, i+attrLen);
-		i += attrLen;
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		protocolCheckEq(currentTag, "/"+Protocol.PPC_WARNING);
-		JOptionPane.showMessageDialog(s.getProbableParent(data.callerComponent), 
-									  message, "Xrefactory Warning", JOptionPane.WARNING_MESSAGE);
-		return(i);
-	}
-
-	public static int dispatchMessage(XrefCharBuffer ss, int i, int len, DispatchData data) throws Exception {
-		String message = ss.substring(i, i+attrLen);
-		i += attrLen;
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		protocolCheckEq(currentTag, "/"+Protocol.PPC_INFORMATION);
-		JOptionPane.showMessageDialog(s.getProbableParent(data.callerComponent), 
-									  message, "Xrefactory Info", JOptionPane.INFORMATION_MESSAGE);
-		return(i);
-	}
-
-	public static int dispatchDebugMessage(XrefCharBuffer ss, int i, int len, DispatchData data) throws Exception {
-		String message = ss.substring(i, i+attrLen);
-		i += attrLen;
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		protocolCheckEq(currentTag, "/"+Protocol.PPC_DEBUG_INFORMATION);
-		if (s.debug) {
-			JOptionPane.showMessageDialog(s.getProbableParent(data.callerComponent), 
-										  message, "Xrefactory Debug Info", JOptionPane.INFORMATION_MESSAGE);
-		}
-		return(i);
-	}
-
-	public static int dispatchBottomMessage(XrefCharBuffer ss, int i, int len, DispatchData data, String ctag) throws Exception {
-		String message = ss.substring(i, i+attrLen);
-		i += attrLen;
-		if (attrBeep!=0) s.view.getToolkit().beep();
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		protocolCheckEq(currentTag, "/"+ctag);
-		//&s.getParentView(data.callerComponent).getStatus().setMessageAndClear(message);
-		SwingUtilities.invokeLater(new s.MessageDisplayer(message,true));
-		return(i);
-	}
-
-	public static int dispatchAskConfirmation(XrefCharBuffer ss, int i, int len, DispatchData data) throws Exception {
-		String message = ss.substring(i, i+attrLen);
-		i += attrLen;
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		protocolCheckEq(currentTag, "/"+Protocol.PPC_ASK_CONFIRMATION);
-		int confirm = JOptionPane.showConfirmDialog(s.getProbableParent(data.callerComponent), 
-													message, "Confirmation", 
-													JOptionPane.YES_NO_OPTION,
-													JOptionPane.WARNING_MESSAGE);
-		if (confirm != JOptionPane.YES_OPTION) throw new XrefAbortException();
-		return(i);
-	}
-
-	public static int dispatchIgnore(XrefCharBuffer ss, int i, int len, DispatchData data) throws Exception {
-		String message = ss.substring(i, i+attrLen);
-		i += attrLen;
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		protocolCheckEq(currentTag, "/"+Protocol.PPC_IGNORE);
-		return(i);
-	}
-
-	// unused to be deleted
-	public static int dispatchFileSaveAs(XrefCharBuffer ss, int i, int len, DispatchData data) throws Exception {
-		String fname = ss.substring(i, i+attrLen);
-		i += attrLen;
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		protocolCheckEq(currentTag, "/"+Protocol.PPC_FILE_SAVE_AS);
-		s.getBuffer().save(s.view, fname, true);
-		try {Thread.currentThread().sleep(35);} catch (InterruptedException e){}
-		VFSManager.waitForRequests();
-		return(i);
-	}
-
-	// unused to be deleted
-	public static int dispatchMoveDirectory(XrefCharBuffer ss, int i, int len, DispatchData data) throws Exception {
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		protocolCheckEq(currentTag, Protocol.PPC_STRING_VALUE);
-		String oldname = ss.substring(i, i+attrLen);
-		i += attrLen;
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		protocolCheckEq(currentTag, "/"+Protocol.PPC_STRING_VALUE);
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		protocolCheckEq(currentTag, Protocol.PPC_STRING_VALUE);
-		String newname = ss.substring(i, i+attrLen);
-		i += attrLen;
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		protocolCheckEq(currentTag, "/"+Protocol.PPC_STRING_VALUE);
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		protocolCheckEq(currentTag, "/"+Protocol.PPC_MOVE_DIRECTORY);
-		int confirm = JOptionPane.showConfirmDialog(
-			s.getProbableParent(data.callerComponent), 
-			"\tCan I move directory\n"+oldname+"\n\tto\n"+newname,
-			"Confirmation", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
-		if (confirm == JOptionPane.YES_OPTION) {
-			File ff = new File(oldname);
-			ff.renameTo(new File(newname));
-		}
-		return(i);
-	}
-
-	public static int dispatchMoveFileAs(XrefCharBuffer ss, int i, int len, DispatchData data) throws Exception {
-		String fname = ss.substring(i, i+attrLen);
-		i += attrLen;
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		protocolCheckEq(currentTag, "/"+Protocol.PPC_MOVE_FILE_AS);
-		File ff = new File(fname);
-		ff.getParentFile().mkdirs();
-		File oldfile = new File(s.getBuffer().getPath());
-		oldfile.delete();
-		if (s.getBuffer().save(s.view, fname, true)) {
-			// sleeping is a hack fixing jEdit dead-lock problem
-			try {Thread.currentThread().sleep(35);} catch (InterruptedException e){}
-			VFSManager.waitForRequests();
-			Buffer oldb = jEdit.getBuffer(oldfile.getAbsolutePath());
-			if (oldb!=null && oldb!=s.getBuffer()) {
-				jEdit.closeBuffer(s.view, oldb);
-			}
-			try {Thread.currentThread().sleep(15);} catch (InterruptedException e){}
-			VFSManager.waitForRequests();
-		} else {
-			throw new XrefException("can not move the file");
-		}
-		return(i);
-	}
-
-	public static int dispatchGoto(XrefCharBuffer ss, int i, int len, DispatchData data) throws Exception {
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		if (currentTag.equals(Protocol.PPC_OFFSET_POSITION)) {
-			String path =  ss.substring(i, i+attrLen);
-			int offset = attrOffset;
-			i += attrLen;
-			i = parseXmlTagHandleMessages(ss, i, len,data);
-			protocolCheckEq(currentTag, "/"+Protocol.PPC_OFFSET_POSITION);
-			s.moveToPosition(s.getParentView(data.callerComponent), path, offset);
-		} else {
-			protocolCheckEq(currentTag, Protocol.PPC_LC_POSITION);
-			String path =  ss.substring(i, i+attrLen);
-			int line = attrLine;
-			int col = attrCol;
-			i += attrLen;
-			i = parseXmlTagHandleMessages(ss, i, len,data);
-			protocolCheckEq(currentTag, "/"+Protocol.PPC_LC_POSITION);
-			s.moveToPosition(s.getParentView(data.callerComponent), path, line, col);
-		}
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		protocolCheckEq(currentTag, "/"+Protocol.PPC_GOTO);
-		return(i);
-	}
-
-	public static int dispatchPreCheck(XrefCharBuffer ss, int i, int len, DispatchData data) throws Exception {
-		String str =  ss.substring(i, i+attrLen);
-		i += attrLen;
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		protocolCheckEq(currentTag, "/"+Protocol.PPC_REFACTORING_PRECHECK);
-		editorPreCheck(str);
-		return(i);
-	}
-
-	public static int dispatchString(XrefCharBuffer ss, int i, int len, DispatchData data) throws Exception {
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		protocolCheckEq(currentTag, Protocol.PPC_STRING_VALUE);
-		stringVal =  ss.substring(i, i+attrLen);
-		i += attrLen;
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		protocolCheckEq(currentTag, "/"+Protocol.PPC_STRING_VALUE);
-		return(i);
-	}
-
-	public static int dispatchReplacement(XrefCharBuffer ss, int i, int len, DispatchData data) throws Exception {
-		i = dispatchString(ss, i, len, data);
-		String str = stringVal;
-		i = dispatchString(ss, i, len, data);
-		String with = stringVal;
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		protocolCheckEq(currentTag, "/"+Protocol.PPC_REFACTORING_REPLACEMENT);
-		editorReplace(str, with);
-		return(i);
-	}
-
-	public static int dispatchDisplayResolution(XrefCharBuffer ss, int i, int len, DispatchData data) throws Exception {
-		String message = ss.substring(i, i+attrLen);
-		boolean cont = attrContinue!=0;
-		i += attrLen;
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		protocolCheckEq(currentTag, "/"+Protocol.PPC_DISPLAY_RESOLUTION);
-		// Frame did not work, as it looses pointer to s.view
-		//&if (cont) {
-		new ResolutionDialog(message, attrMType, data, cont);
-		//&} else {
-		//&new ResolutionFrame(message, attrMType, data, cont);
-		//&throw new XrefAbortException();
-		//&}
-		return(i);
-	}
-
-	public static int dispatchDisplayOrUpdateBrowser(XrefCharBuffer ss, int i, int len, DispatchData data) throws Exception {
-		String message = ss.substring(i, i+attrLen);
-		i += attrLen;
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		protocolCheckEq(currentTag, "/"+Protocol.PPC_DISPLAY_OR_UPDATE_BROWSER);
-		s.showAndUpdateBrowser(s.getParentView(data.callerComponent));
-		return(i);
-	}
-
-/*& // old way of displaying class tree
-  public static int dispatchDisplayClassTree(XrefCharBuffer ss, int i, int len, DispatchData data) throws Exception {
-  XrefCharBuffer 	tree = new XrefCharBuffer();
-  int 			minLine = 1000000;
-  int		 		cline = -1;
-  String			prefix;
-  int				callerLine = 0;
-  clearAttributes();
-  i = parseXmlTagHandleMessages(ss, i, len,data);
-  while (currentTag.equals(Protocol.PPC_CLASS)) {
-  String ctclass = ss.substring(i, i+attrLen);
-  i += attrLen;
-  cline ++;
-  if (cline != 0) tree.append("\n");
-  if (attrBase==1) {
-  prefix = ">>";
-  if (callerLine==0) callerLine = cline;
-  } else {
-  prefix = "  ";
-  }
-  if (attrTreeUp==1) {
-  tree.append(prefix + attrTreeDeps + "(" + ctclass + ")  ");
-  } else {
-  tree.append(prefix + attrTreeDeps + ctclass + "  ");
-  }
-  if (minLine>attrLine) minLine = attrLine;
-  i = parseXmlTagHandleMessages(ss, i, len,data);
-  protocolCheckEq(currentTag, "/"+Protocol.PPC_CLASS);
-  clearAttributes();
-  i = parseXmlTagHandleMessages(ss, i, len,data);
-  }
-  protocolCheckEq(currentTag, "/"+Protocol.PPC_DISPLAY_CLASS_TREE);
-  new DockableClassTree(s.getParentFrame(data.callerComponent), tree.toString(), data, minLine, callerLine);
-  return(i);
-  }
-  &*/
-
-	public static int dispatchDisplayClassTree(XrefCharBuffer ss, int i, int len, DispatchData data) throws Exception {
-		XrefTreeNode [] tt = new XrefTreeNode[s.XREF_MAX_TREE_DEEP];
-		tt[0] = new XrefTreeNode("root", null, 0,0,0, false,false,false,false,false,false);
-		i = dispatchParseOneSymbolClassHierarchy(ss, i, len, data, tt, "");
-		protocolCheckEq(currentTag, "/"+Protocol.PPC_DISPLAY_CLASS_TREE);
-		s.view.getDockableWindowManager().showDockableWindow(s.dockableClassTreeWindowName);
-		DockableClassTree ctViewer = s.getClassTreeViewer(s.view);
-		ctViewer.setTree(tt[0]);
-		return(i);
-	}
-
-	static int dispatchParseOneSymbolClassHierarchy(XrefCharBuffer ss, int i, int len, DispatchData data, XrefTreeNode [] tt, String symbol) throws Exception {
-		tt[1] = new XrefTreeNode(symbol, tt[0], 0,0,0, false,false,false,true,false,false);
-		clearAttributes();
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		while (currentTag.equals(Protocol.PPC_CLASS)) {
-			String ctclass = ss.substring(i, i+attrLen);
-			i += attrLen;
-			int deep = attrIndent+2;
-			s.assertt(deep < s.XREF_MAX_TREE_DEEP);
-			tt[deep] = new XrefTreeNode(ctclass, tt[deep-1], 
-										attrLine, attrRefn, attrDRefn,
-										attrBase==1,attrSelected==1,attrInterface==1, 
-										false,attrDefinition==1, false);
-			i = parseXmlTagHandleMessages(ss, i, len,data);
-			protocolCheckEq(currentTag, "/"+Protocol.PPC_CLASS);
-			clearAttributes();
-			i = parseXmlTagHandleMessages(ss, i, len,data);
-		}
-		return(i);
-	}
-
-	static int dispatchParseTreeDescription(XrefCharBuffer ss, int i, int len, DispatchData data, XrefTreeNode [] tt) throws Exception {
-		tt[0] = new XrefTreeNode("root", null, 0,0,0, false,false,false,false,false,false);
-		XrefTreeNode nonVirtuals = new XrefTreeNode(s.XREF_NON_MEMBER_SYMBOL_NAME, tt[0], 
-													0, 0, 0, false,false,false,true,false,false);
-		
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		while (currentTag.equals(Protocol.PPC_VIRTUAL_SYMBOL)
-			   || currentTag.equals(Protocol.PPC_SYMBOL)) {
-			String symbol = ss.substring(i, i+attrLen);
-			i += attrLen;
-			if (currentTag.equals(Protocol.PPC_SYMBOL)) {
-				new XrefTreeNode(symbol, nonVirtuals,
-								 attrLine, attrRefn, attrDRefn,
-								 attrBase==1,attrSelected==1,attrInterface==1, 
-								 false,attrDefinition==1, false);
-				i = parseXmlTagHandleMessages(ss, i, len,data);
-				protocolCheckEq(currentTag, "/"+Protocol.PPC_SYMBOL);
-				clearAttributes();
-				i = parseXmlTagHandleMessages(ss, i, len,data);
-			} else {
-				i = parseXmlTagHandleMessages(ss, i, len,data);
-				protocolCheckEq(currentTag, "/"+Protocol.PPC_VIRTUAL_SYMBOL);
-				i = dispatchParseOneSymbolClassHierarchy(ss, i, len, data, tt, symbol);
-			}
-		}
-		if (nonVirtuals.subNodes.size()==0) tt[0].removeSubNode(nonVirtuals);
-		return(i);
-	}
-
-	public static int dispatchSymbolResolution(XrefCharBuffer ss, int i, int len, DispatchData data) throws Exception {
-		XrefTreeNode [] tt = new XrefTreeNode[s.XREF_MAX_TREE_DEEP];
-		i = dispatchParseTreeDescription(ss, i, len, data, tt);
-		protocolCheckEq(currentTag, "/"+Protocol.PPC_SYMBOL_RESOLUTION);
-		BrowserTopPanel bpanel = s.getParentBrowserTopPanel(data.callerComponent);
-		s.assertt(bpanel!=null);
-		bpanel.treePanel.xtree.setTree(tt[0]);
-		return(i);
-	}
-
-	public static int dispatchReferenceList(XrefCharBuffer ss, int i, int len, DispatchData data) throws Exception {
-		boolean firstFlag = true;
-		XrefCharBuffer refs = new XrefCharBuffer();
-		int crefn = attrVal;
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		while (currentTag.equals(Protocol.PPC_SRC_LINE)) {
-			if (! firstFlag) refs.append("\n");
-			firstFlag = false;
-			for(int j=0; j<attrRefn; j++) {
-				if (j!=0) refs.append("\n");
-				refs.append(ss, i, attrLen);
-			}
-			i += attrLen;
-			i = parseXmlTagHandleMessages(ss, i, len,data);
-			protocolCheckEq(currentTag, "/"+Protocol.PPC_SRC_LINE);
-			i = parseXmlTagHandleMessages(ss, i, len,data);
-		}
-		protocolCheckEq(currentTag, "/"+Protocol.PPC_REFERENCE_LIST);
-		BrowserTopPanel bpanel = s.getParentBrowserTopPanel(data.callerComponent);
-		s.assertt(bpanel!=null);
-		bpanel.referencesPanel.reflist.setRefs(refs.toString(), crefn);
-		return(i);
-	}
-
-	public static int dispatchUpdateCurrentReference(XrefCharBuffer ss, int i, int len, DispatchData data) throws Exception {
-		int val = attrVal;
-		i += attrLen;
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		protocolCheckEq(currentTag, "/"+Protocol.PPC_UPDATE_CURRENT_REFERENCE);
-		BrowserTopPanel bpanel = s.getParentBrowserTopPanel(data.callerComponent);
-		s.assertt(bpanel!=null);
-		bpanel.referencesPanel.reflist.setCurrentRef(val);
-		return(i);
-	}
-
-	public static int dispatchProgress(XrefCharBuffer ss, int i, int len, DispatchData data) throws Exception {
-		// TDODO!!!
-		//&ProgressMonitor progress = new ProgressMonitor(s.getProbableParent(data.callerComponent), "Updating references", null, 0, 100);
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		protocolCheckEq(currentTag, "/"+Protocol.PPC_PROGRESS);
-		//&progress.close();
-		return(i);
-	}
-
-	public static int dispatchUpdateReport(XrefCharBuffer ss, int i, int len, DispatchData data) throws Exception {
-		// O.K. skip everything until end of report
-		// TODO, do this seriously, counting eventual nestings
-		i += attrLen;
-		clearAttributes();
-		i = parseXmlTag(ss, i, len);
-		while (i<len && ! currentTag.equals("/"+Protocol.PPC_UPDATE_REPORT)) {
-			i += attrLen;
-			clearAttributes();
-			i = parseXmlTag(ss, i, len);
-			// make an exception and report fatal error, as task is exited now
-			if (currentTag.equals(Protocol.PPC_FATAL_ERROR)) {
-				i = dispatchFatalError(ss, i, len, data);
-			}
-		}
-		protocolCheckEq(currentTag, "/"+Protocol.PPC_UPDATE_REPORT);		
-		return(i);
-	}
-
-	public static int dispatchVersionMismatch(XrefCharBuffer ss, int i, int len, DispatchData data) throws Exception {
-		String taskVersion = ss.substring(i, i+attrLen);
-		i += attrLen;
-		i = parseXmlTag(ss, i, len);
-		protocolCheckEq(currentTag, "/"+Protocol.PPC_VERSION_MISMATCH);
-		s.checkVersionCorrespondance(taskVersion, data);
-		return(i);
-	}
-
-	public static int dispatchBrowseUrl(XrefCharBuffer ss, int i, int len, DispatchData data) throws Exception {
-		String message = ss.substring(i, i+attrLen);
-		i += attrLen;
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		protocolCheckEq(currentTag, "/"+Protocol.PPC_BROWSE_URL);
-		browseUrlIfConfirmed(message, data);
-		//&new HelpViewer(message);
-		return(i);
-	}
-
-	public static int dispatchSingleCompletion(XrefCharBuffer ss, int i, int len, DispatchData data) throws Exception {
-		String completion = ss.substring(i, i+attrLen);
-		i += attrLen;
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		protocolCheckEq(currentTag, "/"+Protocol.PPC_SINGLE_COMPLETION);
-		int caret = s.getCaretPosition();
-		s.insertCompletion(s.getBuffer(), caret, completion);
-		return(i);
-	}
-
-	public static int dispatchFqtCompletion(XrefCharBuffer ss, int i, int len, DispatchData data) throws Exception {
-		String completion = ss.substring(i, i+attrLen);
-		i += attrLen;
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		protocolCheckEq(currentTag, "/"+Protocol.PPC_FQT_COMPLETION);
-		int caret = s.getCaretPosition();
-		CompletionDialog.insertFqtCompletion(s.getBuffer(), caret, completion);
-		return(i);
-	}
-
-	public static int dispatchCompletionList(XrefCharBuffer ss, int i, int len, DispatchData data) throws Exception {
-		boolean firstFlag = true;
-		XrefCharBuffer completions = new XrefCharBuffer();
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		while (currentTag.equals(Protocol.PPC_MULTIPLE_COMPLETION_LINE)) {
-			if (! firstFlag) completions.append("\n");
-			firstFlag = false;
-			completions.append(ss, i, attrLen);
-			i += attrLen;
-			i = parseXmlTagHandleMessages(ss, i, len,data);
-			protocolCheckEq(currentTag, "/"+Protocol.PPC_MULTIPLE_COMPLETION_LINE);
-			i = parseXmlTagHandleMessages(ss, i, len,data);
-		}
-		protocolCheckEq(currentTag, "/"+Protocol.PPC_MULTIPLE_COMPLETIONS);
-		CompletionDialog.showCompletionDialog(completions.toString(), data, attrNoFocus);
-		return(i);
-	}
-
-	public static int dispatchFullCompletionList(XrefCharBuffer ss, int i, int len, DispatchData data) throws Exception {
-		int ci, max;
-		ci = 0;
-		max = attrNumber;
-		CompletionDialog3 cd =  CompletionDialog3.initCompletionDialog(data, max, attrNoFocus);
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		while (currentTag.equals(Protocol.PPC_MULTIPLE_COMPLETION_LINE)) {
-			s.assertt(ci < max);
-			cd.lns[ci] = new CompletionDialog3.LineData(cd.completions.bufi,
-														cd.completions.bufi + attrVal,
-														attrVClass);
-			cd.completions.append(ss, i, attrLen);
-			ci ++;
-			i += attrLen;
-			i = parseXmlTagHandleMessages(ss, i, len,data);
-			protocolCheckEq(currentTag, "/"+Protocol.PPC_MULTIPLE_COMPLETION_LINE);
-			i = parseXmlTagHandleMessages(ss, i, len,data);
-		}
-		cd.lns[ci] = new CompletionDialog3.LineData(cd.completions.bufi, -1, "");
-		protocolCheckEq(currentTag, "/"+Protocol.PPC_FULL_MULTIPLE_COMPLETIONS);
-		CompletionDialog3.showCompletionDialog();
-		return(i);
-	}
-
-	public static int dispatchAllCompletionsList(XrefCharBuffer ss, int i, int len, DispatchData data) throws Exception {
-		XrefCharBuffer completions = new XrefCharBuffer();
-		completions.append(ss, i, attrLen);
-		i += attrLen;
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		protocolCheckEq(currentTag, "/"+Protocol.PPC_ALL_COMPLETIONS);
-		CompletionDialog.showCompletionDialog(completions.toString(), data, attrNoFocus);
-		return(i);
-	}
-
-	public static int dispatchSymbolList(XrefCharBuffer ss, int i, int len, DispatchData data) throws Exception {
-		XrefCharBuffer symbols = new XrefCharBuffer();
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		while (currentTag.equals(Protocol.PPC_STRING_VALUE)) {
-			symbols.append(ss, i, attrLen);
-			symbols.append("\n");
-			i += attrLen;
-			i = parseXmlTagHandleMessages(ss, i, len,data);
-			protocolCheckEq(currentTag, "/"+Protocol.PPC_STRING_VALUE);
-			i = parseXmlTagHandleMessages(ss, i, len,data);
-		}
-		protocolCheckEq(currentTag, "/"+Protocol.PPC_SYMBOL_LIST);
-		data.symbolList = symbols;
-		return(i);
-	}
-
-	/* TODO, delete this method, it is useless since 1.6.0 */
-	public static int dispatchSetProject(XrefCharBuffer ss, int i, int len, DispatchData data) throws Exception {
-		data.info = ss.substring( i, i+attrLen);
-		i += attrLen;
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		protocolCheckEq(currentTag, "/"+Protocol.PPC_SET_PROJECT);
-		return(i);
-	}
-
-	public static int dispatchSetInfo(XrefCharBuffer ss, int i, int len, DispatchData data) throws Exception {
-		data.info = ss.substring( i, i+attrLen);
-		i += attrLen;
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		protocolCheckEq(currentTag, "/"+Protocol.PPC_SET_INFO);
-		return(i);
-	}
-
-	public static int dispatchNoProject(XrefCharBuffer ss, int i, int len, DispatchData data) throws Exception {
-		int rr;
-		String file = ss.substring( i, i+attrLen);
-		i += attrLen;
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		if (data.projectCreationAllowed) {
-			protocolCheckEq(currentTag, "/"+Protocol.PPC_NO_PROJECT);
-			rr = JOptionPane.showConfirmDialog(s.getProbableParent(data.callerComponent), 
-											   "No project for file "+file+".\nCreate new project?" , "No Project", JOptionPane.YES_NO_OPTION);
-			if (rr==JOptionPane.YES_OPTION) {
-				OptionsForProjectsDialog od = new OptionsForProjectsDialog(s.view, true);
-			}
-		}
-		throw new XrefAbortException();
-	}
-
-	public static int dispatchNoSymbol(XrefCharBuffer ss, int i, int len, DispatchData data) throws Exception {
-		// handle no symbol by pushing symbol by name
-		String name = s.getIdentifierOnCaret();
-		i += attrLen;
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		protocolCheckEq(currentTag, "/"+Protocol.PPC_NO_SYMBOL);
-		new Push(new String[] {"-olcxpushname="+name, "-olnodialog"}, data);
-		return(i);
-	}
-
-	public static int dispatchAvailableRefactorings(XrefCharBuffer ss, int i, int len, DispatchData data) throws Exception {
-		boolean firstFlag = true;
-		Refactorings refactors[] = new Refactorings[Protocol.PPC_MAX_AVAILABLE_REFACTORINGS];
-		int refactoringsi = 0;
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		while (currentTag.equals(Protocol.PPC_INT_VALUE)) {
-			Refactorings rrr = Refactorings.getRefactoringFromCode(attrVal);
-			if (rrr!=null) {
-				s.assertt(refactoringsi < Protocol.PPC_MAX_AVAILABLE_REFACTORINGS);
-				refactors[refactoringsi] = rrr;
-				refactors[refactoringsi].param = ss.substring(i, i+attrLen);
-				refactoringsi++;
-			}
-			i += attrLen;
-			i = parseXmlTagHandleMessages(ss, i, len,data);
-			protocolCheckEq(currentTag, "/"+Protocol.PPC_INT_VALUE);
-			i = parseXmlTagHandleMessages(ss, i, len,data);
-		}
-		protocolCheckEq(currentTag, "/"+Protocol.PPC_AVAILABLE_REFACTORINGS);
-		Refactorings[] refactorings = new Refactorings[refactoringsi];
-		System.arraycopy(refactors, 0, refactorings, 0, refactoringsi);
-		new RefactoringDialog(refactorings);
-		return(i);
-	}
-
-	public static int dispatchCopyBlock(XrefCharBuffer ss, int i, int len, DispatchData data) throws Exception {
-		int cc = s.getCaretPosition();
-		block = s.getBuffer().getText(cc, cc+attrVal);
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		protocolCheckEq(currentTag, "/"+Protocol.PPC_REFACTORING_COPY_BLOCK);
-		return(i);
-	}
-
-	public static int dispatchCutBlock(XrefCharBuffer ss, int i, int len, DispatchData data) throws Exception {
-		Buffer buffer = s.getBuffer();
-		int blen = buffer.getLength();
-		int caret = s.getCaretPosition();
-		// O.K. next line is to handle special case of final newline 
-		// automatically added by jEdit to saved files
-		if (caret+attrVal == blen+1) buffer.insert(blen, "\n");
-		block = buffer.getText(caret, attrVal);
-		buffer.remove(caret, attrVal);
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		protocolCheckEq(currentTag, "/"+Protocol.PPC_REFACTORING_CUT_BLOCK);
-		return(i);
-	}
-
-	public static int dispatchPasteBlock(XrefCharBuffer ss, int i, int len, DispatchData data) throws Exception {
-		Buffer buffer = s.getBuffer();
-		int caret = s.getCaretPosition();
-		buffer.insert(caret, block);
-
-		// do indentation somewhere later to not perturb refactorings offsets
-		//&int blocklines = s.getNumberOfCharOccurences(block,'\n');
-		//&int line = buffer.getLineOfOffset(caret);
-		//&buffer.indentLines(buffer.getLineOfOffset(caret), line+blocklines);
-
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		protocolCheckEq(currentTag, "/"+Protocol.PPC_REFACTORING_PASTE_BLOCK);
-		return(i);
-	}
-
-	public static int dispatchKillBufferRemoveFile(XrefCharBuffer ss, int i, int len, DispatchData data) throws Exception {
-		String message = ss.substring( i, i+attrLen);
-		i += attrLen;
-		int confirm = JOptionPane.YES_OPTION;
-		confirm = JOptionPane.showConfirmDialog(
-			s.view,
-			message,
-			"Confirmation", 
-			JOptionPane.YES_NO_OPTION,
-			JOptionPane.QUESTION_MESSAGE);
-		if (confirm == JOptionPane.YES_OPTION) {
-			Buffer buf = s.getBuffer();
-			buf.save(s.view, null);
-			(new File(buf.getPath())).delete();
-			jEdit.closeBuffer(s.view, buf);
-		}
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		protocolCheckEq(currentTag, "/"+Protocol.PPC_KILL_BUFFER_REMOVE_FILE);
-		return(i);
-	}
-
-	public static int dispatchIndent(XrefCharBuffer ss, int i, int len, DispatchData data) throws Exception {
-		Buffer buffer = s.getBuffer();
-		int caret = s.getCaretPosition();
-		int line = buffer.getLineOfOffset(caret);
-		buffer.indentLines(line, line+attrVal-1);
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		protocolCheckEq(currentTag, "/"+Protocol.PPC_INDENT);
-		return(i);
-	}
-
-	public static int dispatchExtractDialog(XrefCharBuffer ss, int i, int len, DispatchData data) throws Exception {
-		i += attrLen;
-
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		protocolCheckEq(currentTag, Protocol.PPC_STRING_VALUE);
-		String invocation = ss.substring( i, i+attrLen);
-		i += attrLen;
-		i = parseXmlTag(ss, i, len);
-		protocolCheckEq(currentTag, "/"+Protocol.PPC_STRING_VALUE);
-
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		protocolCheckEq(currentTag, Protocol.PPC_STRING_VALUE);
-		String theHead = ss.substring( i, i+attrLen);
-		i += attrLen;
-		i = parseXmlTag(ss, i, len);
-		protocolCheckEq(currentTag, "/"+Protocol.PPC_STRING_VALUE);
-
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		protocolCheckEq(currentTag, Protocol.PPC_STRING_VALUE);
-		String theTail = ss.substring( i, i+attrLen);
-		i += attrLen;
-		i = parseXmlTag(ss, i, len);
-		protocolCheckEq(currentTag, "/"+Protocol.PPC_STRING_VALUE);
-
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		protocolCheckEq(currentTag, Protocol.PPC_INT_VALUE);
-		int targetLine = attrVal;
-		i += attrLen;
-		i = parseXmlTag(ss, i, len);
-		protocolCheckEq(currentTag, "/"+Protocol.PPC_INT_VALUE);
-
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		protocolCheckEq(currentTag, "/"+Protocol.PPC_EXTRACTION_DIALOG);
-		new ExtractMethodDialog(invocation, theHead, theTail, targetLine);
-		return(i);
-	}
-
-	public static int dispatchRecordAt(XrefCharBuffer ss, int i, int len, DispatchData data) throws Exception {
-		int j;
-		String unenclosed;
-		i = s.skipBlank(ss, i, len);
-		for(j=i; ss.buf[i] != '<' && i<len; i++) ;
-		if (i!=j && s.debug) {
-			unenclosed = ss.substring(j, i);
-			JOptionPane.showMessageDialog(s.view, "Unenclosed string\n" + unenclosed, 
-										  "Xrefactory Error", JOptionPane.ERROR_MESSAGE);
-		}
-		if (j>=len) throw new XrefException("unexpected end of communication");
-		clearAttributes();
-		i = parseXmlTagHandleMessages(ss, i, len,data);
-		if (i>=len || data.panic) {
-			// no action in such cases
-		} else if (currentTag.equals(Protocol.PPC_SINGLE_COMPLETION)) {
-			i = dispatchSingleCompletion(ss, i, len, data);
-		} else if (currentTag.equals(Protocol.PPC_FQT_COMPLETION)) {
-			i = dispatchFqtCompletion(ss, i, len, data);
-		} else if (currentTag.equals(Protocol.PPC_MULTIPLE_COMPLETIONS)) {
-			i = dispatchCompletionList(ss, i, len, data);
-		} else if (currentTag.equals(Protocol.PPC_FULL_MULTIPLE_COMPLETIONS)) {
-			i = dispatchFullCompletionList(ss, i, len, data);
-		} else if (currentTag.equals(Protocol.PPC_ALL_COMPLETIONS)) {
-			i = dispatchAllCompletionsList(ss, i, len, data);
-		} else if (currentTag.equals(Protocol.PPC_SYMBOL_LIST)) {
-			i = dispatchSymbolList(ss, i, len, data);
-		} else if (currentTag.equals(Protocol.PPC_SET_PROJECT)) {
-			i = dispatchSetProject(ss, i, len, data);
-		} else if (currentTag.equals(Protocol.PPC_SET_INFO)) {
-			i = dispatchSetInfo(ss, i, len, data);
-		} else if (currentTag.equals(Protocol.PPC_NO_PROJECT)) {
-			i = dispatchNoProject(ss, i, len, data);
-		} else if (currentTag.equals(Protocol.PPC_NO_SYMBOL)) {
-			i = dispatchNoSymbol(ss, i, len, data);
-		} else if (currentTag.equals(Protocol.PPC_UPDATE_CURRENT_REFERENCE)) {
-			i = dispatchUpdateCurrentReference(ss, i, len, data);
-		} else if (currentTag.equals(Protocol.PPC_BROWSE_URL)) {
-			i = dispatchBrowseUrl(ss, i, len, data);
-		} else if (currentTag.equals(Protocol.PPC_GOTO)) {
-			i = dispatchGoto(ss, i, len, data);
-		} else if (currentTag.equals(Protocol.PPC_REFACTORING_PRECHECK)) {
-			i = dispatchPreCheck(ss, i, len, data);
-		} else if (currentTag.equals(Protocol.PPC_REFACTORING_REPLACEMENT)) {
-			i = dispatchReplacement(ss, i, len, data);
-		} else if (currentTag.equals(Protocol.PPC_DISPLAY_OR_UPDATE_BROWSER)) {
-			i = dispatchDisplayOrUpdateBrowser(ss, i, len, data);
-		} else if (currentTag.equals(Protocol.PPC_DISPLAY_CLASS_TREE)) {
-			i = dispatchDisplayClassTree(ss, i, len, data);
-		} else if (currentTag.equals(Protocol.PPC_DISPLAY_RESOLUTION)) {
-			i = dispatchDisplayResolution(ss, i, len, data);
-		} else if (currentTag.equals(Protocol.PPC_SYMBOL_RESOLUTION)) {
-			i = dispatchSymbolResolution(ss, i, len, data);
-		} else if (currentTag.equals(Protocol.PPC_REFERENCE_LIST)) {
-			i = dispatchReferenceList(ss, i, len, data);
-		} else if (currentTag.equals(Protocol.PPC_ASK_CONFIRMATION)) {
-			i = dispatchAskConfirmation(ss, i, len, data);
-		} else if (currentTag.equals(Protocol.PPC_FILE_SAVE_AS)) {
-			i = dispatchFileSaveAs(ss, i, len, data);
-		} else if (currentTag.equals(Protocol.PPC_MOVE_FILE_AS)) {
-			i = dispatchMoveFileAs(ss, i, len, data);
-		} else if (currentTag.equals(Protocol.PPC_MOVE_DIRECTORY)) {
-			i = dispatchMoveDirectory(ss, i, len, data);
-		} else if (currentTag.equals(Protocol.PPC_AVAILABLE_REFACTORINGS)) {
-			i = dispatchAvailableRefactorings(ss, i, len, data);
-		} else if (currentTag.equals(Protocol.PPC_REFACTORING_COPY_BLOCK)) {
-			i = dispatchCopyBlock(ss, i, len, data);
-		} else if (currentTag.equals(Protocol.PPC_REFACTORING_CUT_BLOCK)) {
-			i = dispatchCutBlock(ss, i, len, data);
-		} else if (currentTag.equals(Protocol.PPC_REFACTORING_PASTE_BLOCK)) {
-			i = dispatchPasteBlock(ss, i, len, data);
-		} else if (currentTag.equals(Protocol.PPC_KILL_BUFFER_REMOVE_FILE)) {
-			i = dispatchKillBufferRemoveFile(ss, i, len, data);
-		} else if (currentTag.equals(Protocol.PPC_INDENT)) {
-			i = dispatchIndent(ss, i, len, data);
-		} else if (currentTag.equals(Protocol.PPC_EXTRACTION_DIALOG)) {
-			i = dispatchExtractDialog(ss, i, len, data);
-		} else if (currentTag.equals(Protocol.PPC_UPDATE_REPORT)) {
-			i = dispatchUpdateReport(ss, i, len, data);
-		} else if (currentTag.equals(Protocol.PPC_VERSION_MISMATCH)) {
-			i = dispatchVersionMismatch(ss, i, len, data);
-		} else if (currentTag.equals(Protocol.PPC_PROGRESS)) {
-			i = dispatchProgress(ss, i, len, data);
-		} else if (currentTag.equals(Protocol.PPC_SYNCHRO_RECORD)) {
-			// this is usualy a problem, but ignore it for debuging
-		} else {
-			throw new XrefException("unknown XML Tag " + currentTag);
-		}
-		return(i);
-	}
-
-	public static void dispatch(XrefCharBuffer ss, DispatchData data) {
-		//&JOptionPane.showMessageDialog(s.getProbableParent(data.callerComponent), ss, "Got", JOptionPane.INFORMATION_MESSAGE);
-		if (s.debug) System.err.println("Dispatching: " + ss);
-		int i = 0;
-		int len = ss.length();
-		try {
-			i = s.skipBlank(ss, i, len);
-			while (i<len && ! data.panic) {
-				i = dispatchRecordAt(ss, i, len, data);
-				i = s.skipBlank(ss, i, len);
-			}
-		} catch (XrefAbortException e) {
-			data.panic = true;
-		} catch (XrefErrorException e) {
-			if (s.debug) e.printStackTrace(System.err);
-			JOptionPane.showMessageDialog(s.getProbableParent(data.callerComponent), 
-										  e, "Xrefactory Error", JOptionPane.ERROR_MESSAGE);
-			data.panic = true;
-		} catch (Exception e) {
-			JOptionPane.showMessageDialog(s.getProbableParent(data.callerComponent), 
-										  e, "Xrefactory Internal Error", JOptionPane.ERROR_MESSAGE);
-			e.printStackTrace();
-			data.panic = true;
-		}
-	}
-
-	public static String reportToHtml(XrefCharBuffer ss) {
-		XrefCharBuffer res = new XrefCharBuffer();
-		int i, len;
-		i = 0;
-		len = ss.length();
-		res.append("<html><pre>\n");
-		try {
-			while (i<len) {
-				clearAttributes();
-				i = parseXmlTag(ss, i, len);
-				if (currentTag.equals(Protocol.PPC_ERROR) 
-					|| currentTag.equals(Protocol.PPC_FATAL_ERROR)
-					|| currentTag.equals(Protocol.PPC_WARNING)
-					) {
-					res.append("<font color=red>");
-					int j = attrLen;
-					while (j>0 && Character.isWhitespace(ss.buf[i+j-1])) j--;
-					res.append(ss.substring(i, i+j));
-					res.append("</font>\n");
-					i += attrLen;
-					i = parseXmlTag(ss, i, len);
-				} else if (currentTag.equals(Protocol.PPC_INFORMATION)
-						   || currentTag.equals(Protocol.PPC_BOTTOM_INFORMATION)
-					) {
-					res.append("<font color=gray>");
-					res.append(ss.substring(i, i+attrLen));
-					res.append("</font>\n");
-					i += attrLen;
-					i = parseXmlTag(ss, i, len);
-				} else {
-					res.append(ss.substring(i, i+attrLen));
-					res.append("\n");
-					i += attrLen;
-				}
-				i = s.skipBlank(ss, i, len);
-			}
-		} catch(Exception e) {
-			e.printStackTrace(System.err);
-			JOptionPane.showMessageDialog(s.view, 
-										  "Problem while parsing report " + e, 
-										  "Xrefactory Error", 
-										  JOptionPane.ERROR_MESSAGE);
-		}
-		res.append("\n</pre></html>\n");
-		if (s.debug) System.err.println("HTML == \n" + res.toString());
-		return(res.toString());
-	}
-
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ * 
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.apache.commons.lang3.text;
+
+import java.io.Reader;
+import java.io.Writer;
+import java.util.Iterator;
+import java.util.List;
+
+import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.SystemUtils;
+
+/**
+ * Builds a string from constituent parts providing a more flexible and powerful API
+ * than StringBuffer.
+ * <p>
+ * The main differences from StringBuffer/StringBuilder are:
+ * <ul>
+ * <li>Not synchronized</li>
+ * <li>Not final</li>
+ * <li>Subclasses have direct access to character array</li>
+ * <li>Additional methods
+ *  <ul>
+ *   <li>appendWithSeparators - adds an array of values, with a separator</li>
+ *   <li>appendPadding - adds a length padding characters</li>
+ *   <li>appendFixedLength - adds a fixed width field to the builder</li>
+ *   <li>toCharArray/getChars - simpler ways to get a range of the character array</li>
+ *   <li>delete - delete char or string</li>
+ *   <li>replace - search and replace for a char or string</li>
+ *   <li>leftString/rightString/midString - substring without exceptions</li>
+ *   <li>contains - whether the builder contains a char or string</li>
+ *   <li>size/clear/isEmpty - collections style API methods</li>
+ *  </ul>
+ * </li>
+ * </ul>
+ * <li>Views
+ *  <ul>
+ *   <li>asTokenizer - uses the internal buffer as the source of a StrTokenizer</li>
+ *   <li>asReader - uses the internal buffer as the source of a Reader</li>
+ *   <li>asWriter - allows a Writer to write directly to the internal buffer</li>
+ *  </ul>
+ * </li>
+ * </ul>
+ * <p>
+ * The aim has been to provide an API that mimics very closely what StringBuffer
+ * provides, but with additional methods. It should be noted that some edge cases,
+ * with invalid indices or null input, have been altered - see individual methods.
+ * The biggest of these changes is that by default, null will not output the text
+ * 'null'. This can be controlled by a property, {@link #setNullText(String)}.
+ * <p>
+ * Prior to 3.0, this class implemented Cloneable but did not implement the 
+ * clone method so could not be used. From 3.0 onwards it no longer implements 
+ * the interface. 
+ *
+ * @author Apache Software Foundation
+ * @author Robert Scholte
+ * @since 2.2
+ * @version $Id: StrBuilder.java 916081 2010-02-25 01:28:13Z niallp $
+ */
+public class StrBuilder implements CharSequence, Appendable {
+
+    /**
+     * The extra capacity for new builders.
+     */
+    static final int CAPACITY = 32;
+
+    /**
+     * Required for serialization support.
+     * 
+     * @see java.io.Serializable
+     */
+    private static final long serialVersionUID = 7628716375283629643L;
+
+    /** Internal data storage. */
+    protected char[] buffer; // TODO make private?
+    /** Current size of the buffer. */
+    protected int size; // TODO make private?
+    /** The new line. */
+    private String newLine;
+    /** The null text. */
+    private String nullText;
+
+    //-----------------------------------------------------------------------
+    /**
+     * Constructor that creates an empty builder initial capacity 32 characters.
+     */
+    public StrBuilder() {
+        this(CAPACITY);
+    }
+
+    /**
+     * Constructor that creates an empty builder the specified initial capacity.
+     *
+     * @param initialCapacity  the initial capacity, zero or less will be converted to 32
+     */
+    public StrBuilder(int initialCapacity) {
+        super();
+        if (initialCapacity <= 0) {
+            initialCapacity = CAPACITY;
+        }
+        buffer = new char[initialCapacity];
+    }
+
+    /**
+     * Constructor that creates a builder from the string, allocating
+     * 32 extra characters for growth.
+     *
+     * @param str  the string to copy, null treated as blank string
+     */
+    public StrBuilder(String str) {
+        super();
+        if (str == null) {
+            buffer = new char[CAPACITY];
+        } else {
+            buffer = new char[str.length() + CAPACITY];
+            append(str);
+        }
+    }
+
+    //-----------------------------------------------------------------------
+    /**
+     * Gets the text to be appended when a new line is added.
+     *
+     * @return the new line text, null means use system default
+     */
+    public String getNewLineText() {
+        return newLine;
+    }
+
+    /**
+     * Sets the text to be appended when a new line is added.
+     *
+     * @param newLine  the new line text, null means use system default
+     * @return this, to enable chaining
+     */
+    public StrBuilder setNewLineText(String newLine) {
+        this.newLine = newLine;
+        return this;
+    }
+
+    //-----------------------------------------------------------------------
+    /**
+     * Gets the text to be appended when null is added.
+     *
+     * @return the null text, null means no append
+     */
+    public String getNullText() {
+        return nullText;
+    }
+
+    /**
+     * Sets the text to be appended when null is added.
+     *
+     * @param nullText  the null text, null means no append
+     * @return this, to enable chaining
+     */
+    public StrBuilder setNullText(String nullText) {
+        if (nullText != null && nullText.length() == 0) {
+            nullText = null;
+        }
+        this.nullText = nullText;
+        return this;
+    }
+
+    //-----------------------------------------------------------------------
+    /**
+     * Gets the length of the string builder.
+     *
+     * @return the length
+     */
+    public int length() {
+        return size;
+    }
+
+    /**
+     * Updates the length of the builder by either dropping the last characters
+     * or adding filler of unicode zero.
+     *
+     * @param length  the length to set to, must be zero or positive
+     * @return this, to enable chaining
+     * @throws IndexOutOfBoundsException if the length is negative
+     */
+    public StrBuilder setLength(int length) {
+        if (length < 0) {
+            throw new StringIndexOutOfBoundsException(length);
+        }
+        if (length < size) {
+            size = length;
+        } else if (length > size) {
+            ensureCapacity(length);
+            int oldEnd = size;
+            int newEnd = length;
+            size = length;
+            for (int i = oldEnd; i < newEnd; i++) {
+                buffer[i] = '\0';
+            }
+        }
+        return this;
+    }
+
+    //-----------------------------------------------------------------------
+    /**
+     * Gets the current size of the internal character array buffer.
+     *
+     * @return the capacity
+     */
+    public int capacity() {
+        return buffer.length;
+    }
+
+    /**
+     * Checks the capacity and ensures that it is at least the size specified.
+     *
+     * @param capacity  the capacity to ensure
+     * @return this, to enable chaining
+     */
+    public StrBuilder ensureCapacity(int capacity) {
+        if (capacity > buffer.length) {
+            char[] old = buffer;
+            buffer = new char[capacity * 2];
+            System.arraycopy(old, 0, buffer, 0, size);
+        }
+        return this;
+    }
+
+    /**
+     * Minimizes the capacity to the actual length of the string.
+     *
+     * @return this, to enable chaining
+     */
+    public StrBuilder minimizeCapacity() {
+        if (buffer.length > length()) {
+            char[] old = buffer;
+            buffer = new char[length()];
+            System.arraycopy(old, 0, buffer, 0, size);
+        }
+        return this;
+    }
+
+    //-----------------------------------------------------------------------
+    /**
+     * Gets the length of the string builder.
+     * <p>
+     * This method is the same as {@link #length()} and is provided to match the
+     * API of Collections.
+     *
+     * @return the length
+     */
+    public int size() {
+        return size;
+    }
+
+    /**
+     * Checks is the string builder is empty (convenience Collections API style method).
+     * <p>
+     * This method is the same as checking {@link #length()} and is provided to match the
+     * API of Collections.
+     *
+     * @return <code>true</code> if the size is <code>0</code>.
+     */
+    public boolean isEmpty() {
+        return size == 0;
+    }
+
+    /**
+     * Clears the string builder (convenience Collections API style method).
+     * <p>
+     * This method does not reduce the size of the internal character buffer.
+     * To do that, call <code>clear()</code> followed by {@link #minimizeCapacity()}.
+     * <p>
+     * This method is the same as {@link #setLength(int)} called with zero
+     * and is provided to match the API of Collections.
+     *
+     * @return this, to enable chaining
+     */
+    public StrBuilder clear() {
+        size = 0;
+        return this;
+    }
+
+    //-----------------------------------------------------------------------
+    /**
+     * Gets the character at the specified index.
+     *
+     * @see #setCharAt(int, char)
+     * @see #deleteCharAt(int)
+     * @param index  the index to retrieve, must be valid
+     * @return the character at the index
+     * @throws IndexOutOfBoundsException if the index is invalid
+     */
+    public char charAt(int index) {
+        if (index < 0 || index >= length()) {
+            throw new StringIndexOutOfBoundsException(index);
+        }
+        return buffer[index];
+    }
+
+    /**
+     * Sets the character at the specified index.
+     *
+     * @see #charAt(int)
+     * @see #deleteCharAt(int)
+     * @param index  the index to set
+     * @param ch  the new character
+     * @return this, to enable chaining
+     * @throws IndexOutOfBoundsException if the index is invalid
+     */
+    public StrBuilder setCharAt(int index, char ch) {
+        if (index < 0 || index >= length()) {
+            throw new StringIndexOutOfBoundsException(index);
+        }
+        buffer[index] = ch;
+        return this;
+    }
+
+    /**
+     * Deletes the character at the specified index.
+     *
+     * @see #charAt(int)
+     * @see #setCharAt(int, char)
+     * @param index  the index to delete
+     * @return this, to enable chaining
+     * @throws IndexOutOfBoundsException if the index is invalid
+     */
+    public StrBuilder deleteCharAt(int index) {
+        if (index < 0 || index >= size) {
+            throw new StringIndexOutOfBoundsException(index);
+        }
+        deleteImpl(index, index + 1, 1);
+        return this;
+    }
+
+    //-----------------------------------------------------------------------
+    /**
+     * Copies the builder's character array into a new character array.
+     * 
+     * @return a new array that represents the contents of the builder
+     */
+    public char[] toCharArray() {
+        if (size == 0) {
+            return ArrayUtils.EMPTY_CHAR_ARRAY;
+        }
+        char chars[] = new char[size];
+        System.arraycopy(buffer, 0, chars, 0, size);
+        return chars;
+    }
+
+    /**
+     * Copies part of the builder's character array into a new character array.
+     * 
+     * @param startIndex  the start index, inclusive, must be valid
+     * @param endIndex  the end index, exclusive, must be valid except that
+     *  if too large it is treated as end of string
+     * @return a new array that holds part of the contents of the builder
+     * @throws IndexOutOfBoundsException if startIndex is invalid,
+     *  or if endIndex is invalid (but endIndex greater than size is valid)
+     */
+    public char[] toCharArray(int startIndex, int endIndex) {
+        endIndex = validateRange(startIndex, endIndex);
+        int len = endIndex - startIndex;
+        if (len == 0) {
+            return ArrayUtils.EMPTY_CHAR_ARRAY;
+        }
+        char chars[] = new char[len];
+        System.arraycopy(buffer, startIndex, chars, 0, len);
+        return chars;
+    }
+
+    /**
+     * Copies the character array into the specified array.
+     * 
+     * @param destination  the destination array, null will cause an array to be created
+     * @return the input array, unless that was null or too small
+     */
+    public char[] getChars(char[] destination) {
+        int len = length();
+        if (destination == null || destination.length < len) {
+            destination = new char[len];
+        }
+        System.arraycopy(buffer, 0, destination, 0, len);
+        return destination;
+    }
+
+    /**
+     * Copies the character array into the specified array.
+     *
+     * @param startIndex  first index to copy, inclusive, must be valid
+     * @param endIndex  last index, exclusive, must be valid
+     * @param destination  the destination array, must not be null or too small
+     * @param destinationIndex  the index to start copying in destination
+     * @throws NullPointerException if the array is null
+     * @throws IndexOutOfBoundsException if any index is invalid
+     */
+    public void getChars(int startIndex, int endIndex, char destination[], int destinationIndex) {
+        if (startIndex < 0) {
+            throw new StringIndexOutOfBoundsException(startIndex);
+        }
+        if (endIndex < 0 || endIndex > length()) {
+            throw new StringIndexOutOfBoundsException(endIndex);
+        }
+        if (startIndex > endIndex) {
+            throw new StringIndexOutOfBoundsException("end < start");
+        }
+        System.arraycopy(buffer, startIndex, destination, destinationIndex, endIndex - startIndex);
+    }
+
+    //-----------------------------------------------------------------------
+    /**
+     * Appends the new line string to this string builder.
+     * <p>
+     * The new line string can be altered using {@link #setNewLineText(String)}.
+     * This might be used to force the output to always use Unix line endings
+     * even when on Windows.
+     *
+     * @return this, to enable chaining
+     */
+    public StrBuilder appendNewLine() {
+        if (newLine == null)  {
+            append(SystemUtils.LINE_SEPARATOR);
+            return this;
+        }
+        return append(newLine);
+    }
+
+    /**
+     * Appends the text representing <code>null</code> to this string builder.
+     *
+     * @return this, to enable chaining
+     */
+    public StrBuilder appendNull() {
+        if (nullText == null)  {
+            return this;
+        }
+        return append(nullText);
+    }
+
+    /**
+     * Appends an object to this string builder.
+     * Appending null will call {@link #appendNull()}.
+     *
+     * @param obj  the object to append
+     * @return this, to enable chaining
+     */
+    public StrBuilder append(Object obj) {
+        if (obj == null) {
+            return appendNull();
+        } 
+        return append(obj.toString());        
+    }
+
+    /**
+     * Appends a CharSequence to this string builder.
+     * Appending null will call {@link #appendNull()}.
+     *
+     * @param seq  the CharSequence to append
+     * @return this, to enable chaining
+     */
+    public StrBuilder append(CharSequence seq) {
+        if (seq == null) {
+            return appendNull();
+        } 
+        return append(seq.toString());        
+    }
+
+    /**
+     * Appends part of a CharSequence to this string builder.
+     * Appending null will call {@link #appendNull()}.
+     *
+     * @param seq  the CharSequence to append
+     * @param startIndex  the start index, inclusive, must be valid
+     * @param length  the length to append, must be valid
+     * @return this, to enable chaining
+     */
+    public StrBuilder append(CharSequence seq, int startIndex, int length) {
+        if (seq == null) {
+            return appendNull();
+        } 
+        return append(seq.toString(), startIndex, length);
+    }
+
+    /**
+     * Appends a string to this string builder.
+     * Appending null will call {@link #appendNull()}.
+     *
+     * @param str  the string to append
+     * @return this, to enable chaining
+     */
+    public StrBuilder append(String str) {
+        if (str == null) {
+            return appendNull();
+        }
+        int strLen = str.length();
+        if (strLen > 0) {
+            int len = length();
+            ensureCapacity(len + strLen);
+            str.getChars(0, strLen, buffer, len);
+            size += strLen;
+        }
+        return this;
+    }
+
+    /**
+     * Appends part of a string to this string builder.
+     * Appending null will call {@link #appendNull()}.
+     *
+     * @param str  the string to append
+     * @param startIndex  the start index, inclusive, must be valid
+     * @param length  the length to append, must be valid
+     * @return this, to enable chaining
+     */
+    public StrBuilder append(String str, int startIndex, int length) {
+        if (str == null) {
+            return appendNull();
+        }
+        if (startIndex < 0 || startIndex > str.length()) {
+            throw new StringIndexOutOfBoundsException("startIndex must be valid");
+        }
+        if (length < 0 || (startIndex + length) > str.length()) {
+            throw new StringIndexOutOfBoundsException("length must be valid");
+        }
+        if (length > 0) {
+            int len = length();
+            ensureCapacity(len + length);
+            str.getChars(startIndex, startIndex + length, buffer, len);
+            size += length;
+        }
+        return this;
+    }
+
+    /**
+     * Appends a string buffer to this string builder.
+     * Appending null will call {@link #appendNull()}.
+     *
+     * @param str  the string buffer to append
+     * @return this, to enable chaining
+     */
+    public StrBuilder append(StringBuffer str) {
+        if (str == null) {
+            return appendNull();
+        }
+        int strLen = str.length();
+        if (strLen > 0) {
+            int len = length();
+            ensureCapacity(len + strLen);
+            str.getChars(0, strLen, buffer, len);
+            size += strLen;
+        }
+        return this;
+    }
+
+    /**
+     * Appends part of a string buffer to this string builder.
+     * Appending null will call {@link #appendNull()}.
+     *
+     * @param str  the string to append
+     * @param startIndex  the start index, inclusive, must be valid
+     * @param length  the length to append, must be valid
+     * @return this, to enable chaining
+     */
+    public StrBuilder append(StringBuffer str, int startIndex, int length) {
+        if (str == null) {
+            return appendNull();
+        }
+        if (startIndex < 0 || startIndex > str.length()) {
+            throw new StringIndexOutOfBoundsException("startIndex must be valid");
+        }
+        if (length < 0 || (startIndex + length) > str.length()) {
+            throw new StringIndexOutOfBoundsException("length must be valid");
+        }
+        if (length > 0) {
+            int len = length();
+            ensureCapacity(len + length);
+            str.getChars(startIndex, startIndex + length, buffer, len);
+            size += length;
+        }
+        return this;
+    }
+
+    /**
+     * Appends another string builder to this string builder.
+     * Appending null will call {@link #appendNull()}.
+     *
+     * @param str  the string builder to append
+     * @return this, to enable chaining
+     */
+    public StrBuilder append(StrBuilder str) {
+        if (str == null) {
+            return appendNull();
+        }
+        int strLen = str.length();
+        if (strLen > 0) {
+            int len = length();
+            ensureCapacity(len + strLen);
+            System.arraycopy(str.buffer, 0, buffer, len, strLen);
+            size += strLen;
+        }
+        return this;
+    }
+
+    /**
+     * Appends part of a string builder to this string builder.
+     * Appending null will call {@link #appendNull()}.
+     *
+     * @param str  the string to append
+     * @param startIndex  the start index, inclusive, must be valid
+     * @param length  the length to append, must be valid
+     * @return this, to enable chaining
+     */
+    public StrBuilder append(StrBuilder str, int startIndex, int length) {
+        if (str == null) {
+            return appendNull();
+        }
+        if (startIndex < 0 || startIndex > str.length()) {
+            throw new StringIndexOutOfBoundsException("startIndex must be valid");
+        }
+        if (length < 0 || (startIndex + length) > str.length()) {
+            throw new StringIndexOutOfBoundsException("length must be valid");
+        }
+        if (length > 0) {
+            int len = length();
+            ensureCapacity(len + length);
+            str.getChars(startIndex, startIndex + length, buffer, len);
+            size += length;
+        }
+        return this;
+    }
+
+    /**
+     * Appends a char array to the string builder.
+     * Appending null will call {@link #appendNull()}.
+     *
+     * @param chars  the char array to append
+     * @return this, to enable chaining
+     */
+    public StrBuilder append(char[] chars) {
+        if (chars == null) {
+            return appendNull();
+        }
+        int strLen = chars.length;
+        if (strLen > 0) {
+            int len = length();
+            ensureCapacity(len + strLen);
+            System.arraycopy(chars, 0, buffer, len, strLen);
+            size += strLen;
+        }
+        return this;
+    }
+
+    /**
+     * Appends a char array to the string builder.
+     * Appending null will call {@link #appendNull()}.
+     *
+     * @param chars  the char array to append
+     * @param startIndex  the start index, inclusive, must be valid
+     * @param length  the length to append, must be valid
+     * @return this, to enable chaining
+     */
+    public StrBuilder append(char[] chars, int startIndex, int length) {
+        if (chars == null) {
+            return appendNull();
+        }
+        if (startIndex < 0 || startIndex > chars.length) {
+            throw new StringIndexOutOfBoundsException("Invalid startIndex: " + length);
+        }
+        if (length < 0 || (startIndex + length) > chars.length) {
+            throw new StringIndexOutOfBoundsException("Invalid length: " + length);
+        }
+        if (length > 0) {
+            int len = length();
+            ensureCapacity(len + length);
+            System.arraycopy(chars, startIndex, buffer, len, length);
+            size += length;
+        }
+        return this;
+    }
+
+    /**
+     * Appends a boolean value to the string builder.
+     *
+     * @param value  the value to append
+     * @return this, to enable chaining
+     */
+    public StrBuilder append(boolean value) {
+        if (value) {
+            ensureCapacity(size + 4);
+            buffer[size++] = 't';
+            buffer[size++] = 'r';
+            buffer[size++] = 'u';
+            buffer[size++] = 'e';
+        } else {
+            ensureCapacity(size + 5);
+            buffer[size++] = 'f';
+            buffer[size++] = 'a';
+            buffer[size++] = 'l';
+            buffer[size++] = 's';
+            buffer[size++] = 'e';
+        }
+        return this;
+    }
+
+    /**
+     * Appends a char value to the string builder.
+     *
+     * @param ch  the value to append
+     * @return this, to enable chaining
+     */
+    public StrBuilder append(char ch) {
+        int len = length();
+        ensureCapacity(len + 1);
+        buffer[size++] = ch;
+        return this;
+    }
+
+    /**
+     * Appends an int value to the string builder using <code>String.valueOf</code>.
+     *
+     * @param value  the value to append
+     * @return this, to enable chaining
+     */
+    public StrBuilder append(int value) {
+        return append(String.valueOf(value));
+    }
+
+    /**
+     * Appends a long value to the string builder using <code>String.valueOf</code>.
+     *
+     * @param value  the value to append
+     * @return this, to enable chaining
+     */
+    public StrBuilder append(long value) {
+        return append(String.valueOf(value));
+    }
+
+    /**
+     * Appends a float value to the string builder using <code>String.valueOf</code>.
+     *
+     * @param value  the value to append
+     * @return this, to enable chaining
+     */
+    public StrBuilder append(float value) {
+        return append(String.valueOf(value));
+    }
+
+    /**
+     * Appends a double value to the string builder using <code>String.valueOf</code>.
+     *
+     * @param value  the value to append
+     * @return this, to enable chaining
+     */
+    public StrBuilder append(double value) {
+        return append(String.valueOf(value));
+    }
+
+    //-----------------------------------------------------------------------
+    /**
+     * Appends an object followed by a new line to this string builder.
+     * Appending null will call {@link #appendNull()}.
+     *
+     * @param obj  the object to append
+     * @return this, to enable chaining
+     * @since 2.3
+     */
+    public StrBuilder appendln(Object obj) {
+        return append(obj).appendNewLine();
+    }
+
+    /**
+     * Appends a string followed by a new line to this string builder.
+     * Appending null will call {@link #appendNull()}.
+     *
+     * @param str  the string to append
+     * @return this, to enable chaining
+     * @since 2.3
+     */
+    public StrBuilder appendln(String str) {
+        return append(str).appendNewLine();
+    }
+
+    /**
+     * Appends part of a string followed by a new line to this string builder.
+     * Appending null will call {@link #appendNull()}.
+     *
+     * @param str  the string to append
+     * @param startIndex  the start index, inclusive, must be valid
+     * @param length  the length to append, must be valid
+     * @return this, to enable chaining
+     * @since 2.3
+     */
+    public StrBuilder appendln(String str, int startIndex, int length) {
+        return append(str, startIndex, length).appendNewLine();
+    }
+
+    /**
+     * Appends a string buffer followed by a new line to this string builder.
+     * Appending null will call {@link #appendNull()}.
+     *
+     * @param str  the string buffer to append
+     * @return this, to enable chaining
+     * @since 2.3
+     */
+    public StrBuilder appendln(StringBuffer str) {
+        return append(str).appendNewLine();
+    }
+
+    /**
+     * Appends part of a string buffer followed by a new line to this string builder.
+     * Appending null will call {@link #appendNull()}.
+     *
+     * @param str  the string to append
+     * @param startIndex  the start index, inclusive, must be valid
+     * @param length  the length to append, must be valid
+     * @return this, to enable chaining
+     * @since 2.3
+     */
+    public StrBuilder appendln(StringBuffer str, int startIndex, int length) {
+        return append(str, startIndex, length).appendNewLine();
+    }
+
+    /**
+     * Appends another string builder followed by a new line to this string builder.
+     * Appending null will call {@link #appendNull()}.
+     *
+     * @param str  the string builder to append
+     * @return this, to enable chaining
+     * @since 2.3
+     */
+    public StrBuilder appendln(StrBuilder str) {
+        return append(str).appendNewLine();
+    }
+
+    /**
+     * Appends part of a string builder followed by a new line to this string builder.
+     * Appending null will call {@link #appendNull()}.
+     *
+     * @param str  the string to append
+     * @param startIndex  the start index, inclusive, must be valid
+     * @param length  the length to append, must be valid
+     * @return this, to enable chaining
+     * @since 2.3
+     */
+    public StrBuilder appendln(StrBuilder str, int startIndex, int length) {
+        return append(str, startIndex, length).appendNewLine();
+    }
+
+    /**
+     * Appends a char array followed by a new line to the string builder.
+     * Appending null will call {@link #appendNull()}.
+     *
+     * @param chars  the char array to append
+     * @return this, to enable chaining
+     * @since 2.3
+     */
+    public StrBuilder appendln(char[] chars) {
+        return append(chars).appendNewLine();
+    }
+
+    /**
+     * Appends a char array followed by a new line to the string builder.
+     * Appending null will call {@link #appendNull()}.
+     *
+     * @param chars  the char array to append
+     * @param startIndex  the start index, inclusive, must be valid
+     * @param length  the length to append, must be valid
+     * @return this, to enable chaining
+     * @since 2.3
+     */
+    public StrBuilder appendln(char[] chars, int startIndex, int length) {
+        return append(chars, startIndex, length).appendNewLine();
+    }
+
+    /**
+     * Appends a boolean value followed by a new line to the string builder.
+     *
+     * @param value  the value to append
+     * @return this, to enable chaining
+     * @since 2.3
+     */
+    public StrBuilder appendln(boolean value) {
+        return append(value).appendNewLine();
+    }
+
+    /**
+     * Appends a char value followed by a new line to the string builder.
+     *
+     * @param ch  the value to append
+     * @return this, to enable chaining
+     * @since 2.3
+     */
+    public StrBuilder appendln(char ch) {
+        return append(ch).appendNewLine();
+    }
+
+    /**
+     * Appends an int value followed by a new line to the string builder using <code>String.valueOf</code>.
+     *
+     * @param value  the value to append
+     * @return this, to enable chaining
+     * @since 2.3
+     */
+    public StrBuilder appendln(int value) {
+        return append(value).appendNewLine();
+    }
+
+    /**
+     * Appends a long value followed by a new line to the string builder using <code>String.valueOf</code>.
+     *
+     * @param value  the value to append
+     * @return this, to enable chaining
+     * @since 2.3
+     */
+    public StrBuilder appendln(long value) {
+        return append(value).appendNewLine();
+    }
+
+    /**
+     * Appends a float value followed by a new line to the string builder using <code>String.valueOf</code>.
+     *
+     * @param value  the value to append
+     * @return this, to enable chaining
+     * @since 2.3
+     */
+    public StrBuilder appendln(float value) {
+        return append(value).appendNewLine();
+    }
+
+    /**
+     * Appends a double value followed by a new line to the string builder using <code>String.valueOf</code>.
+     *
+     * @param value  the value to append
+     * @return this, to enable chaining
+     * @since 2.3
+     */
+    public StrBuilder appendln(double value) {
+        return append(value).appendNewLine();
+    }
+
+    //-----------------------------------------------------------------------
+    /**
+     * Appends each item in an array to the builder without any separators.
+     * Appending a null array will have no effect.
+     * Each object is appended using {@link #append(Object)}.
+     *
+     * @param array  the array to append
+     * @return this, to enable chaining
+     * @since 2.3
+     */
+    public StrBuilder appendAll(Object[] array) {
+        if (array != null && array.length > 0) {
+            for (int i = 0; i < array.length; i++) {
+                append(array[i]);
+            }
+        }
+        return this;
+    }
+
+    /**
+     * Appends each item in a iterable to the builder without any separators.
+     * Appending a null iterable will have no effect.
+     * Each object is appended using {@link #append(Object)}.
+     *
+     * @param iterable  the iterable to append
+     * @return this, to enable chaining
+     * @since 2.3
+     */
+    public StrBuilder appendAll(Iterable<?> iterable) {
+        if (iterable != null) {
+            Iterator<?> it = iterable.iterator();
+            while (it.hasNext()) {
+                append(it.next());
+            }
+        }
+        return this;
+    }
+
+    /**
+     * Appends each item in an iterator to the builder without any separators.
+     * Appending a null iterator will have no effect.
+     * Each object is appended using {@link #append(Object)}.
+     *
+     * @param it  the iterator to append
+     * @return this, to enable chaining
+     * @since 2.3
+     */
+    public StrBuilder appendAll(Iterator<?> it) {
+        if (it != null) {
+            while (it.hasNext()) {
+                append(it.next());
+            }
+        }
+        return this;
+    }
+
+    //-----------------------------------------------------------------------
+    /**
+     * Appends an array placing separators between each value, but
+     * not before the first or after the last.
+     * Appending a null array will have no effect.
+     * Each object is appended using {@link #append(Object)}.
+     *
+     * @param array  the array to append
+     * @param separator  the separator to use, null means no separator
+     * @return this, to enable chaining
+     */
+    public StrBuilder appendWithSeparators(Object[] array, String separator) {
+        if (array != null && array.length > 0) {
+            separator = (separator == null ? "" : separator);
+            append(array[0]);
+            for (int i = 1; i < array.length; i++) {
+                append(separator);
+                append(array[i]);
+            }
+        }
+        return this;
+    }
+
+    /**
+     * Appends a iterable placing separators between each value, but
+     * not before the first or after the last.
+     * Appending a null iterable will have no effect.
+     * Each object is appended using {@link #append(Object)}.
+     *
+     * @param iterable  the iterable to append
+     * @param separator  the separator to use, null means no separator
+     * @return this, to enable chaining
+     */
+    public StrBuilder appendWithSeparators(Iterable<?> iterable, String separator) {
+        if (iterable != null) {
+            separator = (separator == null ? "" : separator);
+            Iterator<?> it = iterable.iterator();
+            while (it.hasNext()) {
+                append(it.next());
+                if (it.hasNext()) {
+                    append(separator);
+                }
+            }
+        }
+        return this;
+    }
+
+    /**
+     * Appends an iterator placing separators between each value, but
+     * not before the first or after the last.
+     * Appending a null iterator will have no effect.
+     * Each object is appended using {@link #append(Object)}.
+     *
+     * @param it  the iterator to append
+     * @param separator  the separator to use, null means no separator
+     * @return this, to enable chaining
+     */
+    public StrBuilder appendWithSeparators(Iterator<?> it, String separator) {
+        if (it != null) {
+            separator = (separator == null ? "" : separator);
+            while (it.hasNext()) {
+                append(it.next());
+                if (it.hasNext()) {
+                    append(separator);
+                }
+            }
+        }
+        return this;
+    }
+
+    //-----------------------------------------------------------------------
+    /**
+     * Appends a separator if the builder is currently non-empty.
+     * Appending a null separator will have no effect.
+     * The separator is appended using {@link #append(String)}.
+     * <p>
+     * This method is useful for adding a separator each time around the
+     * loop except the first.
+     * <pre>
+     * for (Iterator it = list.iterator(); it.hasNext(); ) {
+     *   appendSeparator(",");
+     *   append(it.next());
+     * }
+     * </pre>
+     * Note that for this simple example, you should use
+     * {@link #appendWithSeparators(Iterable, String)}.
+     * 
+     * @param separator  the separator to use, null means no separator
+     * @return this, to enable chaining
+     * @since 2.3
+     */
+    public StrBuilder appendSeparator(String separator) {
+        return appendSeparator(separator, null);
+    }
+
+    /**
+     * Appends one of both separators to the StrBuilder.
+     * If the builder is currently empty it will append the defaultIfEmpty-separator
+     * Otherwise it will append the standard-separator
+     * 
+     * Appending a null separator will have no effect.
+     * The separator is appended using {@link #append(String)}.
+     * <p>
+     * This method is for example useful for constructing queries
+     * <pre>
+     * StrBuilder whereClause = new StrBuilder();
+     * if(searchCommand.getPriority() != null) {
+     *  whereClause.appendSeparator(" and", " where");
+     *  whereClause.append(" priority = ?")
+     * }
+     * if(searchCommand.getComponent() != null) {
+     *  whereClause.appendSeparator(" and", " where");
+     *  whereClause.append(" component = ?")
+     * }
+     * selectClause.append(whereClause)
+     * </pre>
+     * 
+     * @param standard the separator if builder is not empty, null means no separator
+     * @param defaultIfEmpty the separator if builder is empty, null means no separator
+     * @return this, to enable chaining
+     * @since 2.5
+     */
+    public StrBuilder appendSeparator(String standard, String defaultIfEmpty) {
+        String str = isEmpty() ? defaultIfEmpty : standard;
+        if (str != null) {
+            append(str);
+        }
+        return this;
+    }
+
+    /**
+     * Appends a separator if the builder is currently non-empty.
+     * The separator is appended using {@link #append(char)}.
+     * <p>
+     * This method is useful for adding a separator each time around the
+     * loop except the first.
+     * <pre>
+     * for (Iterator it = list.iterator(); it.hasNext(); ) {
+     *   appendSeparator(',');
+     *   append(it.next());
+     * }
+     * </pre>
+     * Note that for this simple example, you should use
+     * {@link #appendWithSeparators(Iterable, String)}.
+     * 
+     * @param separator  the separator to use
+     * @return this, to enable chaining
+     * @since 2.3
+     */
+    public StrBuilder appendSeparator(char separator) {
+        if (size() > 0) {
+            append(separator);
+        }
+        return this;
+    }
+
+    /**
+     * Append one of both separators to the builder
+     * If the builder is currently empty it will append the defaultIfEmpty-separator
+     * Otherwise it will append the standard-separator
+     *
+     * The separator is appended using {@link #append(char)}.
+     * @param standard the separator if builder is not empty
+     * @param defaultIfEmpty the separator if builder is empty
+     * @return this, to enable chaining
+     * @since 2.5
+     */
+    public StrBuilder appendSeparator(char standard, char defaultIfEmpty) {
+        if (size() > 0) {
+            append(standard);
+        }
+        else {
+            append(defaultIfEmpty);
+        }
+        return this;
+    }
+    /**
+     * Appends a separator to the builder if the loop index is greater than zero.
+     * Appending a null separator will have no effect.
+     * The separator is appended using {@link #append(String)}.
+     * <p>
+     * This method is useful for adding a separator each time around the
+     * loop except the first.
+     * <pre>
+     * for (int i = 0; i < list.size(); i++) {
+     *   appendSeparator(",", i);
+     *   append(list.get(i));
+     * }
+     * </pre>
+     * Note that for this simple example, you should use
+     * {@link #appendWithSeparators(Iterable, String)}.
+     * 
+     * @param separator  the separator to use, null means no separator
+     * @param loopIndex  the loop index
+     * @return this, to enable chaining
+     * @since 2.3
+     */
+    public StrBuilder appendSeparator(String separator, int loopIndex) {
+        if (separator != null && loopIndex > 0) {
+            append(separator);
+        }
+        return this;
+    }
+
+    /**
+     * Appends a separator to the builder if the loop index is greater than zero.
+     * The separator is appended using {@link #append(char)}.
+     * <p>
+     * This method is useful for adding a separator each time around the
+     * loop except the first.
+     * <pre>
+     * for (int i = 0; i < list.size(); i++) {
+     *   appendSeparator(",", i);
+     *   append(list.get(i));
+     * }
+     * </pre>
+     * Note that for this simple example, you should use
+     * {@link #appendWithSeparators(Iterable, String)}.
+     * 
+     * @param separator  the separator to use
+     * @param loopIndex  the loop index
+     * @return this, to enable chaining
+     * @since 2.3
+     */
+    public StrBuilder appendSeparator(char separator, int loopIndex) {
+        if (loopIndex > 0) {
+            append(separator);
+        }
+        return this;
+    }
+
+    //-----------------------------------------------------------------------
+    /**
+     * Appends the pad character to the builder the specified number of times.
+     * 
+     * @param length  the length to append, negative means no append
+     * @param padChar  the character to append
+     * @return this, to enable chaining
+     */
+    public StrBuilder appendPadding(int length, char padChar) {
+        if (length >= 0) {
+            ensureCapacity(size + length);
+            for (int i = 0; i < length; i++) {
+                buffer[size++] = padChar;
+            }
+        }
+        return this;
+    }
+
+    //-----------------------------------------------------------------------
+    /**
+     * Appends an object to the builder padding on the left to a fixed width.
+     * The <code>toString</code> of the object is used.
+     * If the object is larger than the length, the left hand side is lost.
+     * If the object is null, the null text value is used.
+     * 
+     * @param obj  the object to append, null uses null text
+     * @param width  the fixed field width, zero or negative has no effect
+     * @param padChar  the pad character to use
+     * @return this, to enable chaining
+     */
+    public StrBuilder appendFixedWidthPadLeft(Object obj, int width, char padChar) {
+        if (width > 0) {
+            ensureCapacity(size + width);
+            String str = (obj == null ? getNullText() : obj.toString());
+            if (str == null) {
+                str = "";
+            }
+            int strLen = str.length();
+            if (strLen >= width) {
+                str.getChars(strLen - width, strLen, buffer, size);
+            } else {
+                int padLen = width - strLen;
+                for (int i = 0; i < padLen; i++) {
+                    buffer[size + i] = padChar;
+                }
+                str.getChars(0, strLen, buffer, size + padLen);
+            }
+            size += width;
+        }
+        return this;
+    }
+
+    /**
+     * Appends an object to the builder padding on the left to a fixed width.
+     * The <code>String.valueOf</code> of the <code>int</code> value is used.
+     * If the formatted value is larger than the length, the left hand side is lost.
+     * 
+     * @param value  the value to append
+     * @param width  the fixed field width, zero or negative has no effect
+     * @param padChar  the pad character to use
+     * @return this, to enable chaining
+     */
+    public StrBuilder appendFixedWidthPadLeft(int value, int width, char padChar) {
+        return appendFixedWidthPadLeft(String.valueOf(value), width, padChar);
+    }
+
+    /**
+     * Appends an object to the builder padding on the right to a fixed length.
+     * The <code>toString</code> of the object is used.
+     * If the object is larger than the length, the right hand side is lost.
+     * If the object is null, null text value is used.
+     * 
+     * @param obj  the object to append, null uses null text
+     * @param width  the fixed field width, zero or negative has no effect
+     * @param padChar  the pad character to use
+     * @return this, to enable chaining
+     */
+    public StrBuilder appendFixedWidthPadRight(Object obj, int width, char padChar) {
+        if (width > 0) {
+            ensureCapacity(size + width);
+            String str = (obj == null ? getNullText() : obj.toString());
+            if (str == null) {
+                str = "";
+            }
+            int strLen = str.length();
+            if (strLen >= width) {
+                str.getChars(0, width, buffer, size);
+            } else {
+                int padLen = width - strLen;
+                str.getChars(0, strLen, buffer, size);
+                for (int i = 0; i < padLen; i++) {
+                    buffer[size + strLen + i] = padChar;
+                }
+            }
+            size += width;
+        }
+        return this;
+    }
+
+    /**
+     * Appends an object to the builder padding on the right to a fixed length.
+     * The <code>String.valueOf</code> of the <code>int</code> value is used.
+     * If the object is larger than the length, the right hand side is lost.
+     * 
+     * @param value  the value to append
+     * @param width  the fixed field width, zero or negative has no effect
+     * @param padChar  the pad character to use
+     * @return this, to enable chaining
+     */
+    public StrBuilder appendFixedWidthPadRight(int value, int width, char padChar) {
+        return appendFixedWidthPadRight(String.valueOf(value), width, padChar);
+    }
+
+    //-----------------------------------------------------------------------
+    /**
+     * Inserts the string representation of an object into this builder.
+     * Inserting null will use the stored null text value.
+     *
+     * @param index  the index to add at, must be valid
+     * @param obj  the object to insert
+     * @return this, to enable chaining
+     * @throws IndexOutOfBoundsException if the index is invalid
+     */
+    public StrBuilder insert(int index, Object obj) {
+        if (obj == null) {
+            return insert(index, nullText);
+        }
+        return insert(index, obj.toString());
+    }
+
+    /**
+     * Inserts the string into this builder.
+     * Inserting null will use the stored null text value.
+     *
+     * @param index  the index to add at, must be valid
+     * @param str  the string to insert
+     * @return this, to enable chaining
+     * @throws IndexOutOfBoundsException if the index is invalid
+     */
+    @SuppressWarnings("null") // str cannot be null
+    public StrBuilder insert(int index, String str) {
+        validateIndex(index);
+        if (str == null) {
+            str = nullText;
+        }
+        int strLen = (str == null ? 0 : str.length());
+        if (strLen > 0) {
+            int newSize = size + strLen;
+            ensureCapacity(newSize);
+            System.arraycopy(buffer, index, buffer, index + strLen, size - index);
+            size = newSize;
+            str.getChars(0, strLen, buffer, index); // str cannot be null here
+        }
+        return this;
+    }
+
+    /**
+     * Inserts the character array into this builder.
+     * Inserting null will use the stored null text value.
+     *
+     * @param index  the index to add at, must be valid
+     * @param chars  the char array to insert
+     * @return this, to enable chaining
+     * @throws IndexOutOfBoundsException if the index is invalid
+     */
+    public StrBuilder insert(int index, char chars[]) {
+        validateIndex(index);
+        if (chars == null) {
+            return insert(index, nullText);
+        }
+        int len = chars.length;
+        if (len > 0) {
+            ensureCapacity(size + len);
+            System.arraycopy(buffer, index, buffer, index + len, size - index);
+            System.arraycopy(chars, 0, buffer, index, len);
+            size += len;
+        }
+        return this;
+    }
+
+    /**
+     * Inserts part of the character array into this builder.
+     * Inserting null will use the stored null text value.
+     *
+     * @param index  the index to add at, must be valid
+     * @param chars  the char array to insert
+     * @param offset  the offset into the character array to start at, must be valid
+     * @param length  the length of the character array part to copy, must be positive
+     * @return this, to enable chaining
+     * @throws IndexOutOfBoundsException if any index is invalid
+     */
+    public StrBuilder insert(int index, char chars[], int offset, int length) {
+        validateIndex(index);
+        if (chars == null) {
+            return insert(index, nullText);
+        }
+        if (offset < 0 || offset > chars.length) {
+            throw new StringIndexOutOfBoundsException("Invalid offset: " + offset);
+        }
+        if (length < 0 || offset + length > chars.length) {
+            throw new StringIndexOutOfBoundsException("Invalid length: " + length);
+        }
+        if (length > 0) {
+            ensureCapacity(size + length);
+            System.arraycopy(buffer, index, buffer, index + length, size - index);
+            System.arraycopy(chars, offset, buffer, index, length);
+            size += length;
+        }
+        return this;
+    }
+
+    /**
+     * Inserts the value into this builder.
+     *
+     * @param index  the index to add at, must be valid
+     * @param value  the value to insert
+     * @return this, to enable chaining
+     * @throws IndexOutOfBoundsException if the index is invalid
+     */
+    public StrBuilder insert(int index, boolean value) {
+        validateIndex(index);
+        if (value) {
+            ensureCapacity(size + 4);
+            System.arraycopy(buffer, index, buffer, index + 4, size - index);
+            buffer[index++] = 't';
+            buffer[index++] = 'r';
+            buffer[index++] = 'u';
+            buffer[index] = 'e';
+            size += 4;
+        } else {
+            ensureCapacity(size + 5);
+            System.arraycopy(buffer, index, buffer, index + 5, size - index);
+            buffer[index++] = 'f';
+            buffer[index++] = 'a';
+            buffer[index++] = 'l';
+            buffer[index++] = 's';
+            buffer[index] = 'e';
+            size += 5;
+        }
+        return this;
+    }
+
+    /**
+     * Inserts the value into this builder.
+     *
+     * @param index  the index to add at, must be valid
+     * @param value  the value to insert
+     * @return this, to enable chaining
+     * @throws IndexOutOfBoundsException if the index is invalid
+     */
+    public StrBuilder insert(int index, char value) {
+        validateIndex(index);
+        ensureCapacity(size + 1);
+        System.arraycopy(buffer, index, buffer, index + 1, size - index);
+        buffer[index] = value;
+        size++;
+        return this;
+    }
+
+    /**
+     * Inserts the value into this builder.
+     *
+     * @param index  the index to add at, must be valid
+     * @param value  the value to insert
+     * @return this, to enable chaining
+     * @throws IndexOutOfBoundsException if the index is invalid
+     */
+    public StrBuilder insert(int index, int value) {
+        return insert(index, String.valueOf(value));
+    }
+
+    /**
+     * Inserts the value into this builder.
+     *
+     * @param index  the index to add at, must be valid
+     * @param value  the value to insert
+     * @return this, to enable chaining
+     * @throws IndexOutOfBoundsException if the index is invalid
+     */
+    public StrBuilder insert(int index, long value) {
+        return insert(index, String.valueOf(value));
+    }
+
+    /**
+     * Inserts the value into this builder.
+     *
+     * @param index  the index to add at, must be valid
+     * @param value  the value to insert
+     * @return this, to enable chaining
+     * @throws IndexOutOfBoundsException if the index is invalid
+     */
+    public StrBuilder insert(int index, float value) {
+        return insert(index, String.valueOf(value));
+    }
+
+    /**
+     * Inserts the value into this builder.
+     *
+     * @param index  the index to add at, must be valid
+     * @param value  the value to insert
+     * @return this, to enable chaining
+     * @throws IndexOutOfBoundsException if the index is invalid
+     */
+    public StrBuilder insert(int index, double value) {
+        return insert(index, String.valueOf(value));
+    }
+
+    //-----------------------------------------------------------------------
+    /**
+     * Internal method to delete a range without validation.
+     *
+     * @param startIndex  the start index, must be valid
+     * @param endIndex  the end index (exclusive), must be valid
+     * @param len  the length, must be valid
+     * @throws IndexOutOfBoundsException if any index is invalid
+     */
+    private void deleteImpl(int startIndex, int endIndex, int len) {
+        System.arraycopy(buffer, endIndex, buffer, startIndex, size - endIndex);
+        size -= len;
+    }
+
+    /**
+     * Deletes the characters between the two specified indices.
+     *
+     * @param startIndex  the start index, inclusive, must be valid
+     * @param endIndex  the end index, exclusive, must be valid except
+     *  that if too large it is treated as end of string
+     * @return this, to enable chaining
+     * @throws IndexOutOfBoundsException if the index is invalid
+     */
+    public StrBuilder delete(int startIndex, int endIndex) {
+        endIndex = validateRange(startIndex, endIndex);
+        int len = endIndex - startIndex;
+        if (len > 0) {
+            deleteImpl(startIndex, endIndex, len);
+        }
+        return this;
+    }
+
+    //-----------------------------------------------------------------------
+    /**
+     * Deletes the character wherever it occurs in the builder.
+     *
+     * @param ch  the character to delete
+     * @return this, to enable chaining
+     */
+    public StrBuilder deleteAll(char ch) {
+        for (int i = 0; i < size; i++) {
+            if (buffer[i] == ch) {
+                int start = i;
+                while (++i < size) {
+                    if (buffer[i] != ch) {
+                        break;
+                    }
+                }
+                int len = i - start;
+                deleteImpl(start, i, len);
+                i -= len;
+            }
+        }
+        return this;
+    }
+
+    /**
+     * Deletes the character wherever it occurs in the builder.
+     *
+     * @param ch  the character to delete
+     * @return this, to enable chaining
+     */
+    public StrBuilder deleteFirst(char ch) {
+        for (int i = 0; i < size; i++) {
+            if (buffer[i] == ch) {
+                deleteImpl(i, i + 1, 1);
+                break;
+            }
+        }
+        return this;
+    }
+
+    //-----------------------------------------------------------------------
+    /**
+     * Deletes the string wherever it occurs in the builder.
+     *
+     * @param str  the string to delete, null causes no action
+     * @return this, to enable chaining
+     */
+    public StrBuilder deleteAll(String str) {
+        int len = (str == null ? 0 : str.length());
+        if (len > 0) {
+            int index = indexOf(str, 0);
+            while (index >= 0) {
+                deleteImpl(index, index + len, len);
+                index = indexOf(str, index);
+            }
+        }
+        return this;
+    }
+
+    /**
+     * Deletes the string wherever it occurs in the builder.
+     *
+     * @param str  the string to delete, null causes no action
+     * @return this, to enable chaining
+     */
+    public StrBuilder deleteFirst(String str) {
+        int len = (str == null ? 0 : str.length());
+        if (len > 0) {
+            int index = indexOf(str, 0);
+            if (index >= 0) {
+                deleteImpl(index, index + len, len);
+            }
+        }
+        return this;
+    }
+
+    //-----------------------------------------------------------------------
+    /**
+     * Deletes all parts of the builder that the matcher matches.
+     * <p>
+     * Matchers can be used to perform advanced deletion behaviour.
+     * For example you could write a matcher to delete all occurances
+     * where the character 'a' is followed by a number.
+     *
+     * @param matcher  the matcher to use to find the deletion, null causes no action
+     * @return this, to enable chaining
+     */
+    public StrBuilder deleteAll(StrMatcher matcher) {
+        return replace(matcher, null, 0, size, -1);
+    }
+
+    /**
+     * Deletes the first match within the builder using the specified matcher.
+     * <p>
+     * Matchers can be used to perform advanced deletion behaviour.
+     * For example you could write a matcher to delete
+     * where the character 'a' is followed by a number.
+     *
+     * @param matcher  the matcher to use to find the deletion, null causes no action
+     * @return this, to enable chaining
+     */
+    public StrBuilder deleteFirst(StrMatcher matcher) {
+        return replace(matcher, null, 0, size, 1);
+    }
+
+    //-----------------------------------------------------------------------
+    /**
+     * Internal method to delete a range without validation.
+     *
+     * @param startIndex  the start index, must be valid
+     * @param endIndex  the end index (exclusive), must be valid
+     * @param removeLen  the length to remove (endIndex - startIndex), must be valid
+     * @param insertStr  the string to replace with, null means delete range
+     * @param insertLen  the length of the insert string, must be valid
+     * @throws IndexOutOfBoundsException if any index is invalid
+     */
+    private void replaceImpl(int startIndex, int endIndex, int removeLen, String insertStr, int insertLen) {
+        int newSize = size - removeLen + insertLen;
+        if (insertLen != removeLen) {
+            ensureCapacity(newSize);
+            System.arraycopy(buffer, endIndex, buffer, startIndex + insertLen, size - endIndex);
+            size = newSize;
+        }
+        if (insertLen > 0) {
+            insertStr.getChars(0, insertLen, buffer, startIndex);
+        }
+    }
+
+    /**
+     * Replaces a portion of the string builder with another string.
+     * The length of the inserted string does not have to match the removed length.
+     *
+     * @param startIndex  the start index, inclusive, must be valid
+     * @param endIndex  the end index, exclusive, must be valid except
+     *  that if too large it is treated as end of string
+     * @param replaceStr  the string to replace with, null means delete range
+     * @return this, to enable chaining
+     * @throws IndexOutOfBoundsException if the index is invalid
+     */
+    public StrBuilder replace(int startIndex, int endIndex, String replaceStr) {
+        endIndex = validateRange(startIndex, endIndex);
+        int insertLen = (replaceStr == null ? 0 : replaceStr.length());
+        replaceImpl(startIndex, endIndex, endIndex - startIndex, replaceStr, insertLen);
+        return this;
+    }
+
+    //-----------------------------------------------------------------------
+    /**
+     * Replaces the search character with the replace character
+     * throughout the builder.
+     *
+     * @param search  the search character
+     * @param replace  the replace character
+     * @return this, to enable chaining
+     */
+    public StrBuilder replaceAll(char search, char replace) {
+        if (search != replace) {
+            for (int i = 0; i < size; i++) {
+                if (buffer[i] == search) {
+                    buffer[i] = replace;
+                }
+            }
+        }
+        return this;
+    }
+
+    /**
+     * Replaces the first instance of the search character with the
+     * replace character in the builder.
+     *
+     * @param search  the search character
+     * @param replace  the replace character
+     * @return this, to enable chaining
+     */
+    public StrBuilder replaceFirst(char search, char replace) {
+        if (search != replace) {
+            for (int i = 0; i < size; i++) {
+                if (buffer[i] == search) {
+                    buffer[i] = replace;
+                    break;
+                }
+            }
+        }
+        return this;
+    }
+
+    //-----------------------------------------------------------------------
+    /**
+     * Replaces the search string with the replace string throughout the builder.
+     *
+     * @param searchStr  the search string, null causes no action to occur
+     * @param replaceStr  the replace string, null is equivalent to an empty string
+     * @return this, to enable chaining
+     */
+    public StrBuilder replaceAll(String searchStr, String replaceStr) {
+        int searchLen = (searchStr == null ? 0 : searchStr.length());
+        if (searchLen > 0) {
+            int replaceLen = (replaceStr == null ? 0 : replaceStr.length());
+            int index = indexOf(searchStr, 0);
+            while (index >= 0) {
+                replaceImpl(index, index + searchLen, searchLen, replaceStr, replaceLen);
+                index = indexOf(searchStr, index + replaceLen);
+            }
+        }
+        return this;
+    }
+
+    /**
+     * Replaces the first instance of the search string with the replace string.
+     *
+     * @param searchStr  the search string, null causes no action to occur
+     * @param replaceStr  the replace string, null is equivalent to an empty string
+     * @return this, to enable chaining
+     */
+    public StrBuilder replaceFirst(String searchStr, String replaceStr) {
+        int searchLen = (searchStr == null ? 0 : searchStr.length());
+        if (searchLen > 0) {
+            int index = indexOf(searchStr, 0);
+            if (index >= 0) {
+                int replaceLen = (replaceStr == null ? 0 : replaceStr.length());
+                replaceImpl(index, index + searchLen, searchLen, replaceStr, replaceLen);
+            }
+        }
+        return this;
+    }
+
+    //-----------------------------------------------------------------------
+    /**
+     * Replaces all matches within the builder with the replace string.
+     * <p>
+     * Matchers can be used to perform advanced replace behaviour.
+     * For example you could write a matcher to replace all occurances
+     * where the character 'a' is followed by a number.
+     *
+     * @param matcher  the matcher to use to find the deletion, null causes no action
+     * @param replaceStr  the replace string, null is equivalent to an empty string
+     * @return this, to enable chaining
+     */
+    public StrBuilder replaceAll(StrMatcher matcher, String replaceStr) {
+        return replace(matcher, replaceStr, 0, size, -1);
+    }
+
+    /**
+     * Replaces the first match within the builder with the replace string.
+     * <p>
+     * Matchers can be used to perform advanced replace behaviour.
+     * For example you could write a matcher to replace
+     * where the character 'a' is followed by a number.
+     *
+     * @param matcher  the matcher to use to find the deletion, null causes no action
+     * @param replaceStr  the replace string, null is equivalent to an empty string
+     * @return this, to enable chaining
+     */
+    public StrBuilder replaceFirst(StrMatcher matcher, String replaceStr) {
+        return replace(matcher, replaceStr, 0, size, 1);
+    }
+
+    // -----------------------------------------------------------------------
+    /**
+     * Advanced search and replaces within the builder using a matcher.
+     * <p>
+     * Matchers can be used to perform advanced behaviour.
+     * For example you could write a matcher to delete all occurances
+     * where the character 'a' is followed by a number.
+     *
+     * @param matcher  the matcher to use to find the deletion, null causes no action
+     * @param replaceStr  the string to replace the match with, null is a delete
+     * @param startIndex  the start index, inclusive, must be valid
+     * @param endIndex  the end index, exclusive, must be valid except
+     *  that if too large it is treated as end of string
+     * @param replaceCount  the number of times to replace, -1 for replace all
+     * @return this, to enable chaining
+     * @throws IndexOutOfBoundsException if start index is invalid
+     */
+    public StrBuilder replace(
+            StrMatcher matcher, String replaceStr,
+            int startIndex, int endIndex, int replaceCount) {
+        endIndex = validateRange(startIndex, endIndex);
+        return replaceImpl(matcher, replaceStr, startIndex, endIndex, replaceCount);
+    }
+
+    /**
+     * Replaces within the builder using a matcher.
+     * <p>
+     * Matchers can be used to perform advanced behaviour.
+     * For example you could write a matcher to delete all occurances
+     * where the character 'a' is followed by a number.
+     *
+     * @param matcher  the matcher to use to find the deletion, null causes no action
+     * @param replaceStr  the string to replace the match with, null is a delete
+     * @param from  the start index, must be valid
+     * @param to  the end index (exclusive), must be valid
+     * @param replaceCount  the number of times to replace, -1 for replace all
+     * @return this, to enable chaining
+     * @throws IndexOutOfBoundsException if any index is invalid
+     */
+    private StrBuilder replaceImpl(
+            StrMatcher matcher, String replaceStr,
+            int from, int to, int replaceCount) {
+        if (matcher == null || size == 0) {
+            return this;
+        }
+        int replaceLen = (replaceStr == null ? 0 : replaceStr.length());
+        char[] buf = buffer;
+        for (int i = from; i < to && replaceCount != 0; i++) {
+            int removeLen = matcher.isMatch(buf, i, from, to);
+            if (removeLen > 0) {
+                replaceImpl(i, i + removeLen, removeLen, replaceStr, replaceLen);
+                to = to - removeLen + replaceLen;
+                i = i + replaceLen - 1;
+                if (replaceCount > 0) {
+                    replaceCount--;
+                }
+            }
+        }
+        return this;
+    }
+
+    //-----------------------------------------------------------------------
+    /**
+     * Reverses the string builder placing each character in the opposite index.
+     * 
+     * @return this, to enable chaining
+     */
+    public StrBuilder reverse() {
+        if (size == 0) {
+            return this;
+        }
+        
+        int half = size / 2;
+        char[] buf = buffer;
+        for (int leftIdx = 0, rightIdx = size - 1; leftIdx < half; leftIdx++,rightIdx--) {
+            char swap = buf[leftIdx];
+            buf[leftIdx] = buf[rightIdx];
+            buf[rightIdx] = swap;
+        }
+        return this;
+    }
+
+    //-----------------------------------------------------------------------
+    /**
+     * Trims the builder by removing characters less than or equal to a space
+     * from the beginning and end.
+     *
+     * @return this, to enable chaining
+     */
+    public StrBuilder trim() {
+        if (size == 0) {
+            return this;
+        }
+        int len = size;
+        char[] buf = buffer;
+        int pos = 0;
+        while (pos < len && buf[pos] <= ' ') {
+            pos++;
+        }
+        while (pos < len && buf[len - 1] <= ' ') {
+            len--;
+        }
+        if (len < size) {
+            delete(len, size);
+        }
+        if (pos > 0) {
+            delete(0, pos);
+        }
+        return this;
+    }
+
+    //-----------------------------------------------------------------------
+    /**
+     * Checks whether this builder starts with the specified string.
+     * <p>
+     * Note that this method handles null input quietly, unlike String.
+     * 
+     * @param str  the string to search for, null returns false
+     * @return true if the builder starts with the string
+     */
+    public boolean startsWith(String str) {
+        if (str == null) {
+            return false;
+        }
+        int len = str.length();
+        if (len == 0) {
+            return true;
+        }
+        if (len > size) {
+            return false;
+        }
+        for (int i = 0; i < len; i++) {
+            if (buffer[i] != str.charAt(i)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Checks whether this builder ends with the specified string.
+     * <p>
+     * Note that this method handles null input quietly, unlike String.
+     * 
+     * @param str  the string to search for, null returns false
+     * @return true if the builder ends with the string
+     */
+    public boolean endsWith(String str) {
+        if (str == null) {
+            return false;
+        }
+        int len = str.length();
+        if (len == 0) {
+            return true;
+        }
+        if (len > size) {
+            return false;
+        }
+        int pos = size - len;
+        for (int i = 0; i < len; i++,pos++) {
+            if (buffer[pos] != str.charAt(i)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    //-----------------------------------------------------------------------
+    /**
+     * {@inheritDoc}
+     */
+    public CharSequence subSequence(int startIndex, int endIndex) {
+      if (startIndex < 0) {
+          throw new StringIndexOutOfBoundsException(startIndex);
+      }
+      if (endIndex > size) {
+          throw new StringIndexOutOfBoundsException(endIndex);
+      }
+      if (startIndex > endIndex) {
+          throw new StringIndexOutOfBoundsException(endIndex - startIndex);
+      }
+      return substring(startIndex, endIndex);
+    }
+
+    /**
+     * Extracts a portion of this string builder as a string.
+     * 
+     * @param start  the start index, inclusive, must be valid
+     * @return the new string
+     * @throws IndexOutOfBoundsException if the index is invalid
+     */
+    public String substring(int start) {
+        return substring(start, size);
+    }
+
+    /**
+     * Extracts a portion of this string builder as a string.
+     * <p>
+     * Note: This method treats an endIndex greater than the length of the
+     * builder as equal to the length of the builder, and continues
+     * without error, unlike StringBuffer or String.
+     * 
+     * @param startIndex  the start index, inclusive, must be valid
+     * @param endIndex  the end index, exclusive, must be valid except
+     *  that if too large it is treated as end of string
+     * @return the new string
+     * @throws IndexOutOfBoundsException if the index is invalid
+     */
+    public String substring(int startIndex, int endIndex) {
+        endIndex = validateRange(startIndex, endIndex);
+        return new String(buffer, startIndex, endIndex - startIndex);
+    }
+
+    /**
+     * Extracts the leftmost characters from the string builder without
+     * throwing an exception.
+     * <p>
+     * This method extracts the left <code>length</code> characters from
+     * the builder. If this many characters are not available, the whole
+     * builder is returned. Thus the returned string may be shorter than the
+     * length requested.
+     * 
+     * @param length  the number of characters to extract, negative returns empty string
+     * @return the new string
+     */
+    public String leftString(int length) {
+        if (length <= 0) {
+            return "";
+        } else if (length >= size) {
+            return new String(buffer, 0, size);
+        } else {
+            return new String(buffer, 0, length);
+        }
+    }
+
+    /**
+     * Extracts the rightmost characters from the string builder without
+     * throwing an exception.
+     * <p>
+     * This method extracts the right <code>length</code> characters from
+     * the builder. If this many characters are not available, the whole
+     * builder is returned. Thus the returned string may be shorter than the
+     * length requested.
+     * 
+     * @param length  the number of characters to extract, negative returns empty string
+     * @return the new string
+     */
+    public String rightString(int length) {
+        if (length <= 0) {
+            return "";
+        } else if (length >= size) {
+            return new String(buffer, 0, size);
+        } else {
+            return new String(buffer, size - length, length);
+        }
+    }
+
+    /**
+     * Extracts some characters from the middle of the string builder without
+     * throwing an exception.
+     * <p>
+     * This method extracts <code>length</code> characters from the builder
+     * at the specified index.
+     * If the index is negative it is treated as zero.
+     * If the index is greater than the builder size, it is treated as the builder size.
+     * If the length is negative, the empty string is returned.
+     * If insufficient characters are available in the builder, as much as possible is returned.
+     * Thus the returned string may be shorter than the length requested.
+     * 
+     * @param index  the index to start at, negative means zero
+     * @param length  the number of characters to extract, negative returns empty string
+     * @return the new string
+     */
+    public String midString(int index, int length) {
+        if (index < 0) {
+            index = 0;
+        }
+        if (length <= 0 || index >= size) {
+            return "";
+        }
+        if (size <= index + length) {
+            return new String(buffer, index, size - index);
+        } else {
+            return new String(buffer, index, length);
+        }
+    }
+
+    //-----------------------------------------------------------------------
+    /**
+     * Checks if the string builder contains the specified char.
+     *
+     * @param ch  the character to find
+     * @return true if the builder contains the character
+     */
+    public boolean contains(char ch) {
+        char[] thisBuf = buffer;
+        for (int i = 0; i < this.size; i++) {
+            if (thisBuf[i] == ch) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Checks if the string builder contains the specified string.
+     *
+     * @param str  the string to find
+     * @return true if the builder contains the string
+     */
+    public boolean contains(String str) {
+        return indexOf(str, 0) >= 0;
+    }
+
+    /**
+     * Checks if the string builder contains a string matched using the
+     * specified matcher.
+     * <p>
+     * Matchers can be used to perform advanced searching behaviour.
+     * For example you could write a matcher to search for the character
+     * 'a' followed by a number.
+     *
+     * @param matcher  the matcher to use, null returns -1
+     * @return true if the matcher finds a match in the builder
+     */
+    public boolean contains(StrMatcher matcher) {
+        return indexOf(matcher, 0) >= 0;
+    }
+
+    //-----------------------------------------------------------------------
+    /**
+     * Searches the string builder to find the first reference to the specified char.
+     * 
+     * @param ch  the character to find
+     * @return the first index of the character, or -1 if not found
+     */
+    public int indexOf(char ch) {
+        return indexOf(ch, 0);
+    }
+
+    /**
+     * Searches the string builder to find the first reference to the specified char.
+     * 
+     * @param ch  the character to find
+     * @param startIndex  the index to start at, invalid index rounded to edge
+     * @return the first index of the character, or -1 if not found
+     */
+    public int indexOf(char ch, int startIndex) {
+        startIndex = (startIndex < 0 ? 0 : startIndex);
+        if (startIndex >= size) {
+            return -1;
+        }
+        char[] thisBuf = buffer;
+        for (int i = startIndex; i < size; i++) {
+            if (thisBuf[i] == ch) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Searches the string builder to find the first reference to the specified string.
+     * <p>
+     * Note that a null input string will return -1, whereas the JDK throws an exception.
+     * 
+     * @param str  the string to find, null returns -1
+     * @return the first index of the string, or -1 if not found
+     */
+    public int indexOf(String str) {
+        return indexOf(str, 0);
+    }
+
+    /**
+     * Searches the string builder to find the first reference to the specified
+     * string starting searching from the given index.
+     * <p>
+     * Note that a null input string will return -1, whereas the JDK throws an exception.
+     * 
+     * @param str  the string to find, null returns -1
+     * @param startIndex  the index to start at, invalid index rounded to edge
+     * @return the first index of the string, or -1 if not found
+     */
+    public int indexOf(String str, int startIndex) {
+        startIndex = (startIndex < 0 ? 0 : startIndex);
+        if (str == null || startIndex >= size) {
+            return -1;
+        }
+        int strLen = str.length();
+        if (strLen == 1) {
+            return indexOf(str.charAt(0), startIndex);
+        }
+        if (strLen == 0) {
+            return startIndex;
+        }
+        if (strLen > size) {
+            return -1;
+        }
+        char[] thisBuf = buffer;
+        int len = size - strLen + 1;
+        outer:
+        for (int i = startIndex; i < len; i++) {
+            for (int j = 0; j < strLen; j++) {
+                if (str.charAt(j) != thisBuf[i + j]) {
+                    continue outer;
+                }
+            }
+            return i;
+        }
+        return -1;
+    }
+
+    /**
+     * Searches the string builder using the matcher to find the first match.
+     * <p>
+     * Matchers can be used to perform advanced searching behaviour.
+     * For example you could write a matcher to find the character 'a'
+     * followed by a number.
+     *
+     * @param matcher  the matcher to use, null returns -1
+     * @return the first index matched, or -1 if not found
+     */
+    public int indexOf(StrMatcher matcher) {
+        return indexOf(matcher, 0);
+    }
+
+    /**
+     * Searches the string builder using the matcher to find the first
+     * match searching from the given index.
+     * <p>
+     * Matchers can be used to perform advanced searching behaviour.
+     * For example you could write a matcher to find the character 'a'
+     * followed by a number.
+     *
+     * @param matcher  the matcher to use, null returns -1
+     * @param startIndex  the index to start at, invalid index rounded to edge
+     * @return the first index matched, or -1 if not found
+     */
+    public int indexOf(StrMatcher matcher, int startIndex) {
+        startIndex = (startIndex < 0 ? 0 : startIndex);
+        if (matcher == null || startIndex >= size) {
+            return -1;
+        }
+        int len = size;
+        char[] buf = buffer;
+        for (int i = startIndex; i < len; i++) {
+            if (matcher.isMatch(buf, i, startIndex, len) > 0) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    //-----------------------------------------------------------------------
+    /**
+     * Searches the string builder to find the last reference to the specified char.
+     * 
+     * @param ch  the character to find
+     * @return the last index of the character, or -1 if not found
+     */
+    public int lastIndexOf(char ch) {
+        return lastIndexOf(ch, size - 1);
+    }
+
+    /**
+     * Searches the string builder to find the last reference to the specified char.
+     * 
+     * @param ch  the character to find
+     * @param startIndex  the index to start at, invalid index rounded to edge
+     * @return the last index of the character, or -1 if not found
+     */
+    public int lastIndexOf(char ch, int startIndex) {
+        startIndex = (startIndex >= size ? size - 1 : startIndex);
+        if (startIndex < 0) {
+            return -1;
+        }
+        for (int i = startIndex; i >= 0; i--) {
+            if (buffer[i] == ch) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Searches the string builder to find the last reference to the specified string.
+     * <p>
+     * Note that a null input string will return -1, whereas the JDK throws an exception.
+     * 
+     * @param str  the string to find, null returns -1
+     * @return the last index of the string, or -1 if not found
+     */
+    public int lastIndexOf(String str) {
+        return lastIndexOf(str, size - 1);
+    }
+
+    /**
+     * Searches the string builder to find the last reference to the specified
+     * string starting searching from the given index.
+     * <p>
+     * Note that a null input string will return -1, whereas the JDK throws an exception.
+     * 
+     * @param str  the string to find, null returns -1
+     * @param startIndex  the index to start at, invalid index rounded to edge
+     * @return the last index of the string, or -1 if not found
+     */
+    public int lastIndexOf(String str, int startIndex) {
+        startIndex = (startIndex >= size ? size - 1 : startIndex);
+        if (str == null || startIndex < 0) {
+            return -1;
+        }
+        int strLen = str.length();
+        if (strLen > 0 && strLen <= size) {
+            if (strLen == 1) {
+                return lastIndexOf(str.charAt(0), startIndex);
+            }
+
+            outer:
+            for (int i = startIndex - strLen + 1; i >= 0; i--) {
+                for (int j = 0; j < strLen; j++) {
+                    if (str.charAt(j) != buffer[i + j]) {
+                        continue outer;
+                    }
+                }
+                return i;
+            }
+            
+        } else if (strLen == 0) {
+            return startIndex;
+        }
+        return -1;
+    }
+
+    /**
+     * Searches the string builder using the matcher to find the last match.
+     * <p>
+     * Matchers can be used to perform advanced searching behaviour.
+     * For example you could write a matcher to find the character 'a'
+     * followed by a number.
+     *
+     * @param matcher  the matcher to use, null returns -1
+     * @return the last index matched, or -1 if not found
+     */
+    public int lastIndexOf(StrMatcher matcher) {
+        return lastIndexOf(matcher, size);
+    }
+
+    /**
+     * Searches the string builder using the matcher to find the last
+     * match searching from the given index.
+     * <p>
+     * Matchers can be used to perform advanced searching behaviour.
+     * For example you could write a matcher to find the character 'a'
+     * followed by a number.
+     *
+     * @param matcher  the matcher to use, null returns -1
+     * @param startIndex  the index to start at, invalid index rounded to edge
+     * @return the last index matched, or -1 if not found
+     */
+    public int lastIndexOf(StrMatcher matcher, int startIndex) {
+        startIndex = (startIndex >= size ? size - 1 : startIndex);
+        if (matcher == null || startIndex < 0) {
+            return -1;
+        }
+        char[] buf = buffer;
+        int endIndex = startIndex + 1;
+        for (int i = startIndex; i >= 0; i--) {
+            if (matcher.isMatch(buf, i, 0, endIndex) > 0) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    //-----------------------------------------------------------------------
+    /**
+     * Creates a tokenizer that can tokenize the contents of this builder.
+     * <p>
+     * This method allows the contents of this builder to be tokenized.
+     * The tokenizer will be setup by default to tokenize on space, tab,
+     * newline and formfeed (as per StringTokenizer). These values can be
+     * changed on the tokenizer class, before retrieving the tokens.
+     * <p>
+     * The returned tokenizer is linked to this builder. You may intermix
+     * calls to the buider and tokenizer within certain limits, however
+     * there is no synchronization. Once the tokenizer has been used once,
+     * it must be {@link StrTokenizer#reset() reset} to pickup the latest
+     * changes in the builder. For example:
+     * <pre>
+     * StrBuilder b = new StrBuilder();
+     * b.append("a b ");
+     * StrTokenizer t = b.asTokenizer();
+     * String[] tokens1 = t.getTokenArray();  // returns a,b
+     * b.append("c d ");
+     * String[] tokens2 = t.getTokenArray();  // returns a,b (c and d ignored)
+     * t.reset();              // reset causes builder changes to be picked up
+     * String[] tokens3 = t.getTokenArray();  // returns a,b,c,d
+     * </pre>
+     * In addition to simply intermixing appends and tokenization, you can also
+     * call the set methods on the tokenizer to alter how it tokenizes. Just
+     * remember to call reset when you want to pickup builder changes.
+     * <p>
+     * Calling {@link StrTokenizer#reset(String)} or {@link StrTokenizer#reset(char[])}
+     * with a non-null value will break the link with the builder.
+     *
+     * @return a tokenizer that is linked to this builder
+     */
+    public StrTokenizer asTokenizer() {
+        return new StrBuilderTokenizer();
+    }
+
+    //-----------------------------------------------------------------------
+    /**
+     * Gets the contents of this builder as a Reader.
+     * <p>
+     * This method allows the contents of the builder to be read
+     * using any standard method that expects a Reader.
+     * <p>
+     * To use, simply create a <code>StrBuilder</code>, populate it with
+     * data, call <code>asReader</code>, and then read away.
+     * <p>
+     * The internal character array is shared between the builder and the reader.
+     * This allows you to append to the builder after creating the reader,
+     * and the changes will be picked up.
+     * Note however, that no synchronization occurs, so you must perform
+     * all operations with the builder and the reader in one thread.
+     * <p>
+     * The returned reader supports marking, and ignores the flush method.
+     *
+     * @return a reader that reads from this builder
+     */
+    public Reader asReader() {
+        return new StrBuilderReader();
+    }
+
+    //-----------------------------------------------------------------------
+    /**
+     * Gets this builder as a Writer that can be written to.
+     * <p>
+     * This method allows you to populate the contents of the builder
+     * using any standard method that takes a Writer.
+     * <p>
+     * To use, simply create a <code>StrBuilder</code>,
+     * call <code>asWriter</code>, and populate away. The data is available
+     * at any time using the methods of the <code>StrBuilder</code>.
+     * <p>
+     * The internal character array is shared between the builder and the writer.
+     * This allows you to intermix calls that append to the builder and
+     * write using the writer and the changes will be occur correctly.
+     * Note however, that no synchronization occurs, so you must perform
+     * all operations with the builder and the writer in one thread.
+     * <p>
+     * The returned writer ignores the close and flush methods.
+     *
+     * @return a writer that populates this builder
+     */
+    public Writer asWriter() {
+        return new StrBuilderWriter();
+    }
+
+    //-----------------------------------------------------------------------
+//    /**
+//     * Gets a String version of the string builder by calling the internal
+//     * constructor of String by reflection.
+//     * <p>
+//     * WARNING: You must not use the StrBuilder after calling this method
+//     * as the buffer is now shared with the String object. To ensure this,
+//     * the internal character array is set to null, so you will get
+//     * NullPointerExceptions on all method calls.
+//     *
+//     * @return the builder as a String
+//     */
+//    public String toSharedString() {
+//        try {
+//            Constructor con = String.class.getDeclaredConstructor(
+//                new Class[] {int.class, int.class, char[].class});
+//            con.setAccessible(true);
+//            char[] buffer = buf;
+//            buf = null;
+//            size = -1;
+//            nullText = null;
+//            return (String) con.newInstance(
+//                new Object[] {new Integer(0), new Integer(size), buffer});
+//            
+//        } catch (Exception ex) {
+//            ex.printStackTrace();
+//            throw new UnsupportedOperationException("StrBuilder.toSharedString is unsupported: " + ex.getMessage());
+//        }
+//    }
+
+    //-----------------------------------------------------------------------
+    /**
+     * Checks the contents of this builder against another to see if they
+     * contain the same character content ignoring case.
+     *
+     * @param other  the object to check, null returns false
+     * @return true if the builders contain the same characters in the same order
+     */
+    public boolean equalsIgnoreCase(StrBuilder other) {
+        if (this == other) {
+            return true;
+        }
+        if (this.size != other.size) {
+            return false;
+        }
+        char thisBuf[] = this.buffer;
+        char otherBuf[] = other.buffer;
+        for (int i = size - 1; i >= 0; i--) {
+            char c1 = thisBuf[i];
+            char c2 = otherBuf[i];
+            if (c1 != c2 && Character.toUpperCase(c1) != Character.toUpperCase(c2)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Checks the contents of this builder against another to see if they
+     * contain the same character content.
+     *
+     * @param other  the object to check, null returns false
+     * @return true if the builders contain the same characters in the same order
+     */
+    public boolean equals(StrBuilder other) {
+        if (this == other) {
+            return true;
+        }
+        if (this.size != other.size) {
+            return false;
+        }
+        char thisBuf[] = this.buffer;
+        char otherBuf[] = other.buffer;
+        for (int i = size - 1; i >= 0; i--) {
+            if (thisBuf[i] != otherBuf[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Checks the contents of this builder against another to see if they
+     * contain the same character content.
+     *
+     * @param obj  the object to check, null returns false
+     * @return true if the builders contain the same characters in the same order
+     */
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof StrBuilder) {
+            return equals((StrBuilder) obj);
+        }
+        return false;
+    }
+
+    /**
+     * Gets a suitable hash code for this builder.
+     *
+     * @return a hash code
+     */
+    @Override
+    public int hashCode() {
+        char buf[] = buffer;
+        int hash = 0;
+        for (int i = size - 1; i >= 0; i--) {
+            hash = 31 * hash + buf[i];
+        }
+        return hash;
+    }
+
+    //-----------------------------------------------------------------------
+    /**
+     * Gets a String version of the string builder, creating a new instance
+     * each time the method is called.
+     * <p>
+     * Note that unlike StringBuffer, the string version returned is
+     * independent of the string builder.
+     *
+     * @return the builder as a String
+     */
+    @Override
+    public String toString() {
+        return new String(buffer, 0, size);
+    }
+
+    /**
+     * Gets a StringBuffer version of the string builder, creating a
+     * new instance each time the method is called.
+     *
+     * @return the builder as a StringBuffer
+     */
+    public StringBuffer toStringBuffer() {
+        return new StringBuffer(size).append(buffer, 0, size);
+    }
+
+    //-----------------------------------------------------------------------
+    /**
+     * Validates parameters defining a range of the builder.
+     * 
+     * @param startIndex  the start index, inclusive, must be valid
+     * @param endIndex  the end index, exclusive, must be valid except
+     *  that if too large it is treated as end of string
+     * @return the new string
+     * @throws IndexOutOfBoundsException if the index is invalid
+     */
+    protected int validateRange(int startIndex, int endIndex) {
+        if (startIndex < 0) {
+            throw new StringIndexOutOfBoundsException(startIndex);
+        }
+        if (endIndex > size) {
+            endIndex = size;
+        }
+        if (startIndex > endIndex) {
+            throw new StringIndexOutOfBoundsException("end < start");
+        }
+        return endIndex;
+    }
+
+    /**
+     * Validates parameters defining a single index in the builder.
+     * 
+     * @param index  the index, must be valid
+     * @throws IndexOutOfBoundsException if the index is invalid
+     */
+    protected void validateIndex(int index) {
+        if (index < 0 || index > size) {
+            throw new StringIndexOutOfBoundsException(index);
+        }
+    }
+
+    //-----------------------------------------------------------------------
+    /**
+     * Inner class to allow StrBuilder to operate as a tokenizer.
+     */
+    class StrBuilderTokenizer extends StrTokenizer {
+
+        /**
+         * Default constructor.
+         */
+        StrBuilderTokenizer() {
+            super();
+        }
+
+        /** {@inheritDoc} */
+        @Override
+        protected List<String> tokenize(char[] chars, int offset, int count) {
+            if (chars == null) {
+                return super.tokenize(StrBuilder.this.buffer, 0, StrBuilder.this.size());
+            } else {
+                return super.tokenize(chars, offset, count);
+            }
+        }
+
+        /** {@inheritDoc} */
+        @Override
+        public String getContent() {
+            String str = super.getContent();
+            if (str == null) {
+                return StrBuilder.this.toString();
+            } else {
+                return str;
+            }
+        }
+    }
+
+    //-----------------------------------------------------------------------
+    /**
+     * Inner class to allow StrBuilder to operate as a writer.
+     */
+    class StrBuilderReader extends Reader {
+        /** The current stream position. */
+        private int pos;
+        /** The last mark position. */
+        private int mark;
+
+        /**
+         * Default constructor.
+         */
+        StrBuilderReader() {
+            super();
+        }
+
+        /** {@inheritDoc} */
+        @Override
+        public void close() {
+            // do nothing
+        }
+
+        /** {@inheritDoc} */
+        @Override
+        public int read() {
+            if (ready() == false) {
+                return -1;
+            }
+            return StrBuilder.this.charAt(pos++);
+        }
+
+        /** {@inheritDoc} */
+        @Override
+        public int read(char b[], int off, int len) {
+            if (off < 0 || len < 0 || off > b.length ||
+                    (off + len) > b.length || (off + len) < 0) {
+                throw new IndexOutOfBoundsException();
+            }
+            if (len == 0) {
+                return 0;
+            }
+            if (pos >= StrBuilder.this.size()) {
+                return -1;
+            }
+            if (pos + len > size()) {
+                len = StrBuilder.this.size() - pos;
+            }
+            StrBuilder.this.getChars(pos, pos + len, b, off);
+            pos += len;
+            return len;
+        }
+
+        /** {@inheritDoc} */
+        @Override
+        public long skip(long n) {
+            if (pos + n > StrBuilder.this.size()) {
+                n = StrBuilder.this.size() - pos;
+            }
+            if (n < 0) {
+                return 0;
+            }
+            pos += n;
+            return n;
+        }
+
+        /** {@inheritDoc} */
+        @Override
+        public boolean ready() {
+            return pos < StrBuilder.this.size();
+        }
+
+        /** {@inheritDoc} */
+        @Override
+        public boolean markSupported() {
+            return true;
+        }
+
+        /** {@inheritDoc} */
+        @Override
+        public void mark(int readAheadLimit) {
+            mark = pos;
+        }
+
+        /** {@inheritDoc} */
+        @Override
+        public void reset() {
+            pos = mark;
+        }
+    }
+
+    //-----------------------------------------------------------------------
+    /**
+     * Inner class to allow StrBuilder to operate as a writer.
+     */
+    class StrBuilderWriter extends Writer {
+
+        /**
+         * Default constructor.
+         */
+        StrBuilderWriter() {
+            super();
+        }
+
+        /** {@inheritDoc} */
+        @Override
+        public void close() {
+            // do nothing
+        }
+
+        /** {@inheritDoc} */
+        @Override
+        public void flush() {
+            // do nothing
+        }
+
+        /** {@inheritDoc} */
+        @Override
+        public void write(int c) {
+            StrBuilder.this.append((char) c);
+        }
+
+        /** {@inheritDoc} */
+        @Override
+        public void write(char[] cbuf) {
+            StrBuilder.this.append(cbuf);
+        }
+
+        /** {@inheritDoc} */
+        @Override
+        public void write(char[] cbuf, int off, int len) {
+            StrBuilder.this.append(cbuf, off, len);
+        }
+
+        /** {@inheritDoc} */
+        @Override
+        public void write(String str) {
+            StrBuilder.this.append(str);
+        }
+
+        /** {@inheritDoc} */
+        @Override
+        public void write(String str, int off, int len) {
+            StrBuilder.this.append(str, off, len);
+        }
+    }
 
 }
-
 

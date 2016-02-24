@@ -1,4 +1,4 @@
-package org.apache.lucene.analysis.de;
+package org.apache.lucene.analysis.cz;
 
 /**
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -17,122 +17,155 @@ package org.apache.lucene.analysis.de;
  * limitations under the License.
  */
 
-/* 
- * This algorithm is updated based on code located at:
- * http://members.unine.ch/jacques.savoy/clef/
- * 
- * Full copyright for that code follows:
- */
-
-/*
- * Copyright (c) 2005, Jacques Savoy
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without 
- * modification, are permitted provided that the following conditions are met:
- *
- * Redistributions of source code must retain the above copyright notice, this 
- * list of conditions and the following disclaimer. Redistributions in binary 
- * form must reproduce the above copyright notice, this list of conditions and
- * the following disclaimer in the documentation and/or other materials 
- * provided with the distribution. Neither the name of the author nor the names 
- * of its contributors may be used to endorse or promote products derived from 
- * this software without specific prior written permission.
- * 
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" 
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE 
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE 
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE 
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF 
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN 
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- */
+import static org.apache.lucene.analysis.util.StemmerUtil.*;
 
 /**
- * Light Stemmer for German.
+ * Light Stemmer for Czech.
  * <p>
- * This stemmer implements the "UniNE" algorithm in:
- * <i>Light Stemming Approaches for the French, Portuguese, German and Hungarian Languages</i>
- * Jacques Savoy
+ * Implements the algorithm described in:  
+ * <i>
+ * Indexing and stemming approaches for the Czech language
+ * </i>
+ * http://portal.acm.org/citation.cfm?id=1598600
+ * </p>
  */
-public class GermanLightStemmer {
+public class CzechStemmer {
   
-  public int stem(char s[], int len) {   
-    for (int i = 0; i < len; i++)
-      switch(s[i]) {
-        case 'ä':
-        case 'ŕ':
-        case 'á':
-        case 'â': s[i] = 'a'; break;
-        case 'ö':
-        case 'ň':
-        case 'ó':
-        case 'ô': s[i] = 'o'; break;
-        case 'ď':
-        case 'ě':
-        case 'í':
-        case 'î': s[i] = 'i'; break;
-        case 'ü': 
-        case 'ů': 
-        case 'ú':
-        case 'ű': s[i] = 'u'; break;
-      }
+  /**
+   * Stem an input buffer of Czech text.
+   * 
+   * @param s input buffer
+   * @param len length of input buffer
+   * @return length of input buffer after normalization
+   * 
+   * <p><b>NOTE</b>: Input is expected to be in lowercase, 
+   * but with diacritical marks</p>
+   */
+  public int stem(char s[], int len) {
+    len = removeCase(s, len);
+    len = removePossessives(s, len);
+    len = normalize(s, len);
+    return len;
+  }
+  
+  private int removeCase(char s[], int len) {  
+    if (len > 7 && endsWith(s, len, "atech"))
+      return len - 5;
     
-    len = step1(s, len);
-    return step2(s, len);
-  }
-  
-  private boolean stEnding(char ch) {
-    switch(ch) {
-      case 'b':
-      case 'd':
-      case 'f':
-      case 'g':
-      case 'h':
-      case 'k':
-      case 'l':
-      case 'm':
-      case 'n':
-      case 't': return true;
-      default: return false;
-    }
-  }
-  
-  private int step1(char s[], int len) {
-    if (len > 5 && s[len-3] == 'e' && s[len-2] == 'r' && s[len-1] == 'n')
+    if (len > 6 && 
+        (endsWith(s, len,"?tem") ||
+        endsWith(s, len,"etem") ||
+        endsWith(s, len,"at?m")))
+      return len - 4;
+        
+    if (len > 5 && 
+        (endsWith(s, len, "ech") ||
+        endsWith(s, len, "ich") ||
+        endsWith(s, len, "ích") ||
+        endsWith(s, len, "ého") ||
+        endsWith(s, len, "?mi") ||
+        endsWith(s, len, "emi") ||
+        endsWith(s, len, "ému") ||
+        endsWith(s, len, "?te") ||
+        endsWith(s, len, "ete") ||
+        endsWith(s, len, "?ti") ||
+        endsWith(s, len, "eti") ||
+        endsWith(s, len, "ího") ||
+        endsWith(s, len, "iho") ||
+        endsWith(s, len, "ími") ||
+        endsWith(s, len, "ímu") ||
+        endsWith(s, len, "imu") ||
+        endsWith(s, len, "ách") ||
+        endsWith(s, len, "ata") ||
+        endsWith(s, len, "aty") ||
+        endsWith(s, len, "ých") ||
+        endsWith(s, len, "ama") ||
+        endsWith(s, len, "ami") ||
+        endsWith(s, len, "ové") ||
+        endsWith(s, len, "ovi") ||
+        endsWith(s, len, "ými")))
       return len - 3;
     
-    if (len > 4 && s[len-2] == 'e')
-      switch(s[len-1]) {
-        case 'm':
-        case 'n':
-        case 'r':
-        case 's': return len - 2;
+    if (len > 4 && 
+        (endsWith(s, len, "em") ||
+        endsWith(s, len, "es") ||
+        endsWith(s, len, "ém") ||
+        endsWith(s, len, "ím") ||
+        endsWith(s, len, "?m") ||
+        endsWith(s, len, "at") ||
+        endsWith(s, len, "ám") ||
+        endsWith(s, len, "os") ||
+        endsWith(s, len, "us") ||
+        endsWith(s, len, "ým") ||
+        endsWith(s, len, "mi") ||
+        endsWith(s, len, "ou")))
+      return len - 2;
+    
+    if (len > 3) {
+      switch (s[len - 1]) {
+        case 'a':
+        case 'e':
+        case 'i':
+        case 'o':
+        case 'u':
+        case '?':
+        case 'y':
+        case 'á':
+        case 'é':
+        case 'í':
+        case 'ý':
+        case '?':
+          return len - 1;
       }
-    
-    if (len > 3 && s[len-1] == 'e')
-      return len - 1;
-    
-    if (len > 3 && s[len-1] == 's' && stEnding(s[len-2]))
-      return len - 1;
+    }
     
     return len;
   }
   
-  private int step2(char s[], int len) {
-    if (len > 5 && s[len-3] == 'e' && s[len-2] == 's' && s[len-1] == 't')
-      return len - 3;
-    
-    if (len > 4 && s[len-2] == 'e' && (s[len-1] == 'r' || s[len-1] == 'n'))
+  private int removePossessives(char s[], int len) {
+    if (len > 5 &&
+        (endsWith(s, len, "ov") ||
+        endsWith(s, len, "in") ||
+        endsWith(s, len, "?v")))
       return len - 2;
+
+    return len;
+  }
+  
+  private int normalize(char s[], int len) {
+    if (endsWith(s, len, "?t")) { // ?t -> ck
+      s[len - 2] = 'c';
+      s[len - 1] = 'k';
+      return len;
+    }
     
-    if (len > 4 && s[len-2] == 's' && s[len-1] == 't' && stEnding(s[len-3]))
-      return len - 2;
+    if (endsWith(s, len, "t")) { // t -> sk
+      s[len - 2] = 's';
+      s[len - 1] = 'k';
+      return len;
+    }
     
+    switch(s[len - 1]) {
+      case 'c': // [c?] -> k
+      case '?':
+        s[len - 1] = 'k';
+        return len;
+      case 'z': // [z] -> h
+      case '':
+        s[len - 1] = 'h';
+        return len;
+    }
+    
+    if (len > 1 && s[len - 2] == 'e') {
+      s[len - 2] = s[len - 1]; // e* > *
+      return len - 1;
+    }
+    
+    if (len > 2 && s[len - 2] == '?') {
+      s[len - 2] = 'o'; // *?* -> *o*
+      return len;
+    }
+
     return len;
   }
 }

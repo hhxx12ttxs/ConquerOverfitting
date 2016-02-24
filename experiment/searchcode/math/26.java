@@ -1,784 +1,506 @@
-/**
- * Copyright 2005-2007 Xue Yong Zhi, Jie Li
- * Distributed under the Apache License
- */
+// <XMP>
+// Compute Expressions
+//
+// Written by Dario Alejandro Alpern (Buenos Aires - Argentina)
+// Last updated July 5th, 2003, See http://www.alpertron.com.ar/ECM.HTM
+//
+// No part of this code can be used for commercial purposes without
+// the written consent from the author. Otherwise it can be used freely
+// except that you have to write somewhere in the code this header.
+// 
+import java.math.*;
+public final class expression {
+  private static final BigInteger BigInt0 = BigInteger.valueOf(0L);
+  private static final BigInteger BigInt1 = BigInteger.valueOf(1L);
+  private static final BigInteger BigInt2 = BigInteger.valueOf(2L);
+  private static final BigInteger BigInt3 = BigInteger.valueOf(3L);
 
-package com.xruby.runtime.builtin;
+  // Errors for next routine:
+  // >0: Ok.
+  // -2: Number too high (more than 1000 digits).
+  // -3: Intermediate expression too high (more than 2000 digits).
+  // -4: Non-integer division.
+  // -5: Parenthesis mismatch.
+  // -6: Syntax error
+  // -7: Too many parentheses.
+  // -8: Invalid parameter.
+  // -100: Break.
+  // Operators accepted: +, -, *, /, ^, !, F(, L(, P(.
 
-import com.xruby.runtime.lang.RubyConstant;
-import com.xruby.runtime.lang.RubyException;
-import com.xruby.runtime.lang.RubyRuntime;
-import com.xruby.runtime.lang.RubyValue;
+  public static int ComputeExpression(String expr, int type, BigInteger ExpressionResult[]) {
+      BigInteger BigInt1 = BigInteger.valueOf(1L);
+      int stackIndex = 0;
+      int exprIndex = 0;
+      int exprLength = expr.length();
+      int i,j;
+      char charValue;
+      boolean leftNumberFlag = false;
+      int exprIndexAux;
+      int SubExprResult,len;
+      BigInteger factorial;
+      BigInteger stackValues[] = new BigInteger[400];
+      int stackOperators[] = new int[400];
 
-class ArrayPacker {
-    //uv_to_utf8:
-    //Copyright (C) 1993-2003 Yukihiro Matsumoto
-    //TODO java may has library to do this.
-    private static int uv_to_utf8(char[] buf, long uv) {
-        if (uv <= 0x7f) {
-        buf[0] = (char)uv;
-        return 1;
+      while (exprIndex < exprLength) {
+        charValue = expr.charAt(exprIndex);
+        if (charValue == '!') {           // Calculating factorial.
+          if (leftNumberFlag == false) {return -6;}
+          len = stackValues[stackIndex].bitLength()-1;
+          if (len > 16) {return -3;}
+          len = stackValues[stackIndex].intValue();
+          if (len < 0 || len > 5984) {return -3;}
+          factorial = BigInt1;
+          for (i=2; i<=len; i++) {
+            factorial = factorial.multiply(BigInteger.valueOf(i));
+          }
+          stackValues[stackIndex] = factorial;
         }
-        if (uv <= 0x7ff) {
-        buf[0] = (char)(((uv>>6)&0xff)|0xc0);
-        buf[1] = (char)((uv&0x3f)|0x80);
-        return 2;
-        }
-        if (uv <= 0xffff) {
-        buf[0] = (char)(((uv>>12)&0xff)|0xe0);
-        buf[1] = (char)(((uv>>6)&0x3f)|0x80);
-        buf[2] = (char)((uv&0x3f)|0x80);
-        return 3;
-        }
-        if (uv <= 0x1fffff) {
-        buf[0] = (char)(((uv>>18)&0xff)|0xf0);
-        buf[1] = (char)(((uv>>12)&0x3f)|0x80);
-        buf[2] = (char)(((uv>>6)&0x3f)|0x80);
-        buf[3] = (char)((uv&0x3f)|0x80);
-        return 4;
-        }
-        if (uv <= 0x3ffffff) {
-        buf[0] = (char)(((uv>>24)&0xff)|0xf8);
-        buf[1] = (char)(((uv>>18)&0x3f)|0x80);
-        buf[2] = (char)(((uv>>12)&0x3f)|0x80);
-        buf[3] = (char)(((uv>>6)&0x3f)|0x80);
-        buf[4] = (char)((uv&0x3f)|0x80);
-        return 5;
-        }
-        if (uv <= 0x7fffffff) {
-        buf[0] = (char)(((uv>>30)&0xff)|0xfc);
-        buf[1] = (char)(((uv>>24)&0x3f)|0x80);
-        buf[2] = (char)(((uv>>18)&0x3f)|0x80);
-        buf[3] = (char)(((uv>>12)&0x3f)|0x80);
-        buf[4] = (char)(((uv>>6)&0x3f)|0x80);
-        buf[5] = (char)((uv&0x3f)|0x80);
-        return 6;
-        }
-        throw new RubyException(RubyRuntime.RangeErrorClass, "pack(U): value out of range");
-    }
-
-    private static final long utf8_limits[] = {
-        0x0,            /* 1 */
-        0x80,           /* 2 */
-        0x800,          /* 3 */
-        0x10000,            /* 4 */
-        0x200000,           /* 5 */
-        0x4000000,          /* 6 */
-        0x80000000,         /* 7 */
-    };
-
-    //utf8_to_uv:
-    //Copyright (C) 1993-2003 Yukihiro Matsumoto
-    private static long[] utf8_to_uv(String str, int p, long lenp) {
-        int c = str.charAt(p++) & 0xff;
-        long uv = c;
-        long n;
-
-        if (0 == (uv & 0x80)) {
-            lenp = 1;
-            return new long[] {uv, lenp};
-        }
-        if (0 == (uv & 0x40)) {
-            lenp = 1;
-            throw new RubyException(RubyRuntime.ArgumentErrorClass, "malformed UTF-8 character");
-        }
-
-        if      (0 == (uv & 0x20)) { n = 2; uv &= 0x1f; }
-        else if (0 == (uv & 0x10)) { n = 3; uv &= 0x0f; }
-        else if (0 == (uv & 0x08)) { n = 4; uv &= 0x07; }
-        else if (0 == (uv & 0x04)) { n = 5; uv &= 0x03; }
-        else if (0 == (uv & 0x02)) { n = 6; uv &= 0x01; }
-        else {
-            lenp = 1;
-            throw new RubyException(RubyRuntime.ArgumentErrorClass, "malformed UTF-8 character");
-        }
-        if (n > lenp) {
-            throw new RubyException(RubyRuntime.ArgumentErrorClass, "malformed UTF-8 character (expected " + n + " bytes, given " + lenp + "bytes)");
-        }
-        lenp = n--;
-        if (n != 0) {
-        while (n-- != 0) {
-            c = str.charAt(p++) & 0xff;
-            if ((c & 0xc0) != 0x80) {
-            lenp -= n + 1;
-            throw new RubyException(RubyRuntime.ArgumentErrorClass, "malformed UTF-8 character");
+        if (charValue == '#') {           // Calculating primorial.
+          if (leftNumberFlag == false) {return -6;}
+          len = stackValues[stackIndex].bitLength()-1;
+          if (len > 16) {return -3;}
+          len = stackValues[stackIndex].intValue();
+          if (len < 0 || len > 46049) {return -3;}
+          factorial = BigInt1;
+          // Check if number is prime
+          for (i=2; i*i<=len; i++) {
+            if (len/i*i==len) {return -8;}
+          }
+          factorial = BigInt1;
+          compute_primorial_loop:
+            for (i=2; i<=len; i++) {
+            for (j=2; j*j<=i; j++) {
+              if (i/j*j==i) {continue compute_primorial_loop;}
             }
+            factorial = factorial.multiply(BigInteger.valueOf(i));
+          }
+          stackValues[stackIndex] = factorial;
+        }
+        if (charValue == 'B' || charValue == 'b' ||
+            charValue == 'N' || charValue == 'n' ||
+            charValue == 'F' || charValue == 'f' ||
+            charValue == 'P' || charValue == 'p' ||
+            charValue == 'L' || charValue == 'l') {
+          if (leftNumberFlag || exprIndex == exprLength-1) {
+            return -6;
+          }
+          exprIndex++;
+          if (expr.charAt(exprIndex) != '(') {return -6;}
+          if (stackIndex > 395) {return -7;}
+          stackOperators[stackIndex++] = charValue & 0xDF; /* Convert to uppercase */
+          charValue = '(';
+        }
+        if (charValue == '+' || charValue == '-') {
+          if (leftNumberFlag == false) {      // Unary plus/minus operator
+            exprIndex++;
+            if (charValue == '+') {
+              continue;
+              }
             else {
-            c &= 0x3f;
-            uv = uv << 6 | c;
-            }
-        }
-        }
-        n = lenp - 1;
-        if (uv < utf8_limits[(int)n]) {
-        throw new RubyException(RubyRuntime.ArgumentErrorClass, "redundant UTF-8 sequence");
-        }
-        return new long[] {uv, lenp};
-    }
-
-    private static String qpencode(String str, int len) {
-        throw new RubyException("Not implemented");
-    }
-
-    private static String encodes(String str, int todo, char type) {
-        throw new RubyException("Not implemented");
-    }
-
-    public static RubyArray unpack(String str, String format) {
-        int len;
-        //int star;
-        int s = 0;
-        char type;
-        final int send = str.length();
-
-        RubyArray ary = new RubyArray();
-
-        int p = 0;
-        while (p < format.length()) {
-            type = format.charAt(p++);
-
-            if (type == ' ') continue;
-
-            if (format.indexOf(p) == '#') {
-                while (p < format.length() && format.charAt(p) != '\n') {
-                    p++;
-                }
+              if (stackIndex > 0 && stackOperators[stackIndex-1] == '_') {
+                stackIndex--;
                 continue;
-            }
-
-            char t;
-            if (p >= format.length())
-                t = 0;
-            else
-                t = format.charAt(p);
-
-            //star = 0;
-            if (t == '_' || t == '!') {
-                final String natstr = "sSiIlL";
-                if (natstr.indexOf(type) >= 0) {
-                    p++;
-                } else {
-                    throw new RubyException(RubyRuntime.ArgumentErrorClass, String.format("'%c' allowed only after types %s", type, natstr));
                 }
+              if (stackIndex > 395) {return -7;}
+              stackOperators[stackIndex++] = '_'; /* Unitary minus */
+              continue;
+              }
             }
-
-            if (p > format.length()) {
-                len = 1;
-            } else if (t == '*') {
-                //star = 1;
-                len = send - s;
-                p++;
-            } else if (Character.isDigit(t)) {
-                int end = p;
-                while (end < format.length() - 1 && Character.isDigit(format.indexOf(end + 1))) {
-                    end++;
+          if (stackIndex > 0 && stackOperators[stackIndex-1] != '(') {
+            if ((SubExprResult = ComputeSubExpr(--stackIndex, stackValues, stackOperators)) != 0) {
+              return SubExprResult;
+            }
+            if (stackIndex > 0 && stackOperators[stackIndex-1] != '(') {
+              if ((SubExprResult = ComputeSubExpr(--stackIndex, stackValues, stackOperators)) != 0) {
+                return SubExprResult;
+              }
+              if (stackIndex > 0 && stackOperators[stackIndex-1] != '(') {
+                if ((SubExprResult = ComputeSubExpr(--stackIndex, stackValues, stackOperators)) != 0) {
+                  return SubExprResult;
                 }
-                len = Integer.parseInt(format.substring(p, end + 1), 10);
-            } else {
-                len = (type != '@') ? 1 : 0;
-            }
-
-            switch (type) {
-                case '%':
-                    throw new RubyException(RubyRuntime.ArgumentErrorClass, "%% is not supported");
-
-                case 'a':
-                    if (len > send - s) len = send - s;
-                    ary.add(ObjectFactory.createString(str.substring(s, s + len)));
-                    s += len;
-                    break;
-
-                case 'c':
-                    while (len-- > 0) {
-                        int c = str.charAt(s++);
-                        if (c > 127)
-                            c -= 256;
-                        ary.add(ObjectFactory.createFixnum(c));
+              }                         /* end if */
+            }                           /* end if */
+          }                             /* end if */
+          stackOperators[stackIndex++] = charValue;
+          leftNumberFlag = false;
+        }                               /* end if */
+        else {
+          if (charValue == '*' || charValue == '/' || charValue == '%') {
+            if (leftNumberFlag == false) {return -6;}
+            if (stackIndex > 0 && (stackOperators[stackIndex-1] == '^' ||
+                  stackOperators[stackIndex-1] == '*' ||
+                  stackOperators[stackIndex-1] == '/' ||
+                  stackOperators[stackIndex-1] == '%' ||
+                  stackOperators[stackIndex-1] == 'B' ||
+                  stackOperators[stackIndex-1] == 'N' ||
+                  stackOperators[stackIndex-1] == 'F' ||
+                  stackOperators[stackIndex-1] == 'L' ||
+                  stackOperators[stackIndex-1] == 'P')) {
+              if ((SubExprResult = ComputeSubExpr(--stackIndex, stackValues, stackOperators)) != 0) {
+                return SubExprResult;
+              }
+              if (stackIndex > 0 && (stackOperators[stackIndex-1] == '^' ||
+                    stackOperators[stackIndex-1] == '*' ||
+                    stackOperators[stackIndex-1] == '/' ||
+                    stackOperators[stackIndex-1] == '%' ||
+                    stackOperators[stackIndex-1] == 'B' ||
+                    stackOperators[stackIndex-1] == 'N' ||
+                    stackOperators[stackIndex-1] == 'F' ||
+                    stackOperators[stackIndex-1] == 'L' ||
+                    stackOperators[stackIndex-1] == 'P')) {
+                if ((SubExprResult = ComputeSubExpr(--stackIndex, stackValues, stackOperators)) != 0) {
+                  return SubExprResult;
+                }
+              }                         /* end if */
+            }                           /* end if */
+            stackOperators[stackIndex++] = charValue;
+            leftNumberFlag = false;
+          }                             
+          else {
+            if (charValue == '^') {
+              if (leftNumberFlag == false) {return -6;}
+              if (stackIndex > 0 && (stackOperators[stackIndex-1] == '^' ||
+                    stackOperators[stackIndex-1] == 'B' ||
+                    stackOperators[stackIndex-1] == 'N' ||
+                    stackOperators[stackIndex-1] == 'F' ||
+                    stackOperators[stackIndex-1] == 'L' ||
+                    stackOperators[stackIndex-1] == 'P')) {
+                if ((SubExprResult = ComputeSubExpr(--stackIndex, stackValues, stackOperators)) != 0) {
+                  return SubExprResult;
+                }
+              }                         /* end if */
+              stackOperators[stackIndex++] = charValue;
+              leftNumberFlag = false;
+            }                           /* end if */
+            else {
+              if (charValue == '(') {
+                if (leftNumberFlag == true) {return -6;}
+                if (stackIndex > 395) {return -7;}
+                stackOperators[stackIndex++] = charValue;
+              }                           
+              else {
+                if (charValue == ')') {
+                  if (leftNumberFlag == false) {return -6;}
+                  if (stackIndex > 0 && stackOperators[stackIndex-1] != '(') {
+                    if ((SubExprResult = ComputeSubExpr(--stackIndex, stackValues, stackOperators)) != 0) {
+                      return SubExprResult;
                     }
-                    break;
-
-                case 'C':
-                    while (len-- > 0) {
-                        char c = str.charAt(s++);
-                        ary.add(ObjectFactory.createFixnum(c));
-                    }
-                    break;
-
-                case 's':
-                    while (len-- > 0) {
-                        short tmp = 0;
-                        for (int j = 0; j < Short.SIZE / Byte.SIZE; ++j) {
-                            char c = str.charAt(s++);
-                            tmp += (c << (j * 8));
+                    if (stackIndex > 0 && stackOperators[stackIndex-1] != '(') {
+                      if ((SubExprResult = ComputeSubExpr(--stackIndex, stackValues, stackOperators)) != 0) {
+                        return SubExprResult;
+                      }
+                      if (stackIndex > 0 && stackOperators[stackIndex-1] != '(') {
+                        if ((SubExprResult = ComputeSubExpr(--stackIndex, stackValues, stackOperators)) != 0) {
+                          return SubExprResult;
                         }
-                        ary.add(ObjectFactory.createFixnum(tmp));
+                      }
                     }
-
-                    break;
-
-                case 'i':
-                case 'l':
-                    while (len-- > 0) {
-                        int tmp = 0;
-                        for (int j = 0; j < Integer.SIZE / Byte.SIZE; ++j) {
-                            char c = str.charAt(s++);
-                            tmp += (c << (j * 8));
-                        }
-                        ary.add(ObjectFactory.createFixnum(tmp));
+                  }
+                  if (stackIndex == 0) {return -5;}
+                  stackIndex--;             /* Discard ")" */
+                  stackValues[stackIndex] = stackValues[stackIndex+1];
+                  leftNumberFlag = true;
+                }
+                else {
+                  if (charValue >= '0' && charValue <= '9') {
+                    exprIndexAux = exprIndex;
+                    while (exprIndexAux < exprLength-1) {
+                      charValue = expr.charAt(exprIndexAux+1);
+                      if (charValue >= '0' && charValue <= '9') {
+                        exprIndexAux++;
+                      }
+                      else {
+                        break;
+                      }
                     }
-
-                    break;
-
-                case 'q':
-                    if (str.length() < Long.SIZE / Byte.SIZE) {
-                        ary.add(RubyConstant.QNIL);
-                    } else {
-                        long l = 0;
-                        for (int j = 0; j < Long.SIZE / Byte.SIZE; ++j) {
-                            long c = str.charAt(s++);
-                            l += (c << (j * 8));
-                        }
-                        ary.add(ObjectFactory.createInteger(l));
-                    }
-                    break;
-
-                case 'x':
-                    if (len > send - s)
-                        throw new RubyException(RubyRuntime.ArgumentErrorClass, "x outside of string");
-                    s += len;
-                    break;
-
-                case 'D':
-                case 'd':
-                    while (len-- > 0) {
-                        long tmp = 0;
-                        for (int j = 0; j < Long.SIZE / Byte.SIZE; ++j) {
-                            long c = str.charAt(s++);
-                            tmp += (c << (j * 8));
-                        }
-                        ary.add(ObjectFactory.createFloat(Double.longBitsToDouble(tmp)));
-                    }
-                    break;
-
-                case 'U':
-                    if (len > send - s) len = send - s;
-                    while (len > 0 && s < send) {
-                        long alen = send - s;
-                        long l;
-
-                        long[] r = utf8_to_uv(str, s, alen);
-                        l = r[0];
-                        alen = r[1];
-                        s += alen; len--;
-                        ary.add(ObjectFactory.createInteger(l));
-                    }
-                    break;
-
-                case 'N':
-                    while (len-- > 0 && s < send) {
-                        long tmp = 0;
-                        for (int j = Integer.SIZE / Byte.SIZE - 1; j >= 0; --j) {
-                            long c = str.charAt(s++);
-                            tmp += (c << (j * 8));
-                        }
-                        ary.add(ObjectFactory.createInteger(tmp));
-                    }
-                    break;
-
-                default:
-                    break;
-            }
+                    stackValues[stackIndex] = new BigInteger(expr.substring(exprIndex,exprIndexAux+1));
+                    leftNumberFlag = true;
+                    exprIndex = exprIndexAux;
+                  }                  /* end if number */
+                }                    /* end if ) */
+              }                      /* end if ( */
+            }                        /* end if ^ */
+          }                          /* end if *, / */
+        }                            /* end if +, - */
+        exprIndex++;
+      }                              /* end while */
+      if (leftNumberFlag == false) {return -6;}
+      if (stackIndex > 0 && stackOperators[stackIndex-1] != '(') {
+        if ((SubExprResult = ComputeSubExpr(--stackIndex, stackValues, stackOperators)) != 0) {
+          return SubExprResult;
         }
-
-        return ary;
-    }
-
-    public static StringBuilder pack(RubyArray array, String format) {
-        int len = 0;
-        int items = array.size();
-        int idx = 0;
-        int plen;
-        String ptr;
-        RubyValue from;
-
-        StringBuilder result = new StringBuilder();
-
-        int p = 0;
-        while (p < format.length()) {
-            char type = format.charAt(p++);
-
-            if (type == ' ') continue;
-
-            if (format.indexOf(p) == '#') {
-                while (p < format.length() && format.charAt(p) != '\n') {
-                    p++;
-                }
-                continue;
+        if (stackIndex > 0 && stackOperators[stackIndex-1] != '(') {
+          if ((SubExprResult = ComputeSubExpr(--stackIndex, stackValues, stackOperators)) != 0) {
+            return SubExprResult;
+          }
+          if (stackIndex > 0 && stackOperators[stackIndex-1] != '(') {
+            if ((SubExprResult = ComputeSubExpr(--stackIndex, stackValues, stackOperators)) != 0) {
+              return SubExprResult;
             }
-
-            char t;
-            if (p >= format.length())
-                t = 0;
-            else
-                t = format.charAt(p);
-
-            if (t == '_' || t == '!') {
-                final String natstr = "sSiIlL";
-                if (natstr.indexOf(type) >= 0) {
-                    p++;
-                } else {
-                    throw new RubyException(RubyRuntime.ArgumentErrorClass, String.format("'%c' allowed only after types %s", type, natstr));
-                }
-            }
-
-            if (t == '*') {
-                len = "@Xxu".indexOf(t) >= 0 ? 0 : items;
-                p++;
-            } else if (Character.isDigit(t)) {
-                int end = p;
-                while (end < format.length() - 1 && Character.isDigit(format.indexOf(end + 1))) {
-                    end++;
-                }
-                len = Integer.parseInt(format.substring(p, end + 1), 10);
-            } else {
-                len = 1;
-            }
-
-            switch (type) {
-                case 'A':
-                case 'a':
-                case 'Z':
-                case 'B':
-                case 'b':
-                case 'H':
-                case 'h':
-                    if (items-- > 0)
-                        from = array.get(idx++);
-                    else
-                        throw new RubyException(RubyRuntime.RuntimeErrorClass, "too few for type " + type); // #TODO: message
-
-                    if (from == RubyConstant.QNIL) {
-                        ptr = "";
-                        plen = 0;
-                    } else {
-                        ptr = ((RubyString) from).toString();
-                        plen = ptr.length();
-                    }
-
-                    if (format.charAt(p - 1) == '*') {
-                        len = plen;
-                    }
-
-                    switch (type) {
-                        case 'a':
-                        case 'A':
-                        case 'Z': {
-                            if (plen >= len) {
-                                result.append(ptr.substring(0, len));
-                                if (format.charAt(p - 1) == '*' && type == 'Z')
-                                    result.append('\0');
-                            } else {
-                                result.append(ptr.substring(0, plen));
-                                len -= plen;
-                                while (len-- > 0) {
-                                    result.append(' ');
-                                }
-                            }
-                        }
-                        break;
-
-                        case 'b': {
-                            int byte_ = 0;
-                            int i, j = 0;
-
-                            if (len > plen) {
-                                j = (len - plen + 1) / 2;
-                                len = plen;
-                            }
-
-                            int pos1 = 0;
-                            for (i = 0; i++ < len; pos1++) {
-                                if ((ptr.charAt(pos1) & 1) != 0) {
-                                    byte_ |= 128;
-                                }
-
-                                if ((i & 7) != 0) {
-                                    byte_ >>= 1;
-                                } else {
-                                    char c = (char) (byte_ & 0xff);
-                                    result.append(c);
-                                    byte_ = 0;
-                                }
-
-                                if ((len & 7) != 0) {
-                                    char c;
-                                    byte_ >>= 7 - (len & 7);
-                                    c = (char) (byte_ & 0xff);
-                                    result.append(c);
-                                }
-                                len = j;
-                                while (len-- > 0) {
-                                    result.append('\0');
-                                }
-                            }
-                        }
-                        break;
-
-                        case 'B': {
-                            int byte_ = 0;
-                            int i, j = 0;
-
-                            if (len > plen) {
-                                j = (len - plen + 1) / 2;
-                                len = plen;
-                            }
-
-                            int pos1 = 0;
-                            for (i = 0; i++ < len; pos1++) {
-                                byte_ |= (ptr.charAt(pos1) & 1);
-                                if ((i & 7) != 0)
-                                    byte_ <<= 1;
-                                else {
-                                    char c = (char) (byte_ & 0xff);
-                                    result.append(c);
-                                    byte_ = 0;
-                                }
-                            }
-
-                            if ((len & 7) != 0) {
-                                char c;
-                                byte_ <<= 7 - (len & 7);
-                                c = (char) (byte_ & 0xff);
-                                result.append(c);
-                            }
-
-                            len = j;
-                            while (len-- > 0) {
-                                result.append('\0');
-                            }
-                        }
-                        break;
-
-                        case 'h': {
-                            int byte_ = 0;
-                            int i, j = 0;
-                            if (len > plen) {
-                                j = (len - plen + 1) / 2;
-                                len = plen;
-                            }
-
-                            int pos1 = 0;
-                            for (i = 0; i++ < len; pos1++) {
-                                if (Character.isLetter(ptr.charAt(pos1))) {
-                                    byte_ |= (((ptr.charAt(pos1) & 15) + 9) & 15) << 4;
-                                } else {
-                                    byte_ |= (ptr.charAt(pos1) & 15) << 4;
-                                }
-
-                                if ((i & 1) != 0) {
-                                    byte_ >>= 4;
-                                } else {
-                                    char c = (char) (byte_ & 0xff);
-                                    result.append(c);
-                                    byte_ = 0;
-                                }
-                            }
-
-                            if ((len & 1) != 0) {
-                                char c = (char) (byte_ & 0xff);
-                                result.append(c);
-                            }
-
-                            len = j;
-                            while (len-- > 0) {
-                                result.append('\0');
-                            }
-                        }
-                        break;
-
-                        case 'H': {
-                            int byte_ = 0;
-                            int i, j = 0;
-
-                            if (len > plen) {
-                                j = (len - plen + 1) / 2;
-                                len = plen;
-                            }
-
-                            int pos1 = 0;
-                            for (i = 0; i++ < len; pos1++) {
-                                if (Character.isLetter(ptr.charAt(pos1))) {
-                                    byte_ |= ((ptr.charAt(pos1) & 15) + 9) & 15;
-                                } else {
-                                    byte_ |= ptr.charAt(pos1) & 15;
-                                }
-
-                                if ((i & 1) != 0) {
-                                    byte_ <<= 4;
-                                } else {
-                                    char c = (char) (byte_ & 0xff);
-                                    result.append(c);
-                                    byte_ = 0;
-                                }
-                            }
-
-                            if ((len & 1) != 0) {
-                                char c = (char) (byte_ & 0xff);
-                                result.append(c);
-                            }
-
-                            len = j;
-                            while (len-- > 0) {
-                                result.append('\0');
-                            }
-                        }
-                        break;
-                    }
-                    break;
-
-                case 'c':
-                case 'C':
-                    while (len-- > 0) {
-                        if (items-- > 0)
-                            from = array.get(idx++);
-                        else
-                            throw new RubyException(RubyRuntime.RuntimeErrorClass, "too few for type " + type); // #TODO: message
-
-                        int i = from.toInt();
-                        result.append((char) (i & 0xff));
-                    }
-                    break;
-
-                case 's':
-                case 'S':
-                    while (len-- > 0) {
-
-
-                        if (items-- > 0)
-                            from = array.get(idx++);
-                        else
-                            throw new RubyException(RubyRuntime.RuntimeErrorClass, "too few for type " + type); // #TODO: message
-
-                        int i = from.toInt();
-                        for (int j = 0; j < Short.SIZE / Byte.SIZE; ++j) {
-                            result.append((char) ((i >> (j * 8) & 0xff)));
-                        }
-                    }
-                    break;
-
-                case 'i':
-                case 'I':
-                case 'l':
-                case 'L':
-                    while (len-- > 0) {
-                        if (items-- > 0)
-                            from = array.get(idx++);
-                        else
-                            throw new RubyException(RubyRuntime.RuntimeErrorClass, "too few for type " + type); // #TODO: message
-
-                        int i = from.toInt();
-                        for (int j = 0; j < Integer.SIZE / Byte.SIZE; ++j) {
-                            result.append((char) ((i >> (j * 8) & 0xff)));
-                        }
-                    }
-                    break;
-
-                case 'q':// signed quad (64bit) int
-                case 'Q'://unsigned quad (64bit) int
-                    while (len-- > 0) {
-                        if (items-- > 0)
-                            from = array.get(idx++);
-                        else
-                            throw new RubyException(RubyRuntime.RuntimeErrorClass, "too few for type " + type); // #TODO: message
-
-                        long l = RubyTypesUtil.convertToJavaLong(from);
-
-                        for (int i = 0; i < Long.SIZE / Byte.SIZE; ++i) {
-                            result.append((char) ((l >> (i * 8) & 0xff)));
-                        }
-                    }
-                    break;
-
-                case 'n': // short (network byte-order)
-                    break;
-
-                case 'N': // int (network byte-order)
-                    while (len-- > 0) {
-                        if (items-- > 0)
-                            from = array.get(idx++);
-                        else
-                            throw new RubyException(RubyRuntime.RuntimeErrorClass, "too few for type " + type); // #TODO: message
-
-                        long l = RubyTypesUtil.convertToJavaLong(from);
-
-                        for (int i = Integer.SIZE / Byte.SIZE - 1; i >= 0 ; --i) {
-                            result.append((char) ((l >> (i * 8) & 0xff)));
-                        }
-                    }
-                    break;
-
-                case 'v': // short (VAX byte-order)
-                    break;
-
-                case 'V': // long (VAX byte-order)
-                    break;
-
-                case 'f':
-                case 'F':
-                    while (len-- > 0) {
-                        float f;
-
-                        if (items-- > 0)
-                            from = array.get(idx++);
-                        else
-                            throw new RubyException(RubyRuntime.RuntimeErrorClass, "too few for type " + type); // #TODO: message
-
-                        if (from instanceof RubyFixnum) {
-                            f = (long) (((RubyFixnum) from).toInt() & 0xffffffff);
-                        } else if (from instanceof RubyFloat) {
-                            f = ((long) ((RubyFloat) from).toFloat() & 0xffffffffffffffffL);
-                        } else if (from instanceof RubyBignum) {
-                            f = (((RubyBignum) from).getInternal().longValue() & 0xffffffffffffffffL);
-                        } else {
-                            throw new RubyException(RubyRuntime.RuntimeErrorClass, String.format("can't convert %s into Integer", from.getRubyClass().getName()));
-                        }
-
-                        int bits = Float.floatToIntBits(f);
-                        for (int i = 0; i < Integer.SIZE / Byte.SIZE; ++i) {
-                            result.append((char) ((bits >> (i * 8) & 0xff)));
-                        }
-                    }
-                    break;
-
-                case 'e': // single precision float in VAX byte-order
-                    break;
-
-                case 'E': // double precision float in VAX byte-order
-                    break;
-
-                case 'd':
-                case 'D':
-                    while (len-- > 0) {
-                        if (items-- > 0)
-                            from = array.get(idx++);
-                        else
-                            throw new RubyException(RubyRuntime.RuntimeErrorClass, "too few for type " + type); // #TODO: message
-
-                        double d = RubyTypesUtil.convertToJavaDouble(from);
-
-                        long bits = Double.doubleToLongBits(d);
-
-                        for (int i = 0; i < Long.SIZE / Byte.SIZE; ++i) {
-                            result.append((char) ((bits >> (i * 8) & 0xff)));
-                        }
-                    }
-                    break;
-
-                case 'g': // single precision float in network byte-order
-                    break;
-
-                case 'G': // double precision float in network byte-order
-                    break;
-
-                case 'x': // null byte
-                    while (len-- > 0) {
-                        result.append('\0');
-                    }
-                    break;
-
-                case 'X': // back up byte
-                    plen = result.length();
-                    if (plen < len) {
-                        throw new RubyException(RubyRuntime.ArgumentErrorClass, "X outside of string");
-                    }
-                    result.delete(plen - len, plen);
-                    break;
-
-                case '@':
-                    len -= result.length();
-                    if (len > 0) {
-                        while (len-- > 0) {
-                            result.append('\0');
-                        }
-                    }
-
-                    len = -len;
-                    if (len > 0) {
-                        plen = result.length();
-                        if (plen < len) {
-                            throw new RubyException(RubyRuntime.ArgumentErrorClass, "X outside of string");
-                        }
-                        result.delete(plen - len, plen);
-                    }
-                    break;
-
-                case '%':
-                    throw new RubyException(RubyRuntime.ArgumentErrorClass, "% is not supported");
-
-                case 'U':
-                    while (len-- > 0) {
-                        char[] buf = new char[8];
-
-                        from = array.get(idx++);
-                        long l = RubyTypesUtil.convertToJavaLong(from);
-                        if (l < 0) {
-                            throw new RubyException(RubyRuntime.RangeErrorClass, "pack(U): value (" + from + ") out of range");
-                        }
-                        int le = uv_to_utf8(buf, l);
-                        result.append(buf, 0, le);
-                    }
-                    break;
-
-                case 'u': // uuencoded string
-                case 'm': // base64 encoded string
-                    from = array.get(idx++);
-                    ptr = from.toString();
-                    plen = ptr.length();
-
-                    if (len <= 2) {
-                        len = 45;
-                    } else {
-                        len = len / 3 * 3;
-                    }
-
-                    while (plen > 0) {
-                        int todo;
-                        if (plen > len) {
-                            todo = len;
-                        } else {
-                            todo = plen;
-                        }
-
-                        result.append(encodes(ptr, todo, type));
-                        plen -= todo;
-                        ptr += todo;
-                    }
-                    break;
-
-                case 'M': // quoted-printable encoded string
-                {
-                    String str = ((RubyString) array.get(idx++)).toString();
-                    if (len <= 1) {
-                        len = 72;
-                    }
-
-                    result.append(qpencode(str, len));
-                }
-                break;
-
-                case 'P': // pointer to packed byte string
-                case 'p': // pointer to string
-                    throw new RubyException("Not implemented");
-
-                case 'w': // BER compressed integer
-                    break;
-
-                default:
-                    break;
-            }
+          }
         }
+      }
+      if (stackIndex != 0) {return -5;}
+      if (stackValues[0].compareTo(BigInt1) <= 0 && type==0) {return -1;}
+      if (stackValues[0].bitLength() > 33219) {return -2;}
+      ExpressionResult[0] = stackValues[0];
+      return 0;
+  }
 
-        return result;
-    }
-}
+  private static int ComputeSubExpr(int stackIndex, BigInteger [] stackValues, int [] stackOperators) {
+      int i, j, k, u, len, val, Tmp, indexL, indexH, count, indexNew;
+      double logarithm, Tmp1, Tmp2, Tmp3;
+      long DosALa63 = 1L << 63;
+      BigInteger FibonPrev, FibonAct, FibonNext;
+      long Part[];
+      int Index[];
+      byte Conv[];
+      int stackOper;
+      long Cy, Result;
+
+      stackOper = stackOperators[stackIndex];
+      switch (stackOper) {
+        case '+':
+          stackValues[stackIndex] = stackValues[stackIndex].add(stackValues[stackIndex+1]);
+          return 0;
+        case '-':
+          stackValues[stackIndex] = stackValues[stackIndex].subtract(stackValues[stackIndex+1]);
+          return 0;
+        case '_':
+          stackValues[stackIndex] = stackValues[stackIndex+1].negate();
+          return 0;
+        case '/':
+          if (stackValues[stackIndex + 1].signum() == 0) {return -3;}
+          if (stackValues[stackIndex].remainder(stackValues[stackIndex + 1]).
+            signum() != 0) {return -4;}
+          stackValues[stackIndex] = stackValues[stackIndex].divide(stackValues[stackIndex+1]);
+          return 0;
+        case '%':
+          if (stackValues[stackIndex + 1].signum() != 0) {
+            stackValues[stackIndex] = stackValues[stackIndex].remainder(stackValues[stackIndex+1]);
+            }
+          return 0;
+        case '*':
+          if (stackValues[stackIndex].bitLength() + stackValues[stackIndex+1].bitLength() > 66438) {return -3;}
+          stackValues[stackIndex] = stackValues[stackIndex].multiply(stackValues[stackIndex+1]);
+          return 0;
+        case '^':
+          len = stackValues[stackIndex].bitLength()-1;
+          if (len > 32) {
+            logarithm = (double)(len-32) +
+                Math.log(stackValues[stackIndex].shiftRight(len-32).
+                doubleValue())/Math.log(2);
+            }
+          else {
+            logarithm = Math.log(stackValues[stackIndex].
+                doubleValue())/Math.log(2);
+            }
+          if (logarithm * stackValues[stackIndex+1].doubleValue() > 66438) {return -3;}
+          stackValues[stackIndex] = stackValues[stackIndex].pow(stackValues[stackIndex+1].intValue());
+          return 0;
+        case 'F':
+        case 'L':
+          len = stackValues[stackIndex+1].bitLength()-1;
+          if (len > 17) {return -3;}
+          len = stackValues[stackIndex+1].intValue();
+          if (len > 95662) {return -3;}
+          if (len < 0) {return -8;}
+          FibonPrev = BigInteger.valueOf(stackOper == 'L'?-1:1);
+          FibonAct = BigInteger.valueOf(stackOper == 'L'?2:0);
+          for (i=1; i<=len; i++) {
+            FibonNext = FibonPrev.add(FibonAct);
+            FibonPrev = FibonAct;
+            FibonAct = FibonNext;
+            }
+          stackValues[stackIndex] = FibonAct;
+          return 0;
+        case 'P':
+          len = stackValues[stackIndex+1].bitLength()-1;
+          if (len > 24) {return -3;}
+          len = stackValues[stackIndex+1].intValue();
+          if (len > 3520000) {return -3;}
+          if (len < 0) {return -8;}
+          len = 2;
+          Tmp1 = 0.0578227587396094872;     // pi * sqrt(2/3) / log(2^64)
+          Tmp2 = 0.9563674804631159673;     // 1 - log(4*sqrt(3)) / log(2^64)
+          Tmp3 = 0.0225421100138900531;     // 1 / log(2^64)
+          val = stackValues[stackIndex+1].intValue();
+          for (i=1; i<=val; i++) {
+            len += (long)(Math.floor(Tmp1 * Math.sqrt((double)i) + Tmp2 -
+                   Math.log((double)i) * Tmp3));
+            }
+          Part = new long[len];
+          Index = new int[val+2];
+          Part[0] = DosALa63+1;
+          Index[0] = 0;
+          Index[1] = Tmp = len = 1;
+          for (i=1; i<=val; i++) {
+            len = Index[i] - Index[i-1] + 1;     /* Initialize number length */
+            Tmp = Index[i] + len;
+            for (k=Index[i]; k<Tmp; k++) {       /* Initialize number to zero */
+              Part[k] = DosALa63;
+              }
+            for (k=1; (3*k-1)*k<=2*i; k++) {
+              indexL = Index[i-(3*k-1)*k/2];
+              indexH = Index[i-(3*k-1)*k/2+1];
+              for (u=((3*k+1)*k<=2*i?0:1); u<=1; u++) {
+                Cy = DosALa63;
+                indexNew = Index[i];
+                if (k%2 == 0) {                    /* Subtract */
+                  for (j=indexL; j<indexH; j++) {
+                    Result = Cy + Part[indexNew] - Part[j];
+                    Cy = (Result > Part[indexNew] || (Result == Part[indexNew] && Cy != DosALa63)? DosALa63-1:DosALa63);
+                    Part[indexNew] = Result;
+                    indexNew++;
+                    }
+                  while (indexNew < Tmp) {
+                    Result = Cy + Part[indexNew] + DosALa63;
+                    Cy = (Result > Part[indexNew] || (Result == Part[indexNew] && Cy != DosALa63)? DosALa63-1:DosALa63);
+                    Part[indexNew] = Result;
+                    indexNew++;
+                    }
+                  }
+                else {                              /* Add */
+                  for (j=indexL; j<indexH; j++) {
+                    Result = Cy + Part[indexNew] + Part[j];
+                    Cy = (Result < Part[indexNew] || Result < Part[j]?
+                         DosALa63+1: DosALa63);
+                    Part[indexNew] = Result;
+                    indexNew++;
+                    }   
+                  while (indexNew < Tmp) {
+                    Result = Cy + Part[indexNew] + DosALa63;
+                    Cy = (Result < Part[indexNew]?DosALa63+1: DosALa63);
+                    Part[indexNew] = Result;
+                    indexNew++;
+                    }
+                  }
+                if (u==0) {
+                  indexL = Index[i-(3*k+1)*k/2];
+                  indexH = Index[i-(3*k+1)*k/2+1];
+                  }
+                }              // end for u
+              }
+            if (Part[Tmp - 1] == DosALa63) {
+              len--;
+              Tmp--;
+              }
+            else {
+              }
+            Index[i+1] = Tmp;
+            }                      // end for i
+          count = len*8;
+          Conv = new byte[count+1];
+          for (i=Index[val]; i<Tmp; i++) {
+            Conv[count] = (byte)(Part[i] & 0xFF);
+            Conv[count-1] = (byte)(Part[i] >>> 8 & 0xFF);
+            Conv[count-2] = (byte)(Part[i] >>> 16 & 0xFF);
+            Conv[count-3] = (byte)(Part[i] >>> 24 & 0xFF);
+            Conv[count-4] = (byte)(Part[i] >>> 32 & 0xFF);
+            Conv[count-5] = (byte)(Part[i] >>> 40 & 0xFF);
+            Conv[count-6] = (byte)(Part[i] >>> 48 & 0xFF);
+            Conv[count-7] = (byte)((Part[i] >>> 56 & 0xFF) ^ 0x80);
+            count -= 8;
+            }
+          Conv[0] = 0;
+          stackValues[stackIndex] = new BigInteger(Conv);
+          break;
+        case 'B':
+        case 'N':
+          int Base, Q, baseNbr;
+          BigInteger value;
+          if (stackOper == 'B') {
+            j = stackValues[stackIndex+1].compareTo(BigInt3);
+            if (j < 0) {return -8;}
+            if (j == 0) {
+              stackValues[stackIndex] = BigInt2;
+              return 0;
+              }
+            value = stackValues[stackIndex+1].subtract(BigInt2).or(BigInt1);
+            }
+          else {
+            if (stackValues[stackIndex+1].compareTo(BigInt2) < 0) {return -8;}
+            value = stackValues[stackIndex+1].add(BigInt1).or(BigInt1);
+            }
+outer_calculate_SPRP:
+          while (true) {        /* Search for next pseudoprime */
+calculate_SPRP:
+            do {
+              if (value.bitLength() < 16) {
+                j = value.intValue();
+                if (j >= 9) {
+                  for (Q=3; Q*Q<=j; Q+=2) {     /* Check if Base is prime */
+                    if (j%Q == 0) {
+                      break calculate_SPRP;     /* Composite */
+                      }  
+                    }
+                  }
+                break outer_calculate_SPRP;     /* Prime */
+                }
+              for (baseNbr=100; baseNbr>0; baseNbr--) {
+                Base = 3;
+                if (value.mod(BigInteger.valueOf(Base)).signum() == 0) {
+                  break calculate_SPRP;         /* Composite */
+                  }
+calculate_new_prime3:
+                do {
+                  Base+=2;
+                  for (Q=3; Q*Q<=Base; Q+=2) {  /* Check if Base is prime */
+                    if (Base%Q == 0) {
+                      continue calculate_new_prime3;   /* Composite */
+                      }  
+                    }
+                    break;                      /* Prime found */
+                  } while (true);
+                if (value.mod(BigInteger.valueOf(Base)).signum() == 0) {
+                    break calculate_SPRP;       /* Composite */
+                  }
+                }
+              BigInteger valuem1 = value.subtract(BigInt1);
+              int exp = valuem1.getLowestSetBit();
+compute_SPRP_loop:
+              for (baseNbr=20; baseNbr>0; baseNbr--) {
+                Base = 3;
+calculate_new_prime4:
+                do {
+                  Base+=2;
+                  for (Q=3; Q*Q<=Base; Q+=2) {  /* Check if Base is prime */
+                    if (Base%Q == 0) {
+                      continue calculate_new_prime4;   /* Composite */
+                      }  
+                    }
+                    break;                      /* Prime found */
+                  } while (true);
+                BigInteger bBase = BigInteger.valueOf(Base);
+                BigInteger pow = bBase.modPow(valuem1.shiftRight(exp), value);
+                if (pow.equals(BigInt1) || pow.equals(valuem1)) {
+                  continue;                     /* Strong pseudoprime */
+                  }
+                for (j=1; j<exp; j++) {
+                  pow = pow.multiply(pow).mod(value);
+                  if (pow.equals(valuem1)) {
+                    continue compute_SPRP_loop; /* Strong pseudoprime */
+                    }
+                  if (pow.equals(BigInt1)) {
+                    break compute_SPRP_loop;    /* Composite */
+                    }
+                  }
+                break;                          /* Composite */
+                }                               /* End for */
+              if (baseNbr == 0) {
+                break outer_calculate_SPRP;     /* Strong pseudoprime */
+                }
+              } while (false);
+            if (stackOper == 'B') {
+              value = value.subtract(BigInt2);
+              }
+            else {
+              value = value.add(BigInt2);
+              }
+            }
+          stackValues[stackIndex] = value;
+        }              /* end switch */
+     return 0;
+     }
+  }
 

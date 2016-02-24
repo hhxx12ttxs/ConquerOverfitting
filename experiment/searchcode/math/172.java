@@ -1,548 +1,958 @@
-/*-------------------------------------------------------------------------
-*
-* Copyright (c) 2003-2011, PostgreSQL Global Development Group
-*
-*
-*-------------------------------------------------------------------------
-*/
-package org.postgresql.core;
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements. See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership. The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License. You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 
-import java.io.BufferedOutputStream;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.FilterOutputStream;
-import java.io.IOException;
-import java.io.EOFException;
-import java.io.Writer;
-import java.net.InetSocketAddress;
-import java.net.Socket;
-import java.sql.SQLException;
+package org.apache.thrift.protocol;
 
-import org.postgresql.util.GT;
-import org.postgresql.util.HostSpec;
-import org.postgresql.util.PSQLState;
-import org.postgresql.util.PSQLException;
+import java.io.UnsupportedEncodingException;
+import java.nio.ByteBuffer;
+import java.util.Stack;
+
+import org.apache.thrift.TByteArrayOutputStream;
+import org.apache.thrift.TException;
+import org.apache.thrift.transport.TTransport;
 
 /**
- * Wrapper around the raw connection to the server that implements some basic
- * primitives (reading/writing formatted data, doing string encoding, etc).
- *<p>
- * In general, instances of PGStream are not threadsafe; the caller must ensure
- * that only one thread at a time is accessing a particular PGStream instance.
+ * JSON protocol implementation for thrift.
+ *
+ * This is a full-featured protocol supporting write and read.
+ *
+ * Please see the C++ class header for a detailed description of the
+ * protocol's wire format.
+ *
  */
-public class PGStream
-{
-    private final HostSpec hostSpec;
+public class TJSONProtocol extends TProtocol {
 
-    private final byte[] _int4buf;
-    private final byte[] _int2buf;
+  /**
+   * Factory for JSON protocol objects
+   */
+  public static class Factory implements TProtocolFactory {
+    protected boolean fieldNamesAsString_ = false;
 
-    private Socket connection;
-    private VisibleBufferedInputStream pg_input;
-    private OutputStream pg_output;
-    private byte[] streamBuffer;
+    public Factory() {}
 
-    private Encoding encoding;
-    private Writer encodingWriter;
-
-    /**
-     * Constructor:  Connect to the PostgreSQL back end and return
-     * a stream connection.
-     *
-     * @param hostSpec the host and port to connect to
-     * @exception IOException if an IOException occurs below it.
-     */
-    public PGStream(HostSpec hostSpec) throws IOException
-    {
-        this.hostSpec = hostSpec;
-
-        Socket socket = new Socket();
-        socket.connect(new InetSocketAddress(hostSpec.getHost(), hostSpec.getPort()));
-        changeSocket(socket);
-        setEncoding(Encoding.getJVMEncoding("US-ASCII"));
-
-        _int2buf = new byte[2];
-        _int4buf = new byte[4];
+    public Factory(boolean fieldNamesAsString) {
+      fieldNamesAsString_ = fieldNamesAsString;
     }
 
-    public HostSpec getHostSpec() {
-        return hostSpec;
+    public TProtocol getProtocol(TTransport trans) {
+      return new TJSONProtocol(trans, fieldNamesAsString_);
     }
 
-    public Socket getSocket() {
-        return connection;
+  }
+
+  private static final byte[] COMMA = new byte[] {','};
+  private static final byte[] COLON = new byte[] {':'};
+  private static final byte[] LBRACE = new byte[] {'{'};
+  private static final byte[] RBRACE = new byte[] {'}'};
+  private static final byte[] LBRACKET = new byte[] {'['};
+  private static final byte[] RBRACKET = new byte[] {']'};
+  private static final byte[] QUOTE = new byte[] {'"'};
+  private static final byte[] BACKSLASH = new byte[] {'\\'};
+  private static final byte[] ZERO = new byte[] {'0'};
+
+  private static final byte[] ESCSEQ = new byte[] {'\\','u','0','0'};
+
+  private static final long  VERSION = 1;
+
+  private static final byte[] JSON_CHAR_TABLE = {
+    /*  0   1   2   3   4   5   6   7   8   9   A   B   C   D   E   F */
+    0,  0,  0,  0,  0,  0,  0,  0,'b','t','n',  0,'f','r',  0,  0, // 0
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, // 1
+    1,  1,'"',  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1, // 2
+  };
+
+  private static final String ESCAPE_CHARS = "\"\\/bfnrt";
+
+  private static final byte[] ESCAPE_CHAR_VALS = {
+    '"', '\\', '/', '\b', '\f', '\n', '\r', '\t',
+  };
+
+  private static final int  DEF_STRING_SIZE = 16;
+
+  private static final byte[] NAME_BOOL = new byte[] {'t', 'f'};
+  private static final byte[] NAME_BYTE = new byte[] {'i','8'};
+  private static final byte[] NAME_I16 = new byte[] {'i','1','6'};
+  private static final byte[] NAME_I32 = new byte[] {'i','3','2'};
+  private static final byte[] NAME_I64 = new byte[] {'i','6','4'};
+  private static final byte[] NAME_DOUBLE = new byte[] {'d','b','l'};
+  private static final byte[] NAME_STRUCT = new byte[] {'r','e','c'};
+  private static final byte[] NAME_STRING = new byte[] {'s','t','r'};
+  private static final byte[] NAME_MAP = new byte[] {'m','a','p'};
+  private static final byte[] NAME_LIST = new byte[] {'l','s','t'};
+  private static final byte[] NAME_SET = new byte[] {'s','e','t'};
+
+  private static final TStruct ANONYMOUS_STRUCT = new TStruct();
+
+  private static final byte[] getTypeNameForTypeID(byte typeID)
+    throws TException {
+    switch (typeID) {
+    case TType.BOOL:
+      return NAME_BOOL;
+    case TType.BYTE:
+      return NAME_BYTE;
+    case TType.I16:
+      return NAME_I16;
+    case TType.I32:
+      return NAME_I32;
+    case TType.I64:
+      return NAME_I64;
+    case TType.DOUBLE:
+      return NAME_DOUBLE;
+    case TType.STRING:
+      return NAME_STRING;
+    case TType.STRUCT:
+      return NAME_STRUCT;
+    case TType.MAP:
+      return NAME_MAP;
+    case TType.SET:
+      return NAME_SET;
+    case TType.LIST:
+      return NAME_LIST;
+    default:
+      throw new TProtocolException(TProtocolException.NOT_IMPLEMENTED,
+                                   "Unrecognized type");
     }
+  }
 
-    /**
-     * Check for pending backend messages without blocking.
-     * Might return false when there actually are messages
-     * waiting, depending on the characteristics of the
-     * underlying socket. This is used to detect asynchronous
-     * notifies from the backend, when available.
-     *
-     * @return true if there is a pending backend message
-     */
-    public boolean hasMessagePending() throws IOException {
-        return pg_input.available() > 0 || connection.getInputStream().available() > 0;
-    }
-
-    /**
-     * Switch this stream to using a new socket. Any existing socket
-     * is <em>not</em> closed; it's assumed that we are changing to
-     * a new socket that delegates to the original socket (e.g. SSL).
-     *
-     * @param socket the new socket to change to
-     * @throws IOException if something goes wrong
-     */
-    public void changeSocket(Socket socket) throws IOException {
-        this.connection = socket;
-
-        // Submitted by Jason Venner <jason@idiom.com>. Disable Nagle
-        // as we are selective about flushing output only when we
-        // really need to.
-        connection.setTcpNoDelay(true);
-
-        // Buffer sizes submitted by Sverre H Huseby <sverrehu@online.no>
-        pg_input = new VisibleBufferedInputStream(connection.getInputStream(), 8192);
-        pg_output = new BufferedOutputStream(connection.getOutputStream(), 8192);
-
-        if (encoding != null)
-            setEncoding(encoding);
-    }
-
-    public Encoding getEncoding() {
-        return encoding;
-    }
-
-    /**
-     * Change the encoding used by this connection.
-     *
-     * @param encoding the new encoding to use
-     * @throws IOException if something goes wrong
-     */
-    public void setEncoding(Encoding encoding) throws IOException {
-        // Close down any old writer.
-        if (encodingWriter != null)
-            encodingWriter.close();
-
-        this.encoding = encoding;
-
-        // Intercept flush() downcalls from the writer; our caller
-        // will call PGStream.flush() as needed.
-        OutputStream interceptor = new FilterOutputStream(pg_output) {
-                                       public void flush() throws IOException {
-                                       }
-                                       public void close() throws IOException {
-                                           super.flush();
-                                       }
-                                   };
-
-        encodingWriter = encoding.getEncodingWriter(interceptor);
-    }
-
-    /**
-     * Get a Writer instance that encodes directly onto the underlying stream.
-     *<p>
-     * The returned Writer should not be closed, as it's a shared object.
-     * Writer.flush needs to be called when switching between use of the Writer and
-     * use of the PGStream write methods, but it won't actually flush output
-     * all the way out -- call {@link #flush} to actually ensure all output
-     * has been pushed to the server.
-     *
-     * @return the shared Writer instance
-     * @throws IOException if something goes wrong.
-     */
-    public Writer getEncodingWriter() throws IOException {
-        if (encodingWriter == null)
-            throw new IOException("No encoding has been set on this connection");
-        return encodingWriter;
-    }
-
-    /**
-     * Sends a single character to the back end
-     *
-     * @param val the character to be sent
-     * @exception IOException if an I/O error occurs
-     */
-    public void SendChar(int val) throws IOException
-    {
-        pg_output.write(val);
-    }
-
-    /**
-     * Sends a 4-byte integer to the back end
-     *
-     * @param val the integer to be sent
-     * @exception IOException if an I/O error occurs
-     */
-    public void SendInteger4(int val) throws IOException
-    {
-        _int4buf[0] = (byte)(val >>> 24);
-        _int4buf[1] = (byte)(val >>> 16);
-        _int4buf[2] = (byte)(val >>> 8);
-        _int4buf[3] = (byte)(val);
-        pg_output.write(_int4buf);
-    }
-
-    /**
-     * Sends a 2-byte integer (short) to the back end
-     *
-     * @param val the integer to be sent
-     * @exception IOException if an I/O error occurs or <code>val</code> cannot be encoded in 2 bytes
-     */
-    public void SendInteger2(int val) throws IOException
-    {
-        if (val < Short.MIN_VALUE || val > Short.MAX_VALUE)
-            throw new IOException("Tried to send an out-of-range integer as a 2-byte value: " + val);
-
-        _int2buf[0] = (byte)(val >>> 8);
-        _int2buf[1] = (byte)val;
-        pg_output.write(_int2buf);
-    }
-
-    /**
-     * Send an array of bytes to the backend
-     *
-     * @param buf The array of bytes to be sent
-     * @exception IOException if an I/O error occurs
-     */
-    public void Send(byte buf[]) throws IOException
-    {
-        pg_output.write(buf);
-    }
-
-    /**
-     * Send a fixed-size array of bytes to the backend. If buf.length < siz,
-     * pad with zeros. If buf.lengh > siz, truncate the array.
-     *
-     * @param buf the array of bytes to be sent
-     * @param siz the number of bytes to be sent
-     * @exception IOException if an I/O error occurs
-     */
-    public void Send(byte buf[], int siz) throws IOException
-    {
-        Send(buf, 0, siz);
-    }
-
-    /**
-     * Send a fixed-size array of bytes to the backend. If length < siz,
-     * pad with zeros. If length > siz, truncate the array.
-     *
-     * @param buf the array of bytes to be sent
-     * @param off offset in the array to start sending from
-     * @param siz the number of bytes to be sent
-     * @exception IOException if an I/O error occurs
-     */
-    public void Send(byte buf[], int off, int siz) throws IOException
-    {
-	int bufamt = buf.length - off;
-        pg_output.write(buf, off, bufamt < siz ? bufamt : siz);
-        for (int i = bufamt ; i < siz ; ++i)
-        {
-            pg_output.write(0);
+  private static final byte getTypeIDForTypeName(byte[] name)
+    throws TException {
+    byte result = TType.STOP;
+    if (name.length > 1) {
+      switch (name[0]) {
+      case 'd':
+        result = TType.DOUBLE;
+        break;
+      case 'i':
+        switch (name[1]) {
+        case '8':
+          result = TType.BYTE;
+          break;
+        case '1':
+          result = TType.I16;
+          break;
+        case '3':
+          result = TType.I32;
+          break;
+        case '6':
+          result = TType.I64;
+          break;
         }
-    }
-
-    /**
-     * Receives a single character from the backend, without
-     * advancing the current protocol stream position.
-     *
-     * @return the character received
-     * @exception IOException if an I/O Error occurs
-     */
-    public int PeekChar() throws IOException
-    {
-        int c = pg_input.peek();
-        if (c < 0)
-            throw new EOFException();
-        return c;
-    }
-
-    /**
-     * Receives a single character from the backend
-     *
-     * @return the character received
-     * @exception IOException if an I/O Error occurs
-     */
-    public int ReceiveChar() throws IOException
-    {
-        int c = pg_input.read();
-        if (c < 0)
-            throw new EOFException();
-        return c;
-    }
-
-    /**
-     * Receives a four byte integer from the backend
-     *
-     * @return the integer received from the backend
-     * @exception IOException if an I/O error occurs
-     */
-    public int ReceiveInteger4() throws IOException
-    {
-        if (pg_input.read(_int4buf) != 4)
-            throw new EOFException();
-
-        return (_int4buf[0] & 0xFF) << 24 | (_int4buf[1] & 0xFF) << 16 | (_int4buf[2] & 0xFF) << 8 | _int4buf[3] & 0xFF;
-    }
-
-    /**
-     * Receives a two byte integer from the backend
-     *
-     * @return the integer received from the backend
-     * @exception IOException if an I/O error occurs
-     */
-    public int ReceiveInteger2() throws IOException
-    {
-        if (pg_input.read(_int2buf) != 2)
-            throw new EOFException();
-
-        return (_int2buf[0] & 0xFF) << 8 | _int2buf[1] & 0xFF;
-    }
-
-    /**
-     * Receives a fixed-size string from the backend.
-     *
-     * @param len the length of the string to receive, in bytes.
-     * @return the decoded string
-     */
-    public String ReceiveString(int len) throws IOException {
-        if (!pg_input.ensureBytes(len)) {
-            throw new EOFException();
+        break;
+      case 'l':
+        result = TType.LIST;
+        break;
+      case 'm':
+        result = TType.MAP;
+        break;
+      case 'r':
+        result = TType.STRUCT;
+        break;
+      case 's':
+        if (name[1] == 't') {
+          result = TType.STRING;
         }
-
-        String res = encoding.decode(pg_input.getBuffer(), pg_input.getIndex(),
-                                     len);
-        pg_input.skip(len);
-        return res;
-    }
-
-    /**
-     * Receives a null-terminated string from the backend. If we don't see a
-     * null, then we assume something has gone wrong.
-     *
-     * @return string from back end
-     * @exception IOException if an I/O error occurs, or end of file
-     */
-    public String ReceiveString() throws IOException
-    {
-        int len = pg_input.scanCStringLength();
-        String res = encoding.decode(pg_input.getBuffer(), pg_input.getIndex(),
-                                     len - 1);
-        pg_input.skip(len);
-        return res;
-    }
-
-    /**
-     * Read a tuple from the back end. A tuple is a two dimensional
-     * array of bytes. This variant reads the V3 protocol's tuple
-     * representation.
-     *
-     * @return null if the current response has no more tuples, otherwise
-     * an array of bytearrays
-     * @exception IOException if a data I/O error occurs
-     */
-    public byte[][] ReceiveTupleV3() throws IOException, OutOfMemoryError
-    {
-        //TODO: use l_msgSize
-        int l_msgSize = ReceiveInteger4();
-        int i;
-        int l_nf = ReceiveInteger2();
-        byte[][] answer = new byte[l_nf][];
-
-        OutOfMemoryError oom = null;
-        for (i = 0 ; i < l_nf ; ++i)
-        {
-            int l_size = ReceiveInteger4();
-            if (l_size != -1) {
-                try {
-                    answer[i] = new byte[l_size];
-                    Receive(answer[i], 0, l_size);
-                } catch(OutOfMemoryError oome) {
-                    oom = oome;
-                    Skip(l_size);
-                }
-            }
+        else if (name[1] == 'e') {
+          result = TType.SET;
         }
+        break;
+      case 't':
+        result = TType.BOOL;
+        break;
+      }
+    }
+    if (result == TType.STOP) {
+      throw new TProtocolException(TProtocolException.NOT_IMPLEMENTED,
+                                   "Unrecognized type");
+    }
+    return result;
+  }
 
-        if (oom != null)
-            throw oom;
+  // Base class for tracking JSON contexts that may require inserting/reading
+  // additional JSON syntax characters
+  // This base context does nothing.
+  protected class JSONBaseContext {
+    protected void write() throws TException {}
 
-        return answer;
+    protected void read() throws TException {}
+
+    protected boolean escapeNum() { return false; }
+  }
+
+  // Context for JSON lists. Will insert/read commas before each item except
+  // for the first one
+  protected class JSONListContext extends JSONBaseContext {
+    private boolean first_ = true;
+
+    @Override
+    protected void write() throws TException {
+      if (first_) {
+        first_ = false;
+      } else {
+        trans_.write(COMMA);
+      }
     }
 
-    /**
-     * Read a tuple from the back end. A tuple is a two dimensional
-     * array of bytes. This variant reads the V2 protocol's tuple
-     * representation.
-     *
-     * @param nf the number of fields expected
-     * @param bin true if the tuple is a binary tuple
-     * @return null if the current response has no more tuples, otherwise
-     * an array of bytearrays
-     * @exception IOException if a data I/O error occurs
-     */
-    public byte[][] ReceiveTupleV2(int nf, boolean bin) throws IOException, OutOfMemoryError
-    {
-        int i, bim = (nf + 7) / 8;
-        byte[] bitmask = Receive(bim);
-        byte[][] answer = new byte[nf][];
+    @Override
+    protected void read() throws TException {
+      if (first_) {
+        first_ = false;
+      } else {
+        readJSONSyntaxChar(COMMA);
+      }
+    }
+  }
 
-        int whichbit = 0x80;
-        int whichbyte = 0;
+  // Context for JSON records. Will insert/read colons before the value portion
+  // of each record pair, and commas before each key except the first. In
+  // addition, will indicate that numbers in the key position need to be
+  // escaped in quotes (since JSON keys must be strings).
+  protected class JSONPairContext extends JSONBaseContext {
+    private boolean first_ = true;
+    private boolean colon_ = true;
 
-        OutOfMemoryError oom = null;
-        for (i = 0 ; i < nf ; ++i)
-        {
-            boolean isNull = ((bitmask[whichbyte] & whichbit) == 0);
-            whichbit >>= 1;
-            if (whichbit == 0)
-            {
-                ++whichbyte;
-                whichbit = 0x80;
-            }
-            if (!isNull)
-            {
-                int len = ReceiveInteger4();
-                if (!bin)
-                    len -= 4;
-                if (len < 0)
-                    len = 0;
-                try {
-                    answer[i] = new byte[len];
-                    Receive(answer[i], 0, len);
-                } catch(OutOfMemoryError oome) {
-                    oom = oome;
-                    Skip(len);
-                }
-            }
+    @Override
+    protected void write() throws TException {
+      if (first_) {
+        first_ = false;
+        colon_ = true;
+      } else {
+        trans_.write(colon_ ? COLON : COMMA);
+        colon_ = !colon_;
+      }
+    }
+
+    @Override
+    protected void read() throws TException {
+      if (first_) {
+        first_ = false;
+        colon_ = true;
+      } else {
+        readJSONSyntaxChar(colon_ ? COLON : COMMA);
+        colon_ = !colon_;
+      }
+    }
+
+    @Override
+    protected boolean escapeNum() {
+      return colon_;
+    }
+  }
+
+  // Holds up to one byte from the transport
+  protected class LookaheadReader {
+
+    private boolean hasData_;
+    private byte[] data_ = new byte[1];
+
+    // Return and consume the next byte to be read, either taking it from the
+    // data buffer if present or getting it from the transport otherwise.
+    protected byte read() throws TException {
+      if (hasData_) {
+        hasData_ = false;
+      }
+      else {
+        trans_.readAll(data_, 0, 1);
+      }
+      return data_[0];
+    }
+
+    // Return the next byte to be read without consuming, filling the data
+    // buffer if it has not been filled already.
+    protected byte peek() throws TException {
+      if (!hasData_) {
+        trans_.readAll(data_, 0, 1);
+      }
+      hasData_ = true;
+      return data_[0];
+    }
+  }
+
+  // Stack of nested contexts that we may be in
+  private Stack<JSONBaseContext> contextStack_ = new Stack<JSONBaseContext>();
+
+  // Current context that we are in
+  private JSONBaseContext context_ = new JSONBaseContext();
+
+  // Reader that manages a 1-byte buffer
+  private LookaheadReader reader_ = new LookaheadReader();
+
+  // Write out the TField names as a string instead of the default integer value
+  private boolean fieldNamesAsString_ = false;
+
+  // Push a new JSON context onto the stack.
+  private void pushContext(JSONBaseContext c) {
+    contextStack_.push(context_);
+    context_ = c;
+  }
+
+  // Pop the last JSON context off the stack
+  private void popContext() {
+    context_ = contextStack_.pop();
+  }
+
+  /**
+   * Constructor
+   */
+  public TJSONProtocol(TTransport trans) {
+    super(trans);
+  }
+
+  public TJSONProtocol(TTransport trans, boolean fieldNamesAsString) {
+    super(trans);
+    fieldNamesAsString_ = fieldNamesAsString;
+  }
+
+  @Override
+  public void reset() {
+    contextStack_.clear();
+    context_ = new JSONBaseContext();
+    reader_ = new LookaheadReader();
+  }
+
+  // Temporary buffer used by several methods
+  private byte[] tmpbuf_ = new byte[4];
+
+  // Read a byte that must match b[0]; otherwise an exception is thrown.
+  // Marked protected to avoid synthetic accessor in JSONListContext.read
+  // and JSONPairContext.read
+  protected void readJSONSyntaxChar(byte[] b) throws TException {
+    byte ch = reader_.read();
+    if (ch != b[0]) {
+      throw new TProtocolException(TProtocolException.INVALID_DATA,
+                                   "Unexpected character:" + (char)ch);
+    }
+  }
+
+  // Convert a byte containing a hex char ('0'-'9' or 'a'-'f') into its
+  // corresponding hex value
+  private static final byte hexVal(byte ch) throws TException {
+    if ((ch >= '0') && (ch <= '9')) {
+      return (byte)((char)ch - '0');
+    }
+    else if ((ch >= 'a') && (ch <= 'f')) {
+      return (byte)((char)ch - 'a' + 10);
+    }
+    else {
+      throw new TProtocolException(TProtocolException.INVALID_DATA,
+                                   "Expected hex character");
+    }
+  }
+
+  // Convert a byte containing a hex value to its corresponding hex character
+  private static final byte hexChar(byte val) {
+    val &= 0x0F;
+    if (val < 10) {
+      return (byte)((char)val + '0');
+    }
+    else {
+      return (byte)((char)(val - 10) + 'a');
+    }
+  }
+
+  // Write the bytes in array buf as a JSON characters, escaping as needed
+  private void writeJSONString(byte[] b) throws TException {
+    context_.write();
+    trans_.write(QUOTE);
+    int len = b.length;
+    for (int i = 0; i < len; i++) {
+      if ((b[i] & 0x00FF) >= 0x30) {
+        if (b[i] == BACKSLASH[0]) {
+          trans_.write(BACKSLASH);
+          trans_.write(BACKSLASH);
         }
-
-        if (oom != null)
-            throw oom;
-
-        return answer;
-    }
-
-    /**
-     * Reads in a given number of bytes from the backend
-     *
-     * @param siz number of bytes to read
-     * @return array of bytes received
-     * @exception IOException if a data I/O error occurs
-     */
-    public byte[] Receive(int siz) throws IOException
-    {
-        byte[] answer = new byte[siz];
-        Receive(answer, 0, siz);
-        return answer;
-    }
-
-    /**
-     * Reads in a given number of bytes from the backend
-     *
-     * @param buf buffer to store result
-     * @param off offset in buffer
-     * @param siz number of bytes to read
-     * @exception IOException if a data I/O error occurs
-     */
-    public void Receive(byte[] buf, int off, int siz) throws IOException
-    {
-        int s = 0;
-
-        while (s < siz)
-        {
-            int w = pg_input.read(buf, off + s, siz - s);
-            if (w < 0)
-                throw new EOFException();
-            s += w;
+        else {
+          trans_.write(b, i, 1);
         }
-    }
-
-    public void Skip(int size) throws IOException {
-        long s = 0;
-        while (s < size) {
-            s += pg_input.skip(size - s);
+      }
+      else {
+        tmpbuf_[0] = JSON_CHAR_TABLE[b[i]];
+        if (tmpbuf_[0] == 1) {
+          trans_.write(b, i, 1);
         }
-    }
-
-
-    /**
-     * Copy data from an input stream to the connection.
-     *
-     * @param inStream the stream to read data from
-     * @param remaining the number of bytes to copy
-     */
-    public void SendStream(InputStream inStream, int remaining) throws IOException {
-        int expectedLength = remaining;
-        if (streamBuffer == null)
-            streamBuffer = new byte[8192];
-
-        while (remaining > 0)
-        {
-            int count = (remaining > streamBuffer.length ? streamBuffer.length : remaining);
-            int readCount;
-
-            try
-            {
-                readCount = inStream.read(streamBuffer, 0, count);
-                if (readCount < 0)
-                    throw new EOFException(GT.tr("Premature end of input stream, expected {0} bytes, but only read {1}.", new Object[]{new Integer(expectedLength), new Integer(expectedLength - remaining)}));
-            }
-            catch (IOException ioe)
-            {
-                while (remaining > 0)
-                {
-                    Send(streamBuffer, count);
-                    remaining -= count;
-                    count = (remaining > streamBuffer.length ? streamBuffer.length : remaining);
-                }
-                throw new PGBindException(ioe);
-            }
-
-            Send(streamBuffer, readCount);
-            remaining -= readCount;
+        else if (tmpbuf_[0] > 1) {
+          trans_.write(BACKSLASH);
+          trans_.write(tmpbuf_, 0, 1);
         }
+        else {
+          trans_.write(ESCSEQ);
+          tmpbuf_[0] = hexChar((byte)(b[i] >> 4));
+          tmpbuf_[1] = hexChar(b[i]);
+          trans_.write(tmpbuf_, 0, 2);
+        }
+      }
     }
+    trans_.write(QUOTE);
+  }
 
-
-
-    /**
-     * Flush any pending output to the backend.
-     * @exception IOException if an I/O error occurs
-     */
-    public void flush() throws IOException
-    {
-        if (encodingWriter != null)
-            encodingWriter.flush();
-        pg_output.flush();
+  // Write out number as a JSON value. If the context dictates so, it will be
+  // wrapped in quotes to output as a JSON string.
+  private void writeJSONInteger(long num) throws TException {
+    context_.write();
+    String str = Long.toString(num);
+    boolean escapeNum = context_.escapeNum();
+    if (escapeNum) {
+      trans_.write(QUOTE);
     }
-
-    /**
-     * Consume an expected EOF from the backend
-     * @exception SQLException if we get something other than an EOF
-     */
-    public void ReceiveEOF() throws SQLException, IOException
-    {
-        int c = pg_input.read();
-        if (c < 0)
-            return;
-        throw new PSQLException(GT.tr("Expected an EOF from server, got: {0}", new Integer(c)), PSQLState.COMMUNICATION_ERROR);
+    try {
+      byte[] buf = str.getBytes("UTF-8");
+      trans_.write(buf);
+    } catch (UnsupportedEncodingException uex) {
+      throw new TException("JVM DOES NOT SUPPORT UTF-8");
     }
-
-    /**
-     * Closes the connection
-     *
-     * @exception IOException if an I/O Error occurs
-     */
-    public void close() throws IOException
-    {
-        if (encodingWriter != null)
-            encodingWriter.close();
-
-        pg_output.close();
-        pg_input.close();
-        connection.close();
+    if (escapeNum) {
+      trans_.write(QUOTE);
     }
+  }
+
+  // Write out a double as a JSON value. If it is NaN or infinity or if the
+  // context dictates escaping, write out as JSON string.
+  private void writeJSONDouble(double num) throws TException {
+    context_.write();
+    String str = Double.toString(num);
+    boolean special = false;
+    switch (str.charAt(0)) {
+    case 'N': // NaN
+    case 'I': // Infinity
+      special = true;
+      break;
+    case '-':
+      if (str.charAt(1) == 'I') { // -Infinity
+        special = true;
+      }
+      break;
+    default:
+      break;
+  }
+
+    boolean escapeNum = special || context_.escapeNum();
+    if (escapeNum) {
+      trans_.write(QUOTE);
+    }
+    try {
+      byte[] b = str.getBytes("UTF-8");
+      trans_.write(b, 0, b.length);
+    } catch (UnsupportedEncodingException uex) {
+      throw new TException("JVM DOES NOT SUPPORT UTF-8");
+    }
+    if (escapeNum) {
+      trans_.write(QUOTE);
+    }
+  }
+
+  // Write out contents of byte array b as a JSON string with base-64 encoded
+  // data
+  private void writeJSONBase64(byte[] b, int offset, int length) throws TException {
+    context_.write();
+    trans_.write(QUOTE);
+    int len = length;
+    int off = offset;
+    while (len >= 3) {
+      // Encode 3 bytes at a time
+      TBase64Utils.encode(b, off, 3, tmpbuf_, 0);
+      trans_.write(tmpbuf_, 0, 4);
+      off += 3;
+      len -= 3;
+    }
+    if (len > 0) {
+      // Encode remainder
+      TBase64Utils.encode(b, off, len, tmpbuf_, 0);
+      trans_.write(tmpbuf_, 0, len + 1);
+    }
+    trans_.write(QUOTE);
+  }
+
+  private void writeJSONObjectStart() throws TException {
+    context_.write();
+    trans_.write(LBRACE);
+    pushContext(new JSONPairContext());
+  }
+
+  private void writeJSONObjectEnd() throws TException {
+    popContext();
+    trans_.write(RBRACE);
+  }
+
+  private void writeJSONArrayStart() throws TException {
+    context_.write();
+    trans_.write(LBRACKET);
+    pushContext(new JSONListContext());
+  }
+
+  private void writeJSONArrayEnd() throws TException {
+    popContext();
+    trans_.write(RBRACKET);
+  }
+
+  @Override
+  public void writeMessageBegin(TMessage message) throws TException {
+    writeJSONArrayStart();
+    writeJSONInteger(VERSION);
+    try {
+      byte[] b = message.name.getBytes("UTF-8");
+      writeJSONString(b);
+    } catch (UnsupportedEncodingException uex) {
+      throw new TException("JVM DOES NOT SUPPORT UTF-8");
+    }
+    writeJSONInteger(message.type);
+    writeJSONInteger(message.seqid);
+  }
+
+  @Override
+  public void writeMessageEnd() throws TException {
+    writeJSONArrayEnd();
+  }
+
+  @Override
+  public void writeStructBegin(TStruct struct) throws TException {
+    writeJSONObjectStart();
+  }
+
+  @Override
+  public void writeStructEnd() throws TException {
+    writeJSONObjectEnd();
+  }
+
+  @Override
+  public void writeFieldBegin(TField field) throws TException {
+    if (fieldNamesAsString_) {
+      writeString(field.name);
+    } else {
+      writeJSONInteger(field.id);
+    }
+    writeJSONObjectStart();
+    writeJSONString(getTypeNameForTypeID(field.type));
+  }
+
+  @Override
+  public void writeFieldEnd() throws TException {
+    writeJSONObjectEnd();
+  }
+
+  @Override
+  public void writeFieldStop() {}
+
+  @Override
+  public void writeMapBegin(TMap map) throws TException {
+    writeJSONArrayStart();
+    writeJSONString(getTypeNameForTypeID(map.keyType));
+    writeJSONString(getTypeNameForTypeID(map.valueType));
+    writeJSONInteger(map.size);
+    writeJSONObjectStart();
+  }
+
+  @Override
+  public void writeMapEnd() throws TException {
+    writeJSONObjectEnd();
+    writeJSONArrayEnd();
+  }
+
+  @Override
+  public void writeListBegin(TList list) throws TException {
+    writeJSONArrayStart();
+    writeJSONString(getTypeNameForTypeID(list.elemType));
+    writeJSONInteger(list.size);
+  }
+
+  @Override
+  public void writeListEnd() throws TException {
+    writeJSONArrayEnd();
+  }
+
+  @Override
+  public void writeSetBegin(TSet set) throws TException {
+    writeJSONArrayStart();
+    writeJSONString(getTypeNameForTypeID(set.elemType));
+    writeJSONInteger(set.size);
+  }
+
+  @Override
+  public void writeSetEnd() throws TException {
+    writeJSONArrayEnd();
+  }
+
+  @Override
+  public void writeBool(boolean b) throws TException {
+    writeJSONInteger(b ? (long)1 : (long)0);
+  }
+
+  @Override
+  public void writeByte(byte b) throws TException {
+    writeJSONInteger((long)b);
+  }
+
+  @Override
+  public void writeI16(short i16) throws TException {
+    writeJSONInteger((long)i16);
+  }
+
+  @Override
+  public void writeI32(int i32) throws TException {
+    writeJSONInteger((long)i32);
+  }
+
+  @Override
+  public void writeI64(long i64) throws TException {
+    writeJSONInteger(i64);
+  }
+
+  @Override
+  public void writeDouble(double dub) throws TException {
+    writeJSONDouble(dub);
+  }
+
+  @Override
+  public void writeString(String str) throws TException {
+    try {
+      byte[] b = str.getBytes("UTF-8");
+      writeJSONString(b);
+    } catch (UnsupportedEncodingException uex) {
+      throw new TException("JVM DOES NOT SUPPORT UTF-8");
+    }
+  }
+
+  @Override
+  public void writeBinary(ByteBuffer bin) throws TException {
+    writeJSONBase64(bin.array(), bin.position() + bin.arrayOffset(), bin.limit() - bin.position() - bin.arrayOffset());
+  }
+
+  /**
+   * Reading methods.
+   */
+
+  // Read in a JSON string, unescaping as appropriate.. Skip reading from the
+  // context if skipContext is true.
+  private TByteArrayOutputStream readJSONString(boolean skipContext)
+    throws TException {
+    TByteArrayOutputStream arr = new TByteArrayOutputStream(DEF_STRING_SIZE);
+    if (!skipContext) {
+      context_.read();
+    }
+    readJSONSyntaxChar(QUOTE);
+    while (true) {
+      byte ch = reader_.read();
+      if (ch == QUOTE[0]) {
+        break;
+      }
+      if (ch == ESCSEQ[0]) {
+        ch = reader_.read();
+        if (ch == ESCSEQ[1]) {
+          readJSONSyntaxChar(ZERO);
+          readJSONSyntaxChar(ZERO);
+          trans_.readAll(tmpbuf_, 0, 2);
+          ch = (byte)((hexVal((byte)tmpbuf_[0]) << 4) + hexVal(tmpbuf_[1]));
+        }
+        else {
+          int off = ESCAPE_CHARS.indexOf(ch);
+          if (off == -1) {
+            throw new TProtocolException(TProtocolException.INVALID_DATA,
+                                         "Expected control char");
+          }
+          ch = ESCAPE_CHAR_VALS[off];
+        }
+      }
+      arr.write(ch);
+    }
+    return arr;
+  }
+
+  // Return true if the given byte could be a valid part of a JSON number.
+  private boolean isJSONNumeric(byte b) {
+    switch (b) {
+    case '+':
+    case '-':
+    case '.':
+    case '0':
+    case '1':
+    case '2':
+    case '3':
+    case '4':
+    case '5':
+    case '6':
+    case '7':
+    case '8':
+    case '9':
+    case 'E':
+    case 'e':
+      return true;
+    }
+    return false;
+  }
+
+  // Read in a sequence of characters that are all valid in JSON numbers. Does
+  // not do a complete regex check to validate that this is actually a number.
+  private String readJSONNumericChars() throws TException {
+    StringBuilder strbld = new StringBuilder();
+    while (true) {
+      byte ch = reader_.peek();
+      if (!isJSONNumeric(ch)) {
+        break;
+      }
+      strbld.append((char)reader_.read());
+    }
+    return strbld.toString();
+  }
+
+  // Read in a JSON number. If the context dictates, read in enclosing quotes.
+  private long readJSONInteger() throws TException {
+    context_.read();
+    if (context_.escapeNum()) {
+      readJSONSyntaxChar(QUOTE);
+    }
+    String str = readJSONNumericChars();
+    if (context_.escapeNum()) {
+      readJSONSyntaxChar(QUOTE);
+    }
+    try {
+      return Long.valueOf(str);
+    }
+    catch (NumberFormatException ex) {
+      throw new TProtocolException(TProtocolException.INVALID_DATA,
+                                   "Bad data encounted in numeric data");
+    }
+  }
+
+  // Read in a JSON double value. Throw if the value is not wrapped in quotes
+  // when expected or if wrapped in quotes when not expected.
+  private double readJSONDouble() throws TException {
+    context_.read();
+    if (reader_.peek() == QUOTE[0]) {
+      TByteArrayOutputStream arr = readJSONString(true);
+      try {
+        double dub = Double.valueOf(arr.toString("UTF-8"));
+        if (!context_.escapeNum() && !Double.isNaN(dub) &&
+            !Double.isInfinite(dub)) {
+          // Throw exception -- we should not be in a string in this case
+          throw new TProtocolException(TProtocolException.INVALID_DATA,
+                                       "Numeric data unexpectedly quoted");
+        }
+        return dub;
+      }
+      catch (UnsupportedEncodingException ex) {
+        throw new TException("JVM DOES NOT SUPPORT UTF-8");
+      }
+    }
+    else {
+      if (context_.escapeNum()) {
+        // This will throw - we should have had a quote if escapeNum == true
+        readJSONSyntaxChar(QUOTE);
+      }
+      try {
+        return Double.valueOf(readJSONNumericChars());
+      }
+      catch (NumberFormatException ex) {
+        throw new TProtocolException(TProtocolException.INVALID_DATA,
+                                     "Bad data encounted in numeric data");
+      }
+    }
+  }
+
+  // Read in a JSON string containing base-64 encoded data and decode it.
+  private byte[] readJSONBase64() throws TException {
+    TByteArrayOutputStream arr = readJSONString(false);
+    byte[] b = arr.get();
+    int len = arr.len();
+    int off = 0;
+    int size = 0;
+    while (len >= 4) {
+      // Decode 4 bytes at a time
+      TBase64Utils.decode(b, off, 4, b, size); // NB: decoded in place
+      off += 4;
+      len -= 4;
+      size += 3;
+    }
+    // Don't decode if we hit the end or got a single leftover byte (invalid
+    // base64 but legal for skip of regular string type)
+    if (len > 1) {
+      // Decode remainder
+      TBase64Utils.decode(b, off, len, b, size); // NB: decoded in place
+      size += len - 1;
+    }
+    // Sadly we must copy the byte[] (any way around this?)
+    byte [] result = new byte[size];
+    System.arraycopy(b, 0, result, 0, size);
+    return result;
+  }
+
+  private void readJSONObjectStart() throws TException {
+    context_.read();
+    readJSONSyntaxChar(LBRACE);
+    pushContext(new JSONPairContext());
+  }
+
+  private void readJSONObjectEnd() throws TException {
+    readJSONSyntaxChar(RBRACE);
+    popContext();
+  }
+
+  private void readJSONArrayStart() throws TException {
+    context_.read();
+    readJSONSyntaxChar(LBRACKET);
+    pushContext(new JSONListContext());
+  }
+
+  private void readJSONArrayEnd() throws TException {
+    readJSONSyntaxChar(RBRACKET);
+    popContext();
+  }
+
+  @Override
+  public TMessage readMessageBegin() throws TException {
+    readJSONArrayStart();
+    if (readJSONInteger() != VERSION) {
+      throw new TProtocolException(TProtocolException.BAD_VERSION,
+                                   "Message contained bad version.");
+    }
+    String name;
+    try {
+      name = readJSONString(false).toString("UTF-8");
+    }
+    catch (UnsupportedEncodingException ex) {
+      throw new TException("JVM DOES NOT SUPPORT UTF-8");
+    }
+    byte type = (byte) readJSONInteger();
+    int seqid = (int) readJSONInteger();
+    return new TMessage(name, type, seqid);
+  }
+
+  @Override
+  public void readMessageEnd() throws TException {
+    readJSONArrayEnd();
+  }
+
+  @Override
+  public TStruct readStructBegin() throws TException {
+    readJSONObjectStart();
+    return ANONYMOUS_STRUCT;
+  }
+
+  @Override
+  public void readStructEnd() throws TException {
+    readJSONObjectEnd();
+  }
+
+  @Override
+  public TField readFieldBegin() throws TException {
+    byte ch = reader_.peek();
+    byte type;
+    short id = 0;
+    if (ch == RBRACE[0]) {
+      type = TType.STOP;
+    }
+    else {
+      id = (short) readJSONInteger();
+      readJSONObjectStart();
+      type = getTypeIDForTypeName(readJSONString(false).get());
+    }
+    return new TField("", type, id);
+  }
+
+  @Override
+  public void readFieldEnd() throws TException {
+    readJSONObjectEnd();
+  }
+
+  @Override
+  public TMap readMapBegin() throws TException {
+    readJSONArrayStart();
+    byte keyType = getTypeIDForTypeName(readJSONString(false).get());
+    byte valueType = getTypeIDForTypeName(readJSONString(false).get());
+    int size = (int)readJSONInteger();
+    readJSONObjectStart();
+    return new TMap(keyType, valueType, size);
+  }
+
+  @Override
+  public void readMapEnd() throws TException {
+    readJSONObjectEnd();
+    readJSONArrayEnd();
+  }
+
+  @Override
+  public TList readListBegin() throws TException {
+    readJSONArrayStart();
+    byte elemType = getTypeIDForTypeName(readJSONString(false).get());
+    int size = (int)readJSONInteger();
+    return new TList(elemType, size);
+  }
+
+  @Override
+  public void readListEnd() throws TException {
+    readJSONArrayEnd();
+  }
+
+  @Override
+  public TSet readSetBegin() throws TException {
+    readJSONArrayStart();
+    byte elemType = getTypeIDForTypeName(readJSONString(false).get());
+    int size = (int)readJSONInteger();
+    return new TSet(elemType, size);
+  }
+
+  @Override
+  public void readSetEnd() throws TException {
+    readJSONArrayEnd();
+  }
+
+  @Override
+  public boolean readBool() throws TException {
+    return (readJSONInteger() == 0 ? false : true);
+  }
+
+  @Override
+  public byte readByte() throws TException {
+    return (byte) readJSONInteger();
+  }
+
+  @Override
+  public short readI16() throws TException {
+    return (short) readJSONInteger();
+  }
+
+  @Override
+  public int readI32() throws TException {
+    return (int) readJSONInteger();
+  }
+
+  @Override
+  public long readI64() throws TException {
+    return (long) readJSONInteger();
+  }
+
+  @Override
+  public double readDouble() throws TException {
+    return readJSONDouble();
+  }
+
+  @Override
+  public String readString() throws TException {
+    try {
+      return readJSONString(false).toString("UTF-8");
+    }
+    catch (UnsupportedEncodingException ex) {
+      throw new TException("JVM DOES NOT SUPPORT UTF-8");
+    }
+  }
+
+  @Override
+  public ByteBuffer readBinary() throws TException {
+    return ByteBuffer.wrap(readJSONBase64());
+  }
+
 }
 

@@ -1,408 +1,482 @@
 /*
- * Copyright 1999-2011 Alibaba Group.
- *  
+ * Copyright 2010-2012 sshj contributors
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *  
- *      http://www.apache.org/licenses/LICENSE-2.0
- *  
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ * This file may incorporate work covered by the following copyright and
+ * permission notice:
+ *
+ *     Licensed to the Apache Software Foundation (ASF) under one
+ *     or more contributor license agreements.  See the NOTICE file
+ *     distributed with this work for additional information
+ *     regarding copyright ownership.  The ASF licenses this file
+ *     to you under the Apache License, Version 2.0 (the
+ *     "License"); you may not use this file except in compliance
+ *     with the License.  You may obtain a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *      Unless required by applicable law or agreed to in writing,
+ *      software distributed under the License is distributed on an
+ *      "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ *      KIND, either express or implied.  See the License for the
+ *      specific language governing permissions and limitations
+ *      under the License.
  */
-package com.alibaba.dubbo.common.json;
+package net.schmizz.sshj.common;
 
-import java.io.IOException;
-import java.lang.reflect.Array;
-import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.io.UnsupportedEncodingException;
+import java.math.BigInteger;
+import java.security.GeneralSecurityException;
+import java.security.PublicKey;
+import java.util.Arrays;
 
-import com.alibaba.dubbo.common.bytecode.Wrapper;
-import com.alibaba.dubbo.common.utils.Stack;
-import com.alibaba.dubbo.common.utils.StringUtils;
+public class Buffer<T extends Buffer<T>> {
 
-/**
- * JSON to Object visitor.
- * 
- * @author qian.lei.
- */
+    public static class BufferException
+            extends SSHException {
 
-class J2oVisitor implements JSONVisitor
-{
-	public static final boolean[] EMPTY_BOOL_ARRAY = new boolean[0];
+        public BufferException(String message) {
+            super(message);
+        }
+    }
 
-	public static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
+    public static final class PlainBuffer
+            extends Buffer<PlainBuffer> {
 
-	public static final char[] EMPTY_CHAR_ARRAY = new char[0];
+        public PlainBuffer() {
+            super();
+        }
 
-	public static final short[] EMPTY_SHORT_ARRAY = new short[0];
+        public PlainBuffer(Buffer<?> from) {
+            super(from);
+        }
 
-	public static final int[] EMPTY_INT_ARRAY = new int[0];
+        public PlainBuffer(byte[] b) {
+            super(b);
+        }
 
-	public static final long[] EMPTY_LONG_ARRAY = new long[0];
+        public PlainBuffer(int size) {
+            super(size);
+        }
+    }
 
-	public static final float[] EMPTY_FLOAT_ARRAY = new float[0];
+    /** The default size for a {@code Buffer} (256 bytes) */
+    public static final int DEFAULT_SIZE = 256;
 
-	public static final double[] EMPTY_DOUBLE_ARRAY = new double[0];
+    /** The maximum valid size of buffer (i.e. biggest power of two that can be represented as an int - 2^30) */
+    public static final int MAX_SIZE = (1 << 30); 
 
-	public static final String[] EMPTY_STRING_ARRAY = new String[0];
+    protected static int getNextPowerOf2(int i) {
+        int j = 1;
+        while (j < i) {
+            j <<= 1;
+            if (j <= 0) throw new IllegalArgumentException("Cannot get next power of 2; "+i+" is too large"); 
+        }
+        return j;
+    }
 
-	private Class<?>[] mTypes;
+    protected byte[] data;
+    protected int rpos;
+    protected int wpos;
 
-	private Class<?> mType = Object[].class;
+    /** @see #DEFAULT_SIZE */
+    public Buffer() {
+        this(DEFAULT_SIZE);
+    }
 
-	private Object mValue;
+    public Buffer(Buffer<?> from) {
+        data = new byte[(wpos = from.wpos - from.rpos)];
+        System.arraycopy(from.data, from.rpos, data, 0, wpos);
+    }
 
-	private Wrapper mWrapper;
+    public Buffer(byte[] data) {
+        this(data, true);
+    }
 
-	private JSONConverter mConverter;
+    public Buffer(int size) {
+        this(new byte[getNextPowerOf2(size)], false);
+    }
 
-	private Stack<Object> mStack = new Stack<Object>();
+    private Buffer(byte[] data, boolean read) {
+        this.data = data;
+        rpos = 0;
+        wpos = read ? data.length : 0;
+    }
 
-	J2oVisitor(Class<?> type, JSONConverter jc)
-	{
-		mType = type;
-		mConverter = jc;
-	}
+    public byte[] array() {
+        return data;
+    }
 
-	J2oVisitor(Class<?>[] types, JSONConverter jc)
-	{
-		mTypes = types;
-		mConverter = jc;
-	}
+    public int available() {
+        return wpos - rpos;
+    }
 
-	public void begin()
-	{}
+    /** Resets this buffer. The object becomes ready for reuse. */
+    public void clear() {
+        rpos = 0;
+        wpos = 0;
+    }
 
-	public Object end(Object obj, boolean isValue) throws ParseException
-	{
-		mStack.clear();
-		try {
-			return mConverter.readValue(mType, obj);
-		} catch (IOException e) {
-			throw new IllegalStateException(e.getMessage(), e);
-		}
-	}
+    public int rpos() {
+        return rpos;
+    }
 
-	public void objectBegin() throws ParseException
-	{
-		mStack.push(mValue);
-		mStack.push(mType);
-		mStack.push(mWrapper);
+    public void rpos(int rpos) {
+        this.rpos = rpos;
+    }
 
-		if( mType == Object.class || Map.class.isAssignableFrom(mType) )
-		{
-			if (! mType.isInterface() && mType != Object.class) {
-				try {
-					mValue = mType.newInstance();
-				} catch (Exception e) {
-					throw new IllegalStateException(e.getMessage(), e);
-				}
-			} else if (mType == ConcurrentMap.class) {
-				mValue = new ConcurrentHashMap<String, Object>();
-			} else {
-				mValue = new HashMap<String, Object>();
-			}
-			mWrapper = null;
-		} else {
-			try {
-				mValue = mType.newInstance();
-				mWrapper = Wrapper.getWrapper(mType);
-			} catch(IllegalAccessException e){ 
-				throw new ParseException(StringUtils.toString(e)); 
-			} catch(InstantiationException e){ 
-				throw new ParseException(StringUtils.toString(e)); 
-			}
-		}
-	}
+    public int wpos() {
+        return wpos;
+    }
 
-	public Object objectEnd(int count)
-	{
-		Object ret = mValue;
-		mWrapper = (Wrapper)mStack.pop();
-		mType = (Class<?>)mStack.pop();
-		mValue = mStack.pop();
-		return ret;
-	}
+    public void wpos(int wpos) {
+        ensureCapacity(wpos - this.wpos);
+        this.wpos = wpos;
+    }
 
-	public void objectItem(String name)
-	{
-		mStack.push(name); // push name.
-		mType = ( mWrapper == null ? Object.class : mWrapper.getPropertyType(name) );
-	}
+    protected void ensureAvailable(int a)
+            throws BufferException {
+        if (available() < a)
+            throw new BufferException("Underflow");
+    }
 
-	@SuppressWarnings("unchecked")
-	public void objectItemValue(Object obj, boolean isValue) throws ParseException
-	{
-		String name = (String)mStack.pop();  // pop name.
-		if( mWrapper == null )
-		{
-			((Map<String, Object>)mValue).put(name, obj);
-		}
-		else
-		{
-			if( mType != null )
-			{
-				if( isValue && obj != null )
-				{
-					try
-					{
-						obj = mConverter.readValue(mType, obj);
-					}
-					catch(IOException e)
-					{
-						throw new ParseException(StringUtils.toString(e));
-					}
-				}
-				if (mValue instanceof Throwable && "message".equals(name)) {
-					try {
-						Field field = Throwable.class.getDeclaredField("detailMessage");
-						if (! field.isAccessible()) {
-							field.setAccessible(true);
-						}
-						field.set(mValue, obj);
-					} catch (NoSuchFieldException e) {
-						throw new ParseException(StringUtils.toString(e));
-					} catch (IllegalAccessException e) {
-						throw new ParseException(StringUtils.toString(e));
-					}
-				} else if (! CLASS_PROPERTY.equals(name)) {
-					mWrapper.setPropertyValue(mValue, name, obj);
-				}
-			}
-		}
-	}
+    public void ensureCapacity(int capacity) {
+        if (data.length - wpos < capacity) {
+            int cw = wpos + capacity;
+            byte[] tmp = new byte[getNextPowerOf2(cw)];
+            System.arraycopy(data, 0, tmp, 0, data.length);
+            data = tmp;
+        }
+    }
 
-	public void arrayBegin() throws ParseException
-	{
-		mStack.push(mType);
+    /** Compact this {@link SSHPacket} */
+    public void compact() {
+        System.err.println("COMPACTING");
+        if (available() > 0)
+            System.arraycopy(data, rpos, data, 0, wpos - rpos);
+        wpos -= rpos;
+        rpos = 0;
+    }
 
-		if( mType.isArray() )
-			mType = mType.getComponentType();
-		else if( mType == Object.class || Collection.class.isAssignableFrom(mType) )
-			mType = Object.class;
-		else
-			throw new ParseException("Convert error, can not load json array data into class [" + mType.getName() + "].");
-	}
+    public byte[] getCompactData() {
+        final int len = available();
+        if (len > 0) {
+            byte[] b = new byte[len];
+            System.arraycopy(data, rpos, b, 0, len);
+            return b;
+        } else
+            return new byte[0];
+    }
 
-	@SuppressWarnings("unchecked")
-	public Object arrayEnd(int count) throws ParseException
-	{
-		Object ret;
-		mType = (Class<?>)mStack.get(-1-count);
+    /**
+     * Read an SSH boolean byte
+     *
+     * @return the {@code true} or {@code false} value read
+     */
+    public boolean readBoolean()
+            throws BufferException {
+        return readByte() != 0;
+    }
 
-		if( mType.isArray() )
-		{
-			ret = toArray(mType.getComponentType(), mStack, count);
-		}
-		else
-		{
-			Collection<Object> items;
-			if( mType == Object.class || Collection.class.isAssignableFrom(mType)) {
-				if (! mType.isInterface() && mType != Object.class) {
-					try {
-						items = (Collection<Object>) mType.newInstance();
-					} catch (Exception e) {
-						throw new IllegalStateException(e.getMessage(), e);
-					}
-				} else if (mType.isAssignableFrom(ArrayList.class)) { // List
-					items = new ArrayList<Object>(count);
-				} else if (mType.isAssignableFrom(HashSet.class)) { // Set
-					items = new HashSet<Object>(count);
-				} else if (mType.isAssignableFrom(LinkedList.class)) { // Queue
-					items = new LinkedList<Object>();
-				} else { // Other
-					items = new ArrayList<Object>(count);
-				}
-			} else {
-				throw new ParseException("Convert error, can not load json array data into class [" + mType.getName() + "].");
-			}
-			for(int i=0;i<count;i++)
-				items.add(mStack.remove(i-count));
-			ret = items;
-		}
-		mStack.pop();
-		return ret;
-	}
+    /**
+     * Puts an SSH boolean value
+     *
+     * @param b the value
+     *
+     * @return this
+     */
+    public T putBoolean(boolean b) {
+        return putByte(b ? (byte) 1 : (byte) 0);
+    }
 
-	public void arrayItem(int index) throws ParseException
-	{
-		if( mTypes != null && mStack.size() == index+1 )
-		{
-			if( index < mTypes.length )
-				mType = mTypes[index];
-			else
-				throw new ParseException("Can not load json array data into [" + name(mTypes) + "].");
-		}
-	}
+    /**
+     * Read a byte from the buffer
+     *
+     * @return the byte read
+     */
+    public byte readByte()
+            throws BufferException {
+        ensureAvailable(1);
+        return data[rpos++];
+    }
 
-	public void arrayItemValue(int index, Object obj, boolean isValue) throws ParseException
-	{
-		if( isValue && obj != null )
-		{
-			try
-			{
-				obj = mConverter.readValue(mType, obj);
-			}
-			catch(IOException e)
-			{
-				throw new ParseException(e.getMessage());
-			}
-		}
+    /**
+     * Writes a single byte into this buffer
+     *
+     * @param b
+     *
+     * @return this
+     */
+    @SuppressWarnings("unchecked")
+    public T putByte(byte b) {
+        ensureCapacity(1);
+        data[wpos++] = b;
+        return (T) this;
+    }
 
-		mStack.push(obj);
-	}
+    /**
+     * Read an SSH byte-array
+     *
+     * @return the byte-array read
+     */
+    public byte[] readBytes()
+            throws BufferException {
+        int len = readUInt32AsInt();
+        if (len < 0 || len > 32768)
+            throw new BufferException("Bad item length: " + len);
+        byte[] b = new byte[len];
+        readRawBytes(b);
+        return b;
+    }
 
-	private static Object toArray(Class<?> c, Stack<Object> list, int len) throws ParseException
-	{
-		if( c == String.class )
-		{
-			if( len == 0 )
-			{
-				return EMPTY_STRING_ARRAY;
-			}
-			else
-			{
-				Object o;
-				String ss[] = new String[len];
-				for(int i=len-1;i>=0;i--)
-				{
-					o = list.pop();
-					ss[i] = ( o == null ? null : o.toString() );
-				}
-				return ss;
-			}
-		}
-		if( c == boolean.class )
-		{
-			if( len == 0 ) return EMPTY_BOOL_ARRAY;
-			Object o;
-			boolean[] ret = new boolean[len];
-			for(int i=len-1;i>=0;i--)
-			{
-				o = list.pop();
-				if( o instanceof Boolean )
-					ret[i] = ((Boolean)o).booleanValue();
-			}
-			return ret;
-		}
-		if( c == int.class )
-		{
-			if( len == 0 ) return EMPTY_INT_ARRAY;
-			Object o;
-			int[] ret = new int[len];
-			for(int i=len-1;i>=0;i--)
-			{
-				o = list.pop();
-				if( o instanceof Number )
-					ret[i] = ((Number)o).intValue();
-			}
-			return ret;
-		}
-		if( c == long.class )
-		{
-			if( len == 0 ) return EMPTY_LONG_ARRAY;
-			Object o;
-			long[] ret = new long[len];
-			for(int i=len-1;i>=0;i--)
-			{
-				o = list.pop();
-				if( o instanceof Number )
-					ret[i] = ((Number)o).longValue();
-			}
-			return ret;
-		}
-		if( c == float.class )
-		{
-			if( len == 0 ) return EMPTY_FLOAT_ARRAY;
-			Object o;
-			float[] ret = new float[len];
-			for(int i=len-1;i>=0;i--)
-			{
-				o = list.pop();
-				if( o instanceof Number )
-					ret[i] = ((Number)o).floatValue();
-			}
-			return ret;
-		}
-		if( c == double.class )
-		{
-			if( len == 0 ) return EMPTY_DOUBLE_ARRAY;
-			Object o;
-			double[] ret = new double[len];
-			for(int i=len-1;i>=0;i--)
-			{
-				o = list.pop();
-				if( o instanceof Number )
-					ret[i] = ((Number)o).doubleValue();
-			}
-			return ret;
-		}
-		if( c == byte.class )
-		{
-			if( len == 0 ) return EMPTY_BYTE_ARRAY;
-			Object o;
-			byte[] ret = new byte[len];
-			for(int i=len-1;i>=0;i--)
-			{
-				o = list.pop();
-				if( o instanceof Number )
-					ret[i] = ((Number)o).byteValue();
-			}
-			return ret;
-		}
-		if( c == char.class )
-		{
-			if( len == 0 ) return EMPTY_CHAR_ARRAY;
-			Object o;
-			char[] ret = new char[len];
-			for(int i=len-1;i>=0;i--)
-			{
-				o = list.pop();
-				if( o instanceof Character )
-					ret[i] = ((Character)o).charValue();
-			}
-			return ret;
-		}
-		if( c == short.class )
-		{
-			if( len == 0 ) return EMPTY_SHORT_ARRAY;
-			Object o;
-			short[] ret = new short[len];
-			for(int i=len-1;i>=0;i--)
-			{
-				o = list.pop();
-				if( o instanceof Number )
-					ret[i] = ((Number)o).shortValue();
-			}
-			return ret;
-		}
+    /**
+     * Writes Java byte-array as an SSH byte-array
+     *
+     * @param b Java byte-array
+     *
+     * @return this
+     */
+    public T putBytes(byte[] b) {
+        return putBytes(b, 0, b.length);
+    }
 
-		Object ret = Array.newInstance(c, len);
-		for(int i=len-1;i>=0;i--)
-			Array.set(ret, i, list.pop());
-		return ret;
-	}
+    /**
+     * Writes Java byte-array as an SSH byte-array
+     *
+     * @param b   Java byte-array
+     * @param off offset
+     * @param len length
+     *
+     * @return this
+     */
+    public T putBytes(byte[] b, int off, int len) {
+        return putUInt32(len - off).putRawBytes(b, off, len);
+    }
 
-	private static String name(Class<?>[] types)
-	{
-		StringBuilder sb = new StringBuilder();
-		for(int i=0;i<types.length;i++)
-		{
-			if( i > 0 )
-				sb.append(", ");
-			sb.append(types[i].getName());
-		}
-		return sb.toString();
-	}
+    public void readRawBytes(byte[] buf)
+            throws BufferException {
+        readRawBytes(buf, 0, buf.length);
+    }
+
+    public void readRawBytes(byte[] buf, int off, int len)
+            throws BufferException {
+        ensureAvailable(len);
+        System.arraycopy(data, rpos, buf, off, len);
+        rpos += len;
+    }
+
+    public T putRawBytes(byte[] d) {
+        return putRawBytes(d, 0, d.length);
+    }
+
+    @SuppressWarnings("unchecked")
+    public T putRawBytes(byte[] d, int off, int len) {
+        ensureCapacity(len);
+        System.arraycopy(d, off, data, wpos, len);
+        wpos += len;
+        return (T) this;
+    }
+
+    /**
+     * Copies the contents of provided buffer into this buffer
+     *
+     * @param buffer the {@code Buffer} to copy
+     *
+     * @return this
+     */
+    @SuppressWarnings("unchecked")
+    public T putBuffer(Buffer<? extends Buffer<?>> buffer) {
+        if (buffer != null) {
+            int r = buffer.available();
+            ensureCapacity(r);
+            System.arraycopy(buffer.data, buffer.rpos, data, wpos, r);
+            wpos += r;
+        }
+        return (T) this;
+    }
+
+    public int readUInt32AsInt()
+            throws BufferException {
+        return (int) readUInt32();
+    }
+
+    public long readUInt32()
+            throws BufferException {
+        ensureAvailable(4);
+        return data[rpos++] << 24 & 0xff000000L |
+                data[rpos++] << 16 & 0x00ff0000L |
+                data[rpos++] << 8 & 0x0000ff00L |
+                data[rpos++] & 0x000000ffL;
+    }
+
+    /**
+     * Writes a uint32 integer
+     *
+     * @param uint32
+     *
+     * @return this
+     */
+    @SuppressWarnings("unchecked")
+    public T putUInt32(long uint32) {
+        ensureCapacity(4);
+        if (uint32 < 0 || uint32 > 0xffffffffL)
+            throw new RuntimeException("Invalid value: " + uint32);
+        data[wpos++] = (byte) (uint32 >> 24);
+        data[wpos++] = (byte) (uint32 >> 16);
+        data[wpos++] = (byte) (uint32 >> 8);
+        data[wpos++] = (byte) uint32;
+        return (T) this;
+    }
+
+    /**
+     * Read an SSH multiple-precision integer
+     *
+     * @return the MP integer as a {@code BigInteger}
+     */
+    public BigInteger readMPInt()
+            throws BufferException {
+        return new BigInteger(readBytes());
+    }
+
+    public T putMPInt(BigInteger bi) {
+        final byte[] asBytes = bi.toByteArray();
+        putUInt32(asBytes.length);
+        return putRawBytes(asBytes);
+    }
+
+    public long readUInt64()
+            throws BufferException {
+        long uint64 = (readUInt32() << 32) + (readUInt32() & 0xffffffffL);
+        if (uint64 < 0)
+            throw new BufferException("Cannot handle values > Long.MAX_VALUE");
+        return uint64;
+    }
+
+    @SuppressWarnings("unchecked")
+    public T putUInt64(long uint64) {
+        if (uint64 < 0)
+            throw new RuntimeException("Invalid value: " + uint64);
+        data[wpos++] = (byte) (uint64 >> 56);
+        data[wpos++] = (byte) (uint64 >> 48);
+        data[wpos++] = (byte) (uint64 >> 40);
+        data[wpos++] = (byte) (uint64 >> 32);
+        data[wpos++] = (byte) (uint64 >> 24);
+        data[wpos++] = (byte) (uint64 >> 16);
+        data[wpos++] = (byte) (uint64 >> 8);
+        data[wpos++] = (byte) uint64;
+        return (T) this;
+    }
+
+    /**
+     * Reads an SSH string
+     *
+     * @return the string as a Java {@code String}
+     */
+    public String readString()
+            throws BufferException {
+        int len = readUInt32AsInt();
+        if (len < 0 || len > 32768)
+            throw new BufferException("Bad item length: " + len);
+        ensureAvailable(len);
+        String s;
+        try {
+            s = new String(data, rpos, len, "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            throw new SSHRuntimeException(e);
+        }
+        rpos += len;
+        return s;
+    }
+
+    /**
+     * Reads an SSH string
+     *
+     * @return the string as a byte-array
+     */
+    public byte[] readStringAsBytes()
+            throws BufferException {
+        return readBytes();
+    }
+
+    public T putString(byte[] str) {
+        return putBytes(str);
+    }
+
+    public T putString(byte[] str, int offset, int len) {
+        return putBytes(str, offset, len);
+    }
+
+    public T putString(String string) {
+        return putString(string.getBytes(IOUtils.UTF8));
+    }
+
+    /**
+     * Writes a char-array as an SSH string and then blanks it out.
+     * <p/>
+     * This is useful when a plaintext password needs to be sent. If {@code str} is {@code null}, an empty string is
+     * written.
+     *
+     * @param str (null-ok) the string as a character array
+     *
+     * @return this
+     */
+    @SuppressWarnings("unchecked")
+    public T putSensitiveString(char[] str) {
+        if (str == null)
+            return putString("");
+        putUInt32(str.length);
+        ensureCapacity(str.length);
+        for (char c : str)
+            data[wpos++] = (byte) c;
+        Arrays.fill(str, ' ');
+        return (T) this;
+    }
+
+    public PublicKey readPublicKey()
+            throws BufferException {
+        try {
+            final String type = readString();
+            return KeyType.fromString(type).readPubKeyFromBuffer(type, this);
+        } catch (GeneralSecurityException e) {
+            throw new SSHRuntimeException(e);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    public T putPublicKey(PublicKey key) {
+        KeyType.fromKey(key).putPubKeyIntoBuffer(key, this);
+        return (T) this;
+    }
+
+    public T putSignature(String sigFormat, byte[] sigData) {
+        final byte[] sig = new PlainBuffer().putString(sigFormat).putBytes(sigData).getCompactData();
+        return putString(sig);
+    }
+
+    /**
+     * Gives a readable snapshot of the buffer in hex. This is useful for debugging.
+     *
+     * @return snapshot of the buffer as a hex string with each octet delimited by a space
+     */
+    public String printHex() {
+        return ByteArrayUtils.printHex(array(), rpos(), available());
+    }
+
+    @Override
+    public String toString() {
+        return "Buffer [rpos=" + rpos + ", wpos=" + wpos + ", size=" + data.length + "]";
+    }
+
 }
+

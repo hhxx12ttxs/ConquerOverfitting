@@ -1,4 +1,5 @@
-package org.apache.lucene.analysis.fi;
+package org.apache.lucene.analysis.ar;
+
 
 /**
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -17,244 +18,134 @@ package org.apache.lucene.analysis.fi;
  * limitations under the License.
  */
 
-/* 
- * This algorithm is updated based on code located at:
- * http://members.unine.ch/jacques.savoy/clef/
- * 
- * Full copyright for that code follows:
- */
-
-/*
- * Copyright (c) 2005, Jacques Savoy
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without 
- * modification, are permitted provided that the following conditions are met:
- *
- * Redistributions of source code must retain the above copyright notice, this 
- * list of conditions and the following disclaimer. Redistributions in binary 
- * form must reproduce the above copyright notice, this list of conditions and
- * the following disclaimer in the documentation and/or other materials 
- * provided with the distribution. Neither the name of the author nor the names 
- * of its contributors may be used to endorse or promote products derived from 
- * this software without specific prior written permission.
- * 
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" 
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE 
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE 
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE 
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF 
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN 
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- */
-
 import static org.apache.lucene.analysis.util.StemmerUtil.*;
 
 /**
- * Light Stemmer for Finnish.
- * <p>
- * This stemmer implements the algorithm described in:
- * <i>Report on CLEF-2003 Monolingual Tracks</i>
- * Jacques Savoy
+ *  Stemmer for Arabic.
+ *  <p>
+ *  Stemming  is done in-place for efficiency, operating on a termbuffer.
+ *  <p>
+ *  Stemming is defined as:
+ *  <ul>
+ *  <li> Removal of attached definite article, conjunction, and prepositions.
+ *  <li> Stemming of common suffixes.
+ * </ul>
+ *
  */
-public class FinnishLightStemmer {
+public class ArabicStemmer {
+  public static final char ALEF = '\u0627';
+  public static final char BEH = '\u0628';
+  public static final char TEH_MARBUTA = '\u0629';
+  public static final char TEH = '\u062A';
+  public static final char FEH = '\u0641';
+  public static final char KAF = '\u0643';
+  public static final char LAM = '\u0644';
+  public static final char NOON = '\u0646';
+  public static final char HEH = '\u0647';
+  public static final char WAW = '\u0648';
+  public static final char YEH = '\u064A';
   
+  public static final char prefixes[][] = {
+      ("" + ALEF + LAM).toCharArray(), 
+      ("" + WAW + ALEF + LAM).toCharArray(), 
+      ("" + BEH + ALEF + LAM).toCharArray(),
+      ("" + KAF + ALEF + LAM).toCharArray(),
+      ("" + FEH + ALEF + LAM).toCharArray(),
+      ("" + LAM + LAM).toCharArray(),
+      ("" + WAW).toCharArray(),
+  };
+  
+  public static final char suffixes[][] = {
+    ("" + HEH + ALEF).toCharArray(), 
+    ("" + ALEF + NOON).toCharArray(), 
+    ("" + ALEF + TEH).toCharArray(), 
+    ("" + WAW + NOON).toCharArray(), 
+    ("" + YEH + NOON).toCharArray(), 
+    ("" + YEH + HEH).toCharArray(),
+    ("" + YEH + TEH_MARBUTA).toCharArray(),
+    ("" + HEH).toCharArray(),
+    ("" + TEH_MARBUTA).toCharArray(),
+    ("" + YEH).toCharArray(),
+};
+  
+  /**
+   * Stem an input buffer of Arabic text.
+   * 
+   * @param s input buffer
+   * @param len length of input buffer
+   * @return length of input buffer after normalization
+   */
   public int stem(char s[], int len) {
-    if (len < 4)
-      return len;
-    
-    for (int i = 0; i < len; i++)
-      switch(s[i]) {
-        case 'ä':
-        case 'ĺ': s[i] = 'a'; break;
-        case 'ö': s[i] = 'o'; break;
-      }
-    
-    len = step1(s, len);
-    len = step2(s, len);
-    len = step3(s, len);
-    len = norm1(s, len);
-    len = norm2(s, len);
-    return len;
-  }
-  
-  private int step1(char s[], int len) {
-    if (len > 8) {
-      if (endsWith(s, len, "kin"))
-        return step1(s, len-3);
-      if (endsWith(s, len, "ko"))
-        return step1(s, len-2);
-    }
-    
-    if (len > 11) {
-      if (endsWith(s, len, "dellinen"))
-        return len-8;
-      if (endsWith(s, len, "dellisuus"))
-        return len-9;
-    }
-    return len;
-  }
-  
-  private int step2(char s[], int len) {
-    if (len > 5) {
-      if (endsWith(s, len, "lla")
-          || endsWith(s, len, "tse")
-          || endsWith(s, len, "sti"))
-        return len-3;
-      
-      if (endsWith(s, len, "ni"))
-        return len-2;
-      
-      if (endsWith(s, len, "aa"))
-        return len-1; // aa -> a
-    }
+    len = stemPrefix(s, len);
+    len = stemSuffix(s, len);
     
     return len;
   }
   
-  private int step3(char s[], int len) {
-    if (len > 8) {
-      if (endsWith(s, len, "nnen")) {
-        s[len-4] = 's';
-        return len-3;
-      }
-      
-      if (endsWith(s, len, "ntena")) {
-        s[len-5] = 's';
-        return len-4;
-      }
-      
-      if (endsWith(s, len, "tten"))
-        return len-4;
-      
-      if (endsWith(s, len, "eiden"))
-        return len-5;
-    }
-    
-    if (len > 6) {
-      if (endsWith(s, len, "neen")
-          || endsWith(s, len, "niin")
-          || endsWith(s, len, "seen")
-          || endsWith(s, len, "teen")
-          || endsWith(s, len, "inen"))
-          return len-4;
-      
-      if (s[len-3] == 'h' && isVowel(s[len-2]) && s[len-1] == 'n')
-        return len-3;
-      
-      if (endsWith(s, len, "den")) {
-        s[len-3] = 's';
-        return len-2;
-      }
-      
-      if (endsWith(s, len, "ksen")) {
-        s[len-4] = 's';
-        return len-3;
-      }
-      
-      if (endsWith(s, len, "ssa")
-          || endsWith(s, len, "sta")
-          || endsWith(s, len, "lla")
-          || endsWith(s, len, "lta")
-          || endsWith(s, len, "tta")
-          || endsWith(s, len, "ksi")
-          || endsWith(s, len, "lle"))
-        return len-3; 
-    }
-    
-    if (len > 5) {
-      if (endsWith(s, len, "na")
-          || endsWith(s, len, "ne"))
-        return len-2;
-      
-      if (endsWith(s, len, "nei"))
-        return len-3;
-    }
-    
-    if (len > 4) {
-      if (endsWith(s, len, "ja")
-          || endsWith(s, len, "ta"))
-        return len-2;
-      
-      if (s[len-1] == 'a')
-        return len-1;
-      
-      if (s[len-1] == 'n' && isVowel(s[len-2]))
-        return len-2;
-      
-      if (s[len-1] == 'n')
-        return len-1;
-    }
-    
+  /**
+   * Stem a prefix off an Arabic word.
+   * @param s input buffer
+   * @param len length of input buffer
+   * @return new length of input buffer after stemming.
+   */
+  public int stemPrefix(char s[], int len) {
+    for (int i = 0; i < prefixes.length; i++) 
+      if (startsWithCheckLength(s, len, prefixes[i]))
+        return deleteN(s, 0, len, prefixes[i].length);
+    return len;
+  }
+
+  /**
+   * Stem suffix(es) off an Arabic word.
+   * @param s input buffer
+   * @param len length of input buffer
+   * @return new length of input buffer after stemming
+   */
+  public int stemSuffix(char s[], int len) {
+    for (int i = 0; i < suffixes.length; i++) 
+      if (endsWithCheckLength(s, len, suffixes[i]))
+        len = deleteN(s, len - suffixes[i].length, len, suffixes[i].length);
     return len;
   }
   
-  private int norm1(char s[], int len) {
-    if (len > 5 && endsWith(s, len, "hde")) {
-        s[len-3] = 'k';
-        s[len-2] = 's';
-        s[len-1] = 'i';
+  /**
+   * Returns true if the prefix matches and can be stemmed
+   * @param s input buffer
+   * @param len length of input buffer
+   * @param prefix prefix to check
+   * @return true if the prefix matches and can be stemmed
+   */
+  boolean startsWithCheckLength(char s[], int len, char prefix[]) {
+    if (prefix.length == 1 && len < 4) { // wa- prefix requires at least 3 characters
+      return false;
+    } else if (len < prefix.length + 2) { // other prefixes require only 2.
+      return false;
+    } else {
+      for (int i = 0; i < prefix.length; i++)
+        if (s[i] != prefix[i])
+          return false;
+        
+      return true;
     }
-    
-    if (len > 4) {
-      if (endsWith(s, len, "ei") || endsWith(s, len, "at"))
-        return len-2;
-    }
-    
-    if (len > 3)
-      switch(s[len-1]) {
-        case 't':
-        case 's':
-        case 'j':
-        case 'e':
-        case 'a':
-        case 'i': return len-1;
-      }
-    
-    return len;
   }
   
-  private int norm2(char s[], int len) {
-    if (len > 8) {
-      if (s[len-1] == 'e' 
-          || s[len-1] == 'o' 
-          || s[len-1] == 'u')
-        len--;
+  /**
+   * Returns true if the suffix matches and can be stemmed
+   * @param s input buffer
+   * @param len length of input buffer
+   * @param suffix suffix to check
+   * @return true if the suffix matches and can be stemmed
+   */
+  boolean endsWithCheckLength(char s[], int len, char suffix[]) {
+    if (len < suffix.length + 2) { // all suffixes require at least 2 characters after stemming
+      return false;
+    } else {
+      for (int i = 0; i < suffix.length; i++)
+        if (s[len - suffix.length + i] != suffix[i])
+          return false;
+        
+      return true;
     }
-    
-    if (len > 4) {
-      if (s[len-1] == 'i')
-        len--;
-      
-      if (len > 4) {
-        char ch = s[0];
-        for (int i = 1; i < len; i++) {
-          if (s[i] == ch &&
-              (ch == 'k' || ch == 'p' || ch == 't'))
-            len = delete(s, i--, len);
-          else
-            ch = s[i];
-        }
-      }
-    }
-    
-    return len;
-  }
-  
-  private boolean isVowel(char ch) {
-    switch(ch) {
-      case 'a':
-      case 'e':
-      case 'i':
-      case 'o':
-      case 'u':
-      case 'y': return true;
-      default: return false;
-    }
-  }
+  }  
 }
 

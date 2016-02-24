@@ -1,240 +1,820 @@
-/*
- * SIP Communicator, the OpenSource Java VoIP and Instant Messaging client.
- *
- * Distributable under LGPL license.
- * See terms of license at gnu.org.
- */
-package net.java.sip.communicator.impl.media.transform;
+package org.apache.lucene.analysis.el;
+
+import org.apache.lucene.analysis.util.CharArraySet;
+import org.apache.lucene.util.Version;
+
+import java.util.Arrays;
 
 /**
- * When using TransformConnector, a RTP/RTCP packet is represented using 
- * RawPacket. RawPacket stores the buffer holding the RTP/RTCP packet, as well
- * as the inner offset and length of RTP/RTCP packet data.
- * 
- * After transformation, data is also store in RawPacket objects, either the 
- * original RawPacket (in place transformation), or a newly created RawPacket.
- * 
- * Besides packet info storage, RawPacket also provides some other operations
- * such as readInt() to ease the development process.
- * 
- * @author Werner Dittmann (Werner.Dittmann@t-online.de)
- * @author Bing SU (nova.su@gmail.com)
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
-public class RawPacket
-{
-    /**
-     * Byte array storing the content of this Packet
-     */
-    protected byte[] buffer;
+
+/**
+ * A stemmer for Greek words, according to: <i>Development of a Stemmer for the
+ * Greek Language.</i> Georgios Ntais
+ * <p>
+ * NOTE: Input is expected to be casefolded for Greek (including folding of final
+ * sigma to sigma), and with diacritics removed. This can be achieved with 
+ * either {@link GreekLowerCaseFilter} or ICUFoldingFilter.
+ * @lucene.experimental
+ */
+public class GreekStemmer {
+  public int stem(char s[], int len) {
+    if (len < 4) // too short
+      return len;
     
-    /**
-     * Start offset of the packet data inside buffer.
-     * Usually this value would be 0. But in order to be compatible with 
-     * RTPManager we store this info. (Not assuming the offset is always zero)
-     */
-    protected int offset;
+    final int origLen = len;
+    // "short rules": if it hits one of these, it skips the "long list"
+    len = rule0(s, len);
+    len = rule1(s, len);
+    len = rule2(s, len);
+    len = rule3(s, len);
+    len = rule4(s, len);
+    len = rule5(s, len);
+    len = rule6(s, len);
+    len = rule7(s, len);
+    len = rule8(s, len);
+    len = rule9(s, len);
+    len = rule10(s, len);
+    len = rule11(s, len);
+    len = rule12(s, len);
+    len = rule13(s, len);
+    len = rule14(s, len);
+    len = rule15(s, len);
+    len = rule16(s, len);
+    len = rule17(s, len);
+    len = rule18(s, len);
+    len = rule19(s, len);
+    len = rule20(s, len);
+    // "long list"
+    if (len == origLen)
+      len = rule21(s, len);
     
-    /**
-     * Length of this packet's data
-     */
-    protected int length;
+    return rule22(s, len);
+  }
 
-    /**
-     * Construct a RawPacket using specified value.
-     * 
-     * @param buffer Byte array holding the content of this Packet
-     * @param offset Start offset of packet content inside buffer
-     * @param length Length of the packet's data
-     */
-    public RawPacket(byte[] buffer, int offset, int length)
-    {
-        this.buffer = buffer;
-        this.offset = offset;
-        this.length = length;
+  private int rule0(char s[], int len) {
+    if (len > 9 && (endsWith(s, len, "??????????")
+        || endsWith(s, len, "??????????")))
+      return len - 4;
+    
+    if (len > 8 && (endsWith(s, len, "?????????")
+        || endsWith(s, len, "?????????")))
+      return len - 4;
+    
+    if (len > 8 && endsWith(s, len, "?????????"))
+      return len - 3;
+    
+    if (len > 7 && (endsWith(s, len, "????????")
+        || endsWith(s, len, "????????")))
+      return len - 4;
+    
+    if (len > 7 && endsWith(s, len, "????????"))
+      return len - 3;
+    
+    if (len > 7 && endsWith(s, len, "????????"))
+      return len - 2;
+    
+    if (len > 6 && (endsWith(s, len, "???????"))
+        || endsWith(s, len, "???????")
+        || endsWith(s, len, "???????")
+        || endsWith(s, len, "???????")
+        || endsWith(s, len, "???????")
+        || endsWith(s, len, "???????")
+        || endsWith(s, len, "???????")
+        || endsWith(s, len, "???????")
+        || endsWith(s, len, "???????")
+        || endsWith(s, len, "???????"))
+      return len - 4;
+    
+    if (len > 6 && endsWith(s, len, "???????"))
+      return len - 3;
+    
+    if (len > 6 && endsWith(s, len, "???????"))
+      return len - 2;
+    
+    if (len > 5 && (endsWith(s, len, "??????")
+        || endsWith(s, len, "??????")
+        || endsWith(s, len, "??????")
+        || endsWith(s, len, "??????")))
+      return len - 4;
+    
+    if (len > 5 && (endsWith(s, len, "??????")
+        || endsWith(s, len, "??????")
+        || endsWith(s, len, "??????")
+        || endsWith(s, len, "??????")
+        || endsWith(s, len, "??????")))
+      return len - 3;
+    
+    if (len > 4 && (endsWith(s, len, "?????")
+        || endsWith(s, len, "?????")
+        || endsWith(s, len, "?????")
+        || endsWith(s, len, "?????")))
+      return len - 3;
+    
+    if (len > 4 && (endsWith(s, len, "?????")
+        || endsWith(s, len, "?????")
+        || endsWith(s, len, "?????")))
+      return len - 2;
+    
+    if (len > 3 && endsWith(s, len, "????"))
+      return len - 2;
+    
+    if (len > 2 && endsWith(s, len, "???"))
+      return len - 1;
+    
+    return len;
+  }
+
+  private int rule1(char s[], int len) {
+    if (len > 4 && (endsWith(s, len, "????") || endsWith(s, len, "????"))) {
+      len -= 4;
+      if (!(endsWith(s, len, "??") ||
+          endsWith(s, len, "???") ||
+          endsWith(s, len, "???") ||
+          endsWith(s, len, "?????") ||
+          endsWith(s, len, "?????") ||
+          endsWith(s, len, "?????") ||
+          endsWith(s, len, "?????") ||
+          endsWith(s, len, "???") ||
+          endsWith(s, len, "???") ||
+          endsWith(s, len, "?????")))
+        len += 2; // add back -??
     }
+    return len;
+  }
+  
+  private int rule2(char s[], int len) {
+    if (len > 4 && (endsWith(s, len, "????") || endsWith(s, len, "????"))) {
+      len -= 4;
+      if (endsWith(s, len, "??") ||
+          endsWith(s, len, "??") ||
+          endsWith(s, len, "???") ||
+          endsWith(s, len, "??") ||
+          endsWith(s, len, "???") ||
+          endsWith(s, len, "???") ||
+          endsWith(s, len, "?????") ||
+          endsWith(s, len, "???"))
+        len += 2; // add back -??
+    }
+    return len;
+  }
+  
+  private int rule3(char s[], int len) {
+    if (len > 5 && (endsWith(s, len, "?????") || endsWith(s, len, "?????"))) {
+      len -= 5;
+      if (endsWith(s, len, "???") ||
+          endsWith(s, len, "??????") ||
+          endsWith(s, len, "?????") ||
+          endsWith(s, len, "???") ||
+          endsWith(s, len, "????") ||
+          endsWith(s, len, "??") ||
+          endsWith(s, len, "?") ||
+          endsWith(s, len, "??") ||
+          endsWith(s, len, "??") ||
+          endsWith(s, len, "???") ||
+          endsWith(s, len, "????") ||
+          endsWith(s, len, "??") ||
+          endsWith(s, len, "??") ||
+          endsWith(s, len, "????") ||
+          endsWith(s, len, "??"))
+        len += 3; // add back -???
+    }
+    return len;
+  }
+  
+  private static final CharArraySet exc4 = new CharArraySet(Version.LUCENE_31,
+      Arrays.asList("?", "?", "??", "???", "?", "?", "??", "???"),
+      false);
+  
+  private int rule4(char s[], int len) {   
+    if (len > 3 && (endsWith(s, len, "???") || endsWith(s, len, "???"))) {
+      len -= 3;
+      if (exc4.contains(s, 0, len))
+        len++; // add back -?
+    }
+    return len;
+  }
+  
+  private int rule5(char s[], int len) {
+    if (len > 2 && endsWith(s, len, "??")) {
+      len -= 2;
+      if (endsWithVowel(s, len))
+        len++; // add back -?
+    } else if (len > 3 && (endsWith(s, len, "???") || endsWith(s, len, "???"))) {
+      len -= 3;
+      if (endsWithVowel(s, len))
+        len++; // add back -?
+    }
+    return len;
+  }
 
-    /**
-     * Get buffer containing the content of this packet
-     *
-     * @return buffer containing the content of this packet
-     */
-    public byte[] getBuffer()
-    {
-        return this.buffer;
+  private static final CharArraySet exc6 = new CharArraySet(Version.LUCENE_31,
+      Arrays.asList("??", "??", "???", "????", "???????", "??", "????",
+          "?????", "???", "????", "???", "????", "????", "??????", "?????",
+          "????", "????", "???????", "????", "????", "???", "???", "???????",
+          "????", "????", "??????", "??????", "???????", "??????", "????",
+          "?????", "????", "????", "?????", "?????", "???"), 
+       false);
+
+  private int rule6(char s[], int len) {
+    boolean removed = false;
+    if (len > 3 && (endsWith(s, len, "???") || endsWith(s, len, "???"))) {
+      len -= 3;
+      removed = true;
+    } else if (len > 4 && (endsWith(s, len, "????") || endsWith(s, len, "????"))) {
+      len -= 4;
+      removed = true;
     }
     
-    /**
-     * Get the length of this packet's data
-     *
-     * @return length of this packet's data
-     */
-    public int getLength()
-    {
-        return this.length;
+    if (removed) {
+      if (endsWithVowel(s, len) || exc6.contains(s, 0, len))
+        len += 2; // add back -??
+    }
+    return len;
+  }
+  
+  private static final CharArraySet exc7 = new CharArraySet(Version.LUCENE_31,
+      Arrays.asList("????", "????", "????", "?????", "????", "???", "???",
+          "???", "????", "???", "???", "?"), 
+      false);
+  
+  private int rule7(char s[], int len) {
+    if (len == 5 && endsWith(s, len, "?????"))
+      return len - 1;
+    
+    if (len > 7 && endsWith(s, len, "???????"))
+      len -= 7;
+    else if (len > 6 && endsWith(s, len, "??????"))
+      len -= 6;
+    else if (len > 5 && (endsWith(s, len, "?????") ||
+             endsWith(s, len, "?????") ||
+             endsWith(s, len, "?????")))
+      len -= 5;
+    
+    if (len > 3 && endsWith(s, len, "???")) {
+      len -= 3;
+      if (exc7.contains(s, 0, len))
+        len += 2; // add back -??
     }
 
-    /**
-     * Get the start offset of this packet's data inside storing buffer
-     *
-     * @return start offset of this packet's data inside storing buffer
-     */
-    public int getOffset()
-    {
-        return this.offset;
-    }
+    return len;
+  }
 
-    /**
-     * Read a integer from this packet at specified offset
-     *
-     * @param off start offset of the integer to be read
-     * @return the integer to be read
-     */
-    public int readInt(int off)
-    {
-        return (this.buffer[this.offset + off + 0] << 24) |
-               ((this.buffer[this.offset + off + 1] & 0xff) << 16) |
-               ((this.buffer[this.offset + off + 2] & 0xff) << 8)  |
-                (this.buffer[this.offset + off + 3] & 0xff);
-    }
+  private static final CharArraySet exc8a = new CharArraySet(Version.LUCENE_31,
+      Arrays.asList("??", "??"),
+      false);
 
-    /**
-     * Read a short from this packet at specified offset
-     *
-     * @param off start offset of this short
-     * @return short value at offset
-     */
-    public short readShort(int off)
-    {
-        return (short) ((this.buffer[this.offset + off + 0] << 8) |
-                        (this.buffer[this.offset + off + 1] & 0xff));
+  private static final CharArraySet exc8b = new CharArraySet(Version.LUCENE_31,
+      Arrays.asList("?????", "?????", "?????", "?", "???????", "?", "???????",
+          "??????", "??????", "?????", "??????", "?", "????????", "?", "???",
+          "?", "?????", "??", "?????", "??????", "????????", "?????",
+          "???????", "???", "?????", "????", "????????", "?", "??????", "??",
+          "???", "???", "???", "???", "????", "????????", "???", "???",
+          "??????", "?", "????", "??", "????", "???", "???", "??????", "?????",
+          "???", "???", "??", "????", "????", "????", "?", "??", "????",
+          "?????", "????", "????", "?????", "????", "????", "??????", "???",
+          "????", "???????", "??????", "??????", "????", "????", "?????",
+          "???", "???????????", "???????", "????", "???????", "???",
+          "???????????", "???????????", "????", "????????", "????????",
+          "??????", "???????", "?????", "??????", "????", "???????", "???????",
+          "????", "???", "???", "??????", "??????", "?????????", "???????"),
+      false);
+  
+  private int rule8(char s[], int len) {
+    boolean removed = false;
+    
+    if (len > 8 && endsWith(s, len, "????????")) {
+      len -= 8;
+      removed = true;
+    } else if (len > 7 && endsWith(s, len, "???????") ||
+        endsWith(s, len, "???????") ||
+        endsWith(s, len, "???????")) {
+      len -= 7;
+      removed = true;
+    } else if (len > 6 && endsWith(s, len, "??????") ||
+        endsWith(s, len, "??????") ||
+        endsWith(s, len, "??????")) {
+      len -= 6;
+      removed = true;
+    } else if (len > 5 && endsWith(s, len, "?????") ||
+        endsWith(s, len, "?????") ||
+        endsWith(s, len, "?????") ||
+        endsWith(s, len, "?????")) {
+      len -= 5;
+      removed = true;
     }
     
-    /**
-     * Read an unsigned short at specified offset as a int
-     *
-     * @param off start offset of the unsigned short
-     * @return the int value of the unsigned short at offset
-     */
-    public int readUnsignedShortAsInt(int off)
-    {
-        int b1 = (0x000000FF & (this.buffer[this.offset + off + 0]));
-        int b2 = (0x000000FF & (this.buffer[this.offset + off + 1]));
-        int val = b1 << 8 | b2;
-        return val;
-    }
-
-    /**
-     * Read a byte from this packet at specified offset
-     *
-     * @param off start offset of the byte
-     * @return byte at offset
-     */
-    public byte readByte(int off)
-    {
-        return buffer[offset + off];
-    }
-
-    /**
-     * Read an unsigned integer as long at specified offset
-     *
-     * @param off start offset of this unsigned integer
-     * @return unsigned integer as long at offset
-     */
-    public long readUnsignedIntAsLong(int off)
-    {
-        int b0 = (0x000000FF & (this.buffer[this.offset + off + 0]));
-        int b1 = (0x000000FF & (this.buffer[this.offset + off + 1]));
-        int b2 = (0x000000FF & (this.buffer[this.offset + off + 2]));
-        int b3 = (0x000000FF & (this.buffer[this.offset + off + 3]));
-        
-        return  ((b0 << 24 | b1 << 16 | b2 << 8 | b3)) & 0xFFFFFFFFL;
+    if (removed && exc8a.contains(s, 0, len)) {
+      // add -???? (we removed > 4 chars so its safe)
+      len += 4;
+      s[len - 4] = '?';
+      s[len - 3] = '?';
+      s[len - 2] = '?';
+      s[len - 1] = '?';
     }
     
-    /**
-     * Read a byte region from specified offset with specified length
-     *
-     * @param off start offset of the region to be read 
-     * @param len length of the region to be read
-     * @return byte array of [offset, offset + length)
-     */
-    public byte[] readRegion(int off, int len)
-    {
-        int startOffset = this.offset + off;
-        if (off < 0 || len <= 0 
-            || startOffset + len > this.buffer.length)
-        {
-            return null;
-        }
-
-        byte[] region = new byte[len];
-        
-        System.arraycopy(this.buffer, startOffset, region, 0, len);
-        
-        return region;
+    if (len > 3 && endsWith(s, len, "???")) {
+      len -= 3;
+      if (endsWithVowelNoY(s, len) || exc8b.contains(s, 0, len)) {
+        len += 2; // add back -??
+      }
     }
     
-    /**
-     * Read a byte region from specified offset with specified length in given buffer
-     *
-     * @param off start offset of the region to be read 
-     * @param len length of the region to be read
-     * @param outBuff output buffer
-     */
-    public void readRegionToBuff(int off, int len, byte[] outBuff)
-    {
-        int startOffset = this.offset + off;
-        if (off < 0 || len <= 0 
-            || startOffset + len > this.buffer.length)
-        {
-            return;
-        }
+    return len;
+  }
+  
+  private static final CharArraySet exc9 = new CharArraySet(Version.LUCENE_31,
+      Arrays.asList("????", "???", "????", "???", "??", "??", "??", "???",
+          "?????", "???", "??", "???", "????", "???", "???", "???????", "????",
+          "????", "????", "???", "?", "?", "??", "????", "?"), 
+      false);
+  
+  private int rule9(char s[], int len) {
+    if (len > 5 && endsWith(s, len, "?????"))
+      len -= 5;
+    
+    if (len > 3 && endsWith(s, len, "???")) {
+      len -= 3;
+      if (exc9.contains(s, 0, len) ||
+          endsWithVowelNoY(s, len) ||
+          endsWith(s, len, "??") ||
+          endsWith(s, len, "???") ||
+          endsWith(s, len, "???") ||
+          endsWith(s, len, "???") ||
+          endsWith(s, len, "????") ||
+          endsWith(s, len, "??") ||
+          endsWith(s, len, "???") ||
+          endsWith(s, len, "???") ||
+          endsWith(s, len, "???") ||
+          endsWith(s, len, "?????") ||
+          endsWith(s, len, "???") ||
+          endsWith(s, len, "???") ||
+          endsWith(s, len, "???") ||
+          endsWith(s, len, "??") ||
+          endsWith(s, len, "???") ||
+          endsWith(s, len, "???") ||
+          endsWith(s, len, "????") ||
+          endsWith(s, len, "???") ||
+          endsWith(s, len, "????") ||
+          endsWith(s, len, "???") ||
+          endsWith(s, len, "???") ||
+          endsWith(s, len, "??") ||
+          endsWith(s, len, "???") ||
+          endsWith(s, len, "???") ||
+          endsWith(s, len, "???") ||
+          endsWith(s, len, "???") ||
+          endsWith(s, len, "???") ||
+          endsWith(s, len, "???") ||
+          endsWith(s, len, "???") ||
+          endsWith(s, len, "???") ||
+          endsWith(s, len, "????")) {
+        len += 2; // add back -??
+      }
+    }
+    
+    return len;
+  }
 
-        if (outBuff.length < len)
-        {
-            return;
-        }
-        System.arraycopy(this.buffer, startOffset, outBuff, 0, len);
+  private int rule10(char s[], int len) {
+    if (len > 5 && (endsWith(s, len, "?????") || endsWith(s, len, "?????"))) {
+      len -= 5;
+      if (len == 3 && endsWith(s, len, "???")) {
+        len += 3; // add back *??
+        s[len - 3] = '?';
+      }
+      if (endsWith(s, len, "???")) {
+        len += 3; // add back *??
+        s[len - 3] = '?';
+      }
+    }
+    
+    return len;
+  }
+  
+  private int rule11(char s[], int len) {
+    if (len > 6 && endsWith(s, len, "??????")) {
+      len -= 6;
+      if (len == 2 && endsWith(s, len, "??")) {
+        len += 5; // add back -?????
+      }
+    } else if (len > 7 && endsWith(s, len, "???????")) {
+      len -= 7;
+      if (len == 2 && endsWith(s, len, "??")) {
+        len += 5;
+        s[len - 5] = '?';
+        s[len - 4] = '?';
+        s[len - 3] = '?';
+        s[len - 2] = '?';
+        s[len - 1] = '?';
+      }
+    }
+    return len;
+  }
+
+  private static final CharArraySet exc12a = new CharArraySet(Version.LUCENE_31,
+      Arrays.asList("?", "??", "????", "?????", "??????", "???????"),
+      false);
+
+  private static final CharArraySet exc12b = new CharArraySet(Version.LUCENE_31,
+      Arrays.asList("??", "??", "?????", "?", "?", "?", "???????", "??", "???", "???"),
+      false);
+  
+  private int rule12(char s[], int len) {
+    if (len > 5 && endsWith(s, len, "?????")) {
+      len -= 5;
+      if (exc12a.contains(s, 0, len))   
+        len += 4; // add back -????
+    }
+    
+    if (len > 4 && endsWith(s, len, "????")) {
+      len -= 4;
+      if (exc12b.contains(s, 0, len))
+        len += 3; // add back -???
+    }
+    
+    return len;
+  }
+  
+  private static final CharArraySet exc13 = new CharArraySet(Version.LUCENE_31,
+      Arrays.asList("????", "?", "?????????", "?????", "????"),
+      false);
+  
+  private int rule13(char s[], int len) {
+    if (len > 6 && endsWith(s, len, "??????")) {
+      len -= 6;
+    } else if (len > 5 && (endsWith(s, len, "?????") || endsWith(s, len, "?????"))) {
+      len -= 5;
+    }
+    
+    boolean removed = false;
+    
+    if (len > 4 && endsWith(s, len, "????")) {
+      len -= 4;
+      removed = true;
+    } else if (len > 3 && (endsWith(s, len, "???") || endsWith(s, len, "???"))) {
+      len -= 3;
+      removed = true;
     }
 
-    /**
-     * Append a byte array to then end of the packet. This will change the data
-     * buffer of this packet. 
-     *
-     * @param data byte array to append
-     * @param len the number of bytes to append
-     */
-    public void append(byte[] data, int len) 
-    {
-        if (data == null || len == 0)  
-        {
-            return;
-        }
-        
-        byte[] newBuffer = new byte[this.length + len];
-        System.arraycopy(this.buffer, this.offset, newBuffer, 0, this.length);
-        System.arraycopy(data, 0, newBuffer, this.length, len);
-        this.offset = 0;
-        this.length = this.length + len;
-        this.buffer = newBuffer;
-       
+    if (removed && (exc13.contains(s, 0, len) 
+        || endsWith(s, len, "????")
+        || endsWith(s, len, "?????")
+        || endsWith(s, len, "????")
+        || endsWith(s, len, "??")
+        || endsWith(s, len, "??")
+        || endsWith(s, len, "???"))) { 
+      len += 2; // add back the -??
     }
-    /**
-     * Shrink the buffer of this packet by specified length
-     *
-     * @param len length to shrink
-     */
-    public void shrink(int len)
-    {
-        if (len <= 0)
-        {
-            return;
-        }
-        
-        this.length -= len;
-        if (this.length < 0)
-        {
-            this.length = 0;
-        }
+    
+    return len;
+  }
+  
+  private static final CharArraySet exc14 = new CharArraySet(Version.LUCENE_31,
+      Arrays.asList("??????", "???", "???", "?????", "????", "?????", "??????",
+          "???", "?", "???", "?", "?", "???", "?????", "???????", "??", "???",
+          "????", "??????", "????????", "??", "????????", "???????", "???",
+          "???"), 
+      false);
+
+  private int rule14(char s[], int len) {
+    boolean removed = false;
+    
+    if (len > 5 && endsWith(s, len, "?????")) {
+      len -= 5;
+      removed = true;
+    } else if (len > 4 && (endsWith(s, len, "????") || endsWith(s, len, "????"))) {
+      len -= 4;
+      removed = true;
     }
+    
+    if (removed && (exc14.contains(s, 0, len) 
+        || endsWithVowel(s, len)
+        || endsWith(s, len, "?????")
+        || endsWith(s, len, "????")
+        || endsWith(s, len, "??????")
+        || endsWith(s, len, "????") 
+        || endsWith(s, len, "??????")
+        || endsWith(s, len, "????")
+        || endsWith(s, len, "?????")
+        || endsWith(s, len, "???")
+        || endsWith(s, len, "???")
+        || endsWith(s, len, "???")
+        || endsWith(s, len, "??")
+        || endsWith(s, len, "????"))) {
+      len += 3; // add back -???
+    }
+
+   return len;
+  }
+  
+  private static final CharArraySet exc15a = new CharArraySet(Version.LUCENE_31,
+      Arrays.asList("?????", "?????", "????", "????", "?", "???", "??", "????",
+          "??????", "?????", "????", "?????", "????", "??????", "??????",
+          "???", "????", "?????", "????", "????", "?????", "????????", "????",
+          "????", "?", "????", "???", "????", "??????", "????", "????",
+          "?????", "????", "??", "????", "????????", "???????", "?", "???",
+          "?????", "???", "?", "??", "?"), 
+      false);
+  
+  private static final CharArraySet exc15b = new CharArraySet(Version.LUCENE_31,
+      Arrays.asList("???", "??????"),
+      false);
+  
+  private int rule15(char s[], int len) {
+    boolean removed = false;
+    if (len > 4 && endsWith(s, len, "????")) {
+      len -= 4;
+      removed = true;
+    } else if (len > 3 && (endsWith(s, len, "???") || endsWith(s, len, "???"))) {
+      len -= 3;
+      removed = true;
+    }
+    
+    if (removed) {
+      final boolean cond1 = exc15a.contains(s, 0, len) 
+        || endsWith(s, len, "??")
+        || endsWith(s, len, "???")
+        || endsWith(s, len, "????")
+        || endsWith(s, len, "??")
+        || endsWith(s, len, "??")
+        || endsWith(s, len, "??")
+        || endsWith(s, len, "??")
+        || endsWith(s, len, "??")
+        || endsWith(s, len, "???")
+        || endsWith(s, len, "????");
+      
+      final boolean cond2 = exc15b.contains(s, 0, len)
+        || endsWith(s, len, "????");
+      
+      if (cond1 && !cond2)
+        len += 2; // add back -??  
+    }
+    
+    return len;
+  }
+  
+  private static final CharArraySet exc16 = new CharArraySet(Version.LUCENE_31,
+      Arrays.asList("?", "??????", "???????", "??????", "???????", "?????"),
+      false);
+  
+  private int rule16(char s[], int len) {
+    boolean removed = false;
+    if (len > 4 && endsWith(s, len, "????")) {
+      len -= 4;
+      removed = true;
+    } else if (len > 3 && (endsWith(s, len, "???") || endsWith(s, len, "???"))) {
+      len -= 3;
+      removed = true;
+    }
+    
+    if (removed && exc16.contains(s, 0, len))
+      len += 2; // add back -??
+    
+    return len;
+  }
+  
+  private static final CharArraySet exc17 = new CharArraySet(Version.LUCENE_31,
+      Arrays.asList("???", "??", "???", "??", "???", "?????", "?????", "????", "???????", "??????"),
+      false);
+  
+  private int rule17(char s[], int len) {
+    if (len > 4 && endsWith(s, len, "????")) {
+      len -= 4;
+      if (exc17.contains(s, 0, len))
+        len += 3; // add back the -???
+    }
+    
+    return len;
+  }
+  
+  private static final CharArraySet exc18 = new CharArraySet(Version.LUCENE_31,
+      Arrays.asList("?", "?", "???", "???????????", "?????????", "????"),
+      false);
+  
+  private int rule18(char s[], int len) {
+    boolean removed = false;
+    
+    if (len > 6 && (endsWith(s, len, "??????") || endsWith(s, len, "??????"))) {
+      len -= 6;
+      removed = true;
+    } else if (len > 4 && endsWith(s, len, "????")) {
+      len -= 4;
+      removed = true;
+    }
+    
+    if (removed && exc18.contains(s, 0, len)) {
+      len += 3;
+      s[len - 3] = '?';
+      s[len - 2] = '?';
+      s[len - 1] = '?';
+    }
+    return len;
+  }
+  
+  private static final CharArraySet exc19 = new CharArraySet(Version.LUCENE_31,
+      Arrays.asList("????????", "?", "?", "??????", "??", "????????", "?????"),
+      false);
+  
+  private int rule19(char s[], int len) {
+    boolean removed = false;
+    
+    if (len > 6 && (endsWith(s, len, "??????") || endsWith(s, len, "??????"))) {
+      len -= 6;
+      removed = true;
+    } else if (len > 4 && endsWith(s, len, "????")) {
+      len -= 4;
+      removed = true;
+    }
+    
+    if (removed && exc19.contains(s, 0, len)) {
+      len += 3;
+      s[len - 3] = '?';
+      s[len - 2] = '?';
+      s[len - 1] = '?';
+    }
+    return len;
+  }
+  
+  private int rule20(char s[], int len) {
+    if (len > 5 && (endsWith(s, len, "?????") || endsWith(s, len, "?????")))
+      len -= 3;
+    else if (len > 4 && endsWith(s, len, "????"))
+      len -= 2;
+    return len;
+  }
+
+  private int rule21(char s[], int len) {
+    if (len > 9 && endsWith(s, len, "?????????"))
+      return len - 9;
+    
+    if (len > 8 && (endsWith(s, len, "????????") ||
+        endsWith(s, len, "????????") ||
+        endsWith(s, len, "????????") ||
+        endsWith(s, len, "????????")))
+      return len - 8;
+    
+    if (len > 7 && (endsWith(s, len, "???????") ||
+        endsWith(s, len, "???????") ||
+        endsWith(s, len, "???????") ||
+        endsWith(s, len, "???????") ||
+        endsWith(s, len, "???????") ||
+        endsWith(s, len, "???????") ||
+        endsWith(s, len, "???????") ||
+        endsWith(s, len, "???????") ||
+        endsWith(s, len, "???????") ||
+        endsWith(s, len, "???????") ||
+        endsWith(s, len, "???????")))
+      return len - 7;
+    
+    if (len > 6 && (endsWith(s, len, "??????") ||
+        endsWith(s, len, "??????") ||
+        endsWith(s, len, "??????") ||
+        endsWith(s, len, "??????") ||
+        endsWith(s, len, "??????") ||
+        endsWith(s, len, "??????") ||
+        endsWith(s, len, "??????") ||
+        endsWith(s, len, "??????") ||
+        endsWith(s, len, "??????") ||
+        endsWith(s, len, "??????") ||
+        endsWith(s, len, "??????")))
+      return len - 6;
+    
+    if (len > 5 && (endsWith(s, len, "?????") ||
+        endsWith(s, len, "?????") ||
+        endsWith(s, len, "?????") ||
+        endsWith(s, len, "?????") ||
+        endsWith(s, len, "?????") ||
+        endsWith(s, len, "?????") ||
+        endsWith(s, len, "?????") ||
+        endsWith(s, len, "?????") ||
+        endsWith(s, len, "?????") ||
+        endsWith(s, len, "?????") ||
+        endsWith(s, len, "?????") ||
+        endsWith(s, len, "?????") ||
+        endsWith(s, len, "?????") ||
+        endsWith(s, len, "?????") ||
+        endsWith(s, len, "?????") ||
+        endsWith(s, len, "?????") ||
+        endsWith(s, len, "?????")))
+      return len - 5;
+    
+    if (len > 4 && (endsWith(s, len, "????") ||
+        endsWith(s, len, "????") ||
+        endsWith(s, len, "????") ||
+        endsWith(s, len, "????") ||
+        endsWith(s, len, "????") ||
+        endsWith(s, len, "????") ||
+        endsWith(s, len, "????") ||
+        endsWith(s, len, "????") ||
+        endsWith(s, len, "????") ||
+        endsWith(s, len, "????") ||
+        endsWith(s, len, "????") ||
+        endsWith(s, len, "????") ||
+        endsWith(s, len, "????") ||
+        endsWith(s, len, "????") ||
+        endsWith(s, len, "????") ||
+        endsWith(s, len, "????")))
+      return len - 4;
+    
+    if (len > 3 && (endsWith(s, len, "???") ||
+        endsWith(s, len, "???") ||
+        endsWith(s, len, "???") ||
+        endsWith(s, len, "???") ||
+        endsWith(s, len, "???") ||
+        endsWith(s, len, "???")))
+      return len - 3;
+    
+    if (len > 2 && (endsWith(s, len, "??") ||
+        endsWith(s, len, "??") ||
+        endsWith(s, len, "??") ||
+        endsWith(s, len, "??") ||
+        endsWith(s, len, "??") ||
+        endsWith(s, len, "??") ||
+        endsWith(s, len, "??") ||
+        endsWith(s, len, "??") ||
+        endsWith(s, len, "??") ||
+        endsWith(s, len, "??") ||
+        endsWith(s, len, "??")))
+      return len - 2;
+    
+    if (len > 1 && endsWithVowel(s, len))
+      return len - 1;
+
+    return len;
+  }
+  
+  private int rule22(char s[], int len) {
+    if (endsWith(s, len, "?????") ||
+        endsWith(s, len, "?????"))
+      return len - 5;
+    
+    if (endsWith(s, len, "????") ||
+        endsWith(s, len, "????") ||
+        endsWith(s, len, "????") ||
+        endsWith(s, len, "????") ||
+        endsWith(s, len, "????") ||
+        endsWith(s, len, "????"))
+      return len - 4;
+
+    return len;
+  }
+
+  private boolean endsWith(char s[], int len, String suffix) {
+    final int suffixLen = suffix.length();
+    if (suffixLen > len)
+      return false;
+    for (int i = suffixLen - 1; i >= 0; i--)
+      if (s[len -(suffixLen - i)] != suffix.charAt(i))
+        return false;
+    
+    return true;
+  }
+  
+  private boolean endsWithVowel(char s[], int len) {
+    if (len == 0)
+      return false;
+    switch(s[len - 1]) {
+      case '?':
+      case '?':
+      case '?':
+      case '?':
+      case '?':
+      case '?':
+      case '?':
+        return true;
+      default:
+        return false;
+    }
+  }
+  
+  private boolean endsWithVowelNoY(char s[], int len) {
+    if (len == 0)
+      return false;
+    switch(s[len - 1]) {
+      case '?':
+      case '?':
+      case '?':
+      case '?':
+      case '?':
+      case '?':
+        return true;
+      default:
+        return false;
+    }
+  }
 }
 

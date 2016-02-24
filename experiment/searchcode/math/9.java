@@ -1,4 +1,4 @@
-package org.apache.lucene.analysis.ru;
+package org.apache.lucene.analysis.en;
 
 /**
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -17,138 +17,31 @@ package org.apache.lucene.analysis.ru;
  * limitations under the License.
  */
 
-/* 
- * This algorithm is updated based on code located at:
- * http://members.unine.ch/jacques.savoy/clef/
- * 
- * Full copyright for that code follows:
- */
-
-/*
- * Copyright (c) 2005, Jacques Savoy
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without 
- * modification, are permitted provided that the following conditions are met:
- *
- * Redistributions of source code must retain the above copyright notice, this 
- * list of conditions and the following disclaimer. Redistributions in binary 
- * form must reproduce the above copyright notice, this list of conditions and
- * the following disclaimer in the documentation and/or other materials 
- * provided with the distribution. Neither the name of the author nor the names 
- * of its contributors may be used to endorse or promote products derived from 
- * this software without specific prior written permission.
- * 
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" 
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE 
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE 
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE 
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF 
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN 
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- */
-
-import static org.apache.lucene.analysis.util.StemmerUtil.*;
-
 /**
- * Light Stemmer for Russian.
+ * Minimal plural stemmer for English.
  * <p>
- * This stemmer implements the following algorithm:
- * <i>Indexing and Searching Strategies for the Russian Language.</i>
- * Ljiljana Dolamic and Jacques Savoy.
+ * This stemmer implements the "S-Stemmer" from
+ * <i>How Effective Is Suffixing?</i>
+ * Donna Harman.
  */
-public class RussianLightStemmer {
-
+public class EnglishMinimalStemmer {
+  @SuppressWarnings("fallthrough")
   public int stem(char s[], int len) {
-    len = removeCase(s, len);
-    return normalize(s, len);
-  }
-  
-  private int normalize(char s[], int len) {
-    if (len > 3)
-      switch(s[len-1]) { 
-        case '?':
-        case '?': return len - 1;
-        case '?': if (s[len-2] == '?') return len - 1;
-      }
-    return len;
-  }
-
-  private int removeCase(char s[], int len) {
-    if (len > 6 && 
-        (endsWith(s, len, "????") ||
-         endsWith(s, len, "????")))
-      return len - 4;
+    if (len < 3 || s[len-1] != 's')
+      return len;
     
-    if (len > 5 && 
-        (endsWith(s, len, "???") ||
-         endsWith(s, len, "???") ||
-         endsWith(s, len, "???") ||
-         endsWith(s, len, "???") ||
-         endsWith(s, len, "???") ||
-         endsWith(s, len, "???") ||
-         endsWith(s, len, "???") ||
-         endsWith(s, len, "???") ||
-         endsWith(s, len, "???") ||
-         endsWith(s, len, "???") ||
-         endsWith(s, len, "???") ||
-         endsWith(s, len, "???") ||
-         endsWith(s, len, "???") ||
-         endsWith(s, len, "???") ||
-         endsWith(s, len, "???")))
-      return len - 3;
-    
-    if (len > 4 &&
-        (endsWith(s, len, "??") ||
-         endsWith(s, len, "??") ||
-         endsWith(s, len, "??") ||
-         endsWith(s, len, "??") ||
-         endsWith(s, len, "??") ||
-         endsWith(s, len, "??") ||
-         endsWith(s, len, "??") ||
-         endsWith(s, len, "??") ||
-         endsWith(s, len, "??") ||
-         endsWith(s, len, "??") ||
-         endsWith(s, len, "??") ||
-         endsWith(s, len, "??") ||
-         endsWith(s, len, "??") ||
-         endsWith(s, len, "??") ||
-         endsWith(s, len, "??") ||
-         endsWith(s, len, "??") ||
-         endsWith(s, len, "??") ||
-         endsWith(s, len, "??") ||
-         endsWith(s, len, "??") ||
-         endsWith(s, len, "??") ||
-         endsWith(s, len, "??") ||
-         endsWith(s, len, "??") ||
-         endsWith(s, len, "??") ||
-         endsWith(s, len, "??") ||
-         endsWith(s, len, "??") ||
-         endsWith(s, len, "??") ||
-         endsWith(s, len, "??") ||
-         endsWith(s, len, "??") ||
-         endsWith(s, len, "??") ||
-         endsWith(s, len, "??")))
-      return len - 2;
-    
-    if (len > 3)
-      switch(s[len-1]) {
-        case '?':
-        case '?':
-        case '?':
-        case '?':
-        case '?':
-        case '?':
-        case '?':
-        case '?':
-        case '?': return len - 1;
-      }
-    
-    return len;
+    switch(s[len-2]) {
+      case 'u':
+      case 's': return len;
+      case 'e':
+        if (len > 3 && s[len-3] == 'i' && s[len-4] != 'a' && s[len-4] != 'e') {
+          s[len - 3] = 'y';
+          return len - 2;
+        }
+        if (s[len-3] == 'i' || s[len-3] == 'a' || s[len-3] == 'o' || s[len-3] == 'e')
+          return len; /* intentional fallthrough */
+      default: return len - 1;
+    }
   }
 }
 

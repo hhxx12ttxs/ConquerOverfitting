@@ -1,153 +1,463 @@
-/**
- * Copyright (C) 2007 Doug Judd (Zvents, Inc.)
- * 
- * This file is part of Hypertable.
- * 
- * Hypertable is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or any later version.
- * 
- * Hypertable is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- */
+//
+// MessagePack for Java
+//
+// Copyright (C) 2010 FURUHASHI Sadayuki
+//
+//    Licensed under the Apache License, Version 2.0 (the "License");
+//    you may not use this file except in compliance with the License.
+//    You may obtain a copy of the License at
+//
+//        http://www.apache.org/licenses/LICENSE-2.0
+//
+//    Unless required by applicable law or agreed to in writing, software
+//    distributed under the License is distributed on an "AS IS" BASIS,
+//    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//    See the License for the specific language governing permissions and
+//    limitations under the License.
+//
+package org.msgpack.buffer;
 
-package org.hypertable.AsyncComm;
-
-import java.io.UnsupportedEncodingException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.IOException;
+import java.util.List;
+import java.util.ArrayList;
 import java.nio.ByteBuffer;
+import java.nio.channels.GatheringByteChannel;
+import java.nio.channels.ScatteringByteChannel;
 
-public class Serialization {
+public class VectoredByteBuffer implements GatheringByteChannel, ScatteringByteChannel {
+	private List<ByteBuffer> vec = new ArrayList<ByteBuffer>();
+	private ByteBuffer internalBuffer;
+	private ByteBuffer lastInternalBuffer;
+	private int chunkSize;
+	private int referenceThreshold;
 
-    /**
-     * Computes the encoded length of a byte array
-     *
-     * @param len length of the byte array to be encoded
-     * @return the encoded length of a byte array of length len
-     */
-    public static int EncodedLengthByteArray(int len) {
-	return len + 4;
-    }
-
-
-    /**
-     * Encodes a variable sized byte array into the given buffer.  Encoded as a
-     * 4 byte length followed by the data.  Assumes there is enough space
-     * available.
-     *
-     * @param buf byte buffer to write encoded array to
-     * @param data byte array to encode
-     * @param len number of bytes of data to encode
-     */
-    public static void EncodeByteArray(ByteBuffer buf, byte [] data, int len) {
-	buf.putInt(len);
-	buf.put(data, 0, len);
-    }
-
-
-    /**
-     * Decodes a variable sized byte array from the given buffer.  Byte array is
-     * encoded as a 4 byte length followed by the data.
-     *
-     * @param buf byte buffer holding encoded byte array
-     * @return decoded byte array, or null on error
-     */
-    public static byte [] DecodeByteArray(ByteBuffer buf) {
-	byte [] rbytes;
-	int len;
-	if (buf.remaining() < 4)
-	    return null;
-	len = buf.getInt();
-	rbytes = new byte [ len ];
-	if (len > 0) {
-	    buf.get(rbytes, 0, len);
+	public VectoredByteBuffer() {
+		this(32*1024);
 	}
-	return rbytes;
-    }
 
-    /**
-     * Computes the encoded length of a c-style null-terminated string
-     *
-     * @param str string to encode
-     * @return the encoded length of str
-     */
-    public static int EncodedLengthString(String str) {
-	if (str == null)
-	    return 3;
-	try {
-	    return 3 + str.getBytes("UTF-8").length;
+	public VectoredByteBuffer(int chunkSize) {
+		this(chunkSize, 32);
 	}
-	catch (UnsupportedEncodingException e) {
-	    e.printStackTrace();
-	    System.exit(-1);
+
+	public VectoredByteBuffer(int chunkSize, int referenceThreshold) {
+		this.chunkSize = chunkSize;
+		this.referenceThreshold = referenceThreshold;
+		internalBuffer = ByteBuffer.allocateDirect(chunkSize);
 	}
-	return 0;
-    }
 
 
-    /**
-     * Encodes a string into the given buffer.  Encoded as a 2 byte length
-     * followed by the UTF-8 string data, followed by a '\0' termination byte.
-     * The length value does not include the '\0'.  Assumes there is enough
-     * space available.
-     *
-     * @param buf destination byte buffer to hold encoded string
-     * @param str string to encode
-     */
-    public static void EncodeString(ByteBuffer buf, String str) {
-	try {
-	    short len = (str == null) ? 0 : (short)str.getBytes("UTF-8").length;
-
-	    // 2-byte length
-	    buf.putShort(len);
-      
-	    // string characters
-	    if (len > 0)
-		buf.put(str.getBytes("UTF-8"));
-
-	    // '\0' terminator
-	    buf.put((byte)0);
+	public void setChunkSize(int chunkSize) {
+		this.chunkSize = chunkSize;
 	}
-	catch (UnsupportedEncodingException e) {
-	    e.printStackTrace();
-	    System.exit(-1);
+
+	public int getChunkSize(int chunkSize) {
+		return this.chunkSize;
 	}
-    }
+
+	public void setReferenceThreshold(int referenceThreshold) {
+		this.referenceThreshold = referenceThreshold;
+	}
+
+	public int getReferenceThreshold(int referenceThreshold) {
+		return this.referenceThreshold;
+	}
 
 
-    /**
-     * Decodes a string from the given buffer.  The encoding of the
-     * string is a 2 byte length followed by the string, followed by a '\0'
-     * termination byte.  The length does not include the '\0' terminator.
-     *
-     * @param buf the source byte buffer holding the encoded string
-     * @return decoded string on success, null otherwise
-     */
-    public static String DecodeString(ByteBuffer buf) {
-	if (buf.remaining() < 3)
-	    return null;
-	short len = buf.getShort();
-	if (len == 0)
-	    return new String("");
-	byte [] sbytes = new byte [ len ];
-	buf.get(sbytes);
-	// skip '\0' terminator
-	buf.get();
-	try {
-	    return new String(sbytes, "UTF-8");
+	@Override
+	public void close() {
+		reset();
 	}
-	catch (UnsupportedEncodingException e) {
-	    e.printStackTrace();
-	    System.exit(-1);
-	}
-	return null;
-    }
 
+	@Override
+	public boolean isOpen() {
+		return true;  // FIXME?
+	}
+
+
+	public synchronized void reset() {
+		vec.clear();
+		lastInternalBuffer = null;
+	}
+
+
+	public void write(byte[] b) {
+		write(b, 0, b.length);
+	}
+
+	public void write(byte[] b, int off, int len) {
+		if(off < 0 || len < 0 || b.length < off+len) {
+			throw new IndexOutOfBoundsException();
+		}
+		if(referenceThreshold >= 0 && len > referenceThreshold) {
+			writeReference(b, off, len);
+		} else {
+			writeCopy(b, off, len);
+		}
+	}
+
+	public void write(int b) {
+		byte[] ba = new byte[1];
+		ba[0] = (byte)b;
+		write(ba);
+	}
+
+	@Override
+	public int write(ByteBuffer src) {
+		int slen = src.remaining();
+		if(referenceThreshold >= 0 && slen > referenceThreshold) {
+			writeCopy(src);
+		} else {
+			writeReference(src);
+		}
+		return slen;
+	}
+
+	@Override
+	public synchronized long write(ByteBuffer[] srcs) {
+		return write(srcs, 0, srcs.length);
+	}
+
+	@Override
+	public synchronized long write(ByteBuffer[] srcs, int offset, int length) {
+		if(offset < 0 || length < 0 || srcs.length < offset+length) {
+			throw new IndexOutOfBoundsException();
+		}
+		long total = 0;
+		for(int i=offset; offset < length; offset++) {
+			ByteBuffer src = srcs[i];
+			total += write(src);
+		}
+		return total;
+	}
+
+	private synchronized void writeCopy(byte[] b, int off, int len) {
+		int ipos = internalBuffer.position();
+		if(internalBuffer.capacity() - ipos < len) {
+			// allocate new buffer
+			int nsize = chunkSize > len ? chunkSize : len;
+			internalBuffer = ByteBuffer.allocateDirect(nsize);
+			ipos = 0;
+		} else if(internalBuffer == lastInternalBuffer) {
+			// optimization: concatenates to the last buffer instead
+			//               of adding new reference
+			ByteBuffer dup = vec.get(vec.size()-1);
+			internalBuffer.put(b, off, len);
+			dup.limit(ipos + len);
+			return;
+		}
+		internalBuffer.put(b, off, len);
+		ByteBuffer dup = internalBuffer.duplicate();
+		dup.position(ipos);
+		dup.mark();
+		dup.limit(ipos + len);
+		vec.add(dup);
+		lastInternalBuffer = internalBuffer;
+	}
+
+	private synchronized void writeCopy(ByteBuffer src) {
+		int slen = src.remaining();
+		int ipos = internalBuffer.position();
+		if(internalBuffer.capacity() - ipos < slen) {
+			// allocate new buffer
+			int nsize = chunkSize > slen ? chunkSize : slen;
+			internalBuffer = ByteBuffer.allocateDirect(nsize);
+			ipos = 0;
+		} else if(internalBuffer == lastInternalBuffer) {
+			// optimization: concatenates to the last buffer instead
+			//               of adding new reference
+			ByteBuffer dup = vec.get(vec.size()-1);
+			int dpos = dup.position();
+			internalBuffer.put(src);
+			ByteBuffer dup2 = internalBuffer.duplicate();
+			dup2.position(dpos);
+			dup2.limit(ipos + slen);
+			vec.set(vec.size()-1, dup2);
+			return;
+		}
+		internalBuffer.put(src);
+		ByteBuffer dup = internalBuffer.duplicate();
+		dup.position(ipos);
+		dup.mark();
+		dup.limit(ipos + slen);
+		vec.add(dup);
+		lastInternalBuffer = internalBuffer;
+	}
+
+	private synchronized void writeReference(byte[] b, int off, int len) {
+		ByteBuffer buf = ByteBuffer.wrap(b, off, len);
+		vec.add(buf);
+		lastInternalBuffer = null;
+	}
+
+	private synchronized void writeReference(ByteBuffer src) {
+		ByteBuffer buf = src.duplicate();
+		vec.add(buf);
+		lastInternalBuffer = null;
+	}
+
+
+	public synchronized void writeTo(java.io.OutputStream out) throws IOException {
+		byte[] tmpbuf = null;
+		for(int i=0; i < vec.size(); i++) {
+			ByteBuffer r = vec.get(i);
+			int rpos = r.position();
+			int rlen = r.limit() - rpos;
+			if(r.hasArray()) {
+				byte[] array = r.array();
+				out.write(array, rpos, rlen);
+			} else {
+				if(tmpbuf == null) {
+					int max = rlen;
+					for(int j=i+1; j < vec.size(); j++) {
+						ByteBuffer c = vec.get(j);
+						int clen = c.remaining();
+						if(max < clen) {
+							max = clen;
+						}
+					}
+					tmpbuf = new byte[max];
+				}
+				r.get(tmpbuf, 0, rlen);
+				r.position(rpos);
+				out.write(tmpbuf, 0, rlen);
+			}
+		}
+	}
+
+	public synchronized byte[] toByteArray() {
+		byte[] out = new byte[available()];
+		int off = 0;
+		for(ByteBuffer r: vec) {
+			int rpos = r.position();
+			int rlen = r.limit() - rpos;
+			r.get(out, off, rlen);
+			r.position(rpos);
+			off += rlen;
+		}
+		return out;
+	}
+
+
+	public synchronized int available() {
+		int total = 0;
+		for(ByteBuffer r : vec) {
+			total += r.remaining();
+		}
+		return total;
+	}
+
+	public synchronized int read(byte[] b) {
+		return read(b, 0, b.length);
+	}
+
+	public synchronized int read(byte[] b, int off, int len) {
+		if(off < 0 || len < 0 || b.length < off+len) {
+			throw new IndexOutOfBoundsException();
+		}
+		int start = len;
+		while(!vec.isEmpty()) {
+			ByteBuffer r = vec.get(0);
+			int rlen = r.remaining();
+			if(rlen <= len) {
+				r.get(b, off, rlen);
+				vec.remove(0);
+				off += rlen;
+				len -= rlen;
+			} else {
+				r.get(b, off, len);
+				return start;
+			}
+		}
+		return start - len;
+	}
+
+	public synchronized int read() {
+		byte[] ba = new byte[1];
+		if(read(ba) >= 1) {
+			return ba[0];
+		} else {
+			return -1;
+		}
+	}
+
+	@Override
+	public synchronized int read(ByteBuffer dst) {
+		int len = dst.remaining();
+		int start = len;
+		while(!vec.isEmpty()) {
+			ByteBuffer r = vec.get(0);
+			int rlen = r.remaining();
+			if(rlen <= len) {
+				dst.put(r);
+				vec.remove(0);
+				len -= rlen;
+			} else {
+				int blim = r.limit();
+				r.limit(len);
+				try {
+					dst.put(r);
+				} finally {
+					r.limit(blim);
+				}
+				return start;
+			}
+		}
+		return start - len;
+	}
+
+	@Override
+	public synchronized long read(ByteBuffer[] dsts) {
+		return read(dsts, 0, dsts.length);
+	}
+
+	@Override
+	public synchronized long read(ByteBuffer[] dsts, int offset, int length) {
+		if(offset < 0 || length < 0 || dsts.length < offset+length) {
+			throw new IndexOutOfBoundsException();
+		}
+		long total = 0;
+		for(int i=offset; i < length; i++) {
+			ByteBuffer dst = dsts[i];
+			int dlen = dst.remaining();
+			int rlen = read(dsts[i]);
+			total += rlen;
+			if(rlen < dlen) {
+				return total;
+			}
+		}
+		return total;
+	}
+
+	public synchronized long read(GatheringByteChannel to) throws IOException {
+		long total = to.write(vec.toArray(new ByteBuffer[0]));
+		while(!vec.isEmpty()) {
+			ByteBuffer r = vec.get(0);
+			if(r.remaining() == 0) {
+				vec.remove(0);
+			} else {
+				break;
+			}
+		}
+		return total;
+	}
+
+	public synchronized long skip(long len) {
+		if(len <= 0) {
+			return 0;
+		}
+		long start = len;
+		while(!vec.isEmpty()) {
+			ByteBuffer r = vec.get(0);
+			int rlen = r.remaining();
+			if(rlen <= len) {
+				r.position(r.position()+rlen);
+				vec.remove(0);
+				len -= rlen;
+			} else {
+				r.position((int)(r.position()+len));
+				return start;
+			}
+		}
+		return start - len;
+	}
+
+
+	public final static class OutputStream extends java.io.OutputStream {
+		private VectoredByteBuffer vbb;
+
+		OutputStream(VectoredByteBuffer vbb) {
+			this.vbb = vbb;
+		}
+
+		@Override
+		public void write(byte[] b) {
+			vbb.write(b);
+		}
+
+		@Override
+		public void write(byte[] b, int off, int len) {
+			vbb.write(b, off, len);
+		}
+
+		@Override
+		public void write(int b) {
+			vbb.write(b);
+		}
+
+		public int write(ByteBuffer src) {
+			return vbb.write(src);
+		}
+
+		public long write(ByteBuffer[] srcs) {
+			return vbb.write(srcs);
+		}
+
+		public long write(ByteBuffer[] srcs, int offset, int length) {
+			return vbb.write(srcs, offset, length);
+		}
+
+		public void writeTo(OutputStream out) throws IOException {
+			vbb.writeTo(out);
+		}
+
+		public byte[] toByteArray() {
+			return vbb.toByteArray();
+		}
+	}
+
+	public final static class InputStream extends java.io.InputStream {
+		private VectoredByteBuffer vbb;
+
+		InputStream(VectoredByteBuffer vbb) {
+			this.vbb = vbb;
+		}
+
+		@Override
+		public int available() {
+			return vbb.available();
+		}
+
+		@Override
+		public int read(byte[] b) {
+			return vbb.read(b);
+		}
+
+		@Override
+		public int read(byte[] b, int off, int len) {
+			return vbb.read(b, off, len);
+		}
+
+		@Override
+		public int read() {
+			return vbb.read();
+		}
+
+		public int read(ByteBuffer dst) {
+			return vbb.read(dst);
+		}
+
+		public long read(ByteBuffer[] dsts, int offset, int length) {
+			return vbb.read(dsts, offset, length);
+		}
+
+		public long read(GatheringByteChannel to) throws IOException {
+			return vbb.read(to);
+		}
+
+		public long skip(long len) {
+			return vbb.skip(len);
+		}
+	}
+
+	public OutputStream outputStream() {
+		return new OutputStream(this);
+	}
+
+	public InputStream inputStream() {
+		return new InputStream(this);
+	}
 }
+
 

@@ -4,658 +4,677 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.h2.value;
+package org.h2.store.fs;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.Reader;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
-import org.h2.engine.Constants;
-import org.h2.engine.SysProperties;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.channels.FileLock;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+
+import org.h2.api.ErrorCode;
+import org.h2.compress.CompressLZF;
 import org.h2.message.DbException;
-import org.h2.mvstore.DataUtils;
-import org.h2.store.DataHandler;
-import org.h2.store.FileStore;
-import org.h2.store.FileStoreInputStream;
-import org.h2.store.FileStoreOutputStream;
-import org.h2.store.LobStorageFrontend;
-import org.h2.store.LobStorageInterface;
-import org.h2.store.fs.FileUtils;
-import org.h2.util.IOUtils;
 import org.h2.util.MathUtils;
-import org.h2.util.StringUtils;
-import org.h2.util.Utils;
+import org.h2.util.New;
 
 /**
- * A implementation of the BLOB and CLOB data types.
- *
- * Small objects are kept in memory and stored in the record.
- * Large objects are either stored in the database, or in temporary files.
+ * This file system keeps files fully in memory. There is an option to compress
+ * file blocks to safe memory.
  */
-public class ValueLobDb extends Value implements Value.ValueClob,
-        Value.ValueBlob {
+public class FilePathMem extends FilePath {
 
-    private final int type;
-    private final long lobId;
-    private final byte[] hmac;
-    private final byte[] small;
-    private final DataHandler handler;
+    private static final TreeMap<String, FileMemData> MEMORY_FILES =
+            new TreeMap<String, FileMemData>();
+    private static final FileMemData DIRECTORY = new FileMemData("", false);
 
-    /**
-     * For a BLOB, precision is length in bytes.
-     * For a CLOB, precision is length in chars.
-     */
-    private final long precision;
-
-    private final String fileName;
-    private final FileStore tempFile;
-    private int tableId;
-    private int hash;
-
-    private ValueLobDb(int type, DataHandler handler, int tableId, long lobId,
-            byte[] hmac, long precision) {
-        this.type = type;
-        this.handler = handler;
-        this.tableId = tableId;
-        this.lobId = lobId;
-        this.hmac = hmac;
-        this.precision = precision;
-        this.small = null;
-        this.fileName = null;
-        this.tempFile = null;
+    @Override
+    public FilePathMem getPath(String path) {
+        FilePathMem p = new FilePathMem();
+        p.name = getCanonicalPath(path);
+        return p;
     }
 
-    private ValueLobDb(int type, byte[] small, long precision) {
-        this.type = type;
-        this.small = small;
-        this.precision = precision;
-        this.lobId = 0;
-        this.hmac = null;
-        this.handler = null;
-        this.fileName = null;
-        this.tempFile = null;
+    @Override
+    public long size() {
+        return getMemoryFile().length();
     }
 
-    /**
-     * Create a CLOB in a temporary file.
-     */
-    private ValueLobDb(DataHandler handler, Reader in, long remaining)
-            throws IOException {
-        this.type = Value.CLOB;
-        this.handler = handler;
-        this.small = null;
-        this.lobId = 0;
-        this.hmac = null;
-        this.fileName = createTempLobFileName(handler);
-        this.tempFile = this.handler.openFile(fileName, "rw", false);
-        this.tempFile.autoDelete();
-        FileStoreOutputStream out = new FileStoreOutputStream(tempFile, null, null);
-        long tmpPrecision = 0;
-        try {
-            char[] buff = new char[Constants.IO_BUFFER_SIZE];
-            while (true) {
-                int len = getBufferSize(this.handler, false, remaining);
-                len = IOUtils.readFully(in, buff, len);
-                if (len == 0) {
+    @Override
+    public void moveTo(FilePath newName) {
+        synchronized (MEMORY_FILES) {
+            FileMemData f = getMemoryFile();
+            f.setName(newName.name);
+            MEMORY_FILES.remove(name);
+            MEMORY_FILES.put(newName.name, f);
+        }
+    }
+
+    @Override
+    public boolean createFile() {
+        synchronized (MEMORY_FILES) {
+            if (exists()) {
+                return false;
+            }
+            getMemoryFile();
+        }
+        return true;
+    }
+
+    @Override
+    public boolean exists() {
+        if (isRoot()) {
+            return true;
+        }
+        synchronized (MEMORY_FILES) {
+            return MEMORY_FILES.get(name) != null;
+        }
+    }
+
+    @Override
+    public void delete() {
+        if (isRoot()) {
+            return;
+        }
+        synchronized (MEMORY_FILES) {
+            MEMORY_FILES.remove(name);
+        }
+    }
+
+    @Override
+    public List<FilePath> newDirectoryStream() {
+        ArrayList<FilePath> list = New.arrayList();
+        synchronized (MEMORY_FILES) {
+            for (String n : MEMORY_FILES.tailMap(name).keySet()) {
+                if (n.startsWith(name)) {
+                    if (!n.equals(name) && n.indexOf('/', name.length() + 1) < 0) {
+                        list.add(getPath(n));
+                    }
+                } else {
                     break;
                 }
             }
-        } finally {
-            out.close();
+            return list;
         }
-        this.precision = tmpPrecision;
     }
 
-    /**
-     * Create a BLOB in a temporary file.
-     */
-    private ValueLobDb(DataHandler handler, byte[] buff, int len, InputStream in,
-            long remaining) throws IOException {
-        this.type = Value.BLOB;
-        this.handler = handler;
-        this.small = null;
-        this.lobId = 0;
-        this.hmac = null;
-        this.fileName = createTempLobFileName(handler);
-        this.tempFile = this.handler.openFile(fileName, "rw", false);
-        this.tempFile.autoDelete();
-        FileStoreOutputStream out = new FileStoreOutputStream(tempFile, null, null);
-        long tmpPrecision = 0;
-        boolean compress = this.handler.getLobCompressionAlgorithm(Value.BLOB) != null;
-        try {
-            while (true) {
-                tmpPrecision += len;
-                out.write(buff, 0, len);
-                remaining -= len;
-                if (remaining <= 0) {
-                    break;
-                }
-                len = getBufferSize(this.handler, compress, remaining);
-                len = IOUtils.readFully(in, buff, len);
-                if (len <= 0) {
-                    break;
-                }
+    @Override
+    public boolean setReadOnly() {
+        return getMemoryFile().setReadOnly();
+    }
+
+    @Override
+    public boolean canWrite() {
+        return getMemoryFile().canWrite();
+    }
+
+    @Override
+    public FilePathMem getParent() {
+        int idx = name.lastIndexOf('/');
+        return idx < 0 ? null : getPath(name.substring(0, idx));
+    }
+
+    @Override
+    public boolean isDirectory() {
+        if (isRoot()) {
+            return true;
+        }
+        synchronized (MEMORY_FILES) {
+            FileMemData d = MEMORY_FILES.get(name);
+            return d == DIRECTORY;
+        }
+    }
+
+    @Override
+    public boolean isAbsolute() {
+        // TODO relative files are not supported
+        return true;
+    }
+
+    @Override
+    public FilePathMem toRealPath() {
+        return this;
+    }
+
+    @Override
+    public long lastModified() {
+        return getMemoryFile().getLastModified();
+    }
+
+    @Override
+    public void createDirectory() {
+        if (exists()) {
+            throw DbException.get(ErrorCode.FILE_CREATION_FAILED_1,
+                    name + " (a file with this name already exists)");
+        }
+        synchronized (MEMORY_FILES) {
+            MEMORY_FILES.put(name, DIRECTORY);
+        }
+    }
+
+    @Override
+    public OutputStream newOutputStream(boolean append) throws IOException {
+        FileMemData obj = getMemoryFile();
+        FileMem m = new FileMem(obj, false);
+        return new FileChannelOutputStream(m, append);
+    }
+
+    @Override
+    public InputStream newInputStream() {
+        FileMemData obj = getMemoryFile();
+        FileMem m = new FileMem(obj, true);
+        return new FileChannelInputStream(m, true);
+    }
+
+    @Override
+    public FileChannel open(String mode) {
+        FileMemData obj = getMemoryFile();
+        return new FileMem(obj, "r".equals(mode));
+    }
+
+    private FileMemData getMemoryFile() {
+        synchronized (MEMORY_FILES) {
+            FileMemData m = MEMORY_FILES.get(name);
+            if (m == DIRECTORY) {
+                throw DbException.get(ErrorCode.FILE_CREATION_FAILED_1,
+                        name + " (a directory with this name already exists)");
             }
-        } finally {
-            out.close();
+            if (m == null) {
+                m = new FileMemData(name, compressed());
+                MEMORY_FILES.put(name, m);
+            }
+            return m;
         }
-        this.precision = tmpPrecision;
     }
 
-    private static String createTempLobFileName(DataHandler handler)
-            throws IOException {
-        String path = handler.getDatabasePath();
-        if (path.length() == 0) {
-            path = SysProperties.PREFIX_TEMP_FILE;
+    private boolean isRoot() {
+        return name.equals(getScheme() + ":");
+    }
+
+    private static String getCanonicalPath(String fileName) {
+        fileName = fileName.replace('\\', '/');
+        int idx = fileName.indexOf(':') + 1;
+        if (fileName.length() > idx && fileName.charAt(idx) != '/') {
+            fileName = fileName.substring(0, idx) + "/" + fileName.substring(idx);
         }
-        return FileUtils.createTempFile(path, Constants.SUFFIX_TEMP_FILE, true, true);
+        return fileName;
+    }
+
+    @Override
+    public String getScheme() {
+        return "memFS";
     }
 
     /**
-     * Create a LOB value.
+     * Whether the file should be compressed.
      *
-     * @param type the type
-     * @param handler the data handler
-     * @param tableId the table id
-     * @param id the lob id
-     * @param hmac the message authentication code
-     * @param precision the precision (number of bytes / characters)
-     * @return the value
+     * @return if it should be compressed.
      */
-    public static ValueLobDb create(int type, DataHandler handler,
-            int tableId, long id, byte[] hmac, long precision) {
-        return new ValueLobDb(type, handler, tableId, id, hmac, precision);
+    boolean compressed() {
+        return false;
     }
+
+}
+
+/**
+ * A memory file system that compresses blocks to conserve memory.
+ */
+class FilePathMemLZF extends FilePathMem {
+
+    @Override
+    boolean compressed() {
+        return true;
+    }
+
+    @Override
+    public String getScheme() {
+        return "memLZF";
+    }
+
+}
+
+/**
+ * This class represents an in-memory file.
+ */
+class FileMem extends FileBase {
 
     /**
-     * Convert a lob to another data type. The data is fully read in memory
-     * except when converting to BLOB or CLOB.
-     *
-     * @param t the new type
-     * @return the converted value
+     * The file data.
      */
-    @Override
-    public Value convertTo(int t) {
-        if (t == type) {
-            return this;
-        } else if (t == Value.CLOB) {
-            if (handler != null) {
-                Value copy = handler.getLobStorage().
-                        createClob(getReader(), -1);
-                return copy;
-            } else if (small != null) {
-                return ValueLobDb.createSmallLob(t, small);
-            }
-        } else if (t == Value.BLOB) {
-            if (handler != null) {
-                Value copy = handler.getLobStorage().
-                        createBlob(getInputStream(), -1);
-                return copy;
-            } else if (small != null) {
-                return ValueLobDb.createSmallLob(t, small);
-            }
-        }
-        return super.convertTo(t);
+    final FileMemData data;
+
+    private final boolean readOnly;
+    private long pos;
+
+    FileMem(FileMemData data, boolean readOnly) {
+        this.data = data;
+        this.readOnly = readOnly;
     }
 
     @Override
-    public boolean isLinked() {
-        return tableId != LobStorageFrontend.TABLE_ID_SESSION_VARIABLE &&
-                small == null;
-    }
-
-    public boolean isStored() {
-        return small == null && fileName == null;
+    public long size() {
+        return data.length();
     }
 
     @Override
-    public void close() {
-        if (fileName != null) {
-            if (tempFile != null) {
-                tempFile.stopAutoDelete();
-            }
-            // synchronize on the database, to avoid concurrent temp file
-            // creation / deletion / backup
-            synchronized (handler.getLobSyncObject()) {
-                FileUtils.delete(fileName);
-            }
-        }
-        if (handler != null) {
-            handler.getLobStorage().removeLob(this);
-        }
-    }
-
-    @Override
-    public void unlink(DataHandler database) {
-        if (small == null &&
-                tableId != LobStorageFrontend.TABLE_ID_SESSION_VARIABLE) {
-            database.getLobStorage().setTable(this,
-                    LobStorageFrontend.TABLE_ID_SESSION_VARIABLE);
-            tableId = LobStorageFrontend.TABLE_ID_SESSION_VARIABLE;
-        }
-    }
-
-    @Override
-    public Value link(DataHandler database, int tabId) {
-        if (small == null) {
-            if (tableId == LobStorageFrontend.TABLE_TEMP) {
-                database.getLobStorage().setTable(this, tabId);
-                this.tableId = tabId;
-            } else {
-                return handler.getLobStorage().copyLob(this, tabId, getPrecision());
-            }
-        } else if (small.length > database.getMaxLengthInplaceLob()) {
-            LobStorageInterface s = database.getLobStorage();
-            Value v;
-            if (type == Value.BLOB) {
-                v = s.createBlob(getInputStream(), getPrecision());
-            } else {
-                v = s.createClob(getReader(), getPrecision());
-            }
-            return v.link(database, tabId);
+    public FileChannel truncate(long newLength) throws IOException {
+        if (newLength < size()) {
+            data.touch(readOnly);
+            pos = Math.min(pos, newLength);
+            data.truncate(newLength);
         }
         return this;
     }
 
-    /**
-     * Get the current table id of this lob.
-     *
-     * @return the table id
-     */
     @Override
-    public int getTableId() {
-        return tableId;
-    }
-
-    @Override
-    public int getType() {
-        return type;
-    }
-
-    @Override
-    public long getPrecision() {
-        return precision;
-    }
-
-    @Override
-    public String getString() {
-        int len = precision > Integer.MAX_VALUE || precision == 0 ?
-                Integer.MAX_VALUE : (int) precision;
-        try {
-            if (type == Value.CLOB) {
-                if (small != null) {
-                    return new String(small, Constants.UTF8);
-                }
-                return IOUtils.readStringAndClose(getReader(), len);
-            }
-            byte[] buff;
-            if (small != null) {
-                buff = small;
-            } else {
-                buff = IOUtils.readBytesAndClose(getInputStream(), len);
-            }
-            return StringUtils.convertBytesToHex(buff);
-        } catch (IOException e) {
-            throw DbException.convertIOException(e, toString());
-        }
-    }
-
-    @Override
-    public byte[] getBytes() {
-        if (type == CLOB) {
-            // convert hex to string
-            return super.getBytes();
-        }
-        byte[] data = getBytesNoCopy();
-        return Utils.cloneByteArray(data);
-    }
-
-    @Override
-    public byte[] getBytesNoCopy() {
-        if (type == CLOB) {
-            // convert hex to string
-            return super.getBytesNoCopy();
-        }
-        if (small != null) {
-            return small;
-        }
-        try {
-            return IOUtils.readBytesAndClose(getInputStream(), Integer.MAX_VALUE);
-        } catch (IOException e) {
-            throw DbException.convertIOException(e, toString());
-        }
-    }
-
-    @Override
-    public int hashCode() {
-        if (hash == 0) {
-            if (precision > 4096) {
-                // TODO: should calculate the hash code when saving, and store
-                // it in the database file
-                return (int) (precision ^ (precision >>> 32));
-            }
-            if (type == CLOB) {
-                hash = getString().hashCode();
-            } else {
-                hash = Utils.getByteArrayHash(getBytes());
-            }
-        }
-        return hash;
-    }
-
-    @Override
-    protected int compareSecure(Value v, CompareMode mode) {
-        if (v instanceof ValueLobDb) {
-            ValueLobDb v2 = (ValueLobDb) v;
-            if (v == this) {
-                return 0;
-            }
-            if (lobId == v2.lobId && small == null && v2.small == null) {
-                return 0;
-            }
-        }
-        if (type == Value.CLOB) {
-            return Integer.signum(getString().compareTo(v.getString()));
-        }
-        byte[] v2 = v.getBytesNoCopy();
-        return Utils.compareNotNullSigned(getBytes(), v2);
-    }
-
-    @Override
-    public Object getObject() {
-        if (type == Value.CLOB) {
-            return getReader();
-        }
-        return getInputStream();
-    }
-
-    @Override
-    public Reader getReader() {
-        return IOUtils.getBufferedReader(getInputStream());
-    }
-
-    @Override
-    public InputStream getInputStream() {
-        if (small != null) {
-            return new ByteArrayInputStream(small);
-        } else if (fileName != null) {
-            FileStore store = handler.openFile(fileName, "r", true);
-            boolean alwaysClose = SysProperties.lobCloseBetweenReads;
-            return new BufferedInputStream(new FileStoreInputStream(store,
-                    handler, false, alwaysClose), Constants.IO_BUFFER_SIZE);
-        }
-        long byteCount = (type == Value.BLOB) ? precision : -1;
-        try {
-            return handler.getLobStorage().getInputStream(this, hmac, byteCount);
-        } catch (IOException e) {
-            throw DbException.convertIOException(e, toString());
-        }
-    }
-
-    @Override
-    public void set(PreparedStatement prep, int parameterIndex)
-            throws SQLException {
-        long p = getPrecision();
-        if (p > Integer.MAX_VALUE || p <= 0) {
-            p = -1;
-        }
-        if (type == Value.BLOB) {
-            prep.setBinaryStream(parameterIndex, getInputStream(), (int) p);
-        } else {
-            prep.setCharacterStream(parameterIndex, getReader(), (int) p);
-        }
-    }
-
-    @Override
-    public String getSQL() {
-        String s;
-        if (type == Value.CLOB) {
-            s = getString();
-            return StringUtils.quoteStringSQL(s);
-        }
-        byte[] buff = getBytes();
-        s = StringUtils.convertBytesToHex(buff);
-        return "X'" + s + "'";
-    }
-
-    @Override
-    public String getTraceSQL() {
-        if (small != null && getPrecision() <= SysProperties.MAX_TRACE_DATA_LENGTH) {
-            return getSQL();
-        }
-        StringBuilder buff = new StringBuilder();
-        if (type == Value.CLOB) {
-            buff.append("SPACE(").append(getPrecision());
-        } else {
-            buff.append("CAST(REPEAT('00', ").append(getPrecision()).append(") AS BINARY");
-        }
-        buff.append(" /* table: ").append(tableId).append(" id: ")
-                .append(lobId).append(" */)");
-        return buff.toString();
-    }
-
-    /**
-     * Get the data if this a small lob value.
-     *
-     * @return the data
-     */
-    @Override
-    public byte[] getSmall() {
-        return small;
-    }
-
-    @Override
-    public int getDisplaySize() {
-        return MathUtils.convertLongToInt(getPrecision());
-    }
-
-    @Override
-    public boolean equals(Object other) {
-        return other instanceof ValueLobDb && compareSecure((Value) other, null) == 0;
-    }
-
-    @Override
-    public int getMemory() {
-        if (small != null) {
-            return small.length + 104;
-        }
-        return 140;
-    }
-
-    /**
-     * Create an independent copy of this temporary value.
-     * The file will not be deleted automatically.
-     *
-     * @return the value
-     */
-    @Override
-    public ValueLobDb copyToTemp() {
+    public FileChannel position(long newPos) {
+        this.pos = (int) newPos;
         return this;
     }
 
-    public long getLobId() {
-        return lobId;
+    @Override
+    public int write(ByteBuffer src) throws IOException {
+        int len = src.remaining();
+        if (len == 0) {
+            return 0;
+        }
+        data.touch(readOnly);
+        pos = data.readWrite(pos, src.array(),
+                src.arrayOffset() + src.position(), len, true);
+        src.position(src.position() + len);
+        return len;
+    }
+
+    @Override
+    public int read(ByteBuffer dst) throws IOException {
+        int len = dst.remaining();
+        if (len == 0) {
+            return 0;
+        }
+        long newPos = data.readWrite(pos, dst.array(),
+                dst.arrayOffset() + dst.position(), len, false);
+        len = (int) (newPos - pos);
+        if (len <= 0) {
+            return -1;
+        }
+        dst.position(dst.position() + len);
+        pos = newPos;
+        return len;
+    }
+
+    @Override
+    public long position() {
+        return pos;
+    }
+
+    @Override
+    public void implCloseChannel() throws IOException {
+        pos = 0;
+    }
+
+    @Override
+    public void force(boolean metaData) throws IOException {
+        // do nothing
+    }
+
+    @Override
+    public synchronized FileLock tryLock(long position, long size,
+            boolean shared) throws IOException {
+        if (shared) {
+            if (!data.lockShared()) {
+                return null;
+            }
+        } else {
+            if (!data.lockExclusive()) {
+                return null;
+            }
+        }
+
+        // cast to FileChannel to avoid JDK 1.7 ambiguity
+        FileLock lock = new FileLock((FileChannel) null, position, size, shared) {
+
+            @Override
+            public boolean isValid() {
+                return true;
+            }
+
+            @Override
+            public void release() throws IOException {
+                data.unlock();
+            }
+        };
+        return lock;
     }
 
     @Override
     public String toString() {
-        return "lob: " + fileName + " table: " + tableId + " id: " + lobId;
-    }
-
-    /**
-     * Create a temporary CLOB value from a stream.
-     *
-     * @param in the reader
-     * @param length the number of characters to read, or -1 for no limit
-     * @param handler the data handler
-     * @return the lob value
-     */
-    public static ValueLobDb createTempClob(Reader in, long length,
-            DataHandler handler) {
-        BufferedReader reader;
-        if (in instanceof BufferedReader) {
-            reader = (BufferedReader) in;
-        } else {
-            reader = new BufferedReader(in, Constants.IO_BUFFER_SIZE);
-        }
-        try {
-            boolean compress = handler.getLobCompressionAlgorithm(Value.CLOB) != null;
-            long remaining = Long.MAX_VALUE;
-            if (length >= 0 && length < remaining) {
-                remaining = length;
-            }
-            int len = getBufferSize(handler, compress, remaining);
-            char[] buff;
-            if (len >= Integer.MAX_VALUE) {
-                String data = IOUtils.readStringAndClose(reader, -1);
-                buff = data.toCharArray();
-                len = buff.length;
-            } else {
-                buff = new char[len];
-                reader.mark(len);
-                len = IOUtils.readFully(reader, buff, len);
-            }
-            if (len <= handler.getMaxLengthInplaceLob()) {
-                byte[] small = new String(buff, 0, len).getBytes(Constants.UTF8);
-                return ValueLobDb.createSmallLob(Value.CLOB, small, len);
-            }
-            reader.reset();
-            ValueLobDb lob = new ValueLobDb(handler, reader, remaining);
-            return lob;
-        } catch (IOException e) {
-            throw DbException.convertIOException(e, null);
-        }
-    }
-
-    /**
-     * Create a temporary BLOB value from a stream.
-     *
-     * @param in the input stream
-     * @param length the number of characters to read, or -1 for no limit
-     * @param handler the data handler
-     * @return the lob value
-     */
-    public static ValueLobDb createTempBlob(InputStream in, long length,
-            DataHandler handler) {
-        try {
-            long remaining = Long.MAX_VALUE;
-            boolean compress = handler.getLobCompressionAlgorithm(Value.BLOB) != null;
-            if (length >= 0 && length < remaining) {
-                remaining = length;
-            }
-            int len = getBufferSize(handler, compress, remaining);
-            byte[] buff;
-            if (len >= Integer.MAX_VALUE) {
-                buff = IOUtils.readBytesAndClose(in, -1);
-                len = buff.length;
-            } else {
-                buff = DataUtils.newBytes(len);
-                len = IOUtils.readFully(in, buff, len);
-            }
-            if (len <= handler.getMaxLengthInplaceLob()) {
-                byte[] small = DataUtils.newBytes(len);
-                System.arraycopy(buff, 0, small, 0, len);
-                return ValueLobDb.createSmallLob(Value.BLOB, small, small.length);
-            }
-            ValueLobDb lob = new ValueLobDb(handler, buff, len, in, remaining);
-            return lob;
-        } catch (IOException e) {
-            throw DbException.convertIOException(e, null);
-        }
-    }
-
-    private static int getBufferSize(DataHandler handler, boolean compress,
-            long remaining) {
-        if (remaining < 0 || remaining > Integer.MAX_VALUE) {
-            remaining = Integer.MAX_VALUE;
-        }
-        int inplace = handler.getMaxLengthInplaceLob();
-        long m = compress ? Constants.IO_BUFFER_SIZE_COMPRESS
-                : Constants.IO_BUFFER_SIZE;
-        if (m < remaining && m <= inplace) {
-            // using "1L" to force long arithmetic because
-            // inplace could be Integer.MAX_VALUE
-            m = Math.min(remaining, inplace + 1L);
-            // the buffer size must be bigger than the inplace lob, otherwise we
-            // can't know if it must be stored in-place or not
-            m = MathUtils.roundUpLong(m, Constants.IO_BUFFER_SIZE);
-        }
-        m = Math.min(remaining, m);
-        m = MathUtils.convertLongToInt(m);
-        if (m < 0) {
-            m = Integer.MAX_VALUE;
-        }
-        return (int) m;
-    }
-
-    @Override
-    public Value convertPrecision(long precision, boolean force) {
-        if (this.precision <= precision) {
-            return this;
-        }
-        ValueLobDb lob;
-        if (type == CLOB) {
-            if (handler == null) {
-                try {
-                    int p = MathUtils.convertLongToInt(precision);
-                    String s = IOUtils.readStringAndClose(getReader(), p);
-                    byte[] data = s.getBytes(Constants.UTF8);
-                    lob = ValueLobDb.createSmallLob(type, data, s.length());
-                } catch (IOException e) {
-                    throw DbException.convertIOException(e, null);
-                }
-            } else {
-                lob = ValueLobDb.createTempClob(getReader(), precision, handler);
-            }
-        } else {
-            if (handler == null) {
-                try {
-                    int p = MathUtils.convertLongToInt(precision);
-                    byte[] data = IOUtils.readBytesAndClose(getInputStream(), p);
-                    lob = ValueLobDb.createSmallLob(type, data, data.length);
-                } catch (IOException e) {
-                    throw DbException.convertIOException(e, null);
-                }
-            } else {
-                lob = ValueLobDb.createTempBlob(getInputStream(), precision, handler);
-            }
-        }
-        return lob;
-    }
-
-    /**
-     * Create a LOB object that fits in memory.
-     *
-     * @param type the type (Value.BLOB or CLOB)
-     * @param small the byte array
-     * @return the LOB
-     */
-    public static Value createSmallLob(int type, byte[] small) {
-        int precision;
-        if (type == Value.CLOB) {
-            precision = new String(small, Constants.UTF8).length();
-        } else {
-            precision = small.length;
-        }
-        return createSmallLob(type, small, precision);
-    }
-
-    /**
-     * Create a LOB object that fits in memory.
-     *
-     * @param type the type (Value.BLOB or CLOB)
-     * @param small the byte array
-     * @param precision the precision
-     * @return the LOB
-     */
-    public static ValueLobDb createSmallLob(int type, byte[] small,
-            long precision) {
-        return new ValueLobDb(type, small, precision);
+        return data.getName();
     }
 
 }
+
+/**
+ * This class contains the data of an in-memory random access file.
+ * Data compression using the LZF algorithm is supported as well.
+ */
+class FileMemData {
+
+    private static final int CACHE_SIZE = 8;
+    private static final int BLOCK_SIZE_SHIFT = 10;
+    private static final int BLOCK_SIZE = 1 << BLOCK_SIZE_SHIFT;
+    private static final int BLOCK_SIZE_MASK = BLOCK_SIZE - 1;
+    private static final CompressLZF LZF = new CompressLZF();
+    private static final byte[] BUFFER = new byte[BLOCK_SIZE * 2];
+    private static final byte[] COMPRESSED_EMPTY_BLOCK;
+
+    private static final Cache<CompressItem, CompressItem> COMPRESS_LATER =
+        new Cache<CompressItem, CompressItem>(CACHE_SIZE);
+
+    private String name;
+    private final boolean compress;
+    private long length;
+    private byte[][] data;
+    private long lastModified;
+    private boolean isReadOnly;
+    private boolean isLockedExclusive;
+    private int sharedLockCount;
+
+    static {
+        byte[] n = new byte[BLOCK_SIZE];
+        int len = LZF.compress(n, BLOCK_SIZE, BUFFER, 0);
+        COMPRESSED_EMPTY_BLOCK = new byte[len];
+        System.arraycopy(BUFFER, 0, COMPRESSED_EMPTY_BLOCK, 0, len);
+    }
+
+    FileMemData(String name, boolean compress) {
+        this.name = name;
+        this.compress = compress;
+        data = new byte[0][];
+        lastModified = System.currentTimeMillis();
+    }
+
+    /**
+     * Lock the file in exclusive mode if possible.
+     *
+     * @return if locking was successful
+     */
+    synchronized boolean lockExclusive() {
+        if (sharedLockCount > 0 || isLockedExclusive) {
+            return false;
+        }
+        isLockedExclusive = true;
+        return true;
+    }
+
+    /**
+     * Lock the file in shared mode if possible.
+     *
+     * @return if locking was successful
+     */
+    synchronized boolean lockShared() {
+        if (isLockedExclusive) {
+            return false;
+        }
+        sharedLockCount++;
+        return true;
+    }
+
+    /**
+     * Unlock the file.
+     */
+    synchronized void unlock() {
+        if (isLockedExclusive) {
+            isLockedExclusive = false;
+        } else {
+            sharedLockCount = Math.max(0, sharedLockCount - 1);
+        }
+    }
+
+    /**
+     * This small cache compresses the data if an element leaves the cache.
+     */
+    static class Cache<K, V> extends LinkedHashMap<K, V> {
+
+        private static final long serialVersionUID = 1L;
+        private final int size;
+
+        Cache(int size) {
+            super(size, (float) 0.75, true);
+            this.size = size;
+        }
+
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<K, V> eldest) {
+            if (size() < size) {
+                return false;
+            }
+            CompressItem c = (CompressItem) eldest.getKey();
+            compress(c.data, c.page);
+            return true;
+        }
+    }
+
+    /**
+     * Represents a compressed item.
+     */
+    static class CompressItem {
+
+        /**
+         * The file data.
+         */
+        byte[][] data;
+
+        /**
+         * The page to compress.
+         */
+        int page;
+
+        @Override
+        public int hashCode() {
+            return page;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (o instanceof CompressItem) {
+                CompressItem c = (CompressItem) o;
+                return c.data == data && c.page == page;
+            }
+            return false;
+        }
+
+    }
+
+    private static void compressLater(byte[][] data, int page) {
+        CompressItem c = new CompressItem();
+        c.data = data;
+        c.page = page;
+        synchronized (LZF) {
+            COMPRESS_LATER.put(c, c);
+        }
+    }
+
+    private static void expand(byte[][] data, int page) {
+        byte[] d = data[page];
+        if (d.length == BLOCK_SIZE) {
+            return;
+        }
+        byte[] out = new byte[BLOCK_SIZE];
+        if (d != COMPRESSED_EMPTY_BLOCK) {
+            synchronized (LZF) {
+                LZF.expand(d, 0, d.length, out, 0, BLOCK_SIZE);
+            }
+        }
+        data[page] = out;
+    }
+
+    /**
+     * Compress the data in a byte array.
+     *
+     * @param data the page array
+     * @param page which page to compress
+     */
+    static void compress(byte[][] data, int page) {
+        byte[] d = data[page];
+        synchronized (LZF) {
+            int len = LZF.compress(d, BLOCK_SIZE, BUFFER, 0);
+            if (len <= BLOCK_SIZE) {
+                d = new byte[len];
+                System.arraycopy(BUFFER, 0, d, 0, len);
+                data[page] = d;
+            }
+        }
+    }
+
+    /**
+     * Update the last modified time.
+     *
+     * @param openReadOnly if the file was opened in read-only mode
+     */
+    void touch(boolean openReadOnly) throws IOException {
+        if (isReadOnly || openReadOnly) {
+            throw new IOException("Read only");
+        }
+        lastModified = System.currentTimeMillis();
+    }
+
+    /**
+     * Get the file length.
+     *
+     * @return the length
+     */
+    long length() {
+        return length;
+    }
+
+    /**
+     * Truncate the file.
+     *
+     * @param newLength the new length
+     */
+    void truncate(long newLength) {
+        changeLength(newLength);
+        long end = MathUtils.roundUpLong(newLength, BLOCK_SIZE);
+        if (end != newLength) {
+            int lastPage = (int) (newLength >>> BLOCK_SIZE_SHIFT);
+            expand(data, lastPage);
+            byte[] d = data[lastPage];
+            for (int i = (int) (newLength & BLOCK_SIZE_MASK); i < BLOCK_SIZE; i++) {
+                d[i] = 0;
+            }
+            if (compress) {
+                compressLater(data, lastPage);
+            }
+        }
+    }
+
+    private void changeLength(long len) {
+        length = len;
+        len = MathUtils.roundUpLong(len, BLOCK_SIZE);
+        int blocks = (int) (len >>> BLOCK_SIZE_SHIFT);
+        if (blocks != data.length) {
+            byte[][] n = new byte[blocks][];
+            System.arraycopy(data, 0, n, 0, Math.min(data.length, n.length));
+            for (int i = data.length; i < blocks; i++) {
+                n[i] = COMPRESSED_EMPTY_BLOCK;
+            }
+            data = n;
+        }
+    }
+
+    /**
+     * Read or write.
+     *
+     * @param pos the position
+     * @param b the byte array
+     * @param off the offset within the byte array
+     * @param len the number of bytes
+     * @param write true for writing
+     * @return the new position
+     */
+    long readWrite(long pos, byte[] b, int off, int len, boolean write) {
+        long end = pos + len;
+        if (end > length) {
+            if (write) {
+                changeLength(end);
+            } else {
+                len = (int) (length - pos);
+            }
+        }
+        while (len > 0) {
+            int l = (int) Math.min(len, BLOCK_SIZE - (pos & BLOCK_SIZE_MASK));
+            int page = (int) (pos >>> BLOCK_SIZE_SHIFT);
+            expand(data, page);
+            byte[] block = data[page];
+            int blockOffset = (int) (pos & BLOCK_SIZE_MASK);
+            if (write) {
+                System.arraycopy(b, off, block, blockOffset, l);
+            } else {
+                System.arraycopy(block, blockOffset, b, off, l);
+            }
+            if (compress) {
+                compressLater(data, page);
+            }
+            off += l;
+            pos += l;
+            len -= l;
+        }
+        return pos;
+    }
+
+    /**
+     * Set the file name.
+     *
+     * @param name the name
+     */
+    void setName(String name) {
+        this.name = name;
+    }
+
+    /**
+     * Get the file name
+     *
+     * @return the name
+     */
+    String getName() {
+        return name;
+    }
+
+    /**
+     * Get the last modified time.
+     *
+     * @return the time
+     */
+    long getLastModified() {
+        return lastModified;
+    }
+
+    /**
+     * Check whether writing is allowed.
+     *
+     * @return true if it is
+     */
+    boolean canWrite() {
+        return !isReadOnly;
+    }
+
+    /**
+     * Set the read-only flag.
+     *
+     * @return true
+     */
+    boolean setReadOnly() {
+        isReadOnly = true;
+        return true;
+    }
+
+}
+
+
 

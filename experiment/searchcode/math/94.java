@@ -1,4 +1,4 @@
-package org.apache.lucene.analysis.pt;
+package org.apache.lucene.analysis.hu;
 
 /**
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -55,153 +55,186 @@ package org.apache.lucene.analysis.pt;
 import static org.apache.lucene.analysis.util.StemmerUtil.*;
 
 /**
- * Light Stemmer for Portuguese
+ * Light Stemmer for Hungarian.
  * <p>
  * This stemmer implements the "UniNE" algorithm in:
  * <i>Light Stemming Approaches for the French, Portuguese, German and Hungarian Languages</i>
  * Jacques Savoy
  */
-public class PortugueseLightStemmer {
-  
+public class HungarianLightStemmer {
   public int stem(char s[], int len) {
-    if (len < 4)
-      return len;
-    
-    len = removeSuffix(s, len);
-    
-    if (len > 3 && s[len-1] == 'a')
-      len = normFeminine(s, len);
-    
-    if (len > 4)
-      switch(s[len-1]) {
-        case 'e':
-        case 'a':
-        case 'o': len--; break;
-      }
-    
     for (int i = 0; i < len; i++)
       switch(s[i]) {
-        case 'ŕ': 
-        case 'á':
-        case 'â':
-        case 'ä': 
-        case 'ă': s[i] = 'a'; break;
-        case 'ň':
+        case 'á': s[i] = 'a'; break;
+        case 'ë':
+        case 'é': s[i] = 'e'; break;
+        case 'í': s[i] = 'i'; break;
         case 'ó':
-        case 'ô':
-        case 'ö': 
-        case 'ő': s[i] = 'o'; break;
-        case 'č':
-        case 'é':
-        case 'ę':
-        case 'ë': s[i] = 'e'; break;
-        case 'ů':
+        case '?':
+        case 'ő':
+        case 'ö': s[i] = 'o'; break;
         case 'ú':
+        case '?':
+        case '?':
         case 'ű':
         case 'ü': s[i] = 'u'; break;
-        case 'ě':
-        case 'í':
-        case 'î':
-        case 'ď': s[i] = 'i'; break;
-        case 'ç': s[i] = 'c'; break;
       }
-
-    return len;
+    
+    len = removeCase(s, len);
+    len = removePossessive(s, len);
+    len = removePlural(s, len);
+    return normalize(s, len);
   }
   
-  private int removeSuffix(char s[], int len) {
-    if (len > 4 && endsWith(s, len, "es"))
-      switch(s[len-3]) {
-        case 'r':
-        case 's':
-        case 'l':
-        case 'z': return len - 2;
+  private int removeCase(char s[], int len) {
+    if (len > 6 && endsWith(s, len, "kent"))
+      return len - 4;
+    
+    if (len > 5) {
+      if (endsWith(s, len, "nak") ||
+          endsWith(s, len, "nek") ||
+          endsWith(s, len, "val") ||
+          endsWith(s, len, "vel") ||
+          endsWith(s, len, "ert") ||
+          endsWith(s, len, "rol") ||
+          endsWith(s, len, "ban") ||
+          endsWith(s, len, "ben") ||
+          endsWith(s, len, "bol") ||
+          endsWith(s, len, "nal") ||
+          endsWith(s, len, "nel") ||
+          endsWith(s, len, "hoz") ||
+          endsWith(s, len, "hez") ||
+          endsWith(s, len, "tol"))
+        return len - 3;
+      
+      if (endsWith(s, len, "al") || endsWith(s, len, "el")) {
+        if (!isVowel(s[len-3]) && s[len-3] == s[len-4])
+          return len - 3;
       }
-    
-    if (len > 3 && endsWith(s, len, "ns")) {
-      s[len - 2] = 'm';
-      return len - 1;
     }
     
-    if (len > 4 && (endsWith(s, len, "eis") || endsWith(s, len, "éis"))) {
-      s[len - 3] = 'e';
-      s[len - 2] = 'l';
-      return len - 1;
+    if (len > 4) {
+      if (endsWith(s, len, "at") ||
+          endsWith(s, len, "et") ||
+          endsWith(s, len, "ot") ||
+          endsWith(s, len, "va") ||
+          endsWith(s, len, "ve") ||
+          endsWith(s, len, "ra") ||
+          endsWith(s, len, "re") ||
+          endsWith(s, len, "ba") ||
+          endsWith(s, len, "be") ||
+          endsWith(s, len, "ul") ||
+          endsWith(s, len, "ig"))
+        return len - 2;
+      
+      if ((endsWith(s, len, "on") || endsWith(s, len, "en")) && !isVowel(s[len-3]))
+          return len - 2;
+      
+      switch(s[len-1]) {
+        case 't':
+        case 'n': return len - 1;
+        case 'a':
+        case 'e': if (s[len-2] == s[len-3] && !isVowel(s[len-2])) return len - 2;
+      }
     }
     
-    if (len > 4 && endsWith(s, len, "ais")) {
-      s[len - 2] = 'l';
-      return len - 1;
-    }
-    
-    if (len > 4 && endsWith(s, len, "óis")) {
-      s[len - 3] = 'o';
-      s[len - 2] = 'l';
-      return len - 1;
-    }
-    
-    if (len > 4 && endsWith(s, len, "is")) {
-      s[len - 1] = 'l';
-      return len;
-    }
-    
-    if (len > 3 &&
-        (endsWith(s, len, "őes") ||
-         endsWith(s, len, "ăes"))) {
-      len--;
-      s[len - 2] = 'ă';
-      s[len - 1] = 'o';
-      return len;
-    }
-    
-    if (len > 6 && endsWith(s, len, "mente"))
-      return len - 5;
-    
-    if (len > 3 && s[len-1] == 's')
-      return len - 1;
     return len;
   }
 
-  private int normFeminine(char s[], int len) {
-    if (len > 7 && 
-        (endsWith(s, len, "inha") ||
-         endsWith(s, len, "iaca") ||
-         endsWith(s, len, "eira"))) {
-      s[len - 1] = 'o';
-      return len;
+  private int removePossessive(char s[], int len) {
+    if (len > 6) {
+      if (!isVowel(s[len-5]) && 
+         (endsWith(s, len, "atok") || 
+          endsWith(s, len, "otok") || 
+          endsWith(s, len, "etek")))
+        return len - 4;
+      
+      if (endsWith(s, len, "itek") || endsWith(s, len, "itok"))
+        return len - 4;
     }
     
-    if (len > 6) {
-      if (endsWith(s, len, "osa") ||
-          endsWith(s, len, "ica") ||
-          endsWith(s, len, "ida") ||
-          endsWith(s, len, "ada") ||
-          endsWith(s, len, "iva") ||
-          endsWith(s, len, "ama")) {
-        s[len - 1] = 'o';
-        return len;
-      }
+    if (len > 5) {
+      if (!isVowel(s[len-4]) &&
+        (endsWith(s, len, "unk") ||
+         endsWith(s, len, "tok") ||
+         endsWith(s, len, "tek")))
+        return len - 3;
       
-      if (endsWith(s, len, "ona")) {
-        s[len - 3] = 'ă';
-        s[len - 2] = 'o';
-        return len - 1;
-      }
+      if (isVowel(s[len-4]) && endsWith(s, len, "juk"))
+        return len - 3;
       
-      if (endsWith(s, len, "ora"))
-        return len - 1;
-      
-      if (endsWith(s, len, "esa")) {
-        s[len - 3] = 'ę';
-        return len - 1;
-      }
-      
-      if (endsWith(s, len, "na")) {
-        s[len - 1] = 'o';
-        return len;
-      }
+      if (endsWith(s, len, "ink"))
+        return len - 3;
     }
+    
+    if (len > 4) {
+      if (!isVowel(s[len-3]) &&
+         (endsWith(s, len, "am") ||
+          endsWith(s, len, "em") ||
+          endsWith(s, len, "om") ||
+          endsWith(s, len, "ad") ||
+          endsWith(s, len, "ed") ||
+          endsWith(s, len, "od") ||
+          endsWith(s, len, "uk")))
+        return len - 2;
+      
+      if (isVowel(s[len-3]) &&
+         (endsWith(s, len, "nk") ||
+          endsWith(s, len, "ja") ||
+          endsWith(s, len, "je")))
+        return len - 2;
+      
+      if (endsWith(s, len, "im") ||
+          endsWith(s, len, "id") ||
+          endsWith(s, len, "ik"))
+        return len - 2;
+    }
+    
+    if (len > 3)
+      switch(s[len-1]) {
+        case 'a':
+        case 'e': if (!isVowel(s[len-2])) return len - 1; break;
+        case 'm':
+        case 'd': if (isVowel(s[len-2])) return len - 1; break;
+        case 'i': return len - 1;
+      }
+    
     return len;
+  }
+
+  @SuppressWarnings("fallthrough")
+  private int removePlural(char s[], int len) {
+    if (len > 3 && s[len-1] == 'k')
+      switch(s[len-2]) {
+        case 'a':
+        case 'o':
+        case 'e': if (len > 4) return len - 2; /* intentional fallthru */
+        default: return len - 1;
+      }
+    return len;
+  }
+
+  private int normalize(char s[], int len) {
+    if (len > 3)
+      switch(s[len-1]) {
+        case 'a':
+        case 'e':
+        case 'i':
+        case 'o': return len - 1;
+      }
+    return len;
+  }
+
+  private boolean isVowel(char ch) {
+    switch(ch) {
+      case 'a':
+      case 'e':
+      case 'i':
+      case 'o':
+      case 'u':
+      case 'y': return true;
+      default: return false;
+    }
   }
 }
 

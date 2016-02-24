@@ -1,4 +1,4 @@
-package org.apache.lucene.analysis.es;
+package org.apache.lucene.analysis.it;
 
 /**
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -53,16 +53,16 @@ package org.apache.lucene.analysis.es;
  */
 
 /**
- * Light Stemmer for Spanish
+ * Light Stemmer for Italian.
  * <p>
  * This stemmer implements the algorithm described in:
  * <i>Report on CLEF-2001 Experiments</i>
  * Jacques Savoy
  */
-public class SpanishLightStemmer {
+public class ItalianLightStemmer {
   
   public int stem(char s[], int len) {
-    if (len < 5)
+    if (len < 6)
       return len;
     
     for (int i = 0; i < len; i++)
@@ -90,18 +90,26 @@ public class SpanishLightStemmer {
       }
     
     switch(s[len-1]) {
-      case 'o':
+      case 'e':
+        if (s[len-2] == 'i' || s[len-2] == 'h')
+          return len - 2;
+        else
+          return len - 1;
+      case 'i':
+        if (s[len-2] == 'h' || s[len-2] == 'i')
+          return len - 2;
+        else
+          return len - 1;
       case 'a':
-      case 'e': return len - 1;
-      case 's':
-        if (s[len-2] == 'e' && s[len-3] == 's' && s[len-4] == 'e')
-          return len-2;
-        if (s[len-2] == 'e' && s[len-3] == 'c') {
-          s[len-3] = 'z';
+        if (s[len-2] == 'i')
           return len - 2;
-        }
-        if (s[len-2] == 'o' || s[len-2] == 'a' || s[len-2] == 'e')
+        else
+          return len - 1;
+      case 'o':
+        if (s[len-2] == 'i')
           return len - 2;
+        else
+          return len - 1;
     }
     
     return len;
