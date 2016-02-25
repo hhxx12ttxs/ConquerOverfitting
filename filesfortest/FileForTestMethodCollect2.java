@@ -1,7 +1,7 @@
 package filefortest;
 
 public class FileForTestMethodCollect2 {
-	
+
 	public boolean test21(){
 		return false;
 	}

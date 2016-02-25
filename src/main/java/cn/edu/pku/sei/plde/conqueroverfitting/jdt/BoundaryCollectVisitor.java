@@ -199,13 +199,11 @@ class BoundaryCollectVisitor extends ASTVisitor {
 
 	@Override
 	public boolean visit(Modifier node) {
-
 		return true;
 	}
 
 	@Override
 	public boolean visit(TypeDeclaration node) {
-
 		return true;
 	}
 
@@ -366,7 +364,6 @@ class BoundaryCollectVisitor extends ASTVisitor {
 
 	@Override
 	public boolean visit(BlockComment node) {
-
 		return false;
 	}
 

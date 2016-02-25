@@ -8,14 +8,16 @@ public class MethodInfo {
 	public boolean isSimpleType;
 	public String otherType;
 	public boolean isPublic;
+	public boolean isStatic;
 
 	public MethodInfo(String methodName, TypeEnum variableSimpleType,
-			boolean isSimpleType, String otherType, boolean isPublic) {
+			boolean isSimpleType, String otherType, boolean isPublic, boolean isStatic) {
 		this.methodName = methodName;
 		this.variableSimpleType = variableSimpleType;
 		this.isSimpleType = isSimpleType;
 		this.otherType = otherType;
 		this.isPublic = isPublic;
+		this.isStatic = isStatic;
 	}
 
 	@Override
@@ -28,11 +30,13 @@ public class MethodInfo {
 		if (isSimpleType) {
 			return methodName.equals(other.methodName)
 					&& variableSimpleType.equals(other.variableSimpleType)
-					&& isPublic == other.isPublic;
+					&& isPublic == other.isPublic
+					&& isStatic == other.isStatic;
 		} else {
 			return methodName.equals(other.methodName)
 					&& otherType.equals(other.otherType)
-					&& isPublic == other.isPublic;
+					&& isPublic == other.isPublic
+					&& isStatic == other.isStatic;
 		}
 	}
 }

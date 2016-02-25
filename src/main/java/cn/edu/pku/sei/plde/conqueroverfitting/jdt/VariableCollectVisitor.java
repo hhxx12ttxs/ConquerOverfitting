@@ -72,6 +72,10 @@ class VariableCollectVisitor extends ASTVisitor {
 
 	@Override
 	public boolean visit(MethodDeclaration node) {
+		if(node.getReturnType2() == null || node.getReturnType2().toString().equals("void")){
+			return true;
+		}
+
 		List<SingleVariableDeclaration> parameters = node.parameters();
 		if(parameters.size() == 0){
 			MethodInfo methodInfo = null;
@@ -84,11 +88,11 @@ class VariableCollectVisitor extends ASTVisitor {
 			if (typeInference.isSimpleType) {
 				methodInfo = new MethodInfo(methodName, typeInference.type,
 						typeInference.isSimpleType, null, node.toString()
-								.contains("public"));
+								.contains("public"), node.toString().contains("static"));
 			} else {
 				methodInfo = new MethodInfo(methodName, null,
 						typeInference.isSimpleType, typeInference.otherType,
-						node.toString().contains("public"));
+						node.toString().contains("public"), node.toString().contains("static"));
 			}
 			methodsInClassList.add(methodInfo);
 		}

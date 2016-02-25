@@ -9,4 +9,12 @@ public class FileForTestMethodCollect {
 	private String test12(){
 		return "";
 	}
+
+	public static boolean test13(){
+		return true;
+	}
+
+	public void test14(){
+		return;
+	}
 }
