@@ -5,7 +5,6 @@ import cn.edu.pku.sei.plde.conqueroverfitting.utils.ShellUtils;
 
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.MethodInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
-import com.sun.org.apache.bcel.internal.generic.LUSHR;
 import org.apache.commons.lang.StringUtils;
 import org.junit.runner.JUnitCore;
 
@@ -13,7 +12,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Created by yanrunfa on 16/2/19.

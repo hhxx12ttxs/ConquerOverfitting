@@ -1,7 +1,5 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.trace;
 
-import com.gzoltar.core.instr.testing.TestResult;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;

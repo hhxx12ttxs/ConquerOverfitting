@@ -1,10 +1,12 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.boundary;
 
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.BoundaryInfo;
-import cn.edu.pku.sei.plde.conqueroverfitting.localization.common.container.map.DoubleMap;
-import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeEnum;
+import cn.edu.pku.sei.plde.conqueroverfitting.localization.Suspicious;
+import cn.edu.pku.sei.plde.conqueroverfitting.trace.ExceptionExtractor;
+import cn.edu.pku.sei.plde.conqueroverfitting.trace.TraceResult;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 
+import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -14,8 +16,14 @@ import java.util.Map;
  */
 public class BoundaryGenerator {
 
+    public static String generate(String classpath, String testClasspath, String classSrc, Suspicious suspicious, String project) throws IOException{
+        List<TraceResult> traceResults = suspicious.getTraceResult(classpath,testClasspath, classSrc);
+        Map<VariableInfo, List<String>> filteredVariable = ExceptionExtractor.extract(traceResults, suspicious.getAllInfo(classSrc),project);
+        return generate(filteredVariable, project);
+    }
 
-    public static String generate(Map<VariableInfo, List<String>> entrys, String project){
+
+    private static String generate(Map<VariableInfo, List<String>> entrys, String project){
         if (entrys.size() < 1){
             System.out.println("No Data in the Map");
             return "";
@@ -23,7 +31,7 @@ public class BoundaryGenerator {
         Iterator<Map.Entry<VariableInfo, List<String>>> iterator = entrys.entrySet().iterator();
         String result = "if (";
         while (iterator.hasNext()){
-            result +=generateWithSingleWord(iterator.next(), project);
+            result += generateWithSingleWord(iterator.next(), project);
             if (iterator.hasNext()){
                 result += "||";
             }

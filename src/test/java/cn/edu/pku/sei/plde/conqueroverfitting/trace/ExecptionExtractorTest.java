@@ -1,11 +1,9 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.trace;
 
-import com.sun.org.apache.bcel.internal.generic.LUSHR;
 import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Created by yanrunfa on 16/2/21.

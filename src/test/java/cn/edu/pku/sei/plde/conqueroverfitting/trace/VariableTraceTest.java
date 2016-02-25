@@ -1,14 +1,11 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.trace;
 
-import cn.edu.pku.sei.plde.conqueroverfitting.localization.Localization;
-import cn.edu.pku.sei.plde.conqueroverfitting.localization.common.SuspiciousField;
 import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeEnum;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
