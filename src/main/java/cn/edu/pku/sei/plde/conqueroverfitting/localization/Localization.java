@@ -1,6 +1,7 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.localization;
 
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.gzoltar.StatementExt;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.FileUtils;
 import com.gzoltar.core.components.Statement;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.common.SuspiciousField;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.metric.Metric;
@@ -11,6 +12,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.localization.common.library.JavaLi
 import com.sun.glass.ui.EventLoop;
 import org.apache.commons.lang.StringUtils;
 
+import java.io.*;
 import java.net.URL;
 import java.util.*;
 
@@ -31,6 +33,7 @@ public class Localization  {
         this.classpath = classPath;
         this.testClassPath = testClassPath;
         testClasses = new TestClassesFinder().findIn(JavaLibrary.classpathFrom(testClassPath), false);
+        Arrays.sort(testClasses);
     }
 
     public List<StatementExt> getSuspiciousList(){
@@ -75,6 +78,16 @@ public class Localization  {
 
 
     public List<Suspicious> getSuspiciousLite(){
+        File suspicousFile = new File(System.getProperty("user.dir")+"/suspicious/"+ FileUtils.getMD5(StringUtils.join(testClasses,""))+".sps");
+        if (suspicousFile.exists()){
+            try {
+                ObjectInputStream objectInputStream = new ObjectInputStream(new FileInputStream(suspicousFile));
+                List<Suspicious> result = (List<Suspicious>) objectInputStream.readObject();
+                return result;
+            }catch (Exception e){
+                e.printStackTrace();
+            }
+        }
         List<StatementExt> statements = this.getSuspiciousListWithSuspiciousnessBiggerThanZero();
         List<Suspicious> result = new ArrayList<Suspicious>();
         StatementExt firstline = statements.get(0);
@@ -88,6 +101,15 @@ public class Localization  {
                 lineNumbers.clear();
                 lineNumbers.add(String.valueOf(statement.getLineNumber()));
             }
+        }
+        try {
+            suspicousFile.createNewFile();
+            ObjectOutputStream objectOutputStream = new ObjectOutputStream(new FileOutputStream(suspicousFile));
+            objectOutputStream.writeObject(result);
+            objectOutputStream.close();
+        } catch (IOException e){
+            e.printStackTrace();
+            return new ArrayList<Suspicious>();
         }
         return result;
     }

@@ -1,6 +1,7 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.trace;
 
-import cn.edu.pku.sei.plde.conqueroverfitting.agent.VariableTraceAgent;
+import cn.edu.pku.sei.plde.conqueroverfitting.agent.RunTestAgent;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.PathUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.ShellUtils;
 
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.MethodInfo;
@@ -138,13 +139,9 @@ public class VariableTracer {
 
 
     private String traceShell(String testClassname, String classname, int errorLine, List<VariableInfo> vars, List<MethodInfo> methods) throws IOException{
-        String tracePath = VariableTraceAgent.class.getProtectionDomain().getCodeSource().getLocation().getFile();
-        String junitPath = JUnitCore.class.getProtectionDomain().getCodeSource().getLocation().getFile();
-        //small bug of get jar path from class in windows
-        if (System.getProperty("os.name").toLowerCase().startsWith("win") && tracePath.charAt(0) == '/' && junitPath.charAt(0) == '/'){
-            tracePath = tracePath.substring(1);
-            junitPath = junitPath.substring(1);
-        }
+        String tracePath = PathUtils.getAgentPath();
+        String junitPath = PathUtils.getJunitPath();
+
         String agentArg = buildAgentArg(classname, errorLine, vars, methods);
         String classpath = buildClasspath(Arrays.asList(junitPath));
         String[] arg = {"java","-javaagent:"+tracePath+"="+agentArg,"-cp",classpath,"org.junit.runner.JUnitCore", testClassname};

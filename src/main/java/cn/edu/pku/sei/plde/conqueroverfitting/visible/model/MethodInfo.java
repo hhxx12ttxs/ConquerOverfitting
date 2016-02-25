@@ -2,7 +2,9 @@ package cn.edu.pku.sei.plde.conqueroverfitting.visible.model;
 
 import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeEnum;
 
-public class MethodInfo {
+import java.io.Serializable;
+
+public class MethodInfo implements Serializable {
 	public String methodName;
 	public TypeEnum variableSimpleType;
 	public boolean isSimpleType;

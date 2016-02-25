@@ -2,7 +2,9 @@ package cn.edu.pku.sei.plde.conqueroverfitting.visible.model;
 
 import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeEnum;
 
-public class VariableInfo implements Comparable<VariableInfo>{
+import java.io.Serializable;
+
+public class VariableInfo implements Comparable<VariableInfo>,Serializable{
 	public String variableName;
 	public TypeEnum variableSimpleType;
 	public boolean isSimpleType;

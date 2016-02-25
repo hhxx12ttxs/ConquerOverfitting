@@ -31,12 +31,16 @@ public class Utils {
             while ((lineString = reader.readLine()) != null) {
                 line++;
                 if (line == targetLine){
+                    System.out.println(lineString);
                     outputStream.write(addingCode.getBytes());
                 }
                 outputStream.write((lineString+"\n").getBytes());
+                //if (lineString.startsWith("package")){
+                //    outputStream.write("import java.lang.System;\n".getBytes());
+                //}
             }
             outputStream.close();
-            Utils.shellRun(Arrays.asList("javac -cp "+ classPath+" "+ tempJavaName));
+            System.out.println(Utils.shellRun(Arrays.asList("javac -cp "+ classPath+" "+ tempJavaName)));
         } catch (FileNotFoundException e){
             System.out.println("ERROR: Cannot Find Source File: "+className+" in Source Path: "+ srcPath);
             e.printStackTrace();

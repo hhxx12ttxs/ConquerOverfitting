@@ -1,6 +1,6 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.utils;
 
-import cn.edu.pku.sei.plde.conqueroverfitting.agent.VariableTraceAgent;
+import cn.edu.pku.sei.plde.conqueroverfitting.agent.RunTestAgent;
 import org.junit.runner.JUnitCore;
 
 /**
@@ -9,7 +9,7 @@ import org.junit.runner.JUnitCore;
 public class PathUtils {
 
     public static String getAgentPath(){
-        String agentPath =  VariableTraceAgent.class.getProtectionDomain().getCodeSource().getLocation().getFile();
+        String agentPath =  RunTestAgent.class.getProtectionDomain().getCodeSource().getLocation().getFile();
         if (System.getProperty("os.name").toLowerCase().startsWith("win") && agentPath.charAt(0) == '/') {
             agentPath = agentPath.substring(1);
         }

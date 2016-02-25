@@ -9,14 +9,16 @@ import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.MethodInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 
 /**
  * Created by yanrunfa on 16/2/25.
  */
-public class Suspicious {
+public class Suspicious implements Serializable{
     public final String _classname;
     public final String _function;
     public final double _suspiciousness;
@@ -24,6 +26,7 @@ public class Suspicious {
     public final List<String> _lines;
     private List<VariableInfo> _variableInfo;
     private List<MethodInfo> _methodInfo;
+    public int _lastLine = -1;
 
 
     public Suspicious(String classname, String function, double suspiciousness, List<String> tests, List<String> lines){
@@ -32,10 +35,18 @@ public class Suspicious {
         _suspiciousness = suspiciousness;
         _tests = tests;
         _lines = lines;
+
     }
 
     public int lastLine(){
-        return Integer.valueOf(_lines.get(_lines.size()-1));
+        if (_lastLine == -1){
+            for (String line: _lines){
+                if (_lastLine < Integer.valueOf(line)){
+                    _lastLine = Integer.valueOf(line);
+                }
+            }
+        }
+        return _lastLine;
     }
 
     public String classname(){
@@ -80,9 +91,11 @@ public class Suspicious {
         VariableCollect variableCollect = VariableCollect.GetInstance(getClassSrcIndex(classSrc));
         List<VariableInfo> parameters = variableCollect.getVisibleParametersInMethodList(classSrcPath, lastLine()-1);
         List<VariableInfo> locals = variableCollect.getVisibleLocalInMethodList(classSrcPath, lastLine()-1);
+        LinkedHashMap<String, ArrayList<VariableInfo>> classvars = variableCollect.getVisibleFieldInAllClassMap(classSrcPath);
         List<VariableInfo> variableInfos = new ArrayList<VariableInfo>();
         variableInfos.addAll(parameters);
         variableInfos.addAll(locals);
+        variableInfos.addAll(classvars.get(classSrcPath));
         _variableInfo = variableInfos;
         return _variableInfo;
     }

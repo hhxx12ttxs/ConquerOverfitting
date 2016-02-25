@@ -1,6 +1,6 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.fix;
 
-import cn.edu.pku.sei.plde.conqueroverfitting.agent.VariableTraceAgent;
+import cn.edu.pku.sei.plde.conqueroverfitting.agent.RunTestAgent;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.PathUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.ShellUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.MethodInfo;

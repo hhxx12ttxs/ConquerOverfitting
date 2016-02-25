@@ -1,5 +1,4 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.agent;
-import com.sun.deploy.util.StringUtils;
 import com.sun.org.apache.xpath.internal.functions.WrongNumberArgsException;
 import sun.misc.BASE64Decoder;
 
@@ -12,9 +11,10 @@ import java.util.List;
 /**
  * Created by yanrunfa on 2016/2/20.
  */
-public class VariableTraceAgent {
+public class RunTestAgent {
 
-    public static void premain(String agentArgs, Instrumentation inst) throws Exception{
+    public static void premain(String agentArgs, Instrumentation inst) throws IOException{
+        System.out.println("------Agent Run Success------");
         if (agentArgs == null || agentArgs.length() <= 2){
             throw new IOException("Wrong Agent Args");
         }
@@ -26,7 +26,7 @@ public class VariableTraceAgent {
         }
         String[] args = agentArgs.split(",");
         if (args.length < 5 || args.length > 6){
-            throw new WrongNumberArgsException("Wrong Number Args");
+            throw new IOException("Wrong Number Args");
         }
         String targetClassName = "";
         int targetLineNum = -1;
@@ -92,9 +92,8 @@ public class VariableTraceAgent {
                 fixString = new String(decoder.decodeBuffer(value), "utf-8");
             }
         }
-        System.out.println(Arrays.toString(targetVariables));
         if (targetClassName.length() < 1 || targetLineNum == -1 || srcPath.length() < 1 || classPath.length() < 1){
-            throw new Exception("Wrong Agent Args");
+            throw new IOException("Wrong Agent Args");
         }
 
         if (ifString!=null && fixString!= null){
