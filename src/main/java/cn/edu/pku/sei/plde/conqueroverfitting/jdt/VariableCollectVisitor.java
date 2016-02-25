@@ -72,12 +72,12 @@ class VariableCollectVisitor extends ASTVisitor {
 
 	@Override
 	public boolean visit(MethodDeclaration node) {
-		if(node.getReturnType2() == null || node.getReturnType2().toString().equals("void")){
+		if(node.getReturnType2() == null){
 			return true;
 		}
 
 		List<SingleVariableDeclaration> parameters = node.parameters();
-		if(parameters.size() == 0){
+		if(parameters.size() == 0 && !node.getReturnType2().toString().equals("void")){
 			MethodInfo methodInfo = null;
 			String methodName = node.getName().toString();
 
