@@ -24,10 +24,18 @@
         <processorPath useClasspath="true" />
         <module name="cn.edu.pku.sei.plde" />
       </profile>
+      <profile default="false" name="Annotation profile for RunTestAgent" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <processorPath useClasspath="true" />
+        <module name="RunTestAgent" />
+      </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
       <module name="cn.edu.pku.sei.plde" target="1.6" />
-      <module name="ConquerOverfitting" target="1.6" />
+      <module name="ConquerOverfitting" target="1.7" />
+      <module name="RunTestAgent" target="1.7" />
     </bytecodeTargetLevel>
   </component>
 </project>

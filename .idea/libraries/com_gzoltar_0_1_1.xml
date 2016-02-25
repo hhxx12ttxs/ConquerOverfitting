@@ -10,7 +10,7 @@
       <root url="jar://$PROJECT_DIR$/lib/json-lib-2.2.2-jdk15.jar!/" />
       <root url="jar://$PROJECT_DIR$/lib/slicer.jar!/" />
       <root url="jar://$PROJECT_DIR$/lib/tracer.jar!/" />
-      <root url="jar://$PROJECT_DIR$/lib/VariableTraceAgent.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/RunTestAgent.jar!/" />
     </CLASSES>
     <JAVADOC />
     <SOURCES />
