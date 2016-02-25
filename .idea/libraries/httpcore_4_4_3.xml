@@ -2,9 +2,6 @@
   <library name="httpcore-4.4.3">
     <CLASSES>
       <root url="jar://$PROJECT_DIR$/lib/httpcore-4.4.3.jar!/" />
-      <root url="jar://$PROJECT_DIR$/lib/httpmime-4.5.1.jar!/" />
-      <root url="jar://$PROJECT_DIR$/lib/jna-4.1.0.jar!/" />
-      <root url="jar://$PROJECT_DIR$/lib/jna-platform-4.1.0.jar!/" />
     </CLASSES>
     <JAVADOC />
     <SOURCES />

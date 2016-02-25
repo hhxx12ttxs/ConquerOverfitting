@@ -24,7 +24,7 @@ public class ThreadPoolHttpClient {
     public ThreadPoolHttpClient() {
     }
 
-    public void test(String project, List<String> urlList) {
+    public void fetch(String project, List<String> urlList) {
         PoolingHttpClientConnectionManager cm = new PoolingHttpClientConnectionManager();
         //设置线程数最大10
         cm.setMaxTotal(10);

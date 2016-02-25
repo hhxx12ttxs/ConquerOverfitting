@@ -53,7 +53,7 @@ public class GathererJava {
             codeUrlList.addAll(getCodeUrlList(url));
         }
 
-        new ThreadPoolHttpClient().test(project, codeUrlList);
+        new ThreadPoolHttpClient().fetch(project, codeUrlList);
     }
 
     public String getHtml(String url) {
