@@ -5,7 +5,6 @@ import cn.edu.pku.sei.plde.conqueroverfitting.boundary.BoundaryFilter;
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.BoundaryInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.gatherer.GathererJava;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
-import org.apache.commons.lang3.StringUtils;
 
 import java.io.File;
 import java.util.*;
@@ -15,6 +14,10 @@ import java.util.*;
  */
 public class ExceptionExtractor {
 
+    public static Map<VariableInfo, List<String>> extract(List<TraceResult> traceResults, List<VariableInfo> vars, String project){
+        Map<VariableInfo, List<String>> exceptionVariable = ExceptionExtractor.extractWithAbandonTrueValue(traceResults, vars);
+        return ExceptionExtractor.filterWithSearchBoundary(exceptionVariable,project,10);
+    }
     /**
      *
      * @param traceResults the trace result

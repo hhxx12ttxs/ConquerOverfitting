@@ -8,7 +8,8 @@ import cn.edu.pku.sei.plde.conqueroverfitting.localization.metric.Ochiai;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.common.synth.TestClassesFinder;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.gzoltar.GZoltarSuspiciousProgramStatements;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.common.library.JavaLibrary;
-import org.apache.commons.lang3.StringUtils;
+import com.sun.glass.ui.EventLoop;
+import org.apache.commons.lang.StringUtils;
 
 import java.net.URL;
 import java.util.*;
@@ -72,6 +73,25 @@ public class Localization  {
         return result;
     }
 
+
+    public List<Suspicious> getSuspiciousLite(){
+        List<StatementExt> statements = this.getSuspiciousListWithSuspiciousnessBiggerThanZero();
+        List<Suspicious> result = new ArrayList<Suspicious>();
+        StatementExt firstline = statements.get(0);
+        List<String> lineNumbers = new ArrayList<String>();
+        for (StatementExt statement: statements){
+            if (getClassAddressFromStatement(statement).equals(getClassAddressFromStatement(firstline)) && getTargetFunctionFromStatement(statement).equals(getTargetFunctionFromStatement(firstline))){
+                lineNumbers.add(String.valueOf(statement.getLineNumber()));
+            }else {
+                result.add(new Suspicious(getClassAddressFromStatement(statement), getTargetFunctionFromStatement(statement), statement.getSuspiciousness(), statement.getTests(),lineNumbers));
+                firstline = statement;
+                lineNumbers.clear();
+                lineNumbers.add(String.valueOf(statement.getLineNumber()));
+            }
+        }
+        return result;
+    }
+
     public List<HashMap<SuspiciousField, String>> getSuspiciousListLiteWithSpecificLine(){
         List<StatementExt> statements = this.getSuspiciousListWithSuspiciousnessBiggerThanZero();
         List<HashMap<SuspiciousField, String>> result = new ArrayList<HashMap<SuspiciousField, String>>();
@@ -86,7 +106,7 @@ public class Localization  {
                 if (lineNumbers.size() == 1){
                     data.put(SuspiciousField.line_number, (String)lineNumbers.toArray()[0]);
                 }else {
-                    data.put(SuspiciousField.line_number, StringUtils.join("-",lineNumbers));
+                    data.put(SuspiciousField.line_number, StringUtils.join(lineNumbers,"-"));
                 }
                 data.put(SuspiciousField.error_tests, getErrorTestsStringFromStatement(firstline));
                 data.put(SuspiciousField.suspiciousness, getSupiciousnessFromStatement(firstline));

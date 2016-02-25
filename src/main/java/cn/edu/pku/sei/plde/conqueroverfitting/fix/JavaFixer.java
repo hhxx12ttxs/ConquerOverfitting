@@ -39,10 +39,18 @@ public class JavaFixer {
         return !shellResult.contains("fail");
     }
 
+    public boolean fixWithIfStatement (List<String> testClassname,String classname,int errorLine, String ifString, String fixString) throws IOException{
+        _testClassName = StringUtils.join(testClassname,"-");
+        _classname = classname;
+        _errorLine = errorLine;
+        String shellResult = fixShell(_testClassName, _classname, _errorLine, ifString, fixString);
+        return !shellResult.contains("fail");
+    }
+
     private String fixShell(String testClassname, String classname, int errorLine, String ifString, String fixString) throws IOException {
         String agentArg = buildAgentArg(classname, errorLine, ifString, fixString);
         String classpath = buildClasspath(Arrays.asList(PathUtils.getJunitPath()));
-        String[] arg = {"java","-javaagent:"+PathUtils.getAgentPath()+"="+agentArg,"-cp",classpath,"org.junit.runner.JUnitCore", testClassname};
+        String[] arg = {"java","-javaagent:"+PathUtils.getAgentPath()+"="+agentArg,"-cp",classpath,"org.junit.runner.JUnitCore", testClassname.replace("-"," ")};
         String shellResult = ShellUtils.shellRun(Arrays.asList(StringUtils.join(arg, " ")));
         if (shellResult.length() <= 0){
             throw new IOException("Shell Run Error, Shell Args:"+StringUtils.join(arg," "));
