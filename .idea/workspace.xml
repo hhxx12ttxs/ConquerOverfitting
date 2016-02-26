@@ -6,25 +6,12 @@
     </artifacts-to-build>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="8f9aeebe-0d89-477a-bc19-f7e5902a1516" name="Default" comment="">
-      <change type="DELETED" beforePath="$PROJECT_DIR$/suspicious/44223058738C0CB652BEBA507D08E404.sps" afterPath="" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/lib/RunTestAgent.jar" afterPath="$PROJECT_DIR$/lib/RunTestAgent.jar" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/modules.xml" afterPath="$PROJECT_DIR$/.idea/modules.xml" />
+    <list default="true" id="8f9aeebe-0d89-477a-bc19-f7e5902a1516" name="Default" comment="Merge branch 'master' of https://github.com/Adobee/ConquerOverfitting&#10;&#10;# Conflicts:&#10;#&#9;.idea/workspace.xml&#10;">
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/RunTestAgent/src/main/java/cn/edu/pku/sei/plde/conqueroverfitting/agent/AddPrintTransformer.java" afterPath="$PROJECT_DIR$/RunTestAgent/src/main/java/cn/edu/pku/sei/plde/conqueroverfitting/agent/AddPrintTransformer.java" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/RunTestAgent/src/main/java/cn/edu/pku/sei/plde/conqueroverfitting/agent/RunTestAgent.java" afterPath="$PROJECT_DIR$/RunTestAgent/src/main/java/cn/edu/pku/sei/plde/conqueroverfitting/agent/RunTestAgent.java" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/RunTestAgent/src/main/java/cn/edu/pku/sei/plde/conqueroverfitting/agent/Utils.java" afterPath="$PROJECT_DIR$/RunTestAgent/src/main/java/cn/edu/pku/sei/plde/conqueroverfitting/agent/Utils.java" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/main/java/cn/edu/pku/sei/plde/conqueroverfitting/boundary/BoundaryGenerator.java" afterPath="$PROJECT_DIR$/src/main/java/cn/edu/pku/sei/plde/conqueroverfitting/boundary/BoundaryGenerator.java" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/main/java/cn/edu/pku/sei/plde/conqueroverfitting/fix/Capturer.java" afterPath="$PROJECT_DIR$/src/main/java/cn/edu/pku/sei/plde/conqueroverfitting/fix/Capturer.java" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/main/java/cn/edu/pku/sei/plde/conqueroverfitting/fix/JavaFixer.java" afterPath="$PROJECT_DIR$/src/main/java/cn/edu/pku/sei/plde/conqueroverfitting/fix/JavaFixer.java" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/main/java/cn/edu/pku/sei/plde/conqueroverfitting/localization/Localization.java" afterPath="$PROJECT_DIR$/src/main/java/cn/edu/pku/sei/plde/conqueroverfitting/localization/Localization.java" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/main/java/cn/edu/pku/sei/plde/conqueroverfitting/localization/Suspicious.java" afterPath="$PROJECT_DIR$/src/main/java/cn/edu/pku/sei/plde/conqueroverfitting/localization/Suspicious.java" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/main/java/cn/edu/pku/sei/plde/conqueroverfitting/trace/ExceptionExtractor.java" afterPath="$PROJECT_DIR$/src/main/java/cn/edu/pku/sei/plde/conqueroverfitting/trace/ExceptionExtractor.java" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/main/java/cn/edu/pku/sei/plde/conqueroverfitting/trace/VariableTracer.java" afterPath="$PROJECT_DIR$/src/main/java/cn/edu/pku/sei/plde/conqueroverfitting/trace/VariableTracer.java" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/ConquerOverfitting.iml" afterPath="$PROJECT_DIR$/ConquerOverfitting.iml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/RunTestAgent/RunTestAgent.iml" afterPath="$PROJECT_DIR$/RunTestAgent/RunTestAgent.iml" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/main/java/cn/edu/pku/sei/plde/conqueroverfitting/visible/MethodCollect.java" afterPath="$PROJECT_DIR$/src/main/java/cn/edu/pku/sei/plde/conqueroverfitting/visible/MethodCollect.java" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/main/java/cn/edu/pku/sei/plde/conqueroverfitting/visible/VariableCollect.java" afterPath="$PROJECT_DIR$/src/main/java/cn/edu/pku/sei/plde/conqueroverfitting/visible/VariableCollect.java" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/test/java/cn/edu/pku/sei/plde/conqueroverfitting/Entirety/EntiretyTest.java" afterPath="$PROJECT_DIR$/src/test/java/cn/edu/pku/sei/plde/conqueroverfitting/Entirety/EntiretyTest.java" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/test/java/cn/edu/pku/sei/plde/conqueroverfitting/trace/VariableTraceTest.java" afterPath="$PROJECT_DIR$/src/test/java/cn/edu/pku/sei/plde/conqueroverfitting/trace/VariableTraceTest.java" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/test/java/cn/edu/pku/sei/plde/conqueroverfitting/visible/MethodCollectTest.java" afterPath="$PROJECT_DIR$/src/test/java/cn/edu/pku/sei/plde/conqueroverfitting/visible/MethodCollectTest.java" />
     </list>
     <ignored path="ConquerOverfitting.iws" />
     <ignored path=".idea/workspace.xml" />
@@ -59,10 +46,10 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="AddPrintTransformer.java" pinned="false" current-in-tab="true">
+      <file leaf-file-name="AddPrintTransformer.java" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/RunTestAgent/src/main/java/cn/edu/pku/sei/plde/conqueroverfitting/agent/AddPrintTransformer.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.48019803">
+            <state vertical-scroll-proportion="0.0">
               <caret line="54" column="30" selection-start-line="54" selection-start-column="30" selection-end-line="54" selection-end-column="30" />
               <folding />
             </state>
@@ -84,10 +71,7 @@
           <provider selected="true" editor-type-id="text-editor">
             <state vertical-scroll-proportion="0.0">
               <caret line="102" column="13" selection-start-line="102" selection-start-column="13" selection-end-line="102" selection-end-column="13" />
-              <folding>
-                <element signature="e#3963#3991#0" expanded="true" />
-                <element signature="e#4268#4276#0" expanded="true" />
-              </folding>
+              <folding />
             </state>
           </provider>
         </entry>
@@ -97,10 +81,7 @@
           <provider selected="true" editor-type-id="text-editor">
             <state vertical-scroll-proportion="0.0">
               <caret line="88" column="64" selection-start-line="88" selection-start-column="64" selection-end-line="88" selection-end-column="64" />
-              <folding>
-                <element signature="e#4333#4341#0" expanded="true" />
-                <element signature="e#4895#4908#0" expanded="true" />
-              </folding>
+              <folding />
             </state>
           </provider>
         </entry>
@@ -115,10 +96,10 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="MethodCollect.java" pinned="false" current-in-tab="false">
+      <file leaf-file-name="MethodCollect.java" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/main/java/cn/edu/pku/sei/plde/conqueroverfitting/visible/MethodCollect.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="-10.333333">
+            <state vertical-scroll-proportion="0.036945812">
               <caret line="32" column="58" selection-start-line="32" selection-start-column="58" selection-end-line="32" selection-end-column="58" />
               <folding />
             </state>
@@ -136,8 +117,6 @@
                 <element signature="e#1741#1742#0" expanded="true" />
                 <element signature="e#1776#1777#0" expanded="true" />
                 <element signature="e#1825#1826#0" expanded="true" />
-                <element signature="e#3682#3696#0" expanded="true" />
-                <element signature="e#4704#4717#0" expanded="true" />
               </folding>
             </state>
           </provider>
@@ -146,7 +125,7 @@
       <file leaf-file-name="VariableCollect.java" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/main/java/cn/edu/pku/sei/plde/conqueroverfitting/visible/VariableCollect.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="-12.777778">
+            <state vertical-scroll-proportion="0.0">
               <caret line="38" column="43" selection-start-line="33" selection-start-column="8" selection-end-line="38" selection-end-column="43" />
               <folding>
                 <element signature="e#891#892#0" expanded="true" />
@@ -259,9 +238,8 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
-      <pane id="PackagesPane" />
-      <pane id="Scratches" />
       <pane id="Scope" />
+      <pane id="PackagesPane" />
       <pane id="ProjectPane">
         <subPane>
           <PATH>
@@ -784,6 +762,7 @@
           </PATH>
         </subPane>
       </pane>
+      <pane id="Scratches" />
     </panes>
   </component>
   <component name="PropertiesComponent">
@@ -1380,6 +1359,7 @@
       <workItem from="1456370685551" duration="2768000" />
       <workItem from="1456423979307" duration="197000" />
       <workItem from="1456424445424" duration="16002000" />
+      <workItem from="1456494358410" duration="33000" />
     </task>
     <task id="LOCAL-00001" summary="Merge branch 'master' of https://github.com/Adobee/ConquerOverfitting&#10;&#10;# Conflicts:&#10;#&#9;.idea/compiler.xml&#10;#&#9;.idea/encodings.xml&#10;#&#9;.idea/misc.xml&#10;#&#9;.idea/modules.xml&#10;#&#9;.idea/workspace.xml&#10;">
       <created>1456424515828</created>
@@ -1423,36 +1403,36 @@
     </history-entry>
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="30111000" />
+    <option name="totallyTimeSpent" value="30144000" />
   </component>
   <component name="TodoView" selected-index="1" />
   <component name="ToolWindowManager">
     <frame x="0" y="0" width="1440" height="900" extended-state="0" />
-    <editor active="true" />
+    <editor active="false" />
     <layout>
       <window_info id="Palette" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32891566" sideWeight="0.49713877" order="6" side_tool="false" content_ui="tabs" />
-      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33975902" sideWeight="0.49427754" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Palette&#9;" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.44457832" sideWeight="0.5028612" order="10" side_tool="true" content_ui="tabs" />
       <window_info id="Maven Projects" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.329105" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
-      <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.4795181" sideWeight="0.49213162" order="8" side_tool="false" content_ui="tabs" />
+      <window_info id="Version Control" active="true" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.4783654" sideWeight="0.49213162" order="8" side_tool="false" content_ui="tabs" />
       <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.5" sideWeight="0.49713877" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="9" side_tool="false" content_ui="tabs" />
       <window_info id="Designer" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
       <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.23819743" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
       <window_info id="Database" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
-      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32692307" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Ant Build" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="UI Designer" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
       <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="3" side_tool="true" content_ui="tabs" />
       <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.44457832" sideWeight="0.49713877" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
+      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33975902" sideWeight="0.49427754" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Inspection" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
       <window_info id="Hierarchy" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="2" side_tool="false" content_ui="combo" />
+      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32692307" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
     </layout>
     <layout-to-restore>
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
@@ -1725,10 +1705,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
           <caret line="13" column="20" selection-start-line="13" selection-start-column="20" selection-end-line="13" selection-end-column="20" />
-          <folding>
-            <element signature="e#185#186#0" expanded="false" />
-            <element signature="e#203#204#0" expanded="false" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -1752,7 +1728,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="-6.111111">
           <caret line="38" column="19" selection-start-line="38" selection-start-column="19" selection-end-line="38" selection-end-column="19" />
-          <folding />
         </state>
       </provider>
     </entry>
@@ -1800,7 +1775,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.33256352">
           <caret line="576" column="0" selection-start-line="576" selection-start-column="0" selection-end-line="576" selection-end-column="0" />
-          <folding />
         </state>
       </provider>
     </entry>
@@ -1830,20 +1804,12 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/main/java/cn/edu/pku/sei/plde/conqueroverfitting/visible/VariableCollect.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="-12.777778">
+        <state vertical-scroll-proportion="0.0">
           <caret line="38" column="43" selection-start-line="33" selection-start-column="8" selection-end-line="38" selection-end-column="43" />
           <folding>
             <element signature="e#891#892#0" expanded="true" />
             <element signature="e#932#933#0" expanded="true" />
           </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/java/cn/edu/pku/sei/plde/conqueroverfitting/visible/MethodCollect.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="-10.333333">
-          <caret line="32" column="58" selection-start-line="32" selection-start-column="58" selection-end-line="32" selection-end-column="58" />
-          <folding />
         </state>
       </provider>
     </entry>
@@ -1857,8 +1823,6 @@
             <element signature="e#1741#1742#0" expanded="true" />
             <element signature="e#1776#1777#0" expanded="true" />
             <element signature="e#1825#1826#0" expanded="true" />
-            <element signature="e#3682#3696#0" expanded="true" />
-            <element signature="e#4704#4717#0" expanded="true" />
           </folding>
         </state>
       </provider>
@@ -1867,7 +1831,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.33256352">
           <caret line="645" column="0" selection-start-line="645" selection-start-column="0" selection-end-line="645" selection-end-column="0" />
-          <folding />
         </state>
       </provider>
     </entry>
@@ -1893,10 +1856,7 @@
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
           <caret line="88" column="64" selection-start-line="88" selection-start-column="64" selection-end-line="88" selection-end-column="64" />
-          <folding>
-            <element signature="e#4333#4341#0" expanded="true" />
-            <element signature="e#4895#4908#0" expanded="true" />
-          </folding>
+          <folding />
         </state>
       </provider>
     </entry>
@@ -1912,10 +1872,7 @@
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
           <caret line="102" column="13" selection-start-line="102" selection-start-column="13" selection-end-line="102" selection-end-column="13" />
-          <folding>
-            <element signature="e#3963#3991#0" expanded="true" />
-            <element signature="e#4268#4276#0" expanded="true" />
-          </folding>
+          <folding />
         </state>
       </provider>
     </entry>
@@ -1929,8 +1886,16 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/RunTestAgent/src/main/java/cn/edu/pku/sei/plde/conqueroverfitting/agent/AddPrintTransformer.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.48019803">
+        <state vertical-scroll-proportion="0.0">
           <caret line="54" column="30" selection-start-line="54" selection-start-column="30" selection-end-line="54" selection-end-column="30" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/java/cn/edu/pku/sei/plde/conqueroverfitting/visible/MethodCollect.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.036945812">
+          <caret line="32" column="58" selection-start-line="32" selection-start-column="58" selection-end-line="32" selection-end-column="58" />
           <folding />
         </state>
       </provider>
