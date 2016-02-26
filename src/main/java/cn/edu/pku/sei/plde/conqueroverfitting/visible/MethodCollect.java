@@ -39,6 +39,19 @@ public class MethodCollect {
 		}
 	}
 
+	public static boolean checkIsStaticMethod(String sourcePath, String methodName){
+		if(!methodsInClassMap.containsKey(sourcePath)){
+			return false;
+		}
+		ArrayList<MethodInfo> methodInfos = methodsInClassMap.get(sourcePath);
+		for(MethodInfo methodInfo : methodInfos){
+			if(methodInfo.methodName.equals(methodName)){
+				return methodInfo.isStatic;
+			}
+		}
+		return false;
+	}
+
 	public LinkedHashMap<String, ArrayList<MethodInfo>> getVisibleMethodInAllClassMap(
 			String sourcePath) {
 		LinkedHashMap<String, ArrayList<MethodInfo>> methodsInClassMapRet = new LinkedHashMap<String, ArrayList<MethodInfo>>(methodsInClassMap);

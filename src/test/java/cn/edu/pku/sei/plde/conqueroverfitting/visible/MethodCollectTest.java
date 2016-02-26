@@ -50,6 +50,12 @@ public class MethodCollectTest {
 		assertTrue(methodsInOtherClass.contains((new MethodInfo("test23",
 				null, false, "FileForTestVariableCollect", true, false))));
 	}
-	
+
+	@Test
+	public void testCheckIsStaticMethod(){
+		MethodCollect methodCollect = MethodCollect.GetInstance(projectPath);
+		assertTrue(methodCollect.checkIsStaticMethod(suspiciousFilePath, "test13"));
+		assertFalse(methodCollect.checkIsStaticMethod(suspiciousFilePath, "test14"));
+	}
 	
 }
