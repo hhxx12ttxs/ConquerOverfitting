@@ -10,7 +10,7 @@ public class FileForTestMethodCollect {
 		return "";
 	}
 
-	public static boolean test13(){
+	public static boolean test13(int a){
 		return true;
 	}
 

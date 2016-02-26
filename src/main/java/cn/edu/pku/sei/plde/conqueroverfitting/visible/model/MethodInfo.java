@@ -11,15 +11,17 @@ public class MethodInfo implements Serializable {
 	public String otherType;
 	public boolean isPublic;
 	public boolean isStatic;
+	public boolean hasParameter;
 
 	public MethodInfo(String methodName, TypeEnum variableSimpleType,
-			boolean isSimpleType, String otherType, boolean isPublic, boolean isStatic) {
+			boolean isSimpleType, String otherType, boolean isPublic, boolean isStatic, boolean hasParameter) {
 		this.methodName = methodName;
 		this.variableSimpleType = variableSimpleType;
 		this.isSimpleType = isSimpleType;
 		this.otherType = otherType;
 		this.isPublic = isPublic;
 		this.isStatic = isStatic;
+		this.hasParameter = hasParameter;
 	}
 
 	@Override
@@ -33,12 +35,14 @@ public class MethodInfo implements Serializable {
 			return methodName.equals(other.methodName)
 					&& variableSimpleType.equals(other.variableSimpleType)
 					&& isPublic == other.isPublic
-					&& isStatic == other.isStatic;
+					&& isStatic == other.isStatic
+					&& hasParameter == other.hasParameter;
 		} else {
 			return methodName.equals(other.methodName)
 					&& otherType.equals(other.otherType)
 					&& isPublic == other.isPublic
-					&& isStatic == other.isStatic;
+					&& isStatic == other.isStatic
+					&& hasParameter == hasParameter;
 		}
 	}
 }

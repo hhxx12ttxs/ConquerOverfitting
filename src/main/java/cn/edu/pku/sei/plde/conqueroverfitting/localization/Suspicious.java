@@ -106,7 +106,7 @@ public class Suspicious implements Serializable{
             return _methodInfo;
         }
         MethodCollect methodCollect = MethodCollect.GetInstance(getClassSrcIndex(classSrc));
-        LinkedHashMap<String, ArrayList<MethodInfo>> methods = methodCollect.getVisibleMethodInAllClassMap(getClassSrcPath(classSrc));
+        LinkedHashMap<String, ArrayList<MethodInfo>> methods = methodCollect.getVisibleMethodWithoutParametersInAllClassMap(getClassSrcPath(classSrc));
         _methodInfo = methods.get(getClassSrcPath(classSrc));
         return _methodInfo;
     }
