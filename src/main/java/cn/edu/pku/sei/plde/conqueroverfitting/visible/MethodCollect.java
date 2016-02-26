@@ -13,8 +13,8 @@ import java.util.Map;
 
 public class MethodCollect {
     private static MethodCollect instance;
-
     private static LinkedHashMap<String, ArrayList<MethodInfo>> methodsInClassMap;
+    public String projectPath;
 
     public MethodCollect(String projectPath) {
         getAllVisibleMethod(projectPath);
@@ -26,8 +26,15 @@ public class MethodCollect {
                 instance = new MethodCollect(projectPath);
             }
         }
+        if (!projectPath.equals(instance.projectPath)) {
+            synchronized (VariableCollect.class) {
+                instance = new MethodCollect(projectPath);
+            }
+        }
+        instance.projectPath = projectPath;
         return instance;
     }
+
 
     public static void getAllVisibleMethod(String projectPath) {
         methodsInClassMap = new LinkedHashMap<String, ArrayList<MethodInfo>>();

@@ -17,8 +17,8 @@ public class EntiretyTest {
 
     @Test
     public void testEntirety() throws Exception{
-        int i = 5;
-        String project = "math5";
+        int i = 25;
+        String project = "math25";
         /* 四个整个项目需要的参数 */
         String classpath = PATH_OF_DEFECTS4J+"Math-"+i+"/target/classes";              //项目的.class文件路径
         String testClasspath  = PATH_OF_DEFECTS4J+"Math-"+i+"/target/test-classes";    //项目的test的.class文件路径
@@ -31,17 +31,24 @@ public class EntiretyTest {
 
         for (Suspicious suspicious: suspiciouses){
             String ifString = BoundaryGenerator.generate(classpath,testClasspath, classSrc, suspicious, project);
+            if (ifString.equals("")){
+                continue;
+            }
             Capturer fixCapturer = new Capturer(classpath, testClasspath, testClassSrc);
             for (String test: suspicious.getTestClassAndFunction()){
                 if (!test.contains("#")) {
                     continue;
                 }
                 String fixString = fixCapturer.getFixFrom(test.split("#")[0], test.split("#")[1]);
-                if (fixString == ""){
+                if (fixString.equals("")){
                     continue;
                 }
                 JavaFixer javaFixer = new JavaFixer(classpath, testClasspath, classSrc);
                 boolean result = javaFixer.fixWithIfStatement(suspicious.getTestClasses(),suspicious.classname(),suspicious.lastLine(),ifString,fixString);
+                if (result){
+                    System.out.println("Fix Success");
+                    return;
+                }
             }
 
 

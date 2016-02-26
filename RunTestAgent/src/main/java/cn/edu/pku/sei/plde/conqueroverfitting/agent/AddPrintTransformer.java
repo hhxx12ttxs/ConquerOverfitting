@@ -14,11 +14,13 @@ public class AddPrintTransformer implements ClassFileTransformer {
     public final String[] _targetVariables;
     public final String _srcPath;
     public final String _classPath;
+    public final String _targetClassFunc;
     private String _tempJavaName="";
     private String _tempClassName="";
 
-    public AddPrintTransformer(String targetClassName, int targetLineNum, String[] targetVariables, String srcPath, String classPath){
+    public AddPrintTransformer(String targetClassName,String targetClassFunc, int targetLineNum, String[] targetVariables, String srcPath, String classPath){
         _targetClassName = targetClassName;
+        _targetClassFunc = targetClassFunc;
         _targetLineNum = targetLineNum;
         _targetVariables = targetVariables;
         _srcPath = srcPath;
@@ -29,7 +31,6 @@ public class AddPrintTransformer implements ClassFileTransformer {
         /* handing the anonymity class */
         if (className.contains(_targetClassName.substring(_targetClassName.lastIndexOf("/"))) && className.contains("$") && _tempJavaName.length() > 1){
             String tempAnonymityClassName = _tempJavaName.substring(0,_tempJavaName.lastIndexOf("/"))+className.substring(className.indexOf("$"))+".class";
-            System.out.println(tempAnonymityClassName);
             new File(tempAnonymityClassName).deleteOnExit();
             byte[] result = Utils.getBytesFromFile(tempAnonymityClassName);
             if (result == null){
@@ -60,10 +61,14 @@ public class AddPrintTransformer implements ClassFileTransformer {
         String printLine = "";
         String varName = var.contains("?")?var.substring(0, var.lastIndexOf("?")):var;
         String varType = var.contains("?")?var.substring(var.lastIndexOf("?")+1):null;
-
+        if (varName.equals(_targetClassFunc)){
+            return "";
+        }
+        //printLine += "if (" + varName + "!= null) {";
         printLine += "System.out.print(\"|"+varName+"=\"+";
         if (varType == null){
-            printLine += var +"+\"|\""+");\n";
+            printLine += varName +"+\"|\""+");\n";
+            //printLine += "}\n";
             return printLine;
         }
         String varPrinter = "";
@@ -72,11 +77,11 @@ public class AddPrintTransformer implements ClassFileTransformer {
             varPrinter = "Arrays.toString("+varPrinter+")";
         }
         else {
-            varPrinter = varPrinter; //+ ".toString()";
+            varPrinter = varPrinter;//+ ".toString()";
         }
         printLine += varPrinter;
         printLine += "+\"|\""+");\n";
-        System.out.println(printLine);
+        //printLine += "}\n";
         return printLine;
     }
 

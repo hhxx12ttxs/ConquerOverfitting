@@ -18,6 +18,10 @@ public class BoundaryGenerator {
 
     public static String generate(String classpath, String testClasspath, String classSrc, Suspicious suspicious, String project) throws IOException{
         List<TraceResult> traceResults = suspicious.getTraceResult(classpath,testClasspath, classSrc);
+        if (traceResults.size() == 0){
+            System.out.println("Cannot trace any variable");
+            return "";
+        }
         Map<VariableInfo, List<String>> filteredVariable = ExceptionExtractor.extract(traceResults, suspicious.getAllInfo(classSrc),project);
         return generate(filteredVariable, project);
     }

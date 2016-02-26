@@ -51,15 +51,21 @@ public class ExceptionExtractor {
                 }
                 for (String value: traceResult.get(key)){
                     String[] valueArray = StringToArray(value);
-                    int count = 0;
-                    for (String v: valueArray){
-                        if (trueValues.get(infoKey).toString().contains(","+v) || trueValues.get(infoKey).toString().contains(v+",")){
-                            count++;
-                        }
-                    }
-                    if (count < valueArray.length){
+                    if (!trueValues.containsKey(infoKey)){
                         exceptionValues.get(infoKey).add(value);
                     }
+                    else {
+                        int count = 0;
+                        for (String v: valueArray){
+                            if (trueValues.get(infoKey).toString().contains(","+v) || trueValues.get(infoKey).toString().contains(v+",")){
+                                count++;
+                            }
+                        }
+                        if (count < valueArray.length){
+                            exceptionValues.get(infoKey).add(value);
+                        }
+                    }
+
                 }
                 //delete the blank key-value
                 if (exceptionValues.get(infoKey).size() == 0){
