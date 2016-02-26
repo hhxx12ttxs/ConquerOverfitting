@@ -4,7 +4,6 @@
     <modules>
       <module fileurl="file://$PROJECT_DIR$/ConquerOverfitting.iml" filepath="$PROJECT_DIR$/ConquerOverfitting.iml" />
       <module fileurl="file://$PROJECT_DIR$/RunTestAgent/RunTestAgent.iml" filepath="$PROJECT_DIR$/RunTestAgent/RunTestAgent.iml" />
-      <module fileurl="file://$PROJECT_DIR$/VariableTraceAgent/cn.edu.pku.sei.plde.iml" filepath="$PROJECT_DIR$/VariableTraceAgent/cn.edu.pku.sei.plde.iml" />
     </modules>
   </component>
 </project>

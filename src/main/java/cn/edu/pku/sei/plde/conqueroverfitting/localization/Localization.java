@@ -85,7 +85,7 @@ public class Localization  {
                 List<Suspicious> result = (List<Suspicious>) objectInputStream.readObject();
                 return result;
             }catch (Exception e){
-                e.printStackTrace();
+                System.out.println("Reloading Localization Result...");
             }
         }
         List<StatementExt> statements = this.getSuspiciousListWithSuspiciousnessBiggerThanZero();
@@ -96,14 +96,17 @@ public class Localization  {
             if (getClassAddressFromStatement(statement).equals(getClassAddressFromStatement(firstline)) && getTargetFunctionFromStatement(statement).equals(getTargetFunctionFromStatement(firstline))){
                 lineNumbers.add(String.valueOf(statement.getLineNumber()));
             }else {
-                result.add(new Suspicious(getClassAddressFromStatement(statement), getTargetFunctionFromStatement(statement), statement.getSuspiciousness(), statement.getTests(),lineNumbers));
+                result.add(new Suspicious(getClassAddressFromStatement(firstline), getTargetFunctionFromStatement(firstline), firstline.getSuspiciousness(), firstline.getTests(), new ArrayList<String>(lineNumbers)));
                 firstline = statement;
                 lineNumbers.clear();
                 lineNumbers.add(String.valueOf(statement.getLineNumber()));
             }
         }
         try {
-            suspicousFile.createNewFile();
+            boolean createResult = suspicousFile.createNewFile();
+            if (!createResult){
+                System.out.println("File Create Error");
+            }
             ObjectOutputStream objectOutputStream = new ObjectOutputStream(new FileOutputStream(suspicousFile));
             objectOutputStream.writeObject(result);
             objectOutputStream.close();

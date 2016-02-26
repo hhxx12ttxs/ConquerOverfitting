@@ -16,6 +16,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 public class VariableCollect {
 	private static VariableCollect instance;
 
+	public String projectPath;
 	private static LinkedHashMap<String, ArrayList<VariableInfo>> filedsInClassMap;
 	private static LinkedHashMap<String, ArrayList<VariableInfo>> parameterInMethodMap;
 	private static LinkedHashMap<String, ArrayList<VariableInfo>> localInMethodMap;
@@ -25,11 +26,17 @@ public class VariableCollect {
 	}
 
 	public static VariableCollect GetInstance(String projectPath) {
-		if (instance == null) {
+		if (instance == null ) {
 			synchronized (VariableCollect.class) {
 				instance = new VariableCollect(projectPath);
 			}
 		}
+		if (!projectPath.equals(instance.projectPath)){
+			synchronized (VariableCollect.class) {
+				instance = new VariableCollect(projectPath);
+			}
+		}
+		instance.projectPath = projectPath;
 		return instance;
 	}
 

@@ -29,13 +29,13 @@ public class VariableTraceTest {
         List<VariableInfo> varList = new ArrayList<VariableInfo>();
         VariableInfo info = new VariableInfo("len", TypeEnum.INT, true, null);
         //int line = Integer.valueOf(suspicious.get(SuspiciousField.line_number).split("-")[1]);
-        List<TraceResult> results = tracer.trace("org.apache.commons.math3.util.MathArrays","org.apache.commons.math3.util.MathArraysTest",846,varList);
-        for (TraceResult result: results){
-            System.out.print("TestResult: "+result.getTestResult());
-            for (Map.Entry<String, List<String>> entry: result.getResultMap().entrySet()){
-                System.out.print(" Key = " + entry.getKey() + ", Value = " + entry.getValue().toString());
-            }
-            System.out.println();
-        }
+        //List<TraceResult> results = tracer.trace("org.apache.commons.math3.util.MathArrays","org.apache.commons.math3.util.MathArraysTest",846,varList);
+        //for (TraceResult result: results){
+        //    System.out.print("TestResult: "+result.getTestResult());
+        //    for (Map.Entry<String, List<String>> entry: result.getResultMap().entrySet()){
+        //        System.out.print(" Key = " + entry.getKey() + ", Value = " + entry.getValue().toString());
+        //    }
+        //    System.out.println();
+        //}
     }
 }

@@ -15,6 +15,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.MethodInfo;
 public class MethodCollect {
 	private static MethodCollect instance;
 
+	public String projectPath;
 	private static LinkedHashMap<String, ArrayList<MethodInfo>> methodsInClassMap;
   
 	public MethodCollect(String projectPath) {
@@ -27,6 +28,12 @@ public class MethodCollect {
 				instance = new MethodCollect(projectPath);
 			}
 		}
+		if (!projectPath.equals(instance.projectPath)){
+			synchronized (VariableCollect.class) {
+				instance = new MethodCollect(projectPath);
+			}
+		}
+		instance.projectPath = projectPath;
 		return instance;
 	}
 

@@ -53,6 +53,11 @@ public class Suspicious implements Serializable{
         return _classname;
     }
 
+    public String functionname(){
+        return _function.replace("\\","");
+    }
+
+
     public List<String> getTestClassAndFunction(){
         return _tests;
     }
@@ -69,7 +74,11 @@ public class Suspicious implements Serializable{
     }
 
     public String getClassSrcPath(String classSrc){
-        return classSrc + System.getProperty("file.separator") + _classname.replace(".",System.getProperty("file.separator")) + ".java";
+        String classname = _classname;
+        if (_classname.contains("$")){
+            classname = _classname.substring(0, _classname.lastIndexOf('$'));
+        }
+        return classSrc + System.getProperty("file.separator") + classname.replace(".",System.getProperty("file.separator")) + ".java";
     }
 
     public String getClassSrcIndex(String classSrc){
@@ -95,7 +104,9 @@ public class Suspicious implements Serializable{
         List<VariableInfo> variableInfos = new ArrayList<VariableInfo>();
         variableInfos.addAll(parameters);
         variableInfos.addAll(locals);
-        variableInfos.addAll(classvars.get(classSrcPath));
+        if (classvars.containsKey(classSrcPath)){
+            variableInfos.addAll(classvars.get(classSrcPath));
+        }
         _variableInfo = variableInfos;
         return _variableInfo;
     }
@@ -115,7 +126,7 @@ public class Suspicious implements Serializable{
         VariableTracer tracer = new VariableTracer(classpath, testClasspath, classSrc);
         List<TraceResult> traceResults = new ArrayList<TraceResult>();
         for (String testclass: getTestClasses()){
-            traceResults.addAll(tracer.trace(classname(), testclass, lastLine(), getVariableInfo(classSrc), getMethodInfo(classSrc)));
+            traceResults.addAll(tracer.trace(classname(), functionname(), testclass, lastLine(), getVariableInfo(classSrc), getMethodInfo(classSrc)));
         }
         return traceResults;
     }

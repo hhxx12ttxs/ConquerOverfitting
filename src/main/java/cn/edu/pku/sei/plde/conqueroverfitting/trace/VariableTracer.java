@@ -25,6 +25,7 @@ public class VariableTracer {
     private final String _srcPath;
     private String _testClassname;
     private String _classname;
+    private String _functionname;
     private List<VariableInfo> _vars;
     private List<MethodInfo> _methods;
     private int _errorLine;
@@ -52,17 +53,29 @@ public class VariableTracer {
      * @return the list of trace result
      * @throws IOException
      */
-    public List<TraceResult> trace(String classname, String testClassname, int errorLine, List<VariableInfo> vars)throws IOException{
+    public List<TraceResult> trace(String classname,String functionname, String testClassname, int errorLine, List<VariableInfo> vars)throws IOException{
         _classname = classname;
         _vars = vars;
         _methods = new ArrayList<MethodInfo>();
         _errorLine = errorLine;
         _testClassname = testClassname;
-        _shellResult = traceShell(_testClassname,_classname,_errorLine,_vars,_methods);
-        _traceResult = _shellResult.substring(_shellResult.indexOf(">>")+2,_shellResult.indexOf("Time:"));
+        _functionname = functionname;
+        _shellResult = traceShell(_testClassname,_classname,_functionname,_errorLine,_vars,_methods);
+        _traceResult = analysisShellResult(_shellResult);
         return traceAnalysis(_traceResult);
     };
 
+    private String analysisShellResult(String shellResult){
+        String result = shellResult.substring(shellResult.indexOf(">>")+2,shellResult.indexOf("Time:"));
+        // get the data segment of shell out
+        if (result.contains("|")){
+            result =  result.substring(result.indexOf("|"));
+        }
+        while (!(result.charAt(result.length()-1) == 'E' || result.charAt(result.length()-1) == '|')){
+            result = result.substring(0, result.length()-2);
+        }
+        return result;
+    }
     /**
      *
      * @param classname the tracing class name
@@ -73,7 +86,7 @@ public class VariableTracer {
      * @return the list of trace result
      * @throws IOException
      */
-    public List<TraceResult> trace(String classname, String testClassname, int errorLine, List<VariableInfo> vars, List<MethodInfo> methods)throws IOException{
+    public List<TraceResult> trace(String classname,String functionname, String testClassname, int errorLine, List<VariableInfo> vars, List<MethodInfo> methods)throws IOException{
         if (vars.size() == 0 && methods.size() == 0){
             System.out.println("No Variable or Method to trace");
             return new ArrayList<TraceResult>();
@@ -85,19 +98,19 @@ public class VariableTracer {
         _methods = methods;
         _errorLine = errorLine;
         _testClassname = testClassname;
-        _shellResult = traceShell(_testClassname,_classname,_errorLine,_vars,_methods);
-        _traceResult = _shellResult.substring(_shellResult.indexOf(">>")+2,_shellResult.indexOf("Time:"));
-        if (_traceResult.length() < 0){
-            printErrorShell();
-            return new ArrayList<TraceResult>();
+        _functionname = functionname;
+        _shellResult = traceShell(_testClassname,_classname,_functionname,_errorLine,_vars,_methods);
+        if (_shellResult.contains(">>") && _shellResult.contains("Time:")){
+            _traceResult = analysisShellResult(_shellResult);
+            return traceAnalysis(_traceResult);
         }
-
-        return traceAnalysis(_traceResult);
+        printErrorShell();
+        return new ArrayList<TraceResult>();
     };
 
 
     private void printErrorShell(){
-        System.out.println("Shell Error: ");
+        System.out.println("Trace Fial in Output:");
         System.out.println(_shellResult);
     }
 
@@ -138,11 +151,11 @@ public class VariableTracer {
     }
 
 
-    private String traceShell(String testClassname, String classname, int errorLine, List<VariableInfo> vars, List<MethodInfo> methods) throws IOException{
+    private String traceShell(String testClassname, String classname, String functionname, int errorLine, List<VariableInfo> vars, List<MethodInfo> methods) throws IOException{
         String tracePath = PathUtils.getAgentPath();
         String junitPath = PathUtils.getJunitPath();
 
-        String agentArg = buildAgentArg(classname, errorLine, vars, methods);
+        String agentArg = buildAgentArg(classname, functionname, errorLine, vars, methods);
         String classpath = buildClasspath(Arrays.asList(junitPath));
         String[] arg = {"java","-javaagent:"+tracePath+"="+agentArg,"-cp",classpath,"org.junit.runner.JUnitCore", testClassname};
         System.out.print(StringUtils.join(arg," "));
@@ -153,8 +166,9 @@ public class VariableTracer {
         return shellResult;
     }
 
-    private String buildAgentArg(String classname, int errorLine, List<VariableInfo> vars, List<MethodInfo> methods){
+    private String buildAgentArg(String classname,String functionname, int errorLine, List<VariableInfo> vars, List<MethodInfo> methods){
         String agentClass = "class:"+ classname;
+        String agentFunc = "func:" + functionname;
         String agentLine = "line:"+ errorLine;
         String agentSrc = "src:" + _srcPath;
         String agentCp = "cp:" + _classpath;
@@ -183,7 +197,7 @@ public class VariableTracer {
             }
             agentMethods += "/";
         }
-        return "\""+StringUtils.join(Arrays.asList(agentClass,agentLine,agentSrc,agentCp,agentVars,agentMethods),",")+"\"";
+        return "\""+StringUtils.join(Arrays.asList(agentClass,agentFunc,agentLine,agentSrc,agentCp,agentVars,agentMethods),",")+"\"";
     }
 
     private String buildClasspath(List<String> additionalPath){

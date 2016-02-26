@@ -27,17 +27,16 @@ public class Utils {
             FileOutputStream outputStream = new FileOutputStream(tempJavaFile);
             BufferedReader reader = new BufferedReader(new FileReader(srcPath+"/"+className.replace(".","/")+".java"));
             String lineString = null;
-            int line = 1;
+            int line = 0;
             while ((lineString = reader.readLine()) != null) {
                 line++;
                 if (line == targetLine){
-                    System.out.println(lineString);
                     outputStream.write(addingCode.getBytes());
                 }
                 outputStream.write((lineString+"\n").getBytes());
-                //if (lineString.startsWith("package")){
-                //    outputStream.write("import java.lang.System;\n".getBytes());
-                //}
+                if (lineString.startsWith("package")){
+                    outputStream.write("import java.lang.Arrays;\n".getBytes());
+                }
             }
             outputStream.close();
             System.out.println(Utils.shellRun(Arrays.asList("javac -cp "+ classPath+" "+ tempJavaName)));

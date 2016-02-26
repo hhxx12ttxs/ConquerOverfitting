@@ -12,6 +12,7 @@ import org.apache.commons.lang.StringUtils;
 import org.junit.runner.JUnitCore;
 import java.io.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 
@@ -135,7 +136,8 @@ public class Capturer {
     private String assertProcessing(String assertLine, String statements) throws Exception{
         String assertType = assertLine.substring(0, assertLine.indexOf('('));
         List<String> parameters = divideParameter(assertLine, 1);
-        if (parameters.size() != 3){
+        if (parameters.size() > 3 && parameters.size() <2){
+            System.out.println(Arrays.toString(parameters.toArray()));
             throw new Exception("Function divideParameter Error!");
         }
 
