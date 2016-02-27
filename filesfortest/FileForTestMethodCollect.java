@@ -21,7 +21,7 @@ public class FileForTestMethodCollect {
 	private void test15(){
 		Out anonyInter=new Out(){// 获取匿名内部类实例
 
-			void show(){//重写父类的方法
+			void test16(){//重写父类的方法
 				System.out.println("this is Anonymous InterClass showing.");
 			}
 		};
@@ -29,8 +29,8 @@ public class FileForTestMethodCollect {
 	}
 }
 
-class Out{
-	void show(){
+static class Out{
+	void test16(){
 		System.out.println("this is Out showing.");
 	}
 }

@@ -53,6 +53,7 @@ public class MethodCollectTest {
         MethodCollect methodCollect = MethodCollect.GetInstance(projectPath);
         assertTrue(methodCollect.checkIsStaticMethod(suspiciousFilePath, "test13"));
         assertFalse(methodCollect.checkIsStaticMethod(suspiciousFilePath, "test14"));
+        assertTrue(methodCollect.checkIsStaticMethod(suspiciousFilePath, "test16"));
 
         assertTrue(methodCollect.checkIsStaticMethod(otherFilePath2, "test31"));
         assertTrue(methodCollect.checkIsStaticMethod(otherFilePath2, "test32"));
