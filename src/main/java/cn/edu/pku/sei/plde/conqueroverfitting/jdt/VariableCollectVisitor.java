@@ -53,15 +53,14 @@ class VariableCollectVisitor extends ASTVisitor {
             VariableInfo variableInfo = null;
             VariableDeclarationFragment v = (VariableDeclarationFragment) obj;
             String varName = v.getName().toString();
-
+            boolean isPublic = Modifier.isPublic(node.getModifiers());
             if (typeInference.isSimpleType) {
                 variableInfo = new VariableInfo(varName, typeInference.type,
-                        typeInference.isSimpleType, null, node.toString()
-                        .contains("public"));
+                        typeInference.isSimpleType, null, isPublic);
             } else {
                 variableInfo = new VariableInfo(varName, null,
                         typeInference.isSimpleType, typeInference.otherType,
-                        node.toString().contains("public"));
+                        isPublic);
             }
             filedInClassList.add(variableInfo);
         }
