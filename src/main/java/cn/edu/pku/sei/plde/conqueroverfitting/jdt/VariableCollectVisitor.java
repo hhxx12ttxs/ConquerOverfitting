@@ -83,15 +83,17 @@ class VariableCollectVisitor extends ASTVisitor {
         if (node.getReturnType2() == null) {
             return true;
         }
+
         TypeInference typeInference = new TypeInference(node.getReturnType2().toString());
+        boolean isPublic = Modifier.isPublic(node.getModifiers());
+        boolean isStatic = Modifier.isStatic(((TypeDeclaration) node.getParent()).getModifiers()) || Modifier.isStatic(node.getModifiers());
         if (typeInference.isSimpleType) {
             methodInfo = new MethodInfo(methodName, typeInference.type,
-                    typeInference.isSimpleType, null, node.toString()
-                    .contains("public"), node.toString().contains("static"), node.parameters().size() != 0);
+                    typeInference.isSimpleType, null, isPublic, isStatic, node.parameters().size() != 0);
         } else {
             methodInfo = new MethodInfo(methodName, null,
                     typeInference.isSimpleType, typeInference.otherType,
-                    node.toString().contains("public"), node.toString().contains("static"), node.parameters().size() != 0);
+                    isPublic, isStatic, node.parameters().size() != 0);
         }
         methodsInClassList.add(methodInfo);
 
@@ -230,13 +232,11 @@ class VariableCollectVisitor extends ASTVisitor {
 
     @Override
     public boolean visit(Modifier node) {
-
         return true;
     }
 
     @Override
     public boolean visit(TypeDeclaration node) {
-
         return true;
     }
 

@@ -16,6 +16,7 @@ public class MethodCollectTest {
     private final String suspiciousFilePath = new File(
             "filesfortest//FileForTestMethodCollect.java").getAbsolutePath();
     private final String otherFilePath = new File("filesfortest/FileForTestMethodCollect2.java").getAbsolutePath();
+    private final String otherFilePath2 = new File("filesfortest/FileForTestMethodCollect3.java").getAbsolutePath();
 
     @Test
     public void testGetVisibleMethodWithoutParametersInAllClassMap() {
@@ -52,5 +53,9 @@ public class MethodCollectTest {
         MethodCollect methodCollect = MethodCollect.GetInstance(projectPath);
         assertTrue(methodCollect.checkIsStaticMethod(suspiciousFilePath, "test13"));
         assertFalse(methodCollect.checkIsStaticMethod(suspiciousFilePath, "test14"));
+
+        assertTrue(methodCollect.checkIsStaticMethod(otherFilePath2, "test31"));
+        assertTrue(methodCollect.checkIsStaticMethod(otherFilePath2, "test32"));
+        assertTrue(methodCollect.checkIsStaticMethod(otherFilePath2, "test33"));
     }
 }
