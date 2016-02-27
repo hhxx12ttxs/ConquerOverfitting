@@ -74,6 +74,10 @@ class VariableCollectVisitor extends ASTVisitor {
             return true;
         }
 
+        if(node.getParent() instanceof  AnonymousClassDeclaration){
+            return true;
+        }
+
         List<SingleVariableDeclaration> parameters = node.parameters();
 
         MethodInfo methodInfo = null;
