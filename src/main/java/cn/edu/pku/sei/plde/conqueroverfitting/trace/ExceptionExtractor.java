@@ -4,6 +4,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.boundary.BoundaryCollect;
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.BoundaryFilter;
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.BoundaryInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.gatherer.GathererJava;
+import cn.edu.pku.sei.plde.conqueroverfitting.main.Config;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 
 import java.io.File;
@@ -103,6 +104,9 @@ public class ExceptionExtractor {
             }
             BoundaryCollect boundaryCollect = new BoundaryCollect("experiment/searchcode/"+project+"-"+entry.getKey().variableName);
             List<BoundaryInfo> boundaryList = boundaryCollect.getBoundaryList();
+            if (boundaryList == null){
+                continue;
+            }
             List<BoundaryInfo> filteredList = BoundaryFilter.getBoundaryWithName(boundaryList, entry.getKey().variableName);
             if (filteredList.size() == 0 && !entry.getKey().isSimpleType){
                 if (result.containsKey(entry.getKey())){
@@ -114,7 +118,7 @@ public class ExceptionExtractor {
             }
             for (String value: entry.getValue()){
                 int valueCount = BoundaryFilter.countTheValueOccurs(filteredList,value, valueType);
-                if (valueCount >= count){
+                if (Config.judgeResultOfFilterWithSearchBoundary(filteredList.size(),valueCount)){
                     if (result.containsKey(entry.getKey())){
                         result.get(entry.getKey()).add(value);
                     }

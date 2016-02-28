@@ -64,28 +64,42 @@ public class AddPrintTransformer implements ClassFileTransformer {
         if (varName.equals(_targetClassFunc)){
             return "";
         }
-        //printLine += "if (" + varName + "!= null) {";
-        printLine += "System.out.print(\"|"+varName+"=\"+";
+        printLine += "try {";
         if (varType == null){
-            printLine += varName +"+\"|\""+");\n";
-            //printLine += "}\n";
+            printLine += "System.out.print(\"|"+varName+"=\"+";
+            printLine += varName +"+\"|\""+");";
+            printLine += "} catch (Exception e) {}\n";
             return printLine;
         }
-        String varPrinter = "";
-        varPrinter += varName;
-        if (varType.endsWith("[]")){
-            varPrinter = "Arrays.toString("+varPrinter+")";
+        if (varType.endsWith("[]") && isSimpleType(varType) && !varName.endsWith("()")){
+            System.out.println(varType);
+            String varPrinter = "";
+            varPrinter += "System.out.print(\"|"+varName+"=\"+";
+            varPrinter += "Arrays.toString("+varName+")";
+            varPrinter += "+\"|\""+");";
+            printLine += "if ("+varName+".length < 100){"+varPrinter+"}";
         }
         else {
-            varPrinter = varPrinter;//+ ".toString()";
+            //printLine += "System.out.print(\"|"+varName+"=\"+";
+            //printLine += varName +"+\"|\""+");";
+            return "";
         }
-        printLine += varPrinter;
-        printLine += "+\"|\""+");\n";
-        //printLine += "}\n";
+        printLine += "} catch (Exception e) {}\n";
         return printLine;
     }
 
-
+    boolean isSimpleType(String type){
+        String[] simpleType = {"byte", "short", "int", "long", "float", "double", "character", "boolean", "string", "null"};
+        if (type.endsWith("[]")){
+            type = type.substring(0, type.lastIndexOf("["));
+        }
+        for (String simple: simpleType){
+            if (simple.equals(type)){
+                return true;
+            }
+        }
+        return false;
+    }
 
 
 }

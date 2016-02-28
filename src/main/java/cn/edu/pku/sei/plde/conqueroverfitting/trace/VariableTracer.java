@@ -72,7 +72,7 @@ public class VariableTracer {
             result =  result.substring(result.indexOf("|"));
         }
         while (!(result.charAt(result.length()-1) == 'E' || result.charAt(result.length()-1) == '|')){
-            result = result.substring(0, result.length()-2);
+            result = result.substring(0, result.length()-1);
         }
         return result;
     }

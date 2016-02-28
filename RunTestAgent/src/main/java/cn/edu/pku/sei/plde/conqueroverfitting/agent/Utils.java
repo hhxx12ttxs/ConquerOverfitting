@@ -35,10 +35,13 @@ public class Utils {
                 }
                 outputStream.write((lineString+"\n").getBytes());
                 if (lineString.startsWith("package")){
-                    outputStream.write("import java.lang.Arrays;\n".getBytes());
+                    outputStream.write("import java.util.Arrays;\n".getBytes());
+                    outputStream.write("import java.lang.System;\n".getBytes());
+
                 }
             }
             outputStream.close();
+            reader.close();
             System.out.println(Utils.shellRun(Arrays.asList("javac -cp "+ classPath+" "+ tempJavaName)));
         } catch (FileNotFoundException e){
             System.out.println("ERROR: Cannot Find Source File: "+className+" in Source Path: "+ srcPath);
@@ -46,8 +49,9 @@ public class Utils {
         } catch (IOException e){
             e.printStackTrace();
         }
+
         //clean temp file
-        tempJavaFile.deleteOnExit();
+        //tempJavaFile.deleteOnExit();
         new File(tempClassName).deleteOnExit();
         return getBytesFromFile(tempClassName);
     }

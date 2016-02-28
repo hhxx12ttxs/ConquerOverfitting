@@ -119,6 +119,13 @@ public class Suspicious implements Serializable{
         MethodCollect methodCollect = MethodCollect.GetInstance(getClassSrcIndex(classSrc));
         LinkedHashMap<String, ArrayList<MethodInfo>> methods = methodCollect.getVisibleMethodWithoutParametersInAllClassMap(getClassSrcPath(classSrc));
         _methodInfo = methods.get(getClassSrcPath(classSrc));
+        if (MethodCollect.checkIsStaticMethod(getClassSrcPath(classSrc),_function.substring(0, _function.indexOf("(")))){
+            for (MethodInfo info: _methodInfo){
+                if (!info.isStatic){
+                    _methodInfo.remove(info);
+                }
+            }
+        }
         return _methodInfo;
     }
 

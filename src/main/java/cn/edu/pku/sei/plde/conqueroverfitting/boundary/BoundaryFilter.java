@@ -1,6 +1,7 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.boundary;
 
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.BoundaryInfo;
+import cn.edu.pku.sei.plde.conqueroverfitting.main.Config;
 
 import java.nio.Buffer;
 import java.util.ArrayList;
@@ -68,10 +69,7 @@ public class BoundaryFilter {
                 continue;
             }
             String infoType = info.isSimpleType?info.variableSimpleType.toString():info.otherType;
-            if (value.equals("null") && (infoType.equals("NULL") || info.value.equals("null"))){
-                count ++;
-            }
-            else if (info.value.equals(value) && infoType.equals(type)){
+            if (Config.judgeAsTheSameInFilter(info.value, infoType, value, type)){
                 count ++;
             }
         }
