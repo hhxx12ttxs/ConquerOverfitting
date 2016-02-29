@@ -13,8 +13,9 @@ public class GathererJavaTest extends TestCase {
 		long timeStart = System.currentTimeMillis();
 		ArrayList<String> keyWords = new ArrayList<String>();
 		keyWords.add("if");
-		keyWords.add("len");
-		GathererJava gathererJava = new GathererJava(keyWords, "math");
+		keyWords.add("long");
+		keyWords.add("a0");
+		GathererJava gathererJava = new GathererJava(keyWords, "math-long-a0");
 		gathererJava.searchCode();
 		long timeEnd = System.currentTimeMillis();
 		//103s
