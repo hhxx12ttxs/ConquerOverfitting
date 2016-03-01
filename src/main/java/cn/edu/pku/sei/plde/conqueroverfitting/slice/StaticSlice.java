@@ -1,10 +1,12 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.slice;
 
+import java.util.ArrayList;
 import java.util.List;
 
+import cn.edu.pku.sei.plde.conqueroverfitting.jdtVisitor.IdentifierCollectVisitor;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.JDTUtils;
+import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTParser;
-
-import cn.edu.pku.sei.plde.conqueroverfitting.jdt.JDTParse;
 
 /**
  * Created by jiewang on 2016/2/23.
@@ -24,10 +26,13 @@ public class StaticSlice {
 	
 	private void slice(){
 		sliceStatements = "";
-		List<String> identifierInExpression = new JDTParse(expression, ASTParser.K_EXPRESSION).getIdentifierList();
+		//List<String> identifierInExpression = new JDTParse(expression, ASTParser.K_EXPRESSION).getIdentifierList();
+		List<String> identifierInExpression = getIdentifierList(expression, ASTParser.K_EXPRESSION);
+
 		String[] statementsArray = statements.split("\n");
 		for(String statement : statementsArray){
-			List<String> identifierInStatement = new JDTParse(statement, ASTParser.K_STATEMENTS).getIdentifierList();
+			//List<String> identifierInStatement = new JDTParse(statement, ASTParser.K_STATEMENTS).getIdentifierList();
+			List<String> identifierInStatement = getIdentifierList(statement, ASTParser.K_STATEMENTS);
 			identifierInStatement.retainAll(identifierInExpression);
 			if(identifierInStatement.size() > 0){
 				sliceStatements += statement;
@@ -36,7 +41,14 @@ public class StaticSlice {
 		}
 		
 	}
-	
+
+	private ArrayList<String> getIdentifierList(String source, int kind){
+		ASTNode root = JDTUtils.createASTForSource(source, kind);
+		IdentifierCollectVisitor identifierCollectVisitor = new IdentifierCollectVisitor();
+		root.accept(identifierCollectVisitor);
+		return identifierCollectVisitor.getIdentifierList();
+	}
+
 	public String getSliceStatements(){
 		return sliceStatements.toString();
 	}

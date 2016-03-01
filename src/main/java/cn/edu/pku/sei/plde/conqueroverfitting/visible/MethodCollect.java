@@ -1,9 +1,11 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.visible;
 
 import cn.edu.pku.sei.plde.conqueroverfitting.file.ReadFile;
-import cn.edu.pku.sei.plde.conqueroverfitting.jdt.JDTParse;
+import cn.edu.pku.sei.plde.conqueroverfitting.jdtVisitor.MethodCollectVisitor;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.FileUtils;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.JDTUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.MethodInfo;
+import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTParser;
 
 import java.util.ArrayList;
@@ -40,8 +42,13 @@ public class MethodCollect {
         methodsInClassMap = new LinkedHashMap<String, ArrayList<MethodInfo>>();
         ArrayList<String> filesPath = FileUtils.getJavaFilesInProj(projectPath);
         for (String filePath : filesPath) {
-            JDTParse jdtParse = new JDTParse(new ReadFile(filePath).getSource(), ASTParser.K_COMPILATION_UNIT);
-            methodsInClassMap.put(filePath, jdtParse.getMethodInClassList());
+//            JDTParse jdtParse = new JDTParse(new ReadFile(filePath).getSource(), ASTParser.K_COMPILATION_UNIT);
+//            methodsInClassMap.put(filePath, jdtParse.getMethodInClassList());
+            ASTNode root = JDTUtils.createASTForSource(new ReadFile(filePath).getSource(), ASTParser.K_COMPILATION_UNIT);
+            MethodCollectVisitor methodCollectVisitor = new MethodCollectVisitor();
+            root.accept(methodCollectVisitor);
+            methodsInClassMap.put(filePath, methodCollectVisitor.getMethodsInClassList());
+
         }
     }
 
