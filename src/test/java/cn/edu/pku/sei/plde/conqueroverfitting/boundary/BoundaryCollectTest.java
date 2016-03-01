@@ -12,7 +12,7 @@ import static org.junit.Assert.assertTrue;
 
 public class BoundaryCollectTest {
 
-    //@Test
+    @Test
     public void testBoundaryCollect() {
         String path = "filesfortest";
         BoundaryCollect boundaryCollect = new BoundaryCollect(path);
@@ -33,7 +33,7 @@ public class BoundaryCollectTest {
     }
 
 
-    @Test
+    //@Test
     public void testMath26() {
         String path = "experiment//searchcode//math-long-a0";
         BoundaryCollect boundaryCollect = new BoundaryCollect(path);

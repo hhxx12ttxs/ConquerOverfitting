@@ -1,4 +1,4 @@
-package cn.edu.pku.sei.plde.conqueroverfitting.jdt;
+package cn.edu.pku.sei.plde.conqueroverfitting.jdtVisitor;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -15,7 +15,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeEnum;
  * 
  * @author jiewang
  */
-class BoundaryCollectVisitor extends ASTVisitor {
+public class BoundaryCollectVisitor extends ASTVisitor {
 	private ArrayList<BoundaryInfo> boundaryInfoList;
 	
 	public BoundaryCollectVisitor() {

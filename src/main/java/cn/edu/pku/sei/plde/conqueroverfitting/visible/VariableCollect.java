@@ -1,15 +1,13 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.visible;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.*;
 
+import cn.edu.pku.sei.plde.conqueroverfitting.jdtVisitor.VariableCollectVisitor;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.JDTUtils;
+import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTParser;
 
 import cn.edu.pku.sei.plde.conqueroverfitting.file.ReadFile;
-import cn.edu.pku.sei.plde.conqueroverfitting.jdt.JDTParse;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.FileUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 
@@ -46,10 +44,22 @@ public class VariableCollect {
 		localInMethodMap = new LinkedHashMap<String, ArrayList<VariableInfo>>();
 		ArrayList<String> filesPath = FileUtils.getJavaFilesInProj(projectPath);
 		for (String filePath : filesPath) {
-			JDTParse jdtParse = new JDTParse(new ReadFile(filePath).getSource(), ASTParser.K_COMPILATION_UNIT);
-			filedsInClassMap.put(filePath, jdtParse.getFieldInClassList());
-			parameterInMethodMap.put(filePath, jdtParse.getParameterInMethodList());
-			localInMethodMap.put(filePath, jdtParse.getLocalInMethodList());
+			String source = new ReadFile(filePath).getSource();
+			ASTNode root = JDTUtils.createASTForSource(source, ASTParser.K_COMPILATION_UNIT);
+			int[] lineCounter = JDTUtils.getLineCounter(source);
+			VariableCollectVisitor variableCollectVisitor = new VariableCollectVisitor(lineCounter);
+			root.accept(variableCollectVisitor);
+
+			ArrayList<VariableInfo> filedInClassList = variableCollectVisitor.getFiledsInClassList();
+			ArrayList<VariableInfo> parametersInMethodList = variableCollectVisitor.getParametersInMethodList();
+			ArrayList<VariableInfo> localsInMethodList = variableCollectVisitor.getLocalInMethodList();
+			Collections.sort(parametersInMethodList);
+			Collections.sort(localsInMethodList);
+
+//			JDTParse jdtParse = new JDTParse(new ReadFile(filePath).getSource(), ASTParser.K_COMPILATION_UNIT);
+			filedsInClassMap.put(filePath, filedInClassList);
+			parameterInMethodMap.put(filePath, parametersInMethodList);
+			localInMethodMap.put(filePath, localsInMethodList);
 		}
 	}
 

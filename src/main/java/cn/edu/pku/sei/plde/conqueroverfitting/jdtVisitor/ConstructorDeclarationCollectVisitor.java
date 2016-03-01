@@ -1,156 +1,53 @@
-package cn.edu.pku.sei.plde.conqueroverfitting.jdt;
+package cn.edu.pku.sei.plde.conqueroverfitting.jdtVisitor;
 
+import cn.edu.pku.sei.plde.conqueroverfitting.localizationInConstructor.model.ConstructorDeclarationInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeInference;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.MethodInfo;
-import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 import org.eclipse.jdt.core.dom.*;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * ASTVisit that helps to generate a tree
- *
- * @author jiewang
+ * Created by yjxxtd on 3/1/16.
  */
-class VariableCollectVisitor extends ASTVisitor {
-    private ArrayList<VariableInfo> filedInClassList;
-    private ArrayList<VariableInfo> parametersInMethodList;
-    private ArrayList<VariableInfo> localsInMethodList;
-    private ArrayList<MethodInfo> methodsInClassList;
+public class ConstructorDeclarationCollectVisitor extends ASTVisitor {
     private int[] lineCounter;
+    private ArrayList<ConstructorDeclarationInfo> constructorDeclarationList;
 
-    public VariableCollectVisitor(int[] lineCounter) {
-        filedInClassList = new ArrayList<VariableInfo>();
-        parametersInMethodList = new ArrayList<VariableInfo>();
-        localsInMethodList = new ArrayList<VariableInfo>();
-        methodsInClassList = new ArrayList<MethodInfo>();
+    public ConstructorDeclarationCollectVisitor(int[] lineCounter) {
+        constructorDeclarationList = new ArrayList<ConstructorDeclarationInfo>();
         this.lineCounter = lineCounter;
     }
 
-    public ArrayList<VariableInfo> getFiledsInClassList() {
-        return filedInClassList;
-    }
-
-    public ArrayList<VariableInfo> getParametersInMethodList() {
-        return parametersInMethodList;
-    }
-
-    public ArrayList<VariableInfo> getLocalInMethodList() {
-        return localsInMethodList;
-    }
-
-
-    public ArrayList<MethodInfo> getMethodsInClassList() {
-        return methodsInClassList;
+    public ArrayList<ConstructorDeclarationInfo> getConstructorDeclarationList() {
+        return constructorDeclarationList;
     }
 
     @Override
     public boolean visit(FieldDeclaration node) {
-        TypeInference typeInference = new TypeInference(node.getType()
-                .toString());
-        for (Object obj : node.fragments()) {
-            VariableInfo variableInfo = null;
-            VariableDeclarationFragment v = (VariableDeclarationFragment) obj;
-            String varName = v.getName().toString();
-            boolean isPublic = Modifier.isPublic(node.getModifiers());
-            if (typeInference.isSimpleType) {
-                variableInfo = new VariableInfo(varName, typeInference.type,
-                        typeInference.isSimpleType, null, isPublic);
-            } else {
-                variableInfo = new VariableInfo(varName, null,
-                        typeInference.isSimpleType, typeInference.otherType,
-                        isPublic);
-            }
-            filedInClassList.add(variableInfo);
-        }
-
         return true;
     }
 
     @Override
     public boolean visit(MethodDeclaration node) {
         if (node.getReturnType2() == null) {
+            String constructorName = node.getName().toString();
+            Block body = node.getBody();
+            int parametersNum = node.parameters().size();
+            int startPos = lineCounter[body.getStartPosition()];
+            int endPos = lineCounter[body.getStartPosition() + body.getLength()];
+            ConstructorDeclarationInfo constructorDeclarationInfo = new ConstructorDeclarationInfo(constructorName, parametersNum, startPos, endPos);
+            constructorDeclarationList.add(constructorDeclarationInfo);
             return true;
         }
 
-        if (!(node.getParent() instanceof TypeDeclaration)){
-            return true;
-        }
-
-        List<SingleVariableDeclaration> parameters = node.parameters();
-
-        MethodInfo methodInfo = null;
-        String methodName = node.getName().toString();
-
-        if (node.getReturnType2() == null) {
-            return true;
-        }
-
-        TypeInference typeInference = new TypeInference(node.getReturnType2().toString());
-        boolean isPublic = Modifier.isPublic(node.getModifiers());
-
-        boolean isStatic = Modifier.isStatic(((TypeDeclaration) node.getParent()).getModifiers()) || Modifier.isStatic(node.getModifiers());
-        if (typeInference.isSimpleType) {
-            methodInfo = new MethodInfo(methodName, typeInference.type,
-                    typeInference.isSimpleType, null, isPublic, isStatic, node.parameters().size() != 0);
-        } else {
-            methodInfo = new MethodInfo(methodName, null,
-                    typeInference.isSimpleType, typeInference.otherType,
-                    isPublic, isStatic, node.parameters().size() != 0);
-        }
-        methodsInClassList.add(methodInfo);
-
-
-        for (SingleVariableDeclaration parameter : parameters) {
-            TypeInference paraTypeInference = new TypeInference(parameter.getType()
-                    .toString());
-            VariableInfo variableInfo = null;
-            if (paraTypeInference.isSimpleType) {
-                if (node.getStartPosition() >= lineCounter.length || node.getStartPosition() + node.getLength() >= lineCounter.length) {
-                    variableInfo = new VariableInfo(parameter.getName().toString(), paraTypeInference.type, paraTypeInference.isSimpleType, null, 0, 0);
-                } else {
-                    variableInfo = new VariableInfo(parameter.getName().toString(), paraTypeInference.type, paraTypeInference.isSimpleType, null,
-                            lineCounter[node.getStartPosition()], lineCounter[node.getStartPosition() + node.getLength()]);
-                }
-            } else {
-                if (node.getStartPosition() >= lineCounter.length || node.getStartPosition() + node.getLength() >= lineCounter.length) {
-                    variableInfo = new VariableInfo(parameter.getName().toString(), null, paraTypeInference.isSimpleType, paraTypeInference.otherType, 0, 0);
-                } else {
-                    variableInfo = new VariableInfo(parameter.getName().toString(), null, paraTypeInference.isSimpleType, paraTypeInference.otherType,
-                            lineCounter[node.getStartPosition()], lineCounter[node.getStartPosition() + node.getLength()]);
-                }
-            }
-            parametersInMethodList.add(variableInfo);
-        }
         return true;
     }
 
 
     @Override
     public boolean visit(VariableDeclarationStatement node) {
-        for (Object obj : node.fragments()) {
-            VariableInfo variableInfo = null;
-            VariableDeclarationFragment v = (VariableDeclarationFragment) obj;
-            String varName = v.getName().toString();
-
-            TypeInference typeInference = new TypeInference(node.getType()
-                    .toString());
-
-            ASTNode parent = node.getParent();
-
-            if (typeInference.isSimpleType) {
-                variableInfo = new VariableInfo(varName,
-                        typeInference.type, typeInference.isSimpleType, null,
-                        lineCounter[parent.getStartPosition()], lineCounter[parent.getStartPosition() + parent.getLength()], lineCounter[node.getStartPosition()]);
-            } else {
-                variableInfo = new VariableInfo(varName.toString(),
-                        null, typeInference.isSimpleType,
-                        typeInference.otherType,
-                        lineCounter[parent.getStartPosition()], lineCounter[parent.getStartPosition() + parent.getLength()], lineCounter[node.getStartPosition()]);
-            }
-            localsInMethodList.add(variableInfo);
-        }
         return true;
     }
 

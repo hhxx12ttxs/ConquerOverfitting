@@ -1,9 +1,7 @@
-package cn.edu.pku.sei.plde.conqueroverfitting.jdt;
+package cn.edu.pku.sei.plde.conqueroverfitting.jdtVisitor;
 
 import java.util.ArrayList;
-import java.util.List;
 
-import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.AnnotationTypeDeclaration;
 import org.eclipse.jdt.core.dom.AnnotationTypeMemberDeclaration;
@@ -51,7 +49,6 @@ import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.MethodRef;
 import org.eclipse.jdt.core.dom.MethodRefParameter;
 import org.eclipse.jdt.core.dom.Modifier;
-import org.eclipse.jdt.core.dom.Name;
 import org.eclipse.jdt.core.dom.NormalAnnotation;
 import org.eclipse.jdt.core.dom.NullLiteral;
 import org.eclipse.jdt.core.dom.NumberLiteral;
@@ -90,10 +87,6 @@ import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
 import org.eclipse.jdt.core.dom.VariableDeclarationStatement;
 import org.eclipse.jdt.core.dom.WhileStatement;
 import org.eclipse.jdt.core.dom.WildcardType;
-
-import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeInference;
-import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.MethodInfo;
-import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 
 /**
  * Created by jiewang on 2016/2/23.
@@ -213,7 +206,6 @@ public class IdentifierCollectVisitor extends ASTVisitor {
 
 	@Override
 	public boolean visit(TypeDeclaration node) {
-
 		return true;
 	}
 
@@ -369,7 +361,6 @@ public class IdentifierCollectVisitor extends ASTVisitor {
 
 	@Override
 	public boolean visit(BlockComment node) {
-
 		return false;
 	}
 
