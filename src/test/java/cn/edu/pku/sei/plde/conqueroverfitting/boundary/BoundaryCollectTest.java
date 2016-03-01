@@ -49,4 +49,21 @@ public class BoundaryCollectTest {
 			log.logSignLine("end");
 		}
     }
+
+    @Test
+    public void testMath99() {
+        String path = "experiment//searchcode//math-int-u";
+        BoundaryCollect boundaryCollect = new BoundaryCollect(path);
+        ArrayList<BoundaryInfo> boundaryList = boundaryCollect.getBoundaryList();
+
+        assertNotNull(boundaryList);
+        Log log = new Log("log//boundary-math-int-u.log");
+        for(BoundaryInfo boundaryInfo : boundaryList){
+            log.logSignLine("begin");
+            log.logStr("name: " + boundaryInfo.info);
+            log.logStr("value: " + boundaryInfo.value);
+            log.logStr("type: " + boundaryInfo.variableSimpleType);
+            log.logSignLine("end");
+        }
+    }
 }
