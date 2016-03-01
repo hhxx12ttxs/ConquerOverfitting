@@ -21,6 +21,7 @@ import com.gzoltar.core.components.Statement;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.metric.Metric;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.common.sps.SuspiciousProgramStatements;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.common.sps.SuspiciousStatement;
+import org.apache.commons.lang.StringUtils;
 
 import java.io.IOException;
 import java.net.URL;
@@ -47,16 +48,16 @@ public final class GZoltarSuspiciousProgramStatements implements SuspiciousProgr
      * @param classpath
      * @return
      */
-    public static GZoltarSuspiciousProgramStatements create(URL[] classpath, Collection<String> packageNames, Metric metric) {
-        return new GZoltarSuspiciousProgramStatements(checkNotNull(classpath), checkNotNull(packageNames), metric);
+    public static GZoltarSuspiciousProgramStatements create(URL[] classpath, Collection<String> packageNames, Metric metric, String testSrcPath) {
+        return new GZoltarSuspiciousProgramStatements(checkNotNull(classpath), checkNotNull(packageNames), metric, testSrcPath);
     }
 
     /**
      * @param classpath
      * @return
      */
-    public static GZoltarSuspiciousProgramStatements create(URL[] classpath, String[] tests, Metric metric) {
-        return new GZoltarSuspiciousProgramStatements(checkNotNull(classpath), checkNotNull(Arrays.asList("")), metric);//getRootPackage(tests))));
+    public static GZoltarSuspiciousProgramStatements create(URL[] classpath, String[] tests, Metric metric, String testSrcPath) {
+        return new GZoltarSuspiciousProgramStatements(checkNotNull(classpath), checkNotNull(Arrays.asList("")), metric, testSrcPath);//getRootPackage(tests))));
     }
 
     private static String getRootPackage(String[] classes) {
@@ -79,10 +80,10 @@ public final class GZoltarSuspiciousProgramStatements implements SuspiciousProgr
     private final WGzoltar gzoltar;
 
 
-    protected GZoltarSuspiciousProgramStatements(final URL[] classpath, Collection<String> packageNames, Metric metric) {
+    protected GZoltarSuspiciousProgramStatements(final URL[] classpath, Collection<String> packageNames, Metric metric, String testSrcPath) {
         try {
             //gzoltar = new GZoltarJava7();
-            gzoltar = new WGzoltar(System.getProperty("user.dir"), metric);
+            gzoltar = new WGzoltar(System.getProperty("user.dir"), metric, testSrcPath);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

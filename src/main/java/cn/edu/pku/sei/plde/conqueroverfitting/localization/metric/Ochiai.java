@@ -6,11 +6,11 @@ package cn.edu.pku.sei.plde.conqueroverfitting.localization.metric;
 public class Ochiai implements Metric {
 
     public double value(int ef, int ep, int nf, int np) {
-        if (ef == 1)
-            return ef/Math.sqrt((ef+ep)*(ef+nf))*10;
+        //if (ef == 1)
+        return ef/Math.sqrt((ef+ep)*(ef+nf))*10;
             //return (double) ef / ((double) ep + (double)np ) * 10000;
-        else
-            return 0;
+        //else
+        //    return 0;
 
     }
 }

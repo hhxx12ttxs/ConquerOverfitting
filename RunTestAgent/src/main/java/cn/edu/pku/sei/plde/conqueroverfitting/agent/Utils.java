@@ -51,7 +51,7 @@ public class Utils {
         }
 
         //clean temp file
-        //tempJavaFile.deleteOnExit();
+        tempJavaFile.deleteOnExit();
         new File(tempClassName).deleteOnExit();
         return getBytesFromFile(tempClassName);
     }

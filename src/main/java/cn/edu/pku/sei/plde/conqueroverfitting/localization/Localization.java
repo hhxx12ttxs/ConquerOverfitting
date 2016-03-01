@@ -24,14 +24,16 @@ public class Localization  {
     public String classpath;
     public String testClassPath;
     public String[] testClasses;
+    public String testSrcPath;
 
     /**
      * @param classPath the path of project's class file
      * @param testClassPath the path of project's test class file
      */
-    public Localization(String classPath, String testClassPath){
+    public Localization(String classPath, String testClassPath, String testSrcPath){
         this.classpath = classPath;
         this.testClassPath = testClassPath;
+        this.testSrcPath = testSrcPath;
         testClasses = new TestClassesFinder().findIn(JavaLibrary.classpathFrom(testClassPath), false);
         Arrays.sort(testClasses);
     }
@@ -154,7 +156,7 @@ public class Localization  {
     public List<StatementExt> getSuspiciousListWithMetric(Metric metric){
         URL[] classpaths = JavaLibrary.classpathFrom(testClassPath);
         classpaths = JavaLibrary.extendClasspathWith(classpath, classpaths);
-        GZoltarSuspiciousProgramStatements gZoltar = GZoltarSuspiciousProgramStatements.create(classpaths, testClasses, new Ochiai());
+        GZoltarSuspiciousProgramStatements gZoltar = GZoltarSuspiciousProgramStatements.create(classpaths, testClasses, new Ochiai(),testSrcPath);
         return gZoltar.sortBySuspiciousness(testClasses);
     }
 

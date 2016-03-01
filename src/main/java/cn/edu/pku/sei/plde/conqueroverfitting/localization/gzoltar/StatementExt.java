@@ -4,6 +4,7 @@ import com.gzoltar.core.components.Component;
 import com.gzoltar.core.components.Statement;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.metric.Metric;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.metric.Ochiai;
+import com.gzoltar.core.instr.testing.TestResult;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,6 +34,7 @@ public class StatementExt extends Statement  {
         this.setSuspiciousness(s.getSuspiciousness());
         this.setLineNumber(s.getLineNumber());
     }
+
 
     public void addTest(String test){
         tests.add(test);

@@ -3,6 +3,7 @@ package cn.edu.pku.sei.plde.conqueroverfitting.main;
 
 import org.apache.commons.lang.StringUtils;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -11,8 +12,13 @@ import java.util.List;
  */
 public class Config {
 
-    public static boolean judgeResultOfFilterWithSearchBoundary(int totalCount, int theSameCount){
-        if (((double)theSameCount/(double)totalCount) > 0.1){
+    public static boolean judgeResultOfFilterWithSearchBoundary(int totalCount, int theSameCount, String value){
+        double percentage = (double)theSameCount/(double)totalCount;
+        List<String> systemValues = Arrays.asList("Integer.MAX_VALUE","Integer.MIN_VALUE",String.valueOf(Integer.MAX_VALUE), String.valueOf(Integer.MIN_VALUE));
+        if (percentage > 0.05 && systemValues.contains(value)){
+            return true;
+        }
+        if (percentage > 0.1){
             return true;
         }
         return false;
@@ -20,15 +26,17 @@ public class Config {
 
     public static boolean judgeAsTheSameInFilter(String candidate ,String candidateType, String master, String masterType){
         List<String> numberType = Arrays.asList("INT","DOUBLE","FLOAT","SHORT","LONG");
+        List<String> minInteger = Arrays.asList("Integer.MIN_VALUE","-2147483648");
+        List<String> maxInteger = Arrays.asList("Integer.MAX_VALUE","2147483647");
         if (candidate.equals(master)){
             return true;
         }
-        else if (numberType.contains(candidateType) && numberType.contains(masterType)){
+        if (numberType.contains(candidateType) && numberType.contains(masterType)){
             if (master.endsWith(".0")){
                 master = master.substring(0, master.lastIndexOf("."));
             }
             if (candidate.endsWith(".0")){
-                candidate = candidateType.substring(0, candidate.lastIndexOf("."));
+                candidate = candidate.substring(0, candidate.lastIndexOf("."));
             }
             if (StringUtils.isNumeric(candidate) && StringUtils.isNumeric(master)){
                 if (Double.valueOf(master).equals(Double.valueOf(candidate))){
@@ -36,7 +44,13 @@ public class Config {
                 }
             }
         }
-        else if (master.equals("null") && (candidate.equals("NULL") || candidate.equals("null"))){
+        if (master.equals("null") && (candidate.equals("NULL") || candidate.equals("null"))){
+            return true;
+        }
+        if (minInteger.contains(master) && minInteger.contains(candidate)){
+            return true;
+        }
+        if (maxInteger.contains(master) && maxInteger.contains(candidate)){
             return true;
         }
         return false;

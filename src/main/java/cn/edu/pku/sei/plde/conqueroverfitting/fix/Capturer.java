@@ -1,6 +1,7 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.fix;
 
 import cn.edu.pku.sei.plde.conqueroverfitting.slice.StaticSlice;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.FileUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.ShellUtils;
 import com.gzoltar.core.GZoltar;
 import com.gzoltar.core.instr.testing.TestResult;
@@ -59,8 +60,8 @@ public class Capturer {
 
     private String run() throws Exception{
         _testTrace = runTest();
-        _classCode =  getCodeFromFile(_fileaddress);
-        _functionCode = getFunctionCodeFromCode(_classCode, _functionname);
+        _classCode = FileUtils.getCodeFromFile(_fileaddress);
+        _functionCode = FileUtils.getTestFunctionCodeFromCode(_classCode, _functionname);
         _errorLineNum = getErrorLineNumFromTestTrace();
         return fixTest();
     }
@@ -213,49 +214,6 @@ public class Capturer {
     }
 
 
-
-    private static String getCodeFromFile(String fileaddress) throws Exception{
-        try {
-            FileInputStream stream = new FileInputStream(new File(fileaddress));
-            byte[] b=new byte[stream.available()];
-            int len = stream.read(b);
-            if (len <= 0){
-                throw new IOException("Source code file "+fileaddress+" read fail!");
-            }
-            stream.close();
-            return new String(b);
-        } catch (Exception e){
-            System.out.println(e.getMessage());
-            throw e;
-        }
-    }
-
-
-
-
-    private static List<String> divideTestFunction(String code){
-        List<String> result = new ArrayList<String>();
-        String[] items = code.split("public void");
-        for (int j = 1; j<items.length; j++){
-            String item = items[j];
-            int startPoint = item.indexOf('{')+1;
-            int braceCount = 1;
-            for (int i=startPoint; i<item.length();i++){
-                if (item.charAt(i) == '}'){
-                    if (--braceCount == 0){
-                        result.add(item.substring(0, i+1));
-                        break;
-                    }
-                }
-                if (item.charAt(i) == '{'){
-                    braceCount++;
-                }
-            }
-        }
-        return result;
-    }
-
-
     private static List<String> divideParameter(String line, int level){
         line = line.replace(" ", "");
         List<String> result = new ArrayList<String>();
@@ -302,26 +260,7 @@ public class Capturer {
         return result;
     }
 
-    private static String getFunctionCodeFromCode(String code, String targetFunctionName) throws NotFoundException{
-        if (code.contains("@Test")){
-            String[] tests = code.split("@Test");
-            for (String test: tests){
-                if (test.contains("public void "+targetFunctionName+"()")){
-                    return test;
-                }
-            }
-        }
-        else {
-            List<String> tests = divideTestFunction(code);
-            for (String test: tests){
-                if (test.trim().startsWith(targetFunctionName+"()")){
-                    return "public void"+ test.trim();
-                }
-            }
-        }
 
-        throw new NotFoundException("Target function: "+ targetFunctionName+ " No Found");
-    }
 
     private String staticSlicingProcess(List<String> returnParam, List<String> callParam, String statements){
         for (int i=0; i<returnParam.size(); i++){

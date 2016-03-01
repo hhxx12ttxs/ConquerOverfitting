@@ -98,8 +98,8 @@ public class Suspicious implements Serializable{
         }
         String classSrcPath = getClassSrcPath(classSrc);
         VariableCollect variableCollect = VariableCollect.GetInstance(getClassSrcIndex(classSrc));
-        List<VariableInfo> parameters = variableCollect.getVisibleParametersInMethodList(classSrcPath, lastLine()-1);
-        List<VariableInfo> locals = variableCollect.getVisibleLocalInMethodList(classSrcPath, lastLine()-1);
+        List<VariableInfo> parameters = variableCollect.getVisibleParametersInMethodList(classSrcPath, lastLine());
+        List<VariableInfo> locals = variableCollect.getVisibleLocalInMethodList(classSrcPath, lastLine());
         LinkedHashMap<String, ArrayList<VariableInfo>> classvars = variableCollect.getVisibleFieldInAllClassMap(classSrcPath);
         List<VariableInfo> variableInfos = new ArrayList<VariableInfo>();
         variableInfos.addAll(parameters);

@@ -1,14 +1,13 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.utils;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
+import com.sun.org.apache.xerces.internal.impl.xpath.XPath;
+import javassist.NotFoundException;
+
+import java.io.*;
 import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.LinkedList;
+import java.util.List;
 
 public class FileUtils {
 	public static void writeFile(String fileName, String content) {
@@ -82,4 +81,78 @@ public class FileUtils {
 			return null;
 		}
 	}
+
+	public static String getFileAddressOfClass(String testSrcPath, String className){
+		return  testSrcPath + System.getProperty("file.separator") + className.replace('.',System.getProperty("file.separator").charAt(0))+".java";
+	}
+
+	public static String getCodeFromFile(String fileaddress) throws Exception{
+		try {
+			FileInputStream stream = new FileInputStream(new File(fileaddress));
+			byte[] b=new byte[stream.available()];
+			int len = stream.read(b);
+			if (len <= 0){
+				throw new IOException("Source code file "+fileaddress+" read fail!");
+			}
+			stream.close();
+			return new String(b);
+		} catch (Exception e){
+			System.out.println(e.getMessage());
+			throw e;
+		}
+	}
+
+	public static String getTestFunctionCodeFromCode(String code, String targetFunctionName) throws NotFoundException{
+		if (code.contains("@Test")){
+			String[] tests = code.split("@Test");
+			for (String test: tests){
+				if (test.contains("public void "+targetFunctionName+"()")){
+					return test;
+				}
+			}
+		}
+		else {
+			List<String> tests = divideTestFunction(code);
+			for (String test: tests){
+				if (test.trim().startsWith(targetFunctionName+"()")){
+					return "public void"+ test.trim();
+				}
+			}
+		}
+
+		throw new NotFoundException("Target function: "+ targetFunctionName+ " No Found");
+	}
+
+	public static List<String> getPackageImportFromCode(String code){
+		List<String> result = new ArrayList<>();
+		for (String line: code.split("\n")){
+			if (line.startsWith("import")){
+				result.add(line);
+			}
+		}
+		return result;
+	}
+
+	private static List<String> divideTestFunction(String code){
+		List<String> result = new ArrayList<String>();
+		String[] items = code.split("public void");
+		for (int j = 1; j<items.length; j++){
+			String item = items[j];
+			int startPoint = item.indexOf('{')+1;
+			int braceCount = 1;
+			for (int i=startPoint; i<item.length();i++){
+				if (item.charAt(i) == '}'){
+					if (--braceCount == 0){
+						result.add(item.substring(0, i+1));
+						break;
+					}
+				}
+				if (item.charAt(i) == '{'){
+					braceCount++;
+				}
+			}
+		}
+		return result;
+	}
+
 }

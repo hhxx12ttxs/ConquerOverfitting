@@ -116,9 +116,15 @@ public class VariableTracer {
 
 
     private List<TraceResult> traceAnalysis(String traceResult){
+        List<String> units = new ArrayList<>();
+        for (String unit: traceResult.split("\\|")){
+            if (!units.contains(unit)){
+                units.add(unit);
+            }
+        }
         List<String> traces = new ArrayList<String>();
         String line = "";
-        for (String unit: traceResult.split("\\.")){
+        for (String unit: StringUtils.join(units,"|").split("\\.")){
             if (unit.equals("")){
                 continue;
             }
@@ -145,7 +151,9 @@ public class VariableTracer {
                 }
                 result.put(pair.substring(0, pair.indexOf('=')),pair.substring(pair.indexOf('=')+1));
             }
-            results.add(result);
+            if (result.getResultMap().size() != 0){
+                results.add(result);
+            }
         }
         return results;
     }

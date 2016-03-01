@@ -89,7 +89,7 @@ class VariableCollectVisitor extends ASTVisitor {
 
         TypeInference typeInference = new TypeInference(node.getReturnType2().toString());
         boolean isPublic = Modifier.isPublic(node.getModifiers());
-        if (node.getParent() instanceof EnumDeclaration){
+        if (node.getParent() instanceof EnumDeclaration || node.getParent() instanceof AnnotationTypeDeclaration){
             return true;
         }
         boolean isStatic = Modifier.isStatic(((TypeDeclaration) node.getParent()).getModifiers()) || Modifier.isStatic(node.getModifiers());

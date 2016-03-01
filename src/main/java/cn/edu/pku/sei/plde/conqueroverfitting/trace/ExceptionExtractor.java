@@ -6,6 +6,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.BoundaryInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.gatherer.GathererJava;
 import cn.edu.pku.sei.plde.conqueroverfitting.main.Config;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
+import org.apache.commons.lang.StringUtils;
 
 import java.io.File;
 import java.util.*;
@@ -17,7 +18,15 @@ public class ExceptionExtractor {
 
     public static Map<VariableInfo, List<String>> extract(List<TraceResult> traceResults, List<VariableInfo> vars, String project){
         Map<VariableInfo, List<String>> exceptionVariable = ExceptionExtractor.extractWithAbandonTrueValue(traceResults, vars);
-        return ExceptionExtractor.filterWithSearchBoundary(exceptionVariable,project,10);
+        Map<VariableInfo, List<String>> cleanedVariable = new HashMap<>();
+        for (Map.Entry<VariableInfo, List<String>> var: exceptionVariable.entrySet()){
+            List<String> unrepeatValue = new ArrayList(new HashSet(var.getValue()));
+            //删掉疑似for循环的计数的数据
+            if (!isForLoopParam(unrepeatValue)){
+                cleanedVariable.put(var.getKey(), unrepeatValue);
+            }
+        }
+        return ExceptionExtractor.filterWithSearchBoundary(cleanedVariable,project,10);
     }
     /**
      *
@@ -87,6 +96,15 @@ public class ExceptionExtractor {
     public static Map<VariableInfo, List<String>> filterWithSearchBoundary(Map<VariableInfo, List<String>> exceptionVariable, String project, int count){
         Map<VariableInfo, List<String>> result = new HashMap<VariableInfo, List<String>>();
         for (Map.Entry<VariableInfo, List<String>> entry: exceptionVariable.entrySet()){
+            if (entry.getKey() == null){
+                continue;
+            }
+            if (entry.getKey().isSimpleType && entry.getKey().variableSimpleType==null){
+                continue;
+            }
+            if (!entry.getKey().isSimpleType && entry.getKey().otherType == null){
+                continue;
+            }
             String valueType = entry.getKey().isSimpleType?entry.getKey().variableSimpleType.toString():entry.getKey().otherType;
             ArrayList<String> keywords = new ArrayList<String>();
             keywords.add("if");
@@ -109,23 +127,29 @@ public class ExceptionExtractor {
             }
             List<BoundaryInfo> filteredList = BoundaryFilter.getBoundaryWithName(boundaryList, entry.getKey().variableName);
             if (filteredList.size() == 0 && !entry.getKey().isSimpleType){
+                //对于复杂的数据结构,不等于null总是一个好的方法
                 if (result.containsKey(entry.getKey())){
                     result.get(entry.getKey()).add("null");
                 }
                 else {
-                    result.put(entry.getKey(),Arrays.asList("null"));
+                    result.put(entry.getKey(),new ArrayList<String>(Arrays.asList("null")));
                 }
             }
-            for (String value: entry.getValue()){
-                int valueCount = BoundaryFilter.countTheValueOccurs(filteredList,value, valueType);
-                if (Config.judgeResultOfFilterWithSearchBoundary(filteredList.size(),valueCount)){
-                    if (result.containsKey(entry.getKey())){
-                        result.get(entry.getKey()).add(value);
-                    }
-                    else {
-                        result.put(entry.getKey(),Arrays.asList(value));
+            if (entry.getValue().size()< 10){
+                for (String value: entry.getValue()){
+                    int valueCount = BoundaryFilter.countTheValueOccurs(filteredList,value, valueType);
+                    if (Config.judgeResultOfFilterWithSearchBoundary(filteredList.size(),valueCount, value)){
+                        if (result.containsKey(entry.getKey())){
+                            result.get(entry.getKey()).add(value);
+                        }
+                        else {
+                            result.put(entry.getKey(),new ArrayList<String>(Arrays.asList(value)));
+                        }
                     }
                 }
+            }
+            else {
+
             }
         }
         return result;
@@ -153,5 +177,33 @@ public class ExceptionExtractor {
             }
         }
         return null;
+    }
+
+    private static boolean isForLoopParam(List<String> vars){
+        List<Integer> nums = new ArrayList<>();
+        for (String var: vars){
+            if (!StringUtils.isNumeric(var)){
+                return false;
+            }
+            try {
+                int num = Integer.parseInt(var);
+                nums.add(num);
+            }catch (Exception e){
+                return false;
+            }
+        }
+        if (nums.size() < 5){
+            return false;
+        }
+        Collections.sort(nums);
+        int first = nums.get(0);
+        for (int i=1; i< nums.size();i++){
+            int second = nums.get(i);
+            if (Math.abs(first-second) != 1){
+                return false;
+            }
+            first = second;
+        }
+        return true;
     }
 }

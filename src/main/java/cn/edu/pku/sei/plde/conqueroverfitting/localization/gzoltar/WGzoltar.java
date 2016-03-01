@@ -1,11 +1,14 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.localization.gzoltar;
 
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.FileUtils;
 import com.gzoltar.core.GZoltar;
+import com.gzoltar.core.components.Component;
 import com.gzoltar.core.components.Statement;
 import com.gzoltar.core.instr.testing.TestResult;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.metric.Metric;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.metric.Ochiai;
 
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.*;
@@ -15,14 +18,13 @@ import java.util.*;
  */
 public class WGzoltar extends GZoltar {
     private Metric metric;
+    private String testSrcPath;
 
-    public WGzoltar(String wD) throws IOException {
-        this(wD, new Ochiai());
-    }
 
-    public WGzoltar(String wD, Metric metric) throws IOException {
+    public WGzoltar(String wD, Metric metric, String testSrcPath) throws IOException {
         super(wD);
         this.metric = metric;
+        this.testSrcPath = testSrcPath;
     }
 
     @Override
@@ -43,23 +45,15 @@ public class WGzoltar extends GZoltar {
         List<StatementExt> result = new ArrayList<StatementExt>(suspiciousStatements.size());
         int successfulTests;
         int nbFailingTest = 0;
-        //try {
-            //FileOutputStream out = new FileOutputStream(new File("/Users/localization/Desktop/out.txt"));
-            for (int i = this.getTestResults().size() - 1 ; i >= 0; i--) {
-                TestResult testResult = this.getTestResults().get(i);
-                if(!testResult.wasSuccessful()) {
-                    nbFailingTest++;
+        for (int i = this.getTestResults().size() - 1 ; i >= 0; i--) {
+            TestResult testResult = this.getTestResults().get(i);
+            if(!testResult.wasSuccessful()) {
+                nbFailingTest++;
+                if (testResult.getCoveredComponents().size() == 0){
+                    //suspiciousStatements.add(statementFromTestResult(testResult,suspiciousStatements.get(0)));
                 }
-                //out.write((testResult.getName()+": "+String.valueOf(testResult.wasSuccessful())+"\n").getBytes());
-                //System.out.println(testResult.getName()+": "+testResult.wasSuccessful());
             }
-            //out.close();
-        //} catch (IOException e){
-
-        //}
-
-        //try{
-        //    FileOutputStream outputStream = new FileOutputStream(new File("/Users/localization/Desktop/out.txt"));
+        }
 
         successfulTests = this.getTestResults().size() - nbFailingTest;
         for (int i = suspiciousStatements.size() - 1 ; i >= 0; i--) {
@@ -101,14 +95,26 @@ public class WGzoltar extends GZoltar {
         return result;
     }
 
-    private void recordTestResults(StatementExt statementExt, FileOutputStream outputStream){
-        try {
-            String msg = statementExt.getLabel() + ":" + statementExt.getEp() + "/" + statementExt.getNp() + "/" + statementExt.getEf() + "/" +statementExt.getNf() + "\n";
-            outputStream.write(msg.getBytes());
-            System.out.println(msg);
-            //outputStream.close();
-        }catch (IOException e){
-            System.out.println("ERROR");
+    private Statement statementFromTestResult(TestResult testResult, Statement sample) throws Exception{
+        String testPath = FileUtils.getFileAddressOfClass(testSrcPath, testResult.getName().split("#")[0]);
+        String testCode = FileUtils.getCodeFromFile(testPath);
+        String functionCode = FileUtils.getTestFunctionCodeFromCode(testCode,testResult.getName().split("#")[1]);
+
+        boolean failFlag = false;
+        for (String line: functionCode.split("\n")){
+            if (line.trim().startsWith("fail(")){
+                failFlag = true;
+            }
+            if (failFlag && line.contains("catch") && line.contains("Exception")){
+                String exception = line.substring(line.lastIndexOf("(")+1, line.lastIndexOf(")")).split(" ")[0];
+            }
         }
+        Statement statement = new StatementExt(sample);
+        statement.setLineNumber(0);
+        statement.setCoverage(0);
+        statement.setCount(0,0);
+        return sample;
+        //statement.setLabel();
     }
+
 }

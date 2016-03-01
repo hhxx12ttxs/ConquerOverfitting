@@ -23,6 +23,7 @@ public class BoundaryGenerator {
             return "";
         }
         Map<VariableInfo, List<String>> filteredVariable = ExceptionExtractor.extract(traceResults, suspicious.getAllInfo(classSrc),project);
+
         return generate(filteredVariable, project);
     }
 
