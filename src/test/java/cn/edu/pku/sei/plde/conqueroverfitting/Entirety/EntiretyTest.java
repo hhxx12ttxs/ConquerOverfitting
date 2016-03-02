@@ -17,16 +17,16 @@ public class EntiretyTest {
 
     @Test
     public void testEntirety() throws Exception{
-        int i = 99;
-        String project = "math99";
+        int i = 35;
+        String project = "math35";
         /* 四个整个项目需要的参数 */
         String classpath = PATH_OF_DEFECTS4J+"Math-"+i+"/target/classes";              //项目的.class文件路径
         String testClasspath  = PATH_OF_DEFECTS4J+"Math-"+i+"/target/test-classes";    //项目的test的.class文件路径
-        String classSrc = PATH_OF_DEFECTS4J + "Math-"+i+"/src/java";              //项目的源代码路径
-        String testClassSrc = PATH_OF_DEFECTS4J + "Math-"+i+"/src/test";///java";          //项目的test的源代码路径
+        String classSrc = PATH_OF_DEFECTS4J + "Math-"+i+"/src/main/java";              //项目的源代码路径
+        String testClassSrc = PATH_OF_DEFECTS4J + "Math-"+i+"/src/test/java";///java";          //项目的test的源代码路径
 
 
-        Localization localization = new Localization(classpath, testClasspath, testClassSrc);
+        Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc);
         List<Suspicious> suspiciouses = localization.getSuspiciousLite();
 
         for (Suspicious suspicious: suspiciouses){
@@ -35,6 +35,7 @@ public class EntiretyTest {
                 continue;
             }
             Capturer fixCapturer = new Capturer(classpath, testClasspath, testClassSrc);
+            System.out.println("if: "+ ifString);
             for (String test: suspicious.getTestClassAndFunction()){
                 if (!test.contains("#")) {
                     continue;
@@ -43,11 +44,11 @@ public class EntiretyTest {
                 if (fixString.equals("")){
                     continue;
                 }
+                System.out.println("fix: "+ fixString);
                 JavaFixer javaFixer = new JavaFixer(classpath, testClasspath, classSrc);
                 boolean result = javaFixer.fixWithIfStatement(suspicious.getTestClasses(),suspicious.classname(),suspicious.lastLine(),ifString,fixString);
                 if (result){
                     System.out.println("Fix Success");
-                    return;
                 }
             }
 

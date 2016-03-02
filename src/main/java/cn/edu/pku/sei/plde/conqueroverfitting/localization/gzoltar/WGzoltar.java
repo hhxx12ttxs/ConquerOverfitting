@@ -1,5 +1,7 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.localization.gzoltar;
 
+import cn.edu.pku.sei.plde.conqueroverfitting.localizationInConstructor.LocalizationInConstructor;
+import cn.edu.pku.sei.plde.conqueroverfitting.localizationInConstructor.model.ConstructorDeclarationInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.FileUtils;
 import com.gzoltar.core.GZoltar;
 import com.gzoltar.core.components.Component;
@@ -19,12 +21,14 @@ import java.util.*;
 public class WGzoltar extends GZoltar {
     private Metric metric;
     private String testSrcPath;
+    private String srcPath;
 
 
-    public WGzoltar(String wD, Metric metric, String testSrcPath) throws IOException {
+    public WGzoltar(String wD, Metric metric, String testSrcPath, String srcPath) throws IOException {
         super(wD);
         this.metric = metric;
         this.testSrcPath = testSrcPath;
+        this.srcPath = srcPath;
     }
 
     @Override
@@ -50,7 +54,7 @@ public class WGzoltar extends GZoltar {
             if(!testResult.wasSuccessful()) {
                 nbFailingTest++;
                 if (testResult.getCoveredComponents().size() == 0){
-                    //suspiciousStatements.add(statementFromTestResult(testResult,suspiciousStatements.get(0)));
+                    suspiciousStatements.addAll(statementFromTestResult(testResult,suspiciousStatements.get(0)),i);
                 }
             }
         }
@@ -95,26 +99,24 @@ public class WGzoltar extends GZoltar {
         return result;
     }
 
-    private Statement statementFromTestResult(TestResult testResult, Statement sample) throws Exception{
-        String testPath = FileUtils.getFileAddressOfClass(testSrcPath, testResult.getName().split("#")[0]);
-        String testCode = FileUtils.getCodeFromFile(testPath);
-        String functionCode = FileUtils.getTestFunctionCodeFromCode(testCode,testResult.getName().split("#")[1]);
-
-        boolean failFlag = false;
-        for (String line: functionCode.split("\n")){
-            if (line.trim().startsWith("fail(")){
-                failFlag = true;
-            }
-            if (failFlag && line.contains("catch") && line.contains("Exception")){
-                String exception = line.substring(line.lastIndexOf("(")+1, line.lastIndexOf(")")).split(" ")[0];
-            }
+    private List<Statement> statementFromTestResult(TestResult testResult, Statement sample, int i){
+        List<Statement> result = new ArrayList<>();
+        String classname = testResult.getName().split("#")[0];
+        String functionName = testResult.getName().split("#")[1];
+        LocalizationInConstructor constructor = new LocalizationInConstructor(srcPath, FileUtils.getFileAddressOfClass(testSrcPath, classname), functionName);
+        HashMap<String, ArrayList<ConstructorDeclarationInfo>> constructMap = constructor.getConstructorMap();
+        for (String key: constructMap.keySet()){
+            ArrayList<ConstructorDeclarationInfo> constructors = constructMap.get(key);
+            ConstructorDeclarationInfo info = constructors.get(0);
+            Statement statement = new StatementExt(sample);
+            statement.setLineNumber(info.endPos);
+            statement.setCoverage(i);
+            statement.setCount(i,1);
+            statement.setLabel(classname+"."+info.methodName+);
+            result.add(statement);
         }
-        Statement statement = new StatementExt(sample);
-        statement.setLineNumber(0);
-        statement.setCoverage(0);
-        statement.setCount(0,0);
-        return sample;
-        //statement.setLabel();
+
+        return result;
     }
 
 }

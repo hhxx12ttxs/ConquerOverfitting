@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
 
 /**
  * Created by yanrunfa on 16/2/23.
@@ -71,7 +72,21 @@ public class BoundaryGenerator {
             double smallestBoundary = Double.MAX_VALUE;
 
             for (BoundaryInfo info: filteredList){
-                double doubleValue = Double.valueOf(info.value);
+                double doubleValue;
+                if (info.value.equals("Integer.MIN_VALUE")){
+                    doubleValue = Integer.MIN_VALUE;
+                }
+                else if (info.value.equals("Integer.MAX_VALUE")){
+                    doubleValue = Integer.MAX_VALUE;
+                }
+                else {
+                    try {
+                        doubleValue = Double.valueOf(info.value);
+                    } catch (NumberFormatException e){
+                        System.out.println("ERROR VALUE PRASING: "+info.value);
+                        continue;
+                    }
+                }
                 if (doubleValue >biggestBoundary && doubleValue <= smallestValue){
                     biggestBoundary = doubleValue;
                 }
@@ -79,7 +94,12 @@ public class BoundaryGenerator {
                     smallestBoundary = doubleValue;
                 }
             }
-            return  entry.getKey().variableName + " >= " + biggestBoundary +"&&" + entry.getKey().variableName + " <= " + smallestBoundary;
+            if (Math.abs(biggestBoundary) < Math.abs(smallestBoundary)){
+                return  entry.getKey().variableName + " <= " + smallestBoundary;
+            }
+            else {
+                return  entry.getKey().variableName + " >= " + biggestBoundary;
+            }
         }
         System.out.println("Nonsupport Condition for Create IF Expression");
         return "";

@@ -114,6 +114,9 @@ public class ExceptionExtractor {
             File codePackage = new File("experiment/searchcode/"+project+"-"+entry.getKey().variableName);
             if (!codePackage.exists()){
                 gathererJava.searchCode();
+                if (!codePackage.exists()) {
+                    continue;
+                }
                 if (codePackage.list().length < 30 && !entry.getKey().isSimpleType){
                     keywords.remove(entry.getKey().variableName);
                     gathererJava = new GathererJava(keywords, project+"-"+entry.getKey().variableName);
@@ -149,7 +152,7 @@ public class ExceptionExtractor {
                 }
             }
             else {
-
+                result.put(entry.getKey(),entry.getValue());
             }
         }
         return result;

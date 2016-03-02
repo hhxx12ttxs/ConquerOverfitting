@@ -51,11 +51,16 @@ public class Capturer {
      * @param functionname the name of test function
      * @return the fix string
      */
-    public String getFixFrom(String classname, String functionname) throws Exception{
+    public String getFixFrom(String classname, String functionname){
         _classname = classname;
         _functionname = functionname;
         _fileaddress = _testsrcpath + System.getProperty("file.separator") + _classname.replace('.',System.getProperty("file.separator").charAt(0))+".java";
-        return run();
+        try {
+            return run();
+        } catch (Exception e){
+            e.printStackTrace();
+        }
+        return "";
     }
 
     private String run() throws Exception{

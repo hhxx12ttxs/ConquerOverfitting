@@ -48,16 +48,16 @@ public final class GZoltarSuspiciousProgramStatements implements SuspiciousProgr
      * @param classpath
      * @return
      */
-    public static GZoltarSuspiciousProgramStatements create(URL[] classpath, Collection<String> packageNames, Metric metric, String testSrcPath) {
-        return new GZoltarSuspiciousProgramStatements(checkNotNull(classpath), checkNotNull(packageNames), metric, testSrcPath);
+    public static GZoltarSuspiciousProgramStatements create(URL[] classpath, Collection<String> packageNames, Metric metric, String testSrcPath, String srcPath) {
+        return new GZoltarSuspiciousProgramStatements(checkNotNull(classpath), checkNotNull(packageNames), metric, testSrcPath, srcPath);
     }
 
     /**
      * @param classpath
      * @return
      */
-    public static GZoltarSuspiciousProgramStatements create(URL[] classpath, String[] tests, Metric metric, String testSrcPath) {
-        return new GZoltarSuspiciousProgramStatements(checkNotNull(classpath), checkNotNull(Arrays.asList("")), metric, testSrcPath);//getRootPackage(tests))));
+    public static GZoltarSuspiciousProgramStatements create(URL[] classpath, String[] tests, Metric metric, String testSrcPath, String srcPath) {
+        return new GZoltarSuspiciousProgramStatements(checkNotNull(classpath), checkNotNull(Arrays.asList("")), metric, testSrcPath, srcPath);//getRootPackage(tests))));
     }
 
     private static String getRootPackage(String[] classes) {
@@ -80,10 +80,10 @@ public final class GZoltarSuspiciousProgramStatements implements SuspiciousProgr
     private final WGzoltar gzoltar;
 
 
-    protected GZoltarSuspiciousProgramStatements(final URL[] classpath, Collection<String> packageNames, Metric metric, String testSrcPath) {
+    protected GZoltarSuspiciousProgramStatements(final URL[] classpath, Collection<String> packageNames, Metric metric, String testSrcPath, String srcPath) {
         try {
             //gzoltar = new GZoltarJava7();
-            gzoltar = new WGzoltar(System.getProperty("user.dir"), metric, testSrcPath);
+            gzoltar = new WGzoltar(System.getProperty("user.dir"), metric, testSrcPath, srcPath);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
