@@ -30,7 +30,12 @@ public class StatementExt extends Statement  {
     public StatementExt(Statement s, Metric defaultMetric) {
         super(s.getParent(), s.getLineNumber());
         this.defaultMetric = defaultMetric;
-        this.setLabel(s.getLabel());
+        if (s.getLabel().trim().startsWith("{")){
+            this.setLabel(s.getLabel().substring(s.getLabel().indexOf("{")+1));
+        }
+        else {
+            this.setLabel(s.getLabel());
+        }
         this.setSuspiciousness(s.getSuspiciousness());
         this.setLineNumber(s.getLineNumber());
     }

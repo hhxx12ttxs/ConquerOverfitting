@@ -3,8 +3,11 @@ package cn.edu.pku.sei.plde.conqueroverfitting.localization.gzoltar;
 import cn.edu.pku.sei.plde.conqueroverfitting.localizationInConstructor.LocalizationInConstructor;
 import cn.edu.pku.sei.plde.conqueroverfitting.localizationInConstructor.model.ConstructorDeclarationInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.FileUtils;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.PathUtils;
 import com.gzoltar.core.GZoltar;
+import com.gzoltar.core.components.Clazz;
 import com.gzoltar.core.components.Component;
+import com.gzoltar.core.components.Method;
 import com.gzoltar.core.components.Statement;
 import com.gzoltar.core.instr.testing.TestResult;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.metric.Metric;
@@ -54,7 +57,7 @@ public class WGzoltar extends GZoltar {
             if(!testResult.wasSuccessful()) {
                 nbFailingTest++;
                 if (testResult.getCoveredComponents().size() == 0){
-                    suspiciousStatements.addAll(statementFromTestResult(testResult,suspiciousStatements.get(0)),i);
+                    suspiciousStatements.addAll(statementFromTestResult(testResult,suspiciousStatements.get(0),i));
                 }
             }
         }
@@ -106,16 +109,17 @@ public class WGzoltar extends GZoltar {
         LocalizationInConstructor constructor = new LocalizationInConstructor(srcPath, FileUtils.getFileAddressOfClass(testSrcPath, classname), functionName);
         HashMap<String, ArrayList<ConstructorDeclarationInfo>> constructMap = constructor.getConstructorMap();
         for (String key: constructMap.keySet()){
+            String packageName = PathUtils.getPackageNameFromPath(key);
             ArrayList<ConstructorDeclarationInfo> constructors = constructMap.get(key);
             ConstructorDeclarationInfo info = constructors.get(0);
-            Statement statement = new StatementExt(sample);
-            statement.setLineNumber(info.endPos);
-            statement.setCoverage(i);
+            Clazz clazz = new Clazz(packageName);
+            clazz.setSource(key.substring(key.lastIndexOf(PathUtils.getFileSeparator())+1));
+            Method method = new Method(clazz, info.methodName+"()");
+            Statement statement = new Statement(method,info.endPos);
             statement.setCount(i,1);
-            statement.setLabel(classname+"."+info.methodName+);
+            statement.setCoverage(i);
             result.add(statement);
         }
-
         return result;
     }
 

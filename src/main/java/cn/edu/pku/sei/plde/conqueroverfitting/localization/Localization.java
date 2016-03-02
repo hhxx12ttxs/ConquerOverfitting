@@ -103,8 +103,13 @@ public class Localization  {
                 result.add(new Suspicious(getClassAddressFromStatement(firstline), getTargetFunctionFromStatement(firstline), firstline.getSuspiciousness(), firstline.getTests(), new ArrayList<String>(lineNumbers)));
                 firstline = statement;
                 lineNumbers.clear();
-                lineNumbers.add(String.valueOf(statement.getLineNumber()));
+                if (!lineNumbers.contains(String.valueOf(statement.getLineNumber()))){
+                    lineNumbers.add(String.valueOf(statement.getLineNumber()));
+                }
             }
+        }
+        if (lineNumbers.size() != 0){
+            result.add(new Suspicious(getClassAddressFromStatement(firstline), getTargetFunctionFromStatement(firstline), firstline.getSuspiciousness(), firstline.getTests(), new ArrayList<String>(lineNumbers)));
         }
         try {
             boolean createResult = suspicousFile.createNewFile();

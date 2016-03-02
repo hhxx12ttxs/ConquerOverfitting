@@ -20,7 +20,7 @@ public class VariableCollectTest {
 	private final String otherFilePath = new File(
 			"filesfortest//FileForTestVariableCollect2.java")
 			.getAbsolutePath();
-	private final int suspiciousLineNum = 22;
+	private final int suspiciousLineNum = 10;
     
 	@Test
 	public void testFieldsCollectInClass() {

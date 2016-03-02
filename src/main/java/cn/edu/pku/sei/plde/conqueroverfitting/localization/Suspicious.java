@@ -54,6 +54,9 @@ public class Suspicious implements Serializable{
     }
 
     public String functionname(){
+        if (_function.contains("[")){
+            return _function.substring(0, _function.lastIndexOf("["));
+        }
         return _function.replace("\\","");
     }
 
@@ -78,12 +81,13 @@ public class Suspicious implements Serializable{
         if (_classname.contains("$")){
             classname = _classname.substring(0, _classname.lastIndexOf('$'));
         }
-        return classSrc + System.getProperty("file.separator") + classname.replace(".",System.getProperty("file.separator")) + ".java";
+        String result =  classSrc + System.getProperty("file.separator") + classname.replace(".",System.getProperty("file.separator")) + ".java";
+        return result.replace(" ","");
     }
 
     public String getClassSrcIndex(String classSrc){
         String classSrcPath = getClassSrcPath(classSrc);
-        return classSrcPath.substring(0,classSrcPath.lastIndexOf(System.getProperty("file.separator")));
+        return classSrcPath.substring(0,classSrcPath.lastIndexOf(System.getProperty("file.separator"))).replace(" ","");
     }
 
 
@@ -98,7 +102,7 @@ public class Suspicious implements Serializable{
         }
         String classSrcPath = getClassSrcPath(classSrc);
         VariableCollect variableCollect = VariableCollect.GetInstance(getClassSrcIndex(classSrc));
-        List<VariableInfo> parameters = variableCollect.getVisibleParametersInMethodList(classSrcPath, lastLine());
+        List<VariableInfo> parameters = variableCollect.getVisibleParametersInMethodList(classSrcPath, 65);
         List<VariableInfo> locals = variableCollect.getVisibleLocalInMethodList(classSrcPath, lastLine());
         LinkedHashMap<String, ArrayList<VariableInfo>> classvars = variableCollect.getVisibleFieldInAllClassMap(classSrcPath);
         List<VariableInfo> variableInfos = new ArrayList<VariableInfo>();
