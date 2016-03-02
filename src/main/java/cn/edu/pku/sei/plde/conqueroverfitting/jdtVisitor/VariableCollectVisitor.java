@@ -16,14 +16,12 @@ public class VariableCollectVisitor extends ASTVisitor {
     private ArrayList<VariableInfo> filedInClassList;
     private ArrayList<VariableInfo> parametersInMethodList;
     private ArrayList<VariableInfo> localsInMethodList;
-//    private ArrayList<MethodInfo> methodsInClassList;
     private int[] lineCounter;
 
     public VariableCollectVisitor(int[] lineCounter) {
         filedInClassList = new ArrayList<VariableInfo>();
         parametersInMethodList = new ArrayList<VariableInfo>();
         localsInMethodList = new ArrayList<VariableInfo>();
-//        methodsInClassList = new ArrayList<MethodInfo>();
         this.lineCounter = lineCounter;
     }
 
@@ -38,11 +36,6 @@ public class VariableCollectVisitor extends ASTVisitor {
     public ArrayList<VariableInfo> getLocalInMethodList() {
         return localsInMethodList;
     }
-
-
-//    public ArrayList<MethodInfo> getMethodsInClassList() {
-//        return methodsInClassList;
-//    }
 
     @Override
     public boolean visit(FieldDeclaration node) {
@@ -69,37 +62,8 @@ public class VariableCollectVisitor extends ASTVisitor {
 
     @Override
     public boolean visit(MethodDeclaration node) {
-        if (node.getReturnType2() == null) {
-            return true;
-        }
-
-        if (!(node.getParent() instanceof TypeDeclaration)){
-            return true;
-        }
 
         List<SingleVariableDeclaration> parameters = node.parameters();
-
-//        MethodInfo methodInfo = null;
-//        String methodName = node.getName().toString();
-//
-//        if (node.getReturnType2() == null) {
-//            return true;
-//        }
-//
-//        TypeInference typeInference = new TypeInference(node.getReturnType2().toString());
-//        boolean isPublic = Modifier.isPublic(node.getModifiers());
-//
-//        boolean isStatic = Modifier.isStatic(((TypeDeclaration) node.getParent()).getModifiers()) || Modifier.isStatic(node.getModifiers());
-//        if (typeInference.isSimpleType) {
-//            methodInfo = new MethodInfo(methodName, typeInference.type,
-//                    typeInference.isSimpleType, null, isPublic, isStatic, node.parameters().size() != 0);
-//        } else {
-//            methodInfo = new MethodInfo(methodName, null,
-//                    typeInference.isSimpleType, typeInference.otherType,
-//                    isPublic, isStatic, node.parameters().size() != 0);
-//        }
-//        methodsInClassList.add(methodInfo);
-
 
         for (SingleVariableDeclaration parameter : parameters) {
             TypeInference paraTypeInference = new TypeInference(parameter.getType()
