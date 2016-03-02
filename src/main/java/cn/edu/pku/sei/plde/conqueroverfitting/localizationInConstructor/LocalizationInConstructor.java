@@ -43,7 +43,7 @@ public class LocalizationInConstructor {
             if(classPath == null){
                 continue;
             }
-            constructorMap.put(constructorInvocation, getConstructorDeclarationList(classPath));
+            constructorMap.put(classPath, getConstructorDeclarationList(classPath));
         }
     }
 
