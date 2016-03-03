@@ -17,8 +17,8 @@ public class EntiretyTest {
 
     @Test
     public void testEntirety() throws Exception{
-        int i = 35;
-        String project = "math35";
+        int i = 63;
+        String project = "math63";
         /* 四个整个项目需要的参数 */
         String classpath = PATH_OF_DEFECTS4J+"Math-"+i+"/target/classes";              //项目的.class文件路径
         String testClasspath  = PATH_OF_DEFECTS4J+"Math-"+i+"/target/test-classes";    //项目的test的.class文件路径

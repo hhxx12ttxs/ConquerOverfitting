@@ -1,5 +1,6 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.trace;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -8,7 +9,7 @@ import java.util.Map;
 /**
  * Created by yanrunfa on 16/2/21.
  */
-public class TraceResult {
+public class TraceResult implements Serializable {
     private Map<String, List<String>> result = new HashMap<String, List<String>>();
     private final boolean _testResult;
 

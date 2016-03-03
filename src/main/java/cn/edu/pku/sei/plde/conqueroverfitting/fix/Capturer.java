@@ -1,6 +1,7 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.fix;
 
 import cn.edu.pku.sei.plde.conqueroverfitting.slice.StaticSlice;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.CodeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.FileUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.ShellUtils;
 import com.gzoltar.core.GZoltar;
@@ -141,7 +142,7 @@ public class Capturer {
 
     private String assertProcessing(String assertLine, String statements) throws Exception{
         String assertType = assertLine.substring(0, assertLine.indexOf('('));
-        List<String> parameters = divideParameter(assertLine, 1);
+        List<String> parameters = CodeUtils.divideParameter(assertLine, 1);
         if (parameters.size() > 3 && parameters.size() <2){
             System.out.println(Arrays.toString(parameters.toArray()));
             throw new Exception("Function divideParameter Error!");
@@ -162,8 +163,8 @@ public class Capturer {
                 callExpression = parameters.get(1);
                 returnExpression = parameters.get(0);
             }
-            callParam = divideParameter(callExpression,1);
-            returnParam = divideParameter(returnExpression, 1);
+            callParam = CodeUtils.divideParameter(callExpression,1);
+            returnParam = CodeUtils.divideParameter(returnExpression, 1);
             returnString = "return "+returnExpression;
             if (callExpression.contains(".")){
                 String testClass = callExpression.substring(0,callExpression.indexOf("."));
@@ -219,51 +220,7 @@ public class Capturer {
     }
 
 
-    private static List<String> divideParameter(String line, int level){
-        line = line.replace(" ", "");
-        List<String> result = new ArrayList<String>();
-        int bracketCount = 0;
-        int startPoint = 0;
-        for (int i=0;i<line.length();i++){
-            char ch = line.charAt(i);
-            if (ch == ',' && bracketCount <= level){
-                if (startPoint != i ){
-                    result.add(line.substring(startPoint,i));
-                }
-                startPoint = i+1;
-            }
-            else if (ch == '('){
-                if (++bracketCount <= level){
-                    startPoint = i + 1;
-                }
-            }
-            else if (ch == '['){
-                if (++bracketCount <= level){
-                    if (startPoint != i){
-                        result.add(line.substring(startPoint,i));
-                    }
-                    startPoint = i + 1;
-                }
-            }
-            else if (ch == ')' || ch == ']'){
-                if (bracketCount-- <= level){
-                    if (startPoint != i){
-                        result.add(line.substring(startPoint,i));
-                    }
-                    startPoint = i + 1;
-                }
-            }
-            else if (ch == '+' || ch == '-' || ch == '/' || ch == '*') {
-                if (bracketCount < level) {
-                    if (startPoint != i) {
-                        result.add(line.substring(startPoint, i));
-                    }
-                    startPoint = i + 1;
-                }
-            }
-        }
-        return result;
-    }
+
 
 
 

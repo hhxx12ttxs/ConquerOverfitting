@@ -1,6 +1,7 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.main;
 
 
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.MathUtils;
 import org.apache.commons.lang.StringUtils;
 
 import java.util.ArrayList;
@@ -25,13 +26,12 @@ public class Config {
     }
 
     public static boolean judgeAsTheSameInFilter(String candidate ,String candidateType, String master, String masterType){
-        List<String> numberType = Arrays.asList("INT","DOUBLE","FLOAT","SHORT","LONG");
         List<String> minInteger = Arrays.asList("Integer.MIN_VALUE","-2147483648");
         List<String> maxInteger = Arrays.asList("Integer.MAX_VALUE","2147483647");
         if (candidate.equals(master)){
             return true;
         }
-        if (numberType.contains(candidateType) && numberType.contains(masterType)){
+        if (MathUtils.isNumberType(candidateType) && MathUtils.isNumberType(masterType)){
             if (master.endsWith(".0")){
                 master = master.substring(0, master.lastIndexOf("."));
             }
