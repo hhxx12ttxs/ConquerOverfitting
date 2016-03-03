@@ -23,4 +23,10 @@ public class FileForTestVariableCollect {
 			
 		}
 	}
+
+	public FileForTestVariableCollect(int m, int n){
+		int p;
+		int q;
+		int w;
+	}
 }
