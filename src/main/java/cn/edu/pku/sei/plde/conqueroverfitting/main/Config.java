@@ -13,13 +13,16 @@ import java.util.List;
  */
 public class Config {
 
-    public static boolean judgeResultOfFilterWithSearchBoundary(int totalCount, int theSameCount, String value){
+    public static boolean judgeResultOfFilterWithSearchBoundary(int totalCount, int theSameCount, String value, String variableName){
         double percentage = (double)theSameCount/(double)totalCount;
         List<String> systemValues = Arrays.asList("Integer.MAX_VALUE","Integer.MIN_VALUE",String.valueOf(Integer.MAX_VALUE), String.valueOf(Integer.MIN_VALUE));
         if (percentage > 0.05 && systemValues.contains(value)){
             return true;
         }
         if (percentage > 0.1){
+            return true;
+        }
+        if (variableName.equals("isNaN")){
             return true;
         }
         return false;

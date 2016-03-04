@@ -28,9 +28,16 @@ public class Utils {
             BufferedReader reader = new BufferedReader(new FileReader(srcPath+"/"+className.replace(".","/")+".java"));
             String lineString = null;
             int line = 0;
+            boolean writed = false;
             while ((lineString = reader.readLine()) != null) {
                 line++;
-                if (line == targetLine){
+                if (line == targetLine-1){
+                    if ((!lineString.contains(";") && !lineString.contains("{") && !lineString.contains("}"))|| lineString.contains("return ")){
+                        outputStream.write(addingCode.getBytes());
+                        writed = true;
+                    }
+                }
+                if (line == targetLine && !writed){
                     outputStream.write(addingCode.getBytes());
                 }
                 outputStream.write((lineString+"\n").getBytes());
@@ -42,7 +49,7 @@ public class Utils {
             }
             outputStream.close();
             reader.close();
-            System.out.println(Utils.shellRun(Arrays.asList("javac -cp "+ classPath+" "+ tempJavaName)));
+            System.out.println(Utils.shellRun(Arrays.asList("javac -Xlint:unchecked -cp "+ classPath+" "+ tempJavaName)));
         } catch (FileNotFoundException e){
             System.out.println("ERROR: Cannot Find Source File: "+className+" in Source Path: "+ srcPath);
             e.printStackTrace();

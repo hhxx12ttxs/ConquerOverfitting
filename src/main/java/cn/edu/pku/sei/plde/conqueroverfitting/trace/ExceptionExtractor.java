@@ -5,6 +5,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.boundary.BoundaryFilter;
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.BoundaryInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.gatherer.GathererJava;
 import cn.edu.pku.sei.plde.conqueroverfitting.main.Config;
+import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.MathUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 import org.apache.commons.lang.StringUtils;
@@ -23,7 +24,7 @@ public class ExceptionExtractor {
         for (Map.Entry<VariableInfo, List<String>> var: exceptionVariable.entrySet()){
             List<String> unrepeatValue = new ArrayList(new HashSet(var.getValue()));
             //删掉疑似for循环的计数的数据
-            if (!isForLoopParam(unrepeatValue)){
+            if (!isForLoopParam(unrepeatValue) && var.getValue().size()!= 0){
                 cleanedVariable.put(var.getKey(), unrepeatValue);
             }
         }
@@ -46,6 +47,13 @@ public class ExceptionExtractor {
             Set<String> keys = traceResult.getResultMap().keySet();
             for (String key: keys){
                 VariableInfo infoKey = getVariableInfoWithName(vars, key);
+                if (infoKey == null){
+                    continue;
+                }
+                if (infoKey.isParameter){
+                    continue;
+                }
+
                 List<String> value = trueValues.containsKey(infoKey)?appandList(trueValues.get(infoKey),traceResult.get(key)):traceResult.get(key);
                 trueValues.put(infoKey, value);
             }
@@ -58,8 +66,19 @@ public class ExceptionExtractor {
             Set<String> keys = traceResult.getResultMap().keySet();
             for (String key: keys){
                 VariableInfo infoKey = getVariableInfoWithName(vars, key);
+                if (infoKey == null){
+                    continue;
+                }
                 if (!exceptionValues.containsKey(infoKey)){
                     exceptionValues.put(infoKey, new ArrayList<String>());
+                }
+                if (TypeUtils.isComplexType(infoKey.getStringType())){
+                    for (String value: traceResult.get(key)){
+                        if (value.equals("true")){
+                            exceptionValues.get(infoKey).add("null");
+                        }
+                    }
+                    continue;
                 }
                 for (String value: traceResult.get(key)){
                     String[] valueArray = StringToArray(value);
@@ -97,6 +116,7 @@ public class ExceptionExtractor {
     public static Map<VariableInfo, List<String>> filterWithSearchBoundary(Map<VariableInfo, List<String>> exceptionVariable, String project){
         Map<VariableInfo, List<String>> result = new HashMap<VariableInfo, List<String>>();
         for (Map.Entry<VariableInfo, List<String>> entry: exceptionVariable.entrySet()){
+            String variableName = entry.getKey().variableName.contains(".")?entry.getKey().variableName.substring(entry.getKey().variableName.lastIndexOf(".")+1):entry.getKey().variableName;
             if (entry.getKey() == null){
                 continue;
             }
@@ -111,8 +131,8 @@ public class ExceptionExtractor {
             keywords.add("if");
             keywords.add(valueType);
             keywords.add(entry.getKey().variableName);
-            GathererJava gathererJava = new GathererJava(keywords, project+"-"+entry.getKey().variableName);
-            File codePackage = new File("experiment/searchcode/"+project+"-"+entry.getKey().variableName);
+            GathererJava gathererJava = new GathererJava(keywords, project+"-"+variableName);
+            File codePackage = new File("experiment/searchcode/"+project+"-"+variableName);
             if (!codePackage.exists()){
                 gathererJava.searchCode();
                 if (!codePackage.exists()) {
@@ -120,21 +140,22 @@ public class ExceptionExtractor {
                 }
                 if (codePackage.list().length < 30 && !entry.getKey().isSimpleType){
                     keywords.remove(entry.getKey().variableName);
-                    gathererJava = new GathererJava(keywords, project+"-"+entry.getKey().variableName);
+                    gathererJava = new GathererJava(keywords, project+"-"+variableName);
                     gathererJava.searchCode();
                 }
                 if (codePackage.list().length < 30 && entry.getKey().isSimpleType){
                     keywords.remove(valueType);
-                    gathererJava = new GathererJava(keywords, project+"-"+entry.getKey().variableName);
+                    gathererJava = new GathererJava(keywords, project+"-"+variableName);
                     gathererJava.searchCode();
                 }
             }
-            BoundaryCollect boundaryCollect = new BoundaryCollect("experiment/searchcode/"+project+"-"+entry.getKey().variableName);
+            String fileName = "experiment/searchcode/"+project+"-"+variableName;
+            BoundaryCollect boundaryCollect = new BoundaryCollect(fileName);
             List<BoundaryInfo> boundaryList = boundaryCollect.getBoundaryList();
             if (boundaryList == null){
                 continue;
             }
-            List<BoundaryInfo> filteredList = BoundaryFilter.getBoundaryWithName(boundaryList, entry.getKey().variableName);
+            List<BoundaryInfo> filteredList = BoundaryFilter.getBoundaryWithName(boundaryList, variableName);
 
             if (entry.getValue().size()> 10) {
                 result.put(entry.getKey(),entry.getValue());
@@ -142,7 +163,11 @@ public class ExceptionExtractor {
             }
             for (String value: entry.getValue()){
                 int valueCount = BoundaryFilter.countTheValueOccurs(filteredList,value, valueType);
-                if (Config.judgeResultOfFilterWithSearchBoundary(filteredList.size(),valueCount, value)){
+                if (Config.judgeResultOfFilterWithSearchBoundary(filteredList.size(),valueCount, value, variableName)){
+                    // isNaN=true在修补中总是对的
+                    if (variableName.equals("isNaN")){
+                        value = "true";
+                    }
                     if (result.containsKey(entry.getKey())){
                         result.get(entry.getKey()).add(value);
                     }

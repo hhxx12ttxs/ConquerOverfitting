@@ -72,19 +72,18 @@ public class AddPrintTransformer implements ClassFileTransformer {
             return printLine;
         }
         if (varType.endsWith("[]") && isSimpleType(varType) && !varName.endsWith("()")){
-            System.out.println(varType);
             String varPrinter = "";
             varPrinter += "System.out.print(\"|"+varName+"=\"+";
             varPrinter += "Arrays.toString("+varName+")";
             varPrinter += "+\"|\""+");";
             printLine += "if ("+varName+".length < 100){"+varPrinter+"}";
         }
-        else {
-            //printLine += "System.out.print(\"|"+varName+"=\"+";
-            //printLine += varName +"+\"|\""+");";
-            return "";
+        else if (!varType.endsWith("[]")){
+            printLine += "System.out.print(\"|"+varName+"=\"+(";
+            printLine += varName +"== null)+\"|\""+");";
         }
         printLine += "} catch (Exception e) {}\n";
+        System.out.println(printLine);
         return printLine;
     }
 

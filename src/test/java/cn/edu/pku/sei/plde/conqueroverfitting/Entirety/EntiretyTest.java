@@ -17,13 +17,23 @@ public class EntiretyTest {
 
     @Test
     public void testEntirety() throws Exception{
-        int i = 63;
-        String project = "math63";
+        int i = 19;
+        String project = "Chart"+i;
         /* 四个整个项目需要的参数 */
-        String classpath = PATH_OF_DEFECTS4J+"Math-"+i+"/target/classes";              //项目的.class文件路径
-        String testClasspath  = PATH_OF_DEFECTS4J+"Math-"+i+"/target/test-classes";    //项目的test的.class文件路径
-        String classSrc = PATH_OF_DEFECTS4J + "Math-"+i+"/src/main/java";              //项目的源代码路径
-        String testClassSrc = PATH_OF_DEFECTS4J + "Math-"+i+"/src/test/java";///java";          //项目的test的源代码路径
+        //String classpath = PATH_OF_DEFECTS4J+"Math-"+i+"/target/classes";              //项目的.class文件路径
+        //String testClasspath  = PATH_OF_DEFECTS4J+"Math-"+i+"/target/test-classes";    //项目的test的.class文件路径
+        //String classSrc = PATH_OF_DEFECTS4J + "Math-"+i+"/src/main/java";              //项目的源代码路径
+        //String testClassSrc = PATH_OF_DEFECTS4J + "Math-"+i+"/src/test/java";///java";          //项目的test的源代码路径
+
+        //String classpath = PATH_OF_DEFECTS4J+"Lang-"+i+"/target/classes";              //项目的.class文件路径
+        //String testClasspath  = PATH_OF_DEFECTS4J+"Lang-"+i+"/target/test-classes";    //项目的test的.class文件路径
+        //String classSrc = PATH_OF_DEFECTS4J + "Lang-"+i+"/src/main/java";              //项目的源代码路径
+        //String testClassSrc = PATH_OF_DEFECTS4J + "Lang-"+i+"/src/test/java";///java";          //项目的test的源代码路径
+
+        String classpath = PATH_OF_DEFECTS4J+"Chart-"+i+"/build";              //项目的.class文件路径
+        String testClasspath  = PATH_OF_DEFECTS4J+"Chart-"+i+"/build-tests";    //项目的test的.class文件路径
+        String classSrc = PATH_OF_DEFECTS4J + "Chart-"+i+"/source";              //项目的源代码路径
+        String testClassSrc = PATH_OF_DEFECTS4J + "Chart-"+i+"/tests";///java";          //项目的test的源代码路径
 
 
         Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc);

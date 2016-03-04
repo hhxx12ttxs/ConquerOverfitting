@@ -46,7 +46,7 @@ public class PathUtils {
             String code = FileUtils.getCodeFromFile(path);
             for (String line: code.split("\n")){
                 if (line.startsWith("package")){
-                    return line.substring(line.indexOf(' '),line.length()-1)+"."+className;
+                    return line.substring(line.indexOf(' '),line.lastIndexOf(";"))+"."+className;
                 }
             }
         } catch (Exception e){

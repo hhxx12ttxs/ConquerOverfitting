@@ -14,6 +14,7 @@ public class VariableInfo implements Comparable<VariableInfo>,Serializable{
     public int methodEndPos;
     public int variablePos;
 	public boolean interval = false;
+	public boolean isParameter = false;
 
 	/**
 	 *

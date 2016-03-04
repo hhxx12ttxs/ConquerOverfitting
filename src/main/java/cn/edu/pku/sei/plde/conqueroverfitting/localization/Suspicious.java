@@ -4,6 +4,8 @@ import cn.edu.pku.sei.plde.conqueroverfitting.localization.common.library.JavaLi
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.common.synth.TestClassesFinder;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.TraceResult;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.VariableTracer;
+import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeEnum;
+import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.FileUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.InfoUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.MethodCollect;
@@ -53,7 +55,7 @@ public class Suspicious implements Serializable{
     }
 
     public String classname(){
-        return _classname.trim();
+        return _classname.trim().replace(";","");
     }
 
     public String functionname(){
@@ -80,7 +82,7 @@ public class Suspicious implements Serializable{
     }
 
     public String getClassSrcPath(String classSrc){
-        String classname = _classname;
+        String classname = classname();
         if (_classname.contains("$")){
             classname = _classname.substring(0, _classname.lastIndexOf('$'));
         }
@@ -96,7 +98,7 @@ public class Suspicious implements Serializable{
 
 
     public List<VariableInfo> getAllInfo(String classSrc){
-        return InfoUtils.AddMethodInfoListToVariableInfoList(getVariableInfo(classSrc), getMethodInfo(classSrc));
+        return InfoUtils.filterBannedVariable(InfoUtils.AddMethodInfoListToVariableInfoList(getVariableInfo(classSrc), getMethodInfo(classSrc)));
     }
 
     public List<VariableInfo> getVariableInfo(String classSrc){
@@ -106,6 +108,9 @@ public class Suspicious implements Serializable{
         String classSrcPath = getClassSrcPath(classSrc);
         VariableCollect variableCollect = VariableCollect.GetInstance(getClassSrcIndex(classSrc));
         List<VariableInfo> parameters = variableCollect.getVisibleParametersInMethodList(classSrcPath, lastLine());
+        for (VariableInfo param: parameters){
+            param.isParameter = true;
+        }
         List<VariableInfo> locals = variableCollect.getVisibleLocalInMethodList(classSrcPath, lastLine());
         LinkedHashMap<String, ArrayList<VariableInfo>> classvars = variableCollect.getVisibleFieldInAllClassMap(classSrcPath);
         List<VariableInfo> variableInfos = new ArrayList<VariableInfo>();
@@ -114,8 +119,20 @@ public class Suspicious implements Serializable{
         if (classvars.containsKey(classSrcPath)){
             variableInfos.addAll(classvars.get(classSrcPath));
         }
+
+        List<VariableInfo> addon = new ArrayList<>();
+        for (VariableInfo info: variableInfos){
+            if (TypeUtils.isComplexType(info.getStringType()) && info.isParameter){
+                //VariableInfo newInfo = new VariableInfo(info.variableName+".isNaN",TypeEnum.BOOLEAN,true,null);
+                //if (info.isParameter){
+                //    newInfo.isParameter = true;
+                //}
+                //addon.add(newInfo);
+            }
+        }
+        variableInfos.addAll(addon);
         _variableInfo = variableInfos;
-        return _variableInfo;
+        return InfoUtils.filterBannedVariable(_variableInfo);
     }
 
 
