@@ -5,6 +5,8 @@ import cn.edu.pku.sei.plde.conqueroverfitting.boundary.BoundaryFilter;
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.BoundaryInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.gatherer.GathererJava;
 import cn.edu.pku.sei.plde.conqueroverfitting.main.Config;
+import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeUtils;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.MathUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 import org.apache.commons.lang.StringUtils;
 
@@ -22,11 +24,12 @@ public class ExceptionExtractor {
         for (Map.Entry<VariableInfo, List<String>> var: exceptionVariable.entrySet()){
             List<String> unrepeatValue = new ArrayList(new HashSet(var.getValue()));
             //删掉疑似for循环的计数的数据
-            if (!isForLoopParam(unrepeatValue)){
+            if (!isForLoopParam(unrepeatValue) && var.getValue().size()!= 0){
                 cleanedVariable.put(var.getKey(), unrepeatValue);
             }
         }
-        return ExceptionExtractor.filterWithSearchBoundary(cleanedVariable,project,10);
+        exceptionVariable = ExceptionExtractor.filterWithSearchBoundary(cleanedVariable,project);
+        return exceptionVariable;
     }
     /**
      *
@@ -44,6 +47,13 @@ public class ExceptionExtractor {
             Set<String> keys = traceResult.getResultMap().keySet();
             for (String key: keys){
                 VariableInfo infoKey = getVariableInfoWithName(vars, key);
+                if (infoKey == null){
+                    continue;
+                }
+                if (infoKey.isParameter){
+                    continue;
+                }
+
                 List<String> value = trueValues.containsKey(infoKey)?appandList(trueValues.get(infoKey),traceResult.get(key)):traceResult.get(key);
                 trueValues.put(infoKey, value);
             }
@@ -56,8 +66,19 @@ public class ExceptionExtractor {
             Set<String> keys = traceResult.getResultMap().keySet();
             for (String key: keys){
                 VariableInfo infoKey = getVariableInfoWithName(vars, key);
+                if (infoKey == null){
+                    continue;
+                }
                 if (!exceptionValues.containsKey(infoKey)){
                     exceptionValues.put(infoKey, new ArrayList<String>());
+                }
+                if (TypeUtils.isComplexType(infoKey.getStringType())){
+                    for (String value: traceResult.get(key)){
+                        if (value.equals("true")){
+                            exceptionValues.get(infoKey).add("null");
+                        }
+                    }
+                    continue;
                 }
                 for (String value: traceResult.get(key)){
                     String[] valueArray = StringToArray(value);
@@ -90,12 +111,12 @@ public class ExceptionExtractor {
      *
      * @param exceptionVariable the  key-value map to be filtered
      * @param project the project name use for search
-     * @param count the parameter of filtering
      * @return the filtered key-value map
      */
-    public static Map<VariableInfo, List<String>> filterWithSearchBoundary(Map<VariableInfo, List<String>> exceptionVariable, String project, int count){
+    public static Map<VariableInfo, List<String>> filterWithSearchBoundary(Map<VariableInfo, List<String>> exceptionVariable, String project){
         Map<VariableInfo, List<String>> result = new HashMap<VariableInfo, List<String>>();
         for (Map.Entry<VariableInfo, List<String>> entry: exceptionVariable.entrySet()){
+            String variableName = entry.getKey().variableName.contains(".")?entry.getKey().variableName.substring(entry.getKey().variableName.lastIndexOf(".")+1):entry.getKey().variableName;
             if (entry.getKey() == null){
                 continue;
             }
@@ -110,52 +131,110 @@ public class ExceptionExtractor {
             keywords.add("if");
             keywords.add(valueType);
             keywords.add(entry.getKey().variableName);
-            GathererJava gathererJava = new GathererJava(keywords, project+"-"+entry.getKey().variableName);
-            File codePackage = new File("experiment/searchcode/"+project+"-"+entry.getKey().variableName);
+            GathererJava gathererJava = new GathererJava(keywords, project+"-"+variableName);
+            File codePackage = new File("experiment/searchcode/"+project+"-"+variableName);
             if (!codePackage.exists()){
                 gathererJava.searchCode();
+                if (!codePackage.exists()) {
+                    continue;
+                }
                 if (codePackage.list().length < 30 && !entry.getKey().isSimpleType){
                     keywords.remove(entry.getKey().variableName);
-                    gathererJava = new GathererJava(keywords, project+"-"+entry.getKey().variableName);
+                    gathererJava = new GathererJava(keywords, project+"-"+variableName);
+                    gathererJava.searchCode();
+                }
+                if (codePackage.list().length < 30 && entry.getKey().isSimpleType){
+                    keywords.remove(valueType);
+                    gathererJava = new GathererJava(keywords, project+"-"+variableName);
                     gathererJava.searchCode();
                 }
             }
-            BoundaryCollect boundaryCollect = new BoundaryCollect("experiment/searchcode/"+project+"-"+entry.getKey().variableName);
+            String fileName = "experiment/searchcode/"+project+"-"+variableName;
+            BoundaryCollect boundaryCollect = new BoundaryCollect(fileName);
             List<BoundaryInfo> boundaryList = boundaryCollect.getBoundaryList();
             if (boundaryList == null){
                 continue;
             }
-            List<BoundaryInfo> filteredList = BoundaryFilter.getBoundaryWithName(boundaryList, entry.getKey().variableName);
-            if (filteredList.size() == 0 && !entry.getKey().isSimpleType){
-                //对于复杂的数据结构,不等于null总是一个好的方法
-                if (result.containsKey(entry.getKey())){
-                    result.get(entry.getKey()).add("null");
-                }
-                else {
-                    result.put(entry.getKey(),new ArrayList<String>(Arrays.asList("null")));
-                }
+            List<BoundaryInfo> filteredList = BoundaryFilter.getBoundaryWithName(boundaryList, variableName);
+
+            if (entry.getValue().size()> 10) {
+                result.put(entry.getKey(),entry.getValue());
+                continue;
             }
-            if (entry.getValue().size()< 10){
-                for (String value: entry.getValue()){
-                    int valueCount = BoundaryFilter.countTheValueOccurs(filteredList,value, valueType);
-                    if (Config.judgeResultOfFilterWithSearchBoundary(filteredList.size(),valueCount, value)){
-                        if (result.containsKey(entry.getKey())){
-                            result.get(entry.getKey()).add(value);
-                        }
-                        else {
-                            result.put(entry.getKey(),new ArrayList<String>(Arrays.asList(value)));
-                        }
+            for (String value: entry.getValue()){
+                int valueCount = BoundaryFilter.countTheValueOccurs(filteredList,value, valueType);
+                if (Config.judgeResultOfFilterWithSearchBoundary(filteredList.size(),valueCount, value, variableName)){
+                    // isNaN=true在修补中总是对的
+                    if (variableName.equals("isNaN")){
+                        value = "true";
+                    }
+                    if (result.containsKey(entry.getKey())){
+                        result.get(entry.getKey()).add(value);
+                    }
+                    else {
+                        result.put(entry.getKey(),new ArrayList<String>(Arrays.asList(value)));
                     }
                 }
             }
-            else {
-
+            if (!result.containsKey(entry.getKey()) && MathUtils.isNumberType(entry.getKey().getStringType())){
+                List<Double> interval = generateTrueValueInterval(BoundaryFilter.getBoundaryWithNameAndType(boundaryList, entry.getKey().variableName, entry.getKey().getStringType()));
+                if (interval.size() != 2){
+                    continue;
+                }
+                int count = 0;
+                for (String value: entry.getValue()){
+                    try {
+                        Double doubleValue = MathUtils.parseStringValue(value);
+                        if (doubleValue < interval.get(0) || doubleValue > interval.get(1)){
+                            count ++;
+                        }
+                    }catch (Exception e){
+                        continue;
+                    }
+                }
+                if (count == entry.getValue().size()){
+                    entry.getKey().interval = true;
+                    result.put(entry.getKey(),new ArrayList<>(Arrays.asList(String.valueOf(interval.get(0)),String.valueOf(interval.get(1)))));
+                }
             }
+            if (!result.containsKey(entry.getKey()) && !entry.getKey().isSimpleType){
+                //对于复杂的数据结构,不等于null总是一个好的方法
+                result.put(entry.getKey(),new ArrayList<String>(Arrays.asList("null")));
+            }
+
         }
         return result;
     }
 
-    private static <T> List<T> appandList(List<T> aa, List<T> bb){
+
+    private static List<Double> generateTrueValueInterval(List<BoundaryInfo> trueValues){
+        List<Double> values = new ArrayList<>();
+        for (BoundaryInfo info: trueValues) {
+            String value = info.value;
+            try {
+                values.add(MathUtils.parseStringValue(value));
+            } catch (NumberFormatException e) {
+                continue;
+            }
+        }
+        Collections.sort(values);
+        if (values.size() == 0){
+            return new ArrayList<>();
+        }
+        Double maxValue = Double.MIN_VALUE;
+        Double minValue = Double.MAX_VALUE;
+        for (double value: values){
+            if (value > maxValue){
+                maxValue = value;
+            }
+            if (value < minValue){
+                minValue = value;
+            }
+        }
+        return Arrays.asList(minValue,maxValue);
+    }
+
+    public static <T> List<T> appandList(List<T> aa, List<T> bb){
         List<T> result = new ArrayList<T>();
         result.addAll(aa);
         result.removeAll(bb);
@@ -170,7 +249,7 @@ public class ExceptionExtractor {
         return new String[]{value};
     }
 
-    private static VariableInfo getVariableInfoWithName(List<VariableInfo> infos, String name){
+    public static VariableInfo getVariableInfoWithName(List<VariableInfo> infos, String name){
         for (VariableInfo info: infos){
             if (info.variableName.equals(name)){
                 return info;

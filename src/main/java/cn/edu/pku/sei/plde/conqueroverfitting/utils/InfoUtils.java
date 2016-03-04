@@ -4,12 +4,15 @@ import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.MethodInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
  * Created by yanrunfa on 16/2/23.
  */
 public class InfoUtils {
+    public static final List<String> BANNED_VAR_NAME = Arrays.asList("serialVersionUID","toString()");
+
     /**
      *
      * @param methodInfo
@@ -47,6 +50,21 @@ public class InfoUtils {
         List<VariableInfo> result = new ArrayList<VariableInfo>();
         result.addAll(variableInfos);
         result.addAll(changeMethodInfoToVariableInfo(methodInfos));
+        return result;
+    }
+
+
+    public static List<VariableInfo> filterBannedVariable(List<VariableInfo> infos){
+        List<VariableInfo> result = new ArrayList<>();
+        for (VariableInfo info: infos){
+            if (BANNED_VAR_NAME.contains(info.variableName)){
+                continue;
+            }
+            if (info.getStringType().contains("?")){
+                continue;
+            }
+            result.add(info);
+        }
         return result;
     }
 }

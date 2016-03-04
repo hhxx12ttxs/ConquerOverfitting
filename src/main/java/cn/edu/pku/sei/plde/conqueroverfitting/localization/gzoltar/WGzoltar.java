@@ -1,8 +1,14 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.localization.gzoltar;
 
+import cn.edu.pku.sei.plde.conqueroverfitting.localizationInConstructor.LocalizationInConstructor;
+import cn.edu.pku.sei.plde.conqueroverfitting.localizationInConstructor.model.ConstructorDeclarationInfo;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.CodeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.FileUtils;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.PathUtils;
 import com.gzoltar.core.GZoltar;
+import com.gzoltar.core.components.Clazz;
 import com.gzoltar.core.components.Component;
+import com.gzoltar.core.components.Method;
 import com.gzoltar.core.components.Statement;
 import com.gzoltar.core.instr.testing.TestResult;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.metric.Metric;
@@ -19,12 +25,14 @@ import java.util.*;
 public class WGzoltar extends GZoltar {
     private Metric metric;
     private String testSrcPath;
+    private String srcPath;
 
 
-    public WGzoltar(String wD, Metric metric, String testSrcPath) throws IOException {
+    public WGzoltar(String wD, Metric metric, String testSrcPath, String srcPath) throws IOException {
         super(wD);
         this.metric = metric;
         this.testSrcPath = testSrcPath;
+        this.srcPath = srcPath;
     }
 
     @Override
@@ -43,15 +51,14 @@ public class WGzoltar extends GZoltar {
     private List<StatementExt> getSuspiciousStatements(Metric metric) {
         List<Statement> suspiciousStatements = super.getSuspiciousStatements();
         List<StatementExt> result = new ArrayList<StatementExt>(suspiciousStatements.size());
+        List<Statement> constructors = new ArrayList<>();
         int successfulTests;
         int nbFailingTest = 0;
         for (int i = this.getTestResults().size() - 1 ; i >= 0; i--) {
             TestResult testResult = this.getTestResults().get(i);
             if(!testResult.wasSuccessful()) {
                 nbFailingTest++;
-                if (testResult.getCoveredComponents().size() == 0){
-                    //suspiciousStatements.add(statementFromTestResult(testResult,suspiciousStatements.get(0)));
-                }
+                suspiciousStatements.addAll(statementFromTestResult(testResult,i, constructors));
             }
         }
 
@@ -95,26 +102,57 @@ public class WGzoltar extends GZoltar {
         return result;
     }
 
-    private Statement statementFromTestResult(TestResult testResult, Statement sample) throws Exception{
-        String testPath = FileUtils.getFileAddressOfClass(testSrcPath, testResult.getName().split("#")[0]);
-        String testCode = FileUtils.getCodeFromFile(testPath);
-        String functionCode = FileUtils.getTestFunctionCodeFromCode(testCode,testResult.getName().split("#")[1]);
-
-        boolean failFlag = false;
-        for (String line: functionCode.split("\n")){
-            if (line.trim().startsWith("fail(")){
-                failFlag = true;
+    private List<Statement> statementFromTestResult(TestResult testResult, int i, List<Statement> histories){
+        List<Statement> result = new ArrayList<>();
+        String classname = testResult.getName().split("#")[0];
+        String functionName = testResult.getName().split("#")[1];
+        LocalizationInConstructor constructor = new LocalizationInConstructor(srcPath, FileUtils.getFileAddressOfClass(testSrcPath, classname), functionName);
+        HashMap<String, ArrayList<ConstructorDeclarationInfo>> constructMap = constructor.getConstructorMap();
+        for (String key: constructMap.keySet()){
+            String packageName = PathUtils.getPackageNameFromPath(key);
+            int paramCount;
+            try {
+                paramCount = CodeUtils.countParamsOfConstructorInTest(FileUtils.getFileAddressOfClass(testSrcPath, classname), functionName, packageName.substring(packageName.lastIndexOf(".")+1));
+            } catch (Exception e){
+                paramCount = -1;
             }
-            if (failFlag && line.contains("catch") && line.contains("Exception")){
-                String exception = line.substring(line.lastIndexOf("(")+1, line.lastIndexOf(")")).split(" ")[0];
+            ArrayList<ConstructorDeclarationInfo> constructors = constructMap.get(key);
+            ConstructorDeclarationInfo info;
+            if (paramCount == -1){
+                info = constructors.get(0);
             }
+            else {
+                info = constructors.get(0);
+                for (ConstructorDeclarationInfo info1: constructors){
+                    if (info1.parameterNum == paramCount){
+                        info = info1;
+                    }
+                }
+            }
+            Clazz clazz = new Clazz(packageName);
+            clazz.setSource(key.substring(key.lastIndexOf(PathUtils.getFileSeparator())+1));
+            Method method = new Method(clazz, info.methodName+"("+paramCount+")");
+            Statement statement = new Statement(method,info.endPos);
+            statement.setCount(i,1);
+            statement.setCoverage(i);
+            int flag = 0;
+            for (Statement history: histories){
+                if (history.getLabel().equals(statement.getLabel())){
+                    history.setCoverage(i);
+                    history.setCount(i,1);
+                    flag = 1;
+                }
+            }
+            if (flag == 1){
+                continue;
+            }
+            result.add(statement);
         }
-        Statement statement = new StatementExt(sample);
-        statement.setLineNumber(0);
-        statement.setCoverage(0);
-        statement.setCount(0,0);
-        return sample;
-        //statement.setLabel();
+        histories.addAll(result);
+        return result;
     }
+
+
+
 
 }

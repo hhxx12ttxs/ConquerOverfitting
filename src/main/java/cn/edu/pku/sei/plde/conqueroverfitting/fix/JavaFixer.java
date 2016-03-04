@@ -66,11 +66,11 @@ public class JavaFixer {
         BASE64Encoder encoder = new BASE64Encoder();
         String agentIf = "if:" + encoder.encode(ifString.getBytes("utf-8"));
         if (agentIf.endsWith("=")){
-            agentIf = agentIf.substring(0, agentIf.length()-2);
+            agentIf = agentIf.substring(0, agentIf.length()-2).replace("\n","");
         }
         String agentFix = "fix:" + encoder.encode(fixString.getBytes("utf-8"));
         if (agentFix.endsWith("=")){
-            agentFix = agentFix.substring(0, agentFix.length()-2);
+            agentFix = agentFix.substring(0, agentFix.length()-2).replace("\n","");
         }
         return "\""+StringUtils.join(Arrays.asList(agentClass,agentLine,agentSrc,agentCp,agentIf,agentFix),",")+"\"";
     }

@@ -1,6 +1,7 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.main;
 
 
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.MathUtils;
 import org.apache.commons.lang.StringUtils;
 
 import java.util.ArrayList;
@@ -12,7 +13,7 @@ import java.util.List;
  */
 public class Config {
 
-    public static boolean judgeResultOfFilterWithSearchBoundary(int totalCount, int theSameCount, String value){
+    public static boolean judgeResultOfFilterWithSearchBoundary(int totalCount, int theSameCount, String value, String variableName){
         double percentage = (double)theSameCount/(double)totalCount;
         List<String> systemValues = Arrays.asList("Integer.MAX_VALUE","Integer.MIN_VALUE",String.valueOf(Integer.MAX_VALUE), String.valueOf(Integer.MIN_VALUE));
         if (percentage > 0.05 && systemValues.contains(value)){
@@ -21,17 +22,19 @@ public class Config {
         if (percentage > 0.1){
             return true;
         }
+        if (variableName.equals("isNaN")){
+            return true;
+        }
         return false;
     }
 
     public static boolean judgeAsTheSameInFilter(String candidate ,String candidateType, String master, String masterType){
-        List<String> numberType = Arrays.asList("INT","DOUBLE","FLOAT","SHORT","LONG");
         List<String> minInteger = Arrays.asList("Integer.MIN_VALUE","-2147483648");
         List<String> maxInteger = Arrays.asList("Integer.MAX_VALUE","2147483647");
         if (candidate.equals(master)){
             return true;
         }
-        if (numberType.contains(candidateType) && numberType.contains(masterType)){
+        if (MathUtils.isNumberType(candidateType) && MathUtils.isNumberType(masterType)){
             if (master.endsWith(".0")){
                 master = master.substring(0, master.lastIndexOf("."));
             }

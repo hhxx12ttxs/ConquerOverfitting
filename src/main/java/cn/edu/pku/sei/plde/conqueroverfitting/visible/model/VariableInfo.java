@@ -13,6 +13,8 @@ public class VariableInfo implements Comparable<VariableInfo>,Serializable{
     public int methodStartPos;
     public int methodEndPos;
     public int variablePos;
+	public boolean interval = false;
+	public boolean isParameter = false;
 
 	/**
 	 *
@@ -110,5 +112,10 @@ public class VariableInfo implements Comparable<VariableInfo>,Serializable{
 
 	public int compareTo(VariableInfo variableInfo) {
 		return methodStartPos - variableInfo.methodStartPos;
-	}   
+	}
+
+	public String getStringType(){
+		return isSimpleType?variableSimpleType.toString():otherType;
+	}
+
 }

@@ -5,6 +5,7 @@ import com.gzoltar.core.components.Statement;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.metric.Metric;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.metric.Ochiai;
 import com.gzoltar.core.instr.testing.TestResult;
+import org.apache.commons.lang.StringUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -82,6 +83,12 @@ public class StatementExt extends Statement  {
     }
 
     public double getSuspiciousness(Metric metric) {
+        if (getLabel().contains("(") && getLabel().contains(")")){
+            if (StringUtils.isNumeric(getLabel().substring(getLabel().lastIndexOf("(")+1,getLabel().lastIndexOf(")")))){
+                return metric.value(ef, ep, nf, np)/2;
+            }
+        }
+
         return metric.value(ef, ep, nf, np);
     }
 

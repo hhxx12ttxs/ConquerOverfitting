@@ -89,16 +89,16 @@ public class RunTestAgent {
             }
             else if (key.equalsIgnoreCase("if")) {
                 BASE64Decoder decoder = new BASE64Decoder();
-                ifString = new String(decoder.decodeBuffer(value+"="), "utf-8");
+                ifString = new String(decoder.decodeBuffer(value), "utf-8");
                 System.out.println(ifString);
             }
             else if (key.equalsIgnoreCase("fix")) {
                 BASE64Decoder decoder = new BASE64Decoder();
-                fixString = new String(decoder.decodeBuffer(value+"="), "utf-8");
+                fixString = new String(decoder.decodeBuffer(value), "utf-8");
                 System.out.println(fixString);
             }
         }
-        if (targetClassName.length() < 1 ||targetClassFunc.length() < 1|| targetLineNum == -1 || srcPath.length() < 1 || classPath.length() < 1){
+        if (targetClassName.length() < 1 || targetLineNum == -1 || srcPath.length() < 1 || classPath.length() < 1){
             throw new IOException("Wrong Agent Args");
         }
 

@@ -25,15 +25,17 @@ public class Localization  {
     public String testClassPath;
     public String[] testClasses;
     public String testSrcPath;
+    public String srcPath;
 
     /**
      * @param classPath the path of project's class file
      * @param testClassPath the path of project's test class file
      */
-    public Localization(String classPath, String testClassPath, String testSrcPath){
+    public Localization(String classPath, String testClassPath, String testSrcPath, String srcPath){
         this.classpath = classPath;
         this.testClassPath = testClassPath;
         this.testSrcPath = testSrcPath;
+        this.srcPath = srcPath;
         testClasses = new TestClassesFinder().findIn(JavaLibrary.classpathFrom(testClassPath), false);
         Arrays.sort(testClasses);
     }
@@ -101,8 +103,13 @@ public class Localization  {
                 result.add(new Suspicious(getClassAddressFromStatement(firstline), getTargetFunctionFromStatement(firstline), firstline.getSuspiciousness(), firstline.getTests(), new ArrayList<String>(lineNumbers)));
                 firstline = statement;
                 lineNumbers.clear();
-                lineNumbers.add(String.valueOf(statement.getLineNumber()));
+                if (!lineNumbers.contains(String.valueOf(statement.getLineNumber()))){
+                    lineNumbers.add(String.valueOf(statement.getLineNumber()));
+                }
             }
+        }
+        if (lineNumbers.size() != 0){
+            result.add(new Suspicious(getClassAddressFromStatement(firstline), getTargetFunctionFromStatement(firstline), firstline.getSuspiciousness(), firstline.getTests(), new ArrayList<String>(lineNumbers)));
         }
         try {
             boolean createResult = suspicousFile.createNewFile();
@@ -156,7 +163,7 @@ public class Localization  {
     public List<StatementExt> getSuspiciousListWithMetric(Metric metric){
         URL[] classpaths = JavaLibrary.classpathFrom(testClassPath);
         classpaths = JavaLibrary.extendClasspathWith(classpath, classpaths);
-        GZoltarSuspiciousProgramStatements gZoltar = GZoltarSuspiciousProgramStatements.create(classpaths, testClasses, new Ochiai(),testSrcPath);
+        GZoltarSuspiciousProgramStatements gZoltar = GZoltarSuspiciousProgramStatements.create(classpaths, testClasses, new Ochiai(),testSrcPath, srcPath);
         return gZoltar.sortBySuspiciousness(testClasses);
     }
 
