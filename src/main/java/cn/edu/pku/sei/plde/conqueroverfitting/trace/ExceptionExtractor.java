@@ -197,7 +197,7 @@ public class ExceptionExtractor {
                     result.put(entry.getKey(),new ArrayList<>(Arrays.asList(String.valueOf(interval.get(0)),String.valueOf(interval.get(1)))));
                 }
             }
-            if (!result.containsKey(entry.getKey()) && !entry.getKey().isSimpleType){
+            if (!result.containsKey(entry.getKey()) && !entry.getKey().isSimpleType && !entry.getKey().variableName.endsWith("()")){
                 //对于复杂的数据结构,不等于null总是一个好的方法
                 result.put(entry.getKey(),new ArrayList<String>(Arrays.asList("null")));
             }
