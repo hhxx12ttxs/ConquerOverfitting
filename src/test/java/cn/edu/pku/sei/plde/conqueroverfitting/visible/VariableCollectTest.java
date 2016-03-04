@@ -23,6 +23,7 @@ public class VariableCollectTest {
 	private final int suspiciousLineNum = 22;
     private final int suspiciousLineNumInConstructor = 30;
 
+	@Test
 	public void testFieldsCollectInClass() {
 
 		VariableCollect variableCollect = VariableCollect.GetInstance(projectPath);
@@ -39,7 +40,7 @@ public class VariableCollectTest {
 				TypeEnum.INT, true, null, true))));
 		assertTrue(fieldsInClass.contains((new VariableInfo("MIN_INTEGER",
 				TypeEnum.INT, true, null, true))));
-		assertTrue(fieldsInClass.contains((new VariableInfo("MAX_TIME",
+		assertFalse(fieldsInClass.contains((new VariableInfo("MAX_TIME",
 				TypeEnum.STRING, true, null, false))));
 		assertTrue(fieldsInClass.contains((new VariableInfo("fileForTestVariableCollect2",
 				null, false, "FileForTestVariableCollect2", true))));
@@ -62,8 +63,8 @@ public class VariableCollectTest {
 				.getVisibleParametersInMethodList(suspiciousFilePath, suspiciousLineNum);
 		assertNotNull(parametersInMethodList);
 
-		assertTrue(parametersInMethodList.size() == 3);
-		assertTrue(parametersInMethodList.contains((new VariableInfo("a",
+		assertTrue(parametersInMethodList.size() == 2);
+		assertFalse(parametersInMethodList.contains((new VariableInfo("a",
 				TypeEnum.INT, true, null))));
 		assertTrue(parametersInMethodList.contains((new VariableInfo("b",
 				TypeEnum.STRING, true, null))));
@@ -89,8 +90,8 @@ public class VariableCollectTest {
 				.getVisibleLocalInMethodList(suspiciousFilePath, suspiciousLineNum);
 		assertNotNull(localsInMethodList);
 
-		assertTrue(localsInMethodList.size() == 2);
-		assertTrue(localsInMethodList.contains((new VariableInfo("e", TypeEnum.INT, true, null))));
+		assertTrue(localsInMethodList.size() == 1);
+		assertFalse(localsInMethodList.contains((new VariableInfo("e", TypeEnum.INT, true, null))));
 		assertTrue(localsInMethodList.contains((new VariableInfo("f", TypeEnum.STRING, true, null))));
 
 		ArrayList<VariableInfo> localsInConstructorList = variableCollect
