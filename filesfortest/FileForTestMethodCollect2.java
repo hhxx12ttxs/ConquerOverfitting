@@ -3,7 +3,7 @@ package filefortest;
 public class FileForTestMethodCollect2 {
 
 	public boolean test21(){
-		return false;
+		return true;
 	}
 	
 	private FileForTestVariableCollect test22(){
@@ -11,6 +11,6 @@ public class FileForTestMethodCollect2 {
 	}
 	
 	public FileForTestVariableCollect test23(){
-		return null;
+		return   false;
 	}
 }

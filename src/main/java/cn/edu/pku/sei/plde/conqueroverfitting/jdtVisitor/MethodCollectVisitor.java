@@ -29,6 +29,7 @@ public class MethodCollectVisitor extends ASTVisitor {
 
     @Override
     public boolean visit(MethodDeclaration node) {
+
         if (node.getReturnType2() == null) {
             return true;
         }
@@ -37,6 +38,10 @@ public class MethodCollectVisitor extends ASTVisitor {
             return true;
         }
 
+        if(node.getBody().toString().equals("{\n  return true;\n}\n")
+                || node.getBody().toString().equals("{\n  return false;\n}\n")){
+            return true;
+        }
 
         MethodInfo methodInfo = null;
         String methodName = node.getName().toString();
@@ -306,7 +311,6 @@ public class MethodCollectVisitor extends ASTVisitor {
 
     @Override
     public boolean visit(BlockComment node) {
-
         return false;
     }
 

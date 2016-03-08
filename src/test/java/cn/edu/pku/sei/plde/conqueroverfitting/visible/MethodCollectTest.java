@@ -31,8 +31,7 @@ public class MethodCollectTest {
         ArrayList<MethodInfo> methodsInClass = methodsInClassMap
                 .get(suspiciousFilePath);
         assertNotNull(methodsInClass);
-        assertTrue(methodsInClass.size() == 2);
-        assertTrue(methodsInClass.contains((new MethodInfo("test11",
+        assertFalse(methodsInClass.contains((new MethodInfo("test11",
                 TypeEnum.BOOLEAN, true, null, true, false, false))));
         assertTrue(methodsInClass.contains((new MethodInfo("test12",
                 TypeEnum.STRING, true, null, false, false, false))));
@@ -40,11 +39,11 @@ public class MethodCollectTest {
         ArrayList<MethodInfo> methodsInOtherClass = methodsInClassMap
                 .get(otherFilePath);
         assertNotNull(methodsInOtherClass);
-        assertTrue(methodsInOtherClass.contains((new MethodInfo("test21",
+        assertFalse(methodsInOtherClass.contains((new MethodInfo("test21",
                 TypeEnum.BOOLEAN, true, null, true, false, false))));
         assertFalse(methodsInOtherClass.contains((new MethodInfo("test22",
                 null, false, "FileForTestVariableCollect", false, false, false))));
-        assertTrue(methodsInOtherClass.contains((new MethodInfo("test23",
+        assertFalse(methodsInOtherClass.contains((new MethodInfo("test23",
                 null, false, "FileForTestVariableCollect", true, false, false))));
     }
 

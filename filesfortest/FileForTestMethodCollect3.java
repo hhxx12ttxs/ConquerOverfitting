@@ -3,6 +3,7 @@ package filefortest;
 public static class FileForTestMethodCollect3 {
 
 	public boolean test31(){
+	    int c = 1;
 		return false;
 	}
 
