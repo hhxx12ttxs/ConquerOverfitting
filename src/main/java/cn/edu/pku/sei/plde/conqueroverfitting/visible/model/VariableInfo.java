@@ -15,6 +15,9 @@ public class VariableInfo implements Comparable<VariableInfo>,Serializable{
     public int variablePos;
 	public boolean interval = false;
 	public boolean isParameter = false;
+	public boolean isLocalVariable = false;
+	public boolean isFieldVariable = false;
+
 
 	/**
 	 *
@@ -117,5 +120,6 @@ public class VariableInfo implements Comparable<VariableInfo>,Serializable{
 	public String getStringType(){
 		return isSimpleType?variableSimpleType.toString():otherType;
 	}
+
 
 }

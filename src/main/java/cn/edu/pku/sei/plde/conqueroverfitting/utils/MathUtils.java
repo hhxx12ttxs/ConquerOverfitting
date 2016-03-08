@@ -11,6 +11,7 @@ import java.util.List;
 public class MathUtils {
 
     public static final List<String> numberType = Arrays.asList("INT","DOUBLE","FLOAT","SHORT","LONG","int","double","float","short","long","Integer","Double","Float","Short","Long");
+    public static final List<Character> number = Arrays.asList('1','2','3','4','5','6','7','8','9','0');
 
     public static double parseStringValue(String value) throws NumberFormatException{
         if (value.equals("Integer.MIN_VALUE")){
@@ -21,6 +22,12 @@ public class MathUtils {
         }
         if (value.endsWith(".0")){
             value = value.substring(0, value.lastIndexOf("."));
+        }
+        if (!number.contains(value.charAt(value.length()-1))){
+            value = value.substring(0, value.length()-1);
+            if (value.length() == 0){
+                throw new NumberFormatException();
+            }
         }
         return Double.valueOf(value);
     }

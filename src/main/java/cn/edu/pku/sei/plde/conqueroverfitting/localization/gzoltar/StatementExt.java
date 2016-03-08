@@ -85,7 +85,7 @@ public class StatementExt extends Statement  {
     public double getSuspiciousness(Metric metric) {
         if (getLabel().contains("(") && getLabel().contains(")")){
             if (StringUtils.isNumeric(getLabel().substring(getLabel().lastIndexOf("(")+1,getLabel().lastIndexOf(")")))){
-                return metric.value(ef, ep, nf, np)/2;
+                return metric.value(ef, ep, nf, np)/3;
             }
         }
 

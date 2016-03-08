@@ -1,5 +1,9 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.utils;
 
+import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
+
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -20,6 +24,7 @@ public class CodeUtils {
         return -1;
     }
 
+
     private static List<String> getConstructorParams(String line){
         List<String> params = divideParameter(line, 1);
         for (String param: params){
@@ -29,6 +34,38 @@ public class CodeUtils {
         }
         return params;
     }
+
+    public static String getClassNameOfVariable(VariableInfo info, String filePath) {
+        String code = FileUtils.getCodeFromFile(filePath);
+        List<String> packages = FileUtils.getPackageImportFromCode(code);
+        for (String packageName: packages){
+            if (getClassNameFromPackage(packageName).equals(info.getStringType())){
+                return packageName;
+            }
+        }
+        String selfPackage = "";
+        for (String line: code.split("\n")){
+            if (line.startsWith("package ")){
+                selfPackage = line.split(" ")[1];
+                selfPackage = selfPackage.substring(0, selfPackage.length()-1);
+            }
+            if (line.trim().startsWith("public class "+info.getStringType())){
+                if (!selfPackage.equals("")){
+                    return selfPackage+"."+info.getStringType();
+                }
+            }
+        }
+        return "";
+    }
+
+    public static String getClassNameFromPackage(String packageName){
+        String name = packageName.substring(packageName.lastIndexOf(".")+1);
+        if (name.endsWith(";")){
+            return name.substring(0, name.length()-1);
+        }
+        return name;
+    }
+
 
     public static List<String> divideParameter(String line, int level){
         //line = line.replace(" ", "");

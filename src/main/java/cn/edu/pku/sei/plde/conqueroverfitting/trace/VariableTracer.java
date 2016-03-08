@@ -9,6 +9,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 import org.apache.commons.lang.StringUtils;
 import org.junit.runner.JUnitCore;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -100,6 +101,14 @@ public class VariableTracer {
         _testClassname = testClassname;
         _functionname = functionname;
         _shellResult = traceShell(_testClassname,_classname,_functionname,_errorLine,_vars,_methods);
+        //clean temp file
+        File tempPackage = new File(System.getProperty("user.dir")+"/temp/");
+        for (String file: tempPackage.list()){
+            File tempFile = new File(file);
+            if (tempFile.exists()){
+                tempFile.deleteOnExit();
+            }
+        }
         if (_shellResult.contains(">>") && _shellResult.contains("Time:")){
             _traceResult = analysisShellResult(_shellResult);
             return traceAnalysis(_traceResult);

@@ -56,10 +56,6 @@ public class Utils {
         } catch (IOException e){
             e.printStackTrace();
         }
-
-        //clean temp file
-        tempJavaFile.deleteOnExit();
-        new File(tempClassName).deleteOnExit();
         return getBytesFromFile(tempClassName);
     }
 

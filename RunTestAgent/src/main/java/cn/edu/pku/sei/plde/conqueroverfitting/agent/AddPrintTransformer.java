@@ -83,8 +83,11 @@ public class AddPrintTransformer implements ClassFileTransformer {
             printLine += varName +"== null)+\"|\""+");";
         }
         printLine += "} catch (Exception e) {}\n";
-        System.out.println(printLine);
-        return printLine;
+        if (!printLine.contains("{}")){
+            System.out.println(printLine);
+            return printLine;
+        }
+        return "";
     }
 
     boolean isSimpleType(String type){

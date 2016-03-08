@@ -2,6 +2,8 @@ package cn.edu.pku.sei.plde.conqueroverfitting.boundary;
 
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.BoundaryInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.main.Config;
+import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeUtils;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.MathUtils;
 
 import java.nio.Buffer;
 import java.util.ArrayList;
@@ -28,6 +30,23 @@ public class BoundaryFilter {
         return result;
     }
 
+
+    public static List<BoundaryInfo> getBoundaryWithType(List<BoundaryInfo> boundaryInfos, String type){
+        List<BoundaryInfo> result = new ArrayList<BoundaryInfo>();
+        if (TypeUtils.isArray(type)){
+            return result;
+        }
+        if (TypeUtils.isContainer(type)){
+            return result;
+        }
+        for (BoundaryInfo info: boundaryInfos){
+            if (info.getStringType().equals(type)){
+                result.add(info);
+            }
+        }
+        return result;
+    }
+
     /**
      *
      * @param boundaryInfos
@@ -45,7 +64,7 @@ public class BoundaryFilter {
                 continue;
             }
             String infoType = info.isSimpleType?info.variableSimpleType.toString():info.otherType;
-            if (info.name.equals(name) && infoType.equals(type)){
+            if (info.name.equals(name) && (infoType.equals(type) || (MathUtils.isNumberType(infoType) && MathUtils.isNumberType(type)))){
                 result.add(info);
             }
         }

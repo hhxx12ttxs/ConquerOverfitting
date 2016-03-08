@@ -2,6 +2,7 @@ package cn.edu.pku.sei.plde.conqueroverfitting.main;
 
 
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.MathUtils;
+import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 import org.apache.commons.lang.StringUtils;
 
 import java.util.ArrayList;
@@ -13,10 +14,11 @@ import java.util.List;
  */
 public class Config {
 
-    public static boolean judgeResultOfFilterWithSearchBoundary(int totalCount, int theSameCount, String value, String variableName){
+    public static boolean judgeResultOfFilterWithSearchBoundary(int totalCount, int theSameCount, String value, String variableName, VariableInfo info){
         double percentage = (double)theSameCount/(double)totalCount;
         List<String> systemValues = Arrays.asList("Integer.MAX_VALUE","Integer.MIN_VALUE",String.valueOf(Integer.MAX_VALUE), String.valueOf(Integer.MIN_VALUE));
-        if (percentage > 0.05 && systemValues.contains(value)){
+        List<String> specialValues = Arrays.asList("0","1");
+        if (percentage > 0.05 && ((systemValues.contains(value) || specialValues.contains(value))&&!info.isFieldVariable)){
             return true;
         }
         if (percentage > 0.1){

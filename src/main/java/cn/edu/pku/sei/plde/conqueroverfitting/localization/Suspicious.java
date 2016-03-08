@@ -6,6 +6,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.trace.TraceResult;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.VariableTracer;
 import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeEnum;
 import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeUtils;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.CodeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.FileUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.InfoUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.MethodCollect;
@@ -105,19 +106,46 @@ public class Suspicious implements Serializable{
         if (_variableInfo != null){
             return _variableInfo;
         }
+        List<VariableInfo> variableInfos = new ArrayList<VariableInfo>();
         String classSrcPath = getClassSrcPath(classSrc);
         VariableCollect variableCollect = VariableCollect.GetInstance(getClassSrcIndex(classSrc));
         List<VariableInfo> parameters = variableCollect.getVisibleParametersInMethodList(classSrcPath, lastLine());
+        variableInfos.addAll(parameters);
         for (VariableInfo param: parameters){
             param.isParameter = true;
+            if (TypeUtils.isComplexType(param.getStringType())){
+                String paramClass = CodeUtils.getClassNameOfVariable(param, classSrcPath);
+                if (paramClass.equals("")){
+                    continue;
+                }
+                String paramClassSrcPath =  classSrc + System.getProperty("file.separator") + paramClass.replace(".",System.getProperty("file.separator")) + ".java";
+                LinkedHashMap<String, ArrayList<VariableInfo>> classvars = variableCollect.getVisibleFieldInAllClassMap(paramClassSrcPath);
+                if (classvars.containsKey(paramClassSrcPath)) {
+                    List<VariableInfo> fields = classvars.get(classSrcPath);
+                    for (VariableInfo field: fields){
+                        if (!field.isPublic && !paramClassSrcPath.equals(getClassSrcPath(classSrc))){
+                            continue;
+                        }
+                        field.isParameter = true;
+                        field.variableName = param.variableName+"."+field.variableName;
+                    }
+                    variableInfos.addAll(fields);
+                }
+            }
         }
         List<VariableInfo> locals = variableCollect.getVisibleLocalInMethodList(classSrcPath, lastLine());
-        LinkedHashMap<String, ArrayList<VariableInfo>> classvars = variableCollect.getVisibleFieldInAllClassMap(classSrcPath);
-        List<VariableInfo> variableInfos = new ArrayList<VariableInfo>();
-        variableInfos.addAll(parameters);
+        for (VariableInfo local: locals){
+            local.isLocalVariable = true;
+        }
         variableInfos.addAll(locals);
+
+        LinkedHashMap<String, ArrayList<VariableInfo>> classvars = variableCollect.getVisibleFieldInAllClassMap(classSrcPath);
         if (classvars.containsKey(classSrcPath)){
-            variableInfos.addAll(classvars.get(classSrcPath));
+            List<VariableInfo> fields = classvars.get(classSrcPath);
+            for (VariableInfo field: fields){
+                field.isFieldVariable = true;
+            }
+            variableInfos.addAll(fields);
         }
 
         List<VariableInfo> addon = new ArrayList<>();

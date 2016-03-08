@@ -4,11 +4,18 @@ import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.BoundaryInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Suspicious;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.ExceptionExtractor;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.TraceResult;
+import cn.edu.pku.sei.plde.conqueroverfitting.trace.filter.AbandanTrueValueFilter;
+import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeUtils;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.InfoUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.MathUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 import com.sun.org.apache.bcel.internal.generic.LUSHR;
+import com.sun.org.apache.bcel.internal.generic.Type;
+import org.apache.commons.lang.StringUtils;
 
+import java.io.File;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.util.*;
 import java.util.regex.Matcher;
 
@@ -17,15 +24,16 @@ import java.util.regex.Matcher;
  */
 public class BoundaryGenerator {
 
-    public static String generate(String classpath, String testClasspath, String classSrc, Suspicious suspicious, String project) throws IOException{
-        List<TraceResult> traceResults = suspicious.getTraceResult(classpath,testClasspath, classSrc);
-        if (traceResults.size() == 0){
+    public static String generate(String classpath, String testClasspath, String classSrc, Suspicious suspicious) throws IOException {
+        List<TraceResult> traceResults = suspicious.getTraceResult(classpath, testClasspath, classSrc);
+        if (traceResults.size() == 0) {
             System.out.println("Cannot trace any variable");
             return "";
         }
-        Map<VariableInfo, List<String>> filteredVariable = ExceptionExtractor.extract(traceResults, suspicious.getAllInfo(classSrc),project);
-        if (filteredVariable.size() != 0){
-            return generate(filteredVariable, project);
+        Map<VariableInfo, List<String>> filteredVariable = ExceptionExtractor.extract(traceResults, suspicious.getAllInfo(classSrc));
+        Map<VariableInfo, List<String>> trueVariable = AbandanTrueValueFilter.filterTrueValue(traceResults, suspicious.getAllInfo(classSrc));
+        if (filteredVariable.size() != 0) {
+            return generate(filteredVariable, trueVariable);
         }
         //else {
         //    traceResults = suspicious.getTraceResultWithAllTest(classpath,testClasspath, classSrc);
@@ -35,6 +43,7 @@ public class BoundaryGenerator {
         return "";
     }
 
+    /*
     private static Map<VariableInfo,List<String>> getAllTrueValue(List<TraceResult> traceResults, List<VariableInfo> vars){
         Map<VariableInfo, List<String>> trueValues = new HashMap<VariableInfo, List<String>>();
         for (TraceResult traceResult: traceResults){
@@ -49,144 +58,181 @@ public class BoundaryGenerator {
             }
         }
         return trueValues;
-    }
+    }*/
 
-    public static String generateTrueValueInterval(Map<VariableInfo, List<String>> trueValues){
+    public static String generateTrueValueInterval(Map<VariableInfo, List<String>> filteredValues, Map<VariableInfo, List<String>> trueValues) {
         String result = "";
-        for (Map.Entry<VariableInfo, List<String>> trueValue: trueValues.entrySet()){
-            if (!MathUtils.isNumberType(trueValue.getKey().getStringType()) || trueValue.getValue().size() < 100){
+        for (Map.Entry<VariableInfo, List<String>> trueValue : filteredValues.entrySet()) {
+            if (!MathUtils.isNumberType(trueValue.getKey().getStringType()) || trueValue.getValue().size() < 100) {
                 continue;
             }
             List<Double> values = new ArrayList<>();
-            for (String value: trueValue.getValue()){
-                try{
+            for (String value : trueValue.getValue()) {
+                try {
                     values.add(MathUtils.parseStringValue(value));
-                } catch (NumberFormatException e){
+                } catch (NumberFormatException e) {
                     continue;
                 }
             }
             Collections.sort(values);
             Double maxValue = Double.MIN_VALUE;
             Double minValue = Double.MAX_VALUE;
-            for (double value: values){
-                if (value > maxValue){
+            for (double value : values) {
+                if (value > maxValue) {
                     maxValue = value;
                 }
-                if (value < minValue){
+                if (value < minValue) {
                     minValue = value;
                 }
             }
-            if (result.length() == 0){
+            if (result.length() == 0) {
                 result += "if (";
-            }
-            else {
+            } else {
                 result += " || ";
             }
-            result += trueValue.getKey().variableName + ">" + maxValue + " && " +trueValue.getKey().variableName + "<" + minValue;
+            result += trueValue.getKey().variableName + ">" + maxValue + " && " + trueValue.getKey().variableName + "<" + minValue;
         }
-        result+= ")";
-        if (result.contains(">") || result.contains("<")){
+        result += ")";
+        if (result.contains(">") || result.contains("<")) {
             return result;
         }
         return "";
     }
 
 
-    private static String generate(Map<VariableInfo, List<String>> entrys, String project){
-        if (entrys.size() < 1){
+    private static String generate(Map<VariableInfo, List<String>> entrys, Map<VariableInfo, List<String>> trueValues) {
+        if (entrys.size() < 1) {
             System.out.println("No Data in the Map");
             return "";
         }
         Iterator<Map.Entry<VariableInfo, List<String>>> iterator = entrys.entrySet().iterator();
         Map<VariableInfo, List<String>> arrayVariable = new HashMap<>();
-        String result = "if (";
-        while (iterator.hasNext()){
+        String result = "if ((";
+        while (iterator.hasNext()) {
             Map.Entry<VariableInfo, List<String>> entry = iterator.next();
-            if (MathUtils.isNumberArray(entry.getKey().getStringType()) && entry.getValue().size() == 1 && entry.getValue().get(0).equals("null")){
+            if (MathUtils.isNumberArray(entry.getKey().getStringType()) && entry.getValue().size() == 1 && entry.getValue().get(0).equals("null")) {
                 arrayVariable.put(entry.getKey(), entry.getValue());
                 continue;
             }
-            result += generateWithSingleWord(entry, project);
-            if (iterator.hasNext()){
-                result += "||";
+            result += generateWithSingleWord(entry, trueValues);
+            if (iterator.hasNext()) {
+                result += ")||(";
             }
         }
-        result += ")";
-        if (result.equals("if ()")){
+        result += "))";
+        if (result.equals("if ()")) {
             result = "";
         }
         int i = 0;
-        for (Map.Entry<VariableInfo, List<String>> entry: arrayVariable.entrySet()){
+        for (Map.Entry<VariableInfo, List<String>> entry : arrayVariable.entrySet()) {
             result += "\n";
-            String forBoundary = "for ("+MathUtils.getNumberTypeOfArray(entry.getKey().getStringType())+" "+"forvar"+i+": "+entry.getKey().variableName+")";
-            forBoundary += "if ("+"forvar"+i+"==" + MathUtils.getNumberTypeOfArray(entry.getKey().getStringType(),false)+"."+"NaN"+")";
+            String forBoundary = "for (" + MathUtils.getNumberTypeOfArray(entry.getKey().getStringType()) + " " + "forvar" + i + ": " + entry.getKey().variableName + ")";
+            forBoundary += "if (" + "forvar" + i + "==" + MathUtils.getNumberTypeOfArray(entry.getKey().getStringType(), false) + "." + "NaN" + ")";
             result += forBoundary;
             i++;
         }
         return result;
     }
 
-    private static String generateWithSingleWord(Map.Entry<VariableInfo, List<String>> entry, String project){
-        String varType = entry.getKey().isSimpleType?entry.getKey().variableSimpleType.toString():entry.getKey().otherType;
-        if (entry.getValue().size() == 1){
-            return  entry.getKey().variableName + " == " + entry.getValue().get(0);
+    private static String generateWithSingleWord(Map.Entry<VariableInfo, List<String>> entry, Map<VariableInfo, List<String>> trueValues) {
+        if (entry.getValue().size() == 1 && !MathUtils.isNumberType(entry.getKey().getStringType())) {
+            return entry.getKey().variableName + " == " + entry.getValue().get(0);
         }
-        else if (entry.getKey().interval){
+        /*
+        else if (entry.getKey().interval) {
             String minValue = entry.getValue().get(0);
             String maxValue = entry.getValue().get(1);
             return entry.getKey().variableName + ">" + maxValue + " && " + entry.getKey().variableName + "<" + minValue;
-        }
-        else if (varType.equals("INT") || varType.equals("FLOAT") || varType.equals("DOUBLE") || varType.equals("LONG") || varType.equals("SHORT")){
-            BoundaryCollect boundaryCollect = new BoundaryCollect("experiment/searchcode/"+project+"-"+entry.getKey().variableName);
+        }*/
+        else if (MathUtils.isNumberType(entry.getKey().getStringType())) {
+            List<String> keywords = InfoUtils.getSearchKeywords(entry.getKey());
+            BoundaryCollect boundaryCollect = new BoundaryCollect("experiment/searchcode/" + StringUtils.join(keywords, "-"));
             List<BoundaryInfo> boundaryList = boundaryCollect.getBoundaryList();
-            List<BoundaryInfo> filteredList = BoundaryFilter.getBoundaryWithNameAndType(boundaryList, entry.getKey().variableName, varType);
+            List<BoundaryInfo> filteredList = BoundaryFilter.getBoundaryWithNameAndType(boundaryList, entry.getKey().variableName, entry.getKey().getStringType());
 
-            double smallestValue = Double.valueOf(entry.getValue().get(0));
-            double biggestValue = Double.valueOf(entry.getValue().get(0));
-            for (String value: entry.getValue()){
+            double smallestValue = MathUtils.parseStringValue(entry.getValue().get(0));
+            double biggestValue = MathUtils.parseStringValue(entry.getValue().get(0));
+            for (String value : entry.getValue()) {
                 double doubleValue = Double.valueOf(value);
-                if (doubleValue < smallestValue){
+                if (Double.compare(doubleValue, smallestValue) < 0) {
                     smallestValue = doubleValue;
                 }
-                if (doubleValue > biggestValue){
+                if (Double.compare(doubleValue, biggestValue) > 0) {
                     biggestValue = doubleValue;
                 }
             }
 
-            double biggestBoundary = Double.MIN_VALUE;
-            double smallestBoundary = Double.MAX_VALUE;
+            double biggestBoundary = smallestValue;
+            double smallestBoundary = biggestValue;
 
-            for (BoundaryInfo info: filteredList){
-                double doubleValue;
-                if (info.value.equals("Integer.MIN_VALUE")){
-                    doubleValue = Integer.MIN_VALUE;
+            for (BoundaryInfo info : filteredList) {
+                if (info.value.endsWith(".NaN")){
+                    continue;
                 }
-                else if (info.value.equals("Integer.MAX_VALUE")){
-                    doubleValue = Integer.MAX_VALUE;
+                try {
+                    double doubleValue = MathUtils.parseStringValue(info.value);
+                    if (doubleValue >= biggestBoundary && doubleValue <= smallestValue) {
+                        biggestBoundary = doubleValue;
+                    }
+                    if (doubleValue <=smallestBoundary && doubleValue >= biggestValue) {
+                        smallestBoundary = doubleValue;
+                    }
+                } catch (NumberFormatException e){
+                    continue;
                 }
-                else {
-                    try {
-                        doubleValue = Double.valueOf(info.value);
-                    } catch (NumberFormatException e){
-                        System.out.println("ERROR VALUE PRASING: "+info.value);
-                        continue;
+
+            }
+            String varType = MathUtils.getSimpleOfNumberType(entry.getKey().getStringType());
+            Map<String, String> intervals = new HashMap<>();
+            intervals.put("backwardInterval", entry.getKey().variableName + " > ("+ varType+")" + smallestBoundary);
+            intervals.put("innerInterval", "("+entry.getKey().variableName + " <= ("+varType+")" + smallestBoundary + " && " + entry.getKey().variableName + " >= ("+varType+")" + biggestBoundary+")");
+            intervals.put("forwardInterval", entry.getKey().variableName + " < ("+varType+")" + biggestBoundary);
+            if (trueValues.containsKey(entry.getKey())){
+                List<String> trueValue = trueValues.get(entry.getKey());
+                for (String valueString : trueValue) {
+                    double value = MathUtils.parseStringValue(valueString);
+                    if (value < biggestBoundary) {
+                        intervals.remove("forwardInterval");
+                    }
+                    if (value > smallestBoundary) {
+                        intervals.remove("backwardInterval");
+                    }
+                    if (value < smallestBoundary && value > biggestBoundary) {
+                        intervals.remove("innerInterval");
                     }
                 }
-                if (doubleValue >biggestBoundary && doubleValue <= smallestValue){
-                    biggestBoundary = doubleValue;
+                if (intervals.size() == 1) {
+                    return generateWithOneInterval(intervals);
                 }
-                if (doubleValue < smallestBoundary && doubleValue >= biggestValue){
-                    smallestBoundary = doubleValue;
+                if (intervals.size() == 2) {
+                    return generateWithTwoInterval(intervals);
                 }
             }
-            if (Math.abs(biggestBoundary) < Math.abs(smallestBoundary)){
-                return  entry.getKey().variableName + " <= " + smallestBoundary;
-            }
-            else {
-                return  entry.getKey().variableName + " >= " + biggestBoundary;
+
+            //如果值相差过大:
+            if (Math.abs(biggestBoundary) / Math.abs(smallestBoundary) > 1000 || Math.abs(smallestBoundary) / Math.abs(biggestBoundary) > 1000) {
+                if (Math.abs(biggestBoundary) < Math.abs(smallestBoundary)) {
+                    return entry.getKey().variableName + " <= ("+varType+")" + smallestBoundary;
+                } else {
+                    return entry.getKey().variableName + " >= ("+varType+")" + biggestBoundary;
+                }
+            } else {
+
+                return entry.getKey().variableName + " <= ("+varType+")" + smallestBoundary + " || " + entry.getKey().variableName + " >= ("+varType+")" + biggestBoundary;
             }
         }
         System.out.println("Nonsupport Condition for Create IF Expression");
         return "";
     }
+
+
+    private static String generateWithOneInterval(Map<String, String> intervals) {
+        return (String) intervals.values().toArray()[0];
+    }
+
+
+    private static String generateWithTwoInterval(Map<String, String> intervals) {
+        return (String) intervals.values().toArray()[0] + "||" + (String) intervals.values().toArray()[1];
+    }
+
 }

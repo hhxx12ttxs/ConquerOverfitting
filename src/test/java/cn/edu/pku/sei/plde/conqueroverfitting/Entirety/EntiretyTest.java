@@ -17,30 +17,30 @@ public class EntiretyTest {
 
     @Test
     public void testEntirety() throws Exception{
-        int i = 14;
-        String project = "Chart"+i;
+        int i = 46;
+        String project = "Math"+i;
         /* 四个整个项目需要的参数 */
-        //String classpath = PATH_OF_DEFECTS4J+"Math-"+i+"/target/classes";              //项目的.class文件路径
-        //String testClasspath  = PATH_OF_DEFECTS4J+"Math-"+i+"/target/test-classes";    //项目的test的.class文件路径
-        //String classSrc = PATH_OF_DEFECTS4J + "Math-"+i+"/src/main/java";              //项目的源代码路径
-        //String testClassSrc = PATH_OF_DEFECTS4J + "Math-"+i+"/src/test/java";///java";          //项目的test的源代码路径
+        String classpath = PATH_OF_DEFECTS4J+"Math-"+i+"/target/classes";              //项目的.class文件路径
+        String testClasspath  = PATH_OF_DEFECTS4J+"Math-"+i+"/target/test-classes";    //项目的test的.class文件路径
+        String classSrc = PATH_OF_DEFECTS4J + "Math-"+i+"/src/main/java";              //项目的源代码路径
+        String testClassSrc = PATH_OF_DEFECTS4J + "Math-"+i+"/src/test/java";///java"; //项目的test的源代码路径
 
         //String classpath = PATH_OF_DEFECTS4J+"Lang-"+i+"/target/classes";              //项目的.class文件路径
         //String testClasspath  = PATH_OF_DEFECTS4J+"Lang-"+i+"/target/test-classes";    //项目的test的.class文件路径
         //String classSrc = PATH_OF_DEFECTS4J + "Lang-"+i+"/src/main/java";              //项目的源代码路径
         //String testClassSrc = PATH_OF_DEFECTS4J + "Lang-"+i+"/src/test/java";///java";          //项目的test的源代码路径
 
-        String classpath = PATH_OF_DEFECTS4J+"Chart-"+i+"/build";              //项目的.class文件路径
-        String testClasspath  = PATH_OF_DEFECTS4J+"Chart-"+i+"/build-tests";    //项目的test的.class文件路径
-        String classSrc = PATH_OF_DEFECTS4J + "Chart-"+i+"/source";              //项目的源代码路径
-        String testClassSrc = PATH_OF_DEFECTS4J + "Chart-"+i+"/tests";///java";          //项目的test的源代码路径
+        //String classpath = PATH_OF_DEFECTS4J+"Chart-"+i+"/build";              //项目的.class文件路径
+        //String testClasspath  = PATH_OF_DEFECTS4J+"Chart-"+i+"/build-tests";    //项目的test的.class文件路径
+        //String classSrc = PATH_OF_DEFECTS4J + "Chart-"+i+"/source";              //项目的源代码路径
+        //String testClassSrc = PATH_OF_DEFECTS4J + "Chart-"+i+"/tests";///java";          //项目的test的源代码路径
 
 
         Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc);
         List<Suspicious> suspiciouses = localization.getSuspiciousLite();
 
         for (Suspicious suspicious: suspiciouses){
-            String ifString = BoundaryGenerator.generate(classpath,testClasspath, classSrc, suspicious, project);
+            String ifString = BoundaryGenerator.generate(classpath,testClasspath, classSrc, suspicious);
             if (ifString.equals("")){
                 continue;
             }

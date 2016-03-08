@@ -77,8 +77,8 @@ public class WGzoltar extends GZoltar {
                     executedAndPassedCount++;
                 } else {
                     executedAndFailedCount++;
-                    s.addTest(testResult.getName());
                 }
+                s.addTest(testResult.getName());
                 nextTest = coverage.nextSetBit(nextTest + 1);
             }
             s.setEf(executedAndFailedCount);
@@ -108,6 +108,9 @@ public class WGzoltar extends GZoltar {
         String functionName = testResult.getName().split("#")[1];
         LocalizationInConstructor constructor = new LocalizationInConstructor(srcPath, FileUtils.getFileAddressOfClass(testSrcPath, classname), functionName);
         HashMap<String, ArrayList<ConstructorDeclarationInfo>> constructMap = constructor.getConstructorMap();
+        if (constructMap.size() == 0){
+
+        }
         for (String key: constructMap.keySet()){
             String packageName = PathUtils.getPackageNameFromPath(key);
             int paramCount;

@@ -7,7 +7,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.MethodInfo;
 
 public class BoundaryInfo {
 	public TypeEnum variableSimpleType;
-	public boolean isSimpleType;
+	public boolean isSimpleType = false;
 	public String otherType;
 	public String name;
 	public String value;
@@ -38,4 +38,14 @@ public class BoundaryInfo {
 					&& value.equals(other.value);
 		}
 	}
+	public String getStringType(){
+		if (isSimpleType && variableSimpleType==null){
+			return "";
+		}
+		if (isSimpleType && otherType == null){
+			return "";
+		}
+		return isSimpleType?variableSimpleType.toString():otherType;
+	}
+
 }

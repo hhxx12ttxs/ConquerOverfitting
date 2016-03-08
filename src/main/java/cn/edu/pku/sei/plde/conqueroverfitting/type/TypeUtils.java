@@ -1,5 +1,6 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.type;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -20,8 +21,28 @@ public class TypeUtils {
             "NULL","null");
 
 
+    public static final List<String> containerType = Arrays.asList(
+            "Collection","List","ArrayList","Vector","Map","HashTable","HashMap",
+            "Iterator","ListIterator","Set","Queue","TreeMap","LinkedList","PriorityQueue",
+            "LinkedHashMap","HashSet","TreeSet","LinkedHashSet"
+    );
+
     public static boolean isSimpleType(String type){
         return simpleType.contains(type);
+    }
+
+
+    public static boolean isArray(String type){
+        return type.endsWith("[]");
+    }
+
+    public static boolean isContainer(String type){
+        for (String container: containerType){
+            if (container.toLowerCase().equals(type.toLowerCase())){
+                return true;
+            }
+        }
+        return false;
     }
 
     public static boolean isSimpleArray(String type){

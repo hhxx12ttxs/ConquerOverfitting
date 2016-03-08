@@ -86,7 +86,7 @@ public class FileUtils {
 		return  testSrcPath + System.getProperty("file.separator") + className.replace('.',System.getProperty("file.separator").charAt(0))+".java";
 	}
 
-	public static String getCodeFromFile(String fileaddress) throws Exception{
+	public static String getCodeFromFile(String fileaddress){
 		try {
 			FileInputStream stream = new FileInputStream(new File(fileaddress));
 			byte[] b=new byte[stream.available()];
@@ -98,7 +98,7 @@ public class FileUtils {
 			return new String(b);
 		} catch (Exception e){
 			System.out.println(e.getMessage());
-			throw e;
+			return "";
 		}
 	}
 

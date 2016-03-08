@@ -40,7 +40,8 @@ public class VariableCollectVisitor extends ASTVisitor {
     @Override
     public boolean visit(FieldDeclaration node) {
         boolean isFinal = Modifier.isFinal(node.getModifiers());
-        if (isFinal) {
+        boolean isStatic = Modifier.isStatic(node.getModifiers());
+        if (isFinal && isStatic) {
             return true;
         }
         TypeInference typeInference = new TypeInference(node.getType()
@@ -71,8 +72,9 @@ public class VariableCollectVisitor extends ASTVisitor {
 
         for (SingleVariableDeclaration parameter : parameters) {
             boolean isFinal = Modifier.isFinal(parameter.getModifiers());
-            if (isFinal) {
-                continue;
+            boolean isStatic = Modifier.isStatic(parameter.getModifiers());
+            if (isFinal && isStatic) {
+                return true;
             }
 
             TypeInference paraTypeInference = new TypeInference(parameter.getType()
@@ -102,7 +104,8 @@ public class VariableCollectVisitor extends ASTVisitor {
     @Override
     public boolean visit(VariableDeclarationStatement node) {
         boolean isFinal = Modifier.isFinal(node.getModifiers());
-        if (isFinal) {
+        boolean isStatic = Modifier.isStatic(node.getModifiers());
+        if (isFinal && isStatic) {
             return true;
         }
 

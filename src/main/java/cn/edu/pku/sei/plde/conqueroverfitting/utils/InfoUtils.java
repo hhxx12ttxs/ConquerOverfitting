@@ -1,8 +1,11 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.utils;
 
+import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.BoundaryInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.MethodInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
+import org.apache.commons.lang.StringUtils;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -67,4 +70,19 @@ public class InfoUtils {
         }
         return result;
     }
+
+
+    public static List<String> getSearchKeywords(VariableInfo info){
+        List<String> keywords = new ArrayList<>(Arrays.asList("if", info.getStringType(), info.variableName));
+        if (!new File("experiment/searchcode/" + StringUtils.join(keywords, "-")).exists()) {
+            keywords.remove(info.getStringType());
+        }
+        if (!new File("experiment/searchcode/" + StringUtils.join(keywords, "-")).exists()) {
+            keywords.add(info.getStringType());
+            keywords.remove(info.variableName);
+        }
+        return keywords;
+    }
+
+
 }
