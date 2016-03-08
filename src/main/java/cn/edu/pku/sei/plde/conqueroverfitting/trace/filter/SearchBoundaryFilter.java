@@ -82,6 +82,10 @@ public class SearchBoundaryFilter {
                     result.put(entry.getKey(),new ArrayList<>(Arrays.asList(String.valueOf(interval.get(0)),String.valueOf(interval.get(1)))));
                 }
             }
+            //如果参数是数字数组,保证每个数组元素都不为NaN
+            if (MathUtils.isNumberArray(entry.getKey().getStringType()) && ! result.containsKey(entry.getKey()) && entry.getKey().isParameter){
+                result.put(entry.getKey(),new ArrayList<>(Arrays.asList("null")));
+            }
             /*
             if (!result.containsKey(entry.getKey()) && !entry.getKey().isSimpleType && !entry.getKey().variableName.endsWith("()")){
                 //对于复杂的数据结构,不等于null总是一个好的方法

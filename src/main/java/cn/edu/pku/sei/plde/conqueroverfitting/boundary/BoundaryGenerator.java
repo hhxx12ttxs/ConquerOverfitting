@@ -120,7 +120,7 @@ public class BoundaryGenerator {
             }
         }
         result += "))";
-        if (result.equals("if ()")) {
+        if (result.equals("if (())")) {
             result = "";
         }
         int i = 0;

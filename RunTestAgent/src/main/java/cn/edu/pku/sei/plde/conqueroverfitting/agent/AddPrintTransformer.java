@@ -83,7 +83,7 @@ public class AddPrintTransformer implements ClassFileTransformer {
             printLine += varName +"== null)+\"|\""+");";
         }
         printLine += "} catch (Exception e) {}\n";
-        if (!printLine.contains("{}")){
+        if (!printLine.contains("try {}")){
             System.out.println(printLine);
             return printLine;
         }

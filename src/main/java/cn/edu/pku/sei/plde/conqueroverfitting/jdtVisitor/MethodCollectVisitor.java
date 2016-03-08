@@ -38,10 +38,12 @@ public class MethodCollectVisitor extends ASTVisitor {
             return true;
         }
 
-        if(node.getBody().toString().equals("{\n  return true;\n}\n")
-                || node.getBody().toString().equals("{\n  return false;\n}\n")){
-            return true;
+        if (node.getBody()!= null){
+            if(node.getBody().toString().equals("{\n  return true;\n}\n") || node.getBody().toString().equals("{\n  return false;\n}\n")){
+                return true;
+            }
         }
+
 
         MethodInfo methodInfo = null;
         String methodName = node.getName().toString();

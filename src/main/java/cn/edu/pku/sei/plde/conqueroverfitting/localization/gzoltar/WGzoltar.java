@@ -14,6 +14,7 @@ import com.gzoltar.core.instr.testing.TestResult;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.metric.Metric;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.metric.Ochiai;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -105,7 +106,13 @@ public class WGzoltar extends GZoltar {
     private List<Statement> statementFromTestResult(TestResult testResult, int i, List<Statement> histories){
         List<Statement> result = new ArrayList<>();
         String classname = testResult.getName().split("#")[0];
+        if (classname.contains("$")){
+            classname = classname.substring(0, classname.lastIndexOf("$"));
+        }
         String functionName = testResult.getName().split("#")[1];
+        if (!new File(FileUtils.getFileAddressOfClass(testSrcPath, classname)).exists()){
+            return result;
+        }
         LocalizationInConstructor constructor = new LocalizationInConstructor(srcPath, FileUtils.getFileAddressOfClass(testSrcPath, classname), functionName);
         HashMap<String, ArrayList<ConstructorDeclarationInfo>> constructMap = constructor.getConstructorMap();
         if (constructMap.size() == 0){

@@ -17,13 +17,20 @@ public class EntiretyTest {
 
     @Test
     public void testEntirety() throws Exception{
-        int i = 46;
+        int i = 99;
         String project = "Math"+i;
         /* 四个整个项目需要的参数 */
+        //String classpath = PATH_OF_DEFECTS4J+"Math-"+i+"/target/classes";              //项目的.class文件路径
+        //String testClasspath  = PATH_OF_DEFECTS4J+"Math-"+i+"/target/test-classes";    //项目的test的.class文件路径
+        //String classSrc = PATH_OF_DEFECTS4J + "Math-"+i+"/src/main/java";              //项目的源代码路径
+        //String testClassSrc = PATH_OF_DEFECTS4J + "Math-"+i+"/src/test/java";///java"; //项目的test的源代码路径
+
+
         String classpath = PATH_OF_DEFECTS4J+"Math-"+i+"/target/classes";              //项目的.class文件路径
         String testClasspath  = PATH_OF_DEFECTS4J+"Math-"+i+"/target/test-classes";    //项目的test的.class文件路径
-        String classSrc = PATH_OF_DEFECTS4J + "Math-"+i+"/src/main/java";              //项目的源代码路径
-        String testClassSrc = PATH_OF_DEFECTS4J + "Math-"+i+"/src/test/java";///java"; //项目的test的源代码路径
+        String classSrc = PATH_OF_DEFECTS4J + "Math-"+i+"/src/java";              //项目的源代码路径
+        String testClassSrc = PATH_OF_DEFECTS4J + "Math-"+i+"/src/test";///java"; //项目的test的源代码路径
+
 
         //String classpath = PATH_OF_DEFECTS4J+"Lang-"+i+"/target/classes";              //项目的.class文件路径
         //String testClasspath  = PATH_OF_DEFECTS4J+"Lang-"+i+"/target/test-classes";    //项目的test的.class文件路径

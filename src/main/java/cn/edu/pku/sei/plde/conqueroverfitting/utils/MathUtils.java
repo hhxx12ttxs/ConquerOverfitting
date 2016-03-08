@@ -96,6 +96,9 @@ public class MathUtils {
     }
 
     public static String getComplexOfNumberType(String type){
+        if (type.endsWith("[]")){
+            type = type.substring(0, type.lastIndexOf("["));
+        }
         switch (type){
             case "INT":
             case "int":
