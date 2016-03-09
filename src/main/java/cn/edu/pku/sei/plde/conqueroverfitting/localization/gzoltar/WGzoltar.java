@@ -58,8 +58,16 @@ public class WGzoltar extends GZoltar {
         for (int i = this.getTestResults().size() - 1 ; i >= 0; i--) {
             TestResult testResult = this.getTestResults().get(i);
             if(!testResult.wasSuccessful()) {
-                nbFailingTest++;
-                suspiciousStatements.addAll(statementFromTestResult(testResult,i, constructors));
+                if (testResult.getTrace().split("\n")[0].contains("java.lang.NoClassDefFoundError:") ||
+                        testResult.getTrace().split("\n")[0].contains("java.lang.ExceptionInInitializerError")//||
+                        //testResult.getTrace().split("\n")[0].contains("java.lang.IllegalArgumentException")
+                        ){
+                    testResult.setSuccessful(true);
+                }
+                else {
+                    nbFailingTest++;
+                    suspiciousStatements.addAll(statementFromTestResult(testResult,i, constructors));
+                }
             }
         }
 

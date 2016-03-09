@@ -31,7 +31,7 @@ public class BoundaryGenerator {
             return "";
         }
         Map<VariableInfo, List<String>> filteredVariable = ExceptionExtractor.extract(traceResults, suspicious.getAllInfo(classSrc));
-        Map<VariableInfo, List<String>> trueVariable = AbandanTrueValueFilter.filterTrueValue(traceResults, suspicious.getAllInfo(classSrc));
+        Map<VariableInfo, List<String>> trueVariable = AbandanTrueValueFilter.getTrueValue(traceResults, suspicious.getAllInfo(classSrc));
         if (filteredVariable.size() != 0) {
             return generate(filteredVariable, trueVariable);
         }
@@ -120,6 +120,8 @@ public class BoundaryGenerator {
             }
         }
         result += "))";
+        result = result.replace("||()","");
+        result = result.replace("()||","");
         if (result.equals("if (())")) {
             result = "";
         }
@@ -137,6 +139,14 @@ public class BoundaryGenerator {
     private static String generateWithSingleWord(Map.Entry<VariableInfo, List<String>> entry, Map<VariableInfo, List<String>> trueValues) {
         if (entry.getValue().size() == 1 && !MathUtils.isNumberType(entry.getKey().getStringType())) {
             return entry.getKey().variableName + " == " + entry.getValue().get(0);
+        }
+        else if (entry.getValue().size() == 1){
+            if (entry.getValue().get(0).equals("+0")){
+                return entry.getKey().variableName + " >= " + 0;
+            }
+            else if (entry.getValue().get(0).equals("-0")){
+                return entry.getKey().variableName + " <= " + 0;
+            }
         }
         /*
         else if (entry.getKey().interval) {
@@ -200,6 +210,9 @@ public class BoundaryGenerator {
                     if (value < smallestBoundary && value > biggestBoundary) {
                         intervals.remove("innerInterval");
                     }
+                }
+                if (intervals.size() == 0){
+                    return "";
                 }
                 if (intervals.size() == 1) {
                     return generateWithOneInterval(intervals);

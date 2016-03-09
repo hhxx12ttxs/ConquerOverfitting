@@ -95,7 +95,7 @@ public class VariableCollect {
 			if (variableInfo.methodEndPos < suspiciousLineNum)
 				continue;
 			if (variableInfo.methodStartPos < suspiciousLineNum
-					&& variableInfo.methodEndPos > suspiciousLineNum) {
+					&& variableInfo.methodEndPos >= suspiciousLineNum) {
 				parameters.add(variableInfo);
 			}
 			if (variableInfo.methodStartPos > suspiciousLineNum)

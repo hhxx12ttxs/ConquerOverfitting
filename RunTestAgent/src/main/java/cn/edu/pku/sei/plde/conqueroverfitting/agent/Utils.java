@@ -32,7 +32,7 @@ public class Utils {
             while ((lineString = reader.readLine()) != null) {
                 line++;
                 if (line == targetLine-1){
-                    if ((!lineString.contains(";") && !lineString.contains("{") && !lineString.contains("}"))|| lineString.contains("return ")){
+                    if ((!lineString.contains(";") && !lineString.contains(":") && !lineString.contains("{") && !lineString.contains("}"))|| lineString.contains("return ") || lineString.contains("if (")){
                         outputStream.write(addingCode.getBytes());
                         writed = true;
                     }

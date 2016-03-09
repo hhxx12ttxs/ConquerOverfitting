@@ -8,6 +8,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.main.Config;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.MathUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 import org.apache.commons.lang.StringUtils;
+import sun.jvm.hotspot.utilities.MessageQueue;
 
 import java.io.File;
 import java.util.*;
@@ -21,7 +22,7 @@ public class SearchBoundaryFilter {
      * @param exceptionVariable the  key-value map to be filtered
      * @return the filtered key-value map
      */
-    public static Map<VariableInfo, List<String>> filter(Map<VariableInfo, List<String>> exceptionVariable){
+    public static Map<VariableInfo, List<String>> filter(Map<VariableInfo, List<String>> exceptionVariable, Map<VariableInfo, List<String>> trueValues){
         Map<VariableInfo, List<String>> result = new HashMap<VariableInfo, List<String>>();
         for (Map.Entry<VariableInfo, List<String>> entry: exceptionVariable.entrySet()){
             String variableName = entry.getKey().variableName.contains(".")?entry.getKey().variableName.substring(entry.getKey().variableName.lastIndexOf(".")+1):entry.getKey().variableName;
@@ -85,12 +86,36 @@ public class SearchBoundaryFilter {
             //如果参数是数字数组,保证每个数组元素都不为NaN
             if (MathUtils.isNumberArray(entry.getKey().getStringType()) && ! result.containsKey(entry.getKey()) && entry.getKey().isParameter){
                 result.put(entry.getKey(),new ArrayList<>(Arrays.asList("null")));
+                continue;
             }
             /*
             if (!result.containsKey(entry.getKey()) && !entry.getKey().isSimpleType && !entry.getKey().variableName.endsWith("()")){
                 //对于复杂的数据结构,不等于null总是一个好的方法
                 result.put(entry.getKey(),new ArrayList<String>(Arrays.asList("null")));
             }*/
+
+            if (entry.getKey().isParameter && trueValues.containsKey(entry.getKey()) && MathUtils.isNumberType(entry.getKey().getStringType())){
+                List<String> values = new ArrayList<>(entry.getValue());
+                values.removeAll(trueValues.get(entry.getKey()));
+                if (values.size() != 1){
+                    continue;
+                }
+                String value = values.get(0);
+                int count = 0;
+                for (String trueValue: trueValues.get(entry.getKey())){
+                    if (Double.valueOf(trueValue) < 0 && Double.valueOf(value) >= 0 || Double.valueOf(trueValue) > 0 && Double.valueOf(value) <= 0){
+                        count++;
+                    }
+                }
+                if (count == trueValues.get(entry.getKey()).size()){
+                    if (Double.valueOf(value) < 0){
+                        result.put(entry.getKey(), Arrays.asList("-0"));
+                    }
+                    else {
+                        result.put(entry.getKey(), Arrays.asList("+0"));
+                    }
+                }
+            }
 
         }
         return result;
@@ -178,9 +203,6 @@ public class SearchBoundaryFilter {
             }
             if (filteredList.size() != 0){
                 return filteredList;
-            }
-            else {
-                deleteDir(codePackage);
             }
 
         }

@@ -100,7 +100,9 @@ public class Localization  {
             if (getClassAddressFromStatement(statement).equals(getClassAddressFromStatement(firstline)) && getTargetFunctionFromStatement(statement).equals(getTargetFunctionFromStatement(firstline))){
                 lineNumbers.add(String.valueOf(statement.getLineNumber()));
             }else {
-                result.add(new Suspicious(getClassAddressFromStatement(firstline), getTargetFunctionFromStatement(firstline), firstline.getSuspiciousness(), firstline.getTests(), new ArrayList<String>(lineNumbers)));
+                if (firstline.getTests().size()<20) {
+                    result.add(new Suspicious(classpath, testClassPath, getClassAddressFromStatement(firstline), getTargetFunctionFromStatement(firstline), firstline.getSuspiciousness(), firstline.getTests(), new ArrayList<String>(lineNumbers)));
+                }
                 firstline = statement;
                 lineNumbers.clear();
                 if (!lineNumbers.contains(String.valueOf(statement.getLineNumber()))){
@@ -108,8 +110,8 @@ public class Localization  {
                 }
             }
         }
-        if (lineNumbers.size() != 0){
-            result.add(new Suspicious(getClassAddressFromStatement(firstline), getTargetFunctionFromStatement(firstline), firstline.getSuspiciousness(), firstline.getTests(), new ArrayList<String>(lineNumbers)));
+        if (lineNumbers.size() != 0 && firstline.getTests().size()< 20){
+            result.add(new Suspicious(classpath, testClassPath, getClassAddressFromStatement(firstline), getTargetFunctionFromStatement(firstline), firstline.getSuspiciousness(), firstline.getTests(), new ArrayList<String>(lineNumbers)));
         }
         try {
             boolean createResult = suspicousFile.createNewFile();

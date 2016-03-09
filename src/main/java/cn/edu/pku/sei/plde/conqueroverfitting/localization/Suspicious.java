@@ -6,13 +6,12 @@ import cn.edu.pku.sei.plde.conqueroverfitting.trace.TraceResult;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.VariableTracer;
 import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeEnum;
 import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeUtils;
-import cn.edu.pku.sei.plde.conqueroverfitting.utils.CodeUtils;
-import cn.edu.pku.sei.plde.conqueroverfitting.utils.FileUtils;
-import cn.edu.pku.sei.plde.conqueroverfitting.utils.InfoUtils;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.*;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.MethodCollect;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.VariableCollect;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.MethodInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
+import javassist.NotFoundException;
 import org.apache.commons.lang.StringUtils;
 
 import java.io.*;
@@ -25,17 +24,20 @@ import java.util.List;
  * Created by yanrunfa on 16/2/25.
  */
 public class Suspicious implements Serializable{
+    private final String _classpath;
+    private final String _testClasspath;
     public final String _classname;
     public final String _function;
     public final double _suspiciousness;
     public final List<String> _tests;
-    public final List<String> _lines;
+    private final List<String> _lines;
     private List<VariableInfo> _variableInfo;
     private List<MethodInfo> _methodInfo;
-    public int _lastLine = -1;
+    private int _lastLine = -1;
 
-
-    public Suspicious(String classname, String function, double suspiciousness, List<String> tests, List<String> lines){
+    public Suspicious(String classpath, String testClasspath, String classname, String function, double suspiciousness, List<String> tests, List<String> lines){
+        _classpath = classpath;
+        _testClasspath = testClasspath;
         _classname = classname;
         _function = function;
         _suspiciousness = suspiciousness;
@@ -44,11 +46,31 @@ public class Suspicious implements Serializable{
 
     }
 
-    public int lastLine(){
-        if (_lastLine == -1){
-            for (String line: _lines){
-                if (_lastLine < Integer.valueOf(line)){
-                    _lastLine = Integer.valueOf(line);
+    public int lastLine() {
+        //如果是构造函数,则重新寻找错误行
+        if (_classname.substring(_classname.lastIndexOf(".") + 1).equals(_function.substring(0, _function.indexOf('(')))) {
+            for (String test : _tests) {
+                try {
+                    String testTrace = TestUtils.getTestTrace(_classpath, _testClasspath, test.split("#")[0], test.split("#")[1]);
+                    for (String line : testTrace.split("\n")) {
+                        if (line.contains(classname()) && line.contains("(") && line.contains(")")) {
+                            if (_lastLine!= -1){
+                                continue;
+                            }
+                            _lastLine = Integer.valueOf(line.substring(line.indexOf("(") + 1, line.indexOf(")")).split(":")[1]);
+                        }
+                    }
+                }catch(NotFoundException e){
+                    continue;
+                }
+            }
+        }
+        else {
+            if (_lastLine == -1) {
+                for (String line : _lines) {
+                    if (_lastLine < Integer.valueOf(line)) {
+                        _lastLine = Integer.valueOf(line);
+                    }
                 }
             }
         }
@@ -64,6 +86,10 @@ public class Suspicious implements Serializable{
             return _function.substring(0, _function.lastIndexOf("["));
         }
         return _function.replace("\\","");
+    }
+
+    public String functionnameWithoutParam(){
+        return _function.substring(0, _function.indexOf("("));
     }
 
 
@@ -90,6 +116,7 @@ public class Suspicious implements Serializable{
         String result =  classSrc + System.getProperty("file.separator") + classname.replace(".",System.getProperty("file.separator")) + ".java";
         return result.replace(" ","");
     }
+
 
     public String getClassSrcIndex(String classSrc){
         String classSrcPath = getClassSrcPath(classSrc);
@@ -171,13 +198,15 @@ public class Suspicious implements Serializable{
         MethodCollect methodCollect = MethodCollect.GetInstance(getClassSrcIndex(classSrc));
         LinkedHashMap<String, ArrayList<MethodInfo>> methods = methodCollect.getVisibleMethodWithoutParametersInAllClassMap(getClassSrcPath(classSrc));
         _methodInfo = methods.get(getClassSrcPath(classSrc));
+        List<MethodInfo> staticMethod = new ArrayList<>();
         if (MethodCollect.checkIsStaticMethod(getClassSrcPath(classSrc),_function.substring(0, _function.indexOf("(")))){
             for (MethodInfo info: _methodInfo){
                 if (!info.isStatic){
-                    _methodInfo.remove(info);
+                    staticMethod.add(info);
                 }
             }
         }
+        _methodInfo.removeAll(staticMethod);
         return _methodInfo;
     }
 
@@ -185,11 +214,33 @@ public class Suspicious implements Serializable{
         VariableTracer tracer = new VariableTracer(classpath, testClasspath, classSrc);
         List<TraceResult> traceResults = new ArrayList<TraceResult>();
         for (String testclass: getTestClasses()){
-            traceResults.addAll(tracer.trace(classname(), functionname(), testclass, lastLine(), getVariableInfo(classSrc), getMethodInfo(classSrc)));
+            if (isSwitch()){
+                for (String line: _lines){
+                    traceResults.addAll(tracer.trace(classname(), functionname(), testclass, Integer.valueOf(line), getVariableInfo(classSrc), getMethodInfo(classSrc)));
+                }
+            }
+            else {
+                traceResults.addAll(tracer.trace(classname(), functionname(), testclass, lastLine(), getVariableInfo(classSrc), getMethodInfo(classSrc)));
+            }
         }
         return traceResults;
     }
 
+    private boolean isSwitch(){
+        if (_lines.size()<3){
+            return false;
+        }
+        int lineNum = Integer.valueOf(_lines.get(0));
+        for (int i=1; i< _lines.size(); i++){
+            if (Math.abs(Integer.valueOf(_lines.get(i))-lineNum) != 2){
+                return false;
+            }
+            lineNum = Integer.valueOf(_lines.get(i));
+        }
+        return true;
+    }
+
+    /*
     public List<TraceResult> getTraceResultWithAllTest(String classpath, String testClasspath, String classSrc) throws IOException{
         File traceFile = new File(System.getProperty("user.dir")+"/traceresult/"+ FileUtils.getMD5(classpath+testClasspath+classname()+functionname()+lastLine())+".sps");
         if (traceFile.exists()){
@@ -220,4 +271,5 @@ public class Suspicious implements Serializable{
         }
         return traceResults;
     }
+    */
 }

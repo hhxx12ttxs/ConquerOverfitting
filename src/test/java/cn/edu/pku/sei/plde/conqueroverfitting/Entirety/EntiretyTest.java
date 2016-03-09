@@ -17,26 +17,36 @@ public class EntiretyTest {
 
     @Test
     public void testEntirety() throws Exception{
-        int i = 99;
-        String project = "Math"+i;
+        int i = 80;
+        String project = "Closure-"+i;
         /* 四个整个项目需要的参数 */
+        //Math,Time
+        //String classpath = PATH_OF_DEFECTS4J+project+"/target/classes";              //项目的.class文件路径
+        //String testClasspath  = PATH_OF_DEFECTS4J+project+"/target/test-classes";    //项目的test的.class文件路径
+        //String classSrc = PATH_OF_DEFECTS4J + project+"/src/main/java";              //项目的源代码路径
+        //String testClassSrc = PATH_OF_DEFECTS4J + project +"/src/test/java";///java"; //项目的test的源代码路径
+
+        //Closure
+        String classpath = PATH_OF_DEFECTS4J+project+"/build/classes";              //项目的.class文件路径
+        String testClasspath  = PATH_OF_DEFECTS4J+project+"/build/test";    //项目的test的.class文件路径
+        String classSrc = PATH_OF_DEFECTS4J + project+"/src";              //项目的源代码路径
+        String testClassSrc = PATH_OF_DEFECTS4J + project +"/test";///java"; //项目的test的源代码路径
+
+
+        //Math 99...
         //String classpath = PATH_OF_DEFECTS4J+"Math-"+i+"/target/classes";              //项目的.class文件路径
         //String testClasspath  = PATH_OF_DEFECTS4J+"Math-"+i+"/target/test-classes";    //项目的test的.class文件路径
-        //String classSrc = PATH_OF_DEFECTS4J + "Math-"+i+"/src/main/java";              //项目的源代码路径
-        //String testClassSrc = PATH_OF_DEFECTS4J + "Math-"+i+"/src/test/java";///java"; //项目的test的源代码路径
+        //String classSrc = PATH_OF_DEFECTS4J + "Math-"+i+"/src/java";              //项目的源代码路径
+        //String testClassSrc = PATH_OF_DEFECTS4J + "Math-"+i+"/src/test";///java"; //项目的test的源代码路径
 
 
-        String classpath = PATH_OF_DEFECTS4J+"Math-"+i+"/target/classes";              //项目的.class文件路径
-        String testClasspath  = PATH_OF_DEFECTS4J+"Math-"+i+"/target/test-classes";    //项目的test的.class文件路径
-        String classSrc = PATH_OF_DEFECTS4J + "Math-"+i+"/src/java";              //项目的源代码路径
-        String testClassSrc = PATH_OF_DEFECTS4J + "Math-"+i+"/src/test";///java"; //项目的test的源代码路径
-
-
+        //Lang
         //String classpath = PATH_OF_DEFECTS4J+"Lang-"+i+"/target/classes";              //项目的.class文件路径
         //String testClasspath  = PATH_OF_DEFECTS4J+"Lang-"+i+"/target/test-classes";    //项目的test的.class文件路径
         //String classSrc = PATH_OF_DEFECTS4J + "Lang-"+i+"/src/main/java";              //项目的源代码路径
         //String testClassSrc = PATH_OF_DEFECTS4J + "Lang-"+i+"/src/test/java";///java";          //项目的test的源代码路径
 
+        //Chart
         //String classpath = PATH_OF_DEFECTS4J+"Chart-"+i+"/build";              //项目的.class文件路径
         //String testClasspath  = PATH_OF_DEFECTS4J+"Chart-"+i+"/build-tests";    //项目的test的.class文件路径
         //String classSrc = PATH_OF_DEFECTS4J + "Chart-"+i+"/source";              //项目的源代码路径

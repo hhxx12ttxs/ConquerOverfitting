@@ -22,8 +22,9 @@ public class ExceptionExtractor {
 
     public static Map<VariableInfo, List<String>> extract(List<TraceResult> traceResults, List<VariableInfo> vars){
         Map<VariableInfo, List<String>> exceptionVariable = AbandanTrueValueFilter.filter(traceResults, vars);
+        Map<VariableInfo, List<String>> trueVariable = AbandanTrueValueFilter.getTrueValue(traceResults, vars);
         Map<VariableInfo, List<String>> cleanedVariable = cleanVariables(exceptionVariable);
-        exceptionVariable = SearchBoundaryFilter.filter(cleanedVariable);
+        exceptionVariable = SearchBoundaryFilter.filter(cleanedVariable, trueVariable);
         return exceptionVariable;
     }
 

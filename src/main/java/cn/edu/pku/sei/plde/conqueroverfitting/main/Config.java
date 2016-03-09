@@ -1,6 +1,7 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.main;
 
 
+import cn.edu.pku.sei.plde.conqueroverfitting.localization.Localization;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.MathUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 import org.apache.commons.lang.StringUtils;
@@ -16,9 +17,21 @@ public class Config {
 
     public static boolean judgeResultOfFilterWithSearchBoundary(int totalCount, int theSameCount, String value, String variableName, VariableInfo info){
         double percentage = (double)theSameCount/(double)totalCount;
-        List<String> systemValues = Arrays.asList("Integer.MAX_VALUE","Integer.MIN_VALUE",String.valueOf(Integer.MAX_VALUE), String.valueOf(Integer.MIN_VALUE));
+        List<String> systemValues = Arrays.asList(
+                "Integer.MAX_VALUE",
+                "Integer.MIN_VALUE",
+                String.valueOf(Integer.MAX_VALUE),
+                String.valueOf(Integer.MIN_VALUE),
+                "Long.MAX_VALUE",
+                "Long.MIN_VALUE",
+                String.valueOf(Long.MAX_VALUE),
+                String.valueOf(Long.MIN_VALUE)
+                );
         List<String> specialValues = Arrays.asList("0","1");
-        if (percentage > 0.05 && ((systemValues.contains(value) || specialValues.contains(value))&&!info.isFieldVariable)){
+        if (/*percentage > 0.04 &&*/ systemValues.contains(value)){
+            return true;
+        }
+        if (percentage > 0.05 && specialValues.contains(value) && info.isLocalVariable){
             return true;
         }
         if (percentage > 0.1){
@@ -33,6 +46,8 @@ public class Config {
     public static boolean judgeAsTheSameInFilter(String candidate ,String candidateType, String master, String masterType){
         List<String> minInteger = Arrays.asList("Integer.MIN_VALUE","-2147483648");
         List<String> maxInteger = Arrays.asList("Integer.MAX_VALUE","2147483647");
+        List<String> minLong = Arrays.asList("Integer.MIN_VALUE","-9223372036854775808");
+        List<String> maxLong = Arrays.asList("Integer.MAX_VALUE","9223372036854775807");
         if (candidate.equals(master)){
             return true;
         }
@@ -56,6 +71,12 @@ public class Config {
             return true;
         }
         if (maxInteger.contains(master) && maxInteger.contains(candidate)){
+            return true;
+        }
+        if (minLong.contains(master) && minLong.contains(candidate)){
+            return true;
+        }
+        if (maxLong.contains(master) && maxLong.contains(candidate)){
             return true;
         }
         return false;

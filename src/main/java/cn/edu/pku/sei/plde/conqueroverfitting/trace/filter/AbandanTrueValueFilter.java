@@ -89,6 +89,24 @@ public class AbandanTrueValueFilter {
     }
 
 
+    public static Map<VariableInfo, List<String>> getTrueValue(List<TraceResult> traceResults, List<VariableInfo> vars){
+        Map<VariableInfo, List<String>> trueValues = new HashMap<VariableInfo, List<String>>();
+        for (TraceResult traceResult: traceResults){
+            if (!traceResult.getTestResult()) {
+                continue;
+            }
+            Set<String> keys = traceResult.getResultMap().keySet();
+            for (String key: keys){
+                VariableInfo infoKey = getVariableInfoWithName(vars, key);
+                if (infoKey == null){
+                    continue;
+                }
+                List<String> value = trueValues.containsKey(infoKey)?appandList(trueValues.get(infoKey),traceResult.get(key)):traceResult.get(key);
+                trueValues.put(infoKey, value);
+            }
+        }
+        return trueValues;
+    }
 
     public static <T> List<T> appandList(List<T> aa, List<T> bb){
         List<T> result = new ArrayList<T>();

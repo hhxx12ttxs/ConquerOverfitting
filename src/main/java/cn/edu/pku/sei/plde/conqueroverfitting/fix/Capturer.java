@@ -4,6 +4,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.slice.StaticSlice;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.CodeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.FileUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.ShellUtils;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.TestUtils;
 import com.gzoltar.core.GZoltar;
 import com.gzoltar.core.instr.testing.TestResult;
 import de.unisb.cs.st.javaslicer.slicing.Slicer;
@@ -65,7 +66,7 @@ public class Capturer {
     }
 
     private String run() throws Exception{
-        _testTrace = runTest();
+        _testTrace = TestUtils.getTestTrace(_classpath, _testclasspath,_classname,_functionname);
         _classCode = FileUtils.getCodeFromFile(_fileaddress);
         _functionCode = FileUtils.getTestFunctionCodeFromCode(_classCode, _functionname);
         _errorLineNum = getErrorLineNumFromTestTrace();
@@ -190,36 +191,6 @@ public class Capturer {
         }
         throw new Exception("Unknown assert type");
     }
-
-
-
-    private String runTest() throws Exception {
-        ArrayList<String> classpaths = new ArrayList<String>();
-        classpaths.add(_classpath);
-        classpaths.add(_testclasspath);
-        GZoltar gzoltar = new GZoltar(System.getProperty("user.dir"));
-        gzoltar.setClassPaths(classpaths);
-        gzoltar.addPackageNotToInstrument("org.junit");
-        gzoltar.addPackageNotToInstrument("junit.framework");
-        gzoltar.addTestPackageNotToExecute("junit.framework");
-        gzoltar.addTestPackageNotToExecute("org.junit");
-        gzoltar.addTestToExecute(_classname);
-        gzoltar.addClassNotToInstrument(_classname);
-        try{
-            gzoltar.run();
-        } catch (NullPointerException e){
-            throw new NotFoundException("Test Class " + _classname +  " No Found in Test Class Path " + _testclasspath);
-        }
-        List<TestResult> testResults = gzoltar.getTestResults();
-        for (TestResult testResult: testResults){
-            if (testResult.getName().substring(testResult.getName().lastIndexOf('#')+1).equals(_functionname)){
-                return testResult.getTrace();
-            }
-        }
-        throw new NotFoundException("No Test Named "+_functionname + " Found in Test Class " + _classname);
-    }
-
-
 
 
 
