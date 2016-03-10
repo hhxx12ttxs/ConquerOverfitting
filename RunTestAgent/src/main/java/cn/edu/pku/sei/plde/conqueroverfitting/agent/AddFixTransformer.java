@@ -42,7 +42,6 @@ public class AddFixTransformer implements ClassFileTransformer{
         /* handing the anonymity class */
         if (className.contains(_targetClassName) && className.contains("$") && _tempJavaName.length() > 1){
             String tempAnonymityClassName = _tempJavaName.substring(0,_tempJavaName.lastIndexOf("."))+className.substring(className.indexOf("$"))+".class";
-            new File(tempAnonymityClassName).deleteOnExit();
             byte[] result = Utils.getBytesFromFile(tempAnonymityClassName);
             if (result == null){
                 return classfileBuffer;

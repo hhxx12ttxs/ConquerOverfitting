@@ -5,6 +5,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.boundary.BoundaryFilter;
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.BoundaryInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.gatherer.GathererJava;
 import cn.edu.pku.sei.plde.conqueroverfitting.main.Config;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.FileUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.MathUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 import org.apache.commons.lang.StringUtils;
@@ -52,10 +53,12 @@ public class SearchBoundaryFilter {
             }
 
             //如果错误的值较多,直接生成错误值区间
+            /*
             if (entry.getValue().size()> 30) {
                 result.put(entry.getKey(),entry.getValue());
                 continue;
             }
+            */
 
             //如果是数字变量,将搜索到的值生成区间,如果怀疑变量的值都不在该区间内,则生成该区间
             if (MathUtils.isNumberType(entry.getKey().getStringType())){
@@ -118,6 +121,19 @@ public class SearchBoundaryFilter {
             }
 
         }
+        if (result.size() == 0){
+            int boolCount = 0;
+            Map.Entry<VariableInfo, List<String>> boolEntry = null;
+            for (Map.Entry<VariableInfo, List<String>> entry: exceptionVariable.entrySet()){
+                if (entry.getKey().getStringType().equals("BOOLEAN")){
+                    boolCount++;
+                    boolEntry = entry;
+                }
+            }
+            if (boolCount == 1 && boolEntry!= null && trueValues.containsKey(boolEntry.getKey())){
+                result.put(boolEntry.getKey(),boolEntry.getValue());
+            }
+        }
         return result;
     }
 
@@ -171,7 +187,7 @@ public class SearchBoundaryFilter {
                 codePackage.mkdirs();
             }
             if (codePackage.list().length < 30){
-                deleteDir(codePackage);
+                FileUtils.deleteDir(codePackage);
             }
             else {
                 BoundaryCollect boundaryCollect = new BoundaryCollect(codePackage.getAbsolutePath());
@@ -227,20 +243,6 @@ public class SearchBoundaryFilter {
         return filteredList;
     }
 
-    private static boolean deleteDir(File dir) {
-
-        if (dir.isDirectory()) {
-            String[] children = dir.list();
-            for (int i=0; i<children.length; i++) {
-                boolean success = deleteDir(new File(dir, children[i]));
-                if (!success) {
-                    return false;
-                }
-            }
-        }
-        // The directory is now empty so now it can be smoked
-        return dir.delete();
-    }
 
 
 }

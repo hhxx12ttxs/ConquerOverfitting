@@ -82,9 +82,13 @@ public class FileUtils {
 		}
 	}
 
-	public static String getFileAddressOfClass(String testSrcPath, String className){
-		return  testSrcPath + System.getProperty("file.separator") + className.replace('.',System.getProperty("file.separator").charAt(0))+".java";
+	public static String getFileAddressOfJava(String srcPath, String className){
+		return  srcPath + System.getProperty("file.separator") + className.replace('.',System.getProperty("file.separator").charAt(0))+".java";
 	}
+
+    public static String getFileAddressOfClass(String classPath, String className){
+        return  classPath + System.getProperty("file.separator") + className.replace('.',System.getProperty("file.separator").charAt(0))+".class";
+    }
 
 	public static String getCodeFromFile(String fileaddress){
 		try {
@@ -123,6 +127,48 @@ public class FileUtils {
 		throw new NotFoundException("Target function: "+ targetFunctionName+ " No Found");
 	}
 
+	public static List<Integer> getTestFunctionLineFromCode(String code, String targetFunctionName) throws NotFoundException{
+		List<Integer> result = new ArrayList<>();
+		if (code.contains("@Test")){
+			String[] tests = code.split("@Test");
+			for (String test: tests){
+				if (test.contains("public void "+targetFunctionName+"()")){
+					int firstLine = getLineNumberOfLine(code,test.split("\n")[0]);
+					result.add(firstLine);
+					result.add(firstLine+test.split("\n").length);
+					break;
+				}
+			}
+		}
+		else {
+			List<String> tests = divideTestFunction(code);
+			for (String test: tests){
+				if (test.trim().startsWith(targetFunctionName+"()")){
+					int firstLine = getLineNumberOfLine(code,"public void"+test.split("\n")[0]);
+					result.add(firstLine);
+					result.add(firstLine+test.split("\n").length-1);
+					break;
+				}
+			}
+		}
+		if (result.size() == 0){
+			throw new NotFoundException("Target function: "+ targetFunctionName+ " No Found");
+		}
+		return result;
+	}
+
+	public static int getLineNumberOfLine(String code, String targetLine){
+		int lineNum = 0;
+		for (String line: code.split("\n")){
+			if (targetLine.trim().equals(line.trim())){
+				return ++lineNum;
+			}
+			++lineNum;
+		}
+		return -1;
+	}
+
+
 	public static List<String> getPackageImportFromCode(String code){
 		List<String> result = new ArrayList<>();
 		for (String line: code.split("\n")){
@@ -154,5 +200,41 @@ public class FileUtils {
 		}
 		return result;
 	}
+
+	public static File createFile(String filePath) throws IOException {
+		File file = new File(filePath);
+		if(! file.exists()) {
+			makeDir(file.getParentFile());
+			file.createNewFile();
+		}
+		return file;
+	}
+
+	/**
+	 * Enhancement of java.io.File#mkdir()
+	 * Create the given directory . If the parent folders don't exists, we will create them all.
+	 * @see java.io.File#mkdir()
+	 * @param dir the directory to be created
+	 */
+	private static void makeDir(File dir) {
+		if(! dir.getParentFile().exists()) {
+			makeDir(dir.getParentFile());
+		}
+		dir.mkdir();
+	}
+
+
+    public static void deleteDir(File dir) {
+
+        if (dir.isDirectory()) {
+            String[] children = dir.list();
+            for (int i=0; i<children.length; i++) {
+                deleteDir(new File(dir, children[i]));
+            }
+        }
+        // The directory is now empty so now it can be smoked
+        dir.deleteOnExit();
+    }
+
 
 }

@@ -210,17 +210,17 @@ public class Suspicious implements Serializable{
         return _methodInfo;
     }
 
-    public List<TraceResult> getTraceResult(String classpath, String testClasspath, String classSrc) throws IOException{
-        VariableTracer tracer = new VariableTracer(classpath, testClasspath, classSrc);
+    public List<TraceResult> getTraceResult(String classpath, String testClasspath, String classSrc, String testClassSrc) throws IOException{
+        VariableTracer tracer = new VariableTracer(classpath, testClasspath, classSrc, testClassSrc);
         List<TraceResult> traceResults = new ArrayList<TraceResult>();
-        for (String testclass: getTestClasses()){
+        for (String testclass: _tests){
             if (isSwitch()){
                 for (String line: _lines){
-                    traceResults.addAll(tracer.trace(classname(), functionname(), testclass, Integer.valueOf(line), getVariableInfo(classSrc), getMethodInfo(classSrc)));
+                    traceResults.addAll(tracer.trace(classname(), functionname(), testclass.split("#")[0], testclass.split("#")[1], Integer.valueOf(line), getVariableInfo(classSrc), getMethodInfo(classSrc)));
                 }
             }
             else {
-                traceResults.addAll(tracer.trace(classname(), functionname(), testclass, lastLine(), getVariableInfo(classSrc), getMethodInfo(classSrc)));
+                traceResults.addAll(tracer.trace(classname(), functionname(), testclass.split("#")[0], testclass.split("#")[1], lastLine(), getVariableInfo(classSrc), getMethodInfo(classSrc)));
             }
         }
         return traceResults;

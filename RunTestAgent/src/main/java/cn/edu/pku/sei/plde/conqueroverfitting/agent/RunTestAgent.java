@@ -25,7 +25,7 @@ public class RunTestAgent {
             agentArgs = agentArgs.substring(0,agentArgs.length()-2);
         }
         String[] args = agentArgs.split(",");
-        if (args.length < 6 || args.length > 7){
+        if (args.length < 6 || args.length > 10){
             throw new IOException("Wrong Number Args");
         }
         String targetClassName = "";
@@ -34,8 +34,11 @@ public class RunTestAgent {
         String[] targetVariables = {};
         String srcPath = "";
         String classPath = "";
+        String testSrcPath = "";
+        String testClassName = "";
         String ifString = null;
         String fixString = null;
+        int assertLine = -1;
         for (String arg: args) {
             int colonPos = arg.indexOf(":");
             String key = colonPos == -1?arg:arg.substring(0, colonPos);
@@ -97,11 +100,22 @@ public class RunTestAgent {
                 fixString = new String(decoder.decodeBuffer(value), "utf-8");
                 System.out.println(fixString);
             }
+            else if (key.equalsIgnoreCase("assert")){
+                assertLine = Integer.valueOf(value);
+            }
+            else if (key.equalsIgnoreCase("test")){
+                testClassName = value;
+            }
+            else if (key.equalsIgnoreCase("testsrc")){
+                testSrcPath = value;
+            }
         }
         if (targetClassName.length() < 1 || targetLineNum == -1 || srcPath.length() < 1 || classPath.length() < 1){
             throw new IOException("Wrong Agent Args");
         }
-
+        if (!testClassName.equals("")  && !testSrcPath.equals("")){
+            inst.addTransformer(new CommentAssertTransformer(testSrcPath, testClassName));
+        }
         if (ifString!=null && fixString!= null){
             inst.addTransformer(new AddFixTransformer(targetClassName, targetLineNum,ifString,fixString, srcPath, classPath));
         }

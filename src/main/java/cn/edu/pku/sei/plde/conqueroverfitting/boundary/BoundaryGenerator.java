@@ -24,8 +24,8 @@ import java.util.regex.Matcher;
  */
 public class BoundaryGenerator {
 
-    public static String generate(String classpath, String testClasspath, String classSrc, Suspicious suspicious) throws IOException {
-        List<TraceResult> traceResults = suspicious.getTraceResult(classpath, testClasspath, classSrc);
+    public static String generate(String classpath, String testClasspath, String classSrc, String testClassSrc, Suspicious suspicious) throws IOException {
+        List<TraceResult> traceResults = suspicious.getTraceResult(classpath, testClasspath, classSrc, testClassSrc);
         if (traceResults.size() == 0) {
             System.out.println("Cannot trace any variable");
             return "";
@@ -140,7 +140,7 @@ public class BoundaryGenerator {
         if (entry.getValue().size() == 1 && !MathUtils.isNumberType(entry.getKey().getStringType())) {
             return entry.getKey().variableName + " == " + entry.getValue().get(0);
         }
-        else if (entry.getValue().size() == 1){
+        if (entry.getValue().size() == 1){
             if (entry.getValue().get(0).equals("+0")){
                 return entry.getKey().variableName + " >= " + 0;
             }
@@ -154,7 +154,7 @@ public class BoundaryGenerator {
             String maxValue = entry.getValue().get(1);
             return entry.getKey().variableName + ">" + maxValue + " && " + entry.getKey().variableName + "<" + minValue;
         }*/
-        else if (MathUtils.isNumberType(entry.getKey().getStringType())) {
+        if (MathUtils.isNumberType(entry.getKey().getStringType())) {
             List<String> keywords = InfoUtils.getSearchKeywords(entry.getKey());
             BoundaryCollect boundaryCollect = new BoundaryCollect("experiment/searchcode/" + StringUtils.join(keywords, "-"));
             List<BoundaryInfo> boundaryList = boundaryCollect.getBoundaryList();
@@ -181,10 +181,10 @@ public class BoundaryGenerator {
                 }
                 try {
                     double doubleValue = MathUtils.parseStringValue(info.value);
-                    if (doubleValue >= biggestBoundary && doubleValue <= smallestValue) {
+                    if (doubleValue > biggestBoundary && doubleValue < smallestValue) {
                         biggestBoundary = doubleValue;
                     }
-                    if (doubleValue <=smallestBoundary && doubleValue >= biggestValue) {
+                    if (doubleValue <smallestBoundary && doubleValue > biggestValue) {
                         smallestBoundary = doubleValue;
                     }
                 } catch (NumberFormatException e){
@@ -230,8 +230,7 @@ public class BoundaryGenerator {
                     return entry.getKey().variableName + " >= ("+varType+")" + biggestBoundary;
                 }
             } else {
-
-                return entry.getKey().variableName + " <= ("+varType+")" + smallestBoundary + " || " + entry.getKey().variableName + " >= ("+varType+")" + biggestBoundary;
+                return entry.getKey().variableName + " <= ("+varType+")" + smallestBoundary + " && " + entry.getKey().variableName + " >= ("+varType+")" + biggestBoundary;
             }
         }
         System.out.println("Nonsupport Condition for Create IF Expression");

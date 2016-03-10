@@ -118,10 +118,10 @@ public class WGzoltar extends GZoltar {
             classname = classname.substring(0, classname.lastIndexOf("$"));
         }
         String functionName = testResult.getName().split("#")[1];
-        if (!new File(FileUtils.getFileAddressOfClass(testSrcPath, classname)).exists()){
+        if (!new File(FileUtils.getFileAddressOfJava(testSrcPath, classname)).exists()){
             return result;
         }
-        LocalizationInConstructor constructor = new LocalizationInConstructor(srcPath, FileUtils.getFileAddressOfClass(testSrcPath, classname), functionName);
+        LocalizationInConstructor constructor = new LocalizationInConstructor(srcPath, FileUtils.getFileAddressOfJava(testSrcPath, classname), functionName);
         HashMap<String, ArrayList<ConstructorDeclarationInfo>> constructMap = constructor.getConstructorMap();
         if (constructMap.size() == 0){
 
@@ -130,7 +130,7 @@ public class WGzoltar extends GZoltar {
             String packageName = PathUtils.getPackageNameFromPath(key);
             int paramCount;
             try {
-                paramCount = CodeUtils.countParamsOfConstructorInTest(FileUtils.getFileAddressOfClass(testSrcPath, classname), functionName, packageName.substring(packageName.lastIndexOf(".")+1));
+                paramCount = CodeUtils.countParamsOfConstructorInTest(FileUtils.getFileAddressOfJava(testSrcPath, classname), functionName, packageName.substring(packageName.lastIndexOf(".")+1));
             } catch (Exception e){
                 paramCount = -1;
             }

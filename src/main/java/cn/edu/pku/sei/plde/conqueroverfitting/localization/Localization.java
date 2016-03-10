@@ -40,6 +40,14 @@ public class Localization  {
         Arrays.sort(testClasses);
     }
 
+    public Localization(String classPath, String testClassPath, String testSrcPath, String srcPath, String testClass){
+        this.classpath = classPath;
+        this.testClassPath = testClassPath;
+        this.testSrcPath = testSrcPath;
+        this.srcPath = srcPath;
+        testClasses = new String[]{testClass};
+    }
+
     public List<StatementExt> getSuspiciousList(){
         return this.getSuspiciousListWithMetric(new Ochiai());
     }
@@ -80,9 +88,13 @@ public class Localization  {
         return result;
     }
 
-
     public List<Suspicious> getSuspiciousLite(){
-        File suspicousFile = new File(System.getProperty("user.dir")+"/suspicious/"+ FileUtils.getMD5(StringUtils.join(testClasses,""))+".sps");
+        return getSuspiciousLite(0);
+    }
+
+    public List<Suspicious> getSuspiciousLite(int num){
+        File suspicousFile = new File(System.getProperty("user.dir")+"/suspicious/"+ FileUtils.getMD5(StringUtils.join(testClasses,"")+classpath+testClassPath+srcPath+testSrcPath)+num+".sps");
+
         if (suspicousFile.exists()){
             try {
                 ObjectInputStream objectInputStream = new ObjectInputStream(new FileInputStream(suspicousFile));
@@ -92,6 +104,7 @@ public class Localization  {
                 System.out.println("Reloading Localization Result...");
             }
         }
+
         List<StatementExt> statements = this.getSuspiciousListWithSuspiciousnessBiggerThanZero();
         List<Suspicious> result = new ArrayList<Suspicious>();
         StatementExt firstline = statements.get(0);

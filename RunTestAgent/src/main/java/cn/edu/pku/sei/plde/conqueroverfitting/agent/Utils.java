@@ -67,25 +67,19 @@ public class Utils {
      */
     public static byte[] getBytesFromFile(String fileName) {
         try {
-            // precondition
-            File file = new File(fileName);
-            InputStream is = new FileInputStream(file);
-            long length = file.length();
-            byte[] bytes = new byte[(int) length];
-
-            // Read in the bytes
-            int offset = 0;
-            int numRead = 0;
-            while (offset <bytes.length && (numRead = is.read(bytes, offset, bytes.length - offset)) >= 0) {
-                offset += numRead;
+            FileInputStream in=new FileInputStream(fileName);
+            ByteArrayOutputStream out=new ByteArrayOutputStream(1024);
+            byte[] temp=new byte[1024];
+            int size=0;
+            while((size=in.read(temp))!=-1)
+            {
+                out.write(temp,0,size);
             }
-
-            if (offset < bytes.length) {
-                throw new IOException("Could not completely read file " + file.getName());
-            }
-            is.close();
+            in.close();
+            byte[] bytes=out.toByteArray();
             return bytes;
         } catch (Exception e) {
+            e.printStackTrace();
             return null;
         }
     }

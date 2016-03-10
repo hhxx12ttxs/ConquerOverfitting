@@ -1,6 +1,7 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.utils;
 
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
+import javassist.NotFoundException;
 
 import java.io.File;
 import java.io.IOException;
@@ -66,6 +67,20 @@ public class CodeUtils {
         return name;
     }
 
+    public static int getAssertCountInTest(String testSrcPath, String testClassname, String testMethodName){
+        int count = 0;
+        try {
+            String functionCode = FileUtils.getTestFunctionCodeFromCode(FileUtils.getCodeFromFile(FileUtils.getFileAddressOfJava(testSrcPath, testClassname)), testMethodName);
+            for (String lineString: functionCode.split("\n")){
+                if (lineString.trim().startsWith("assert") || lineString.trim().startsWith("Assert") || lineString.trim().startsWith("fail(")){
+                    count++;
+                }
+            }
+        } catch (NotFoundException e){
+            return -1;
+        }
+        return count;
+    }
 
     public static List<String> divideParameter(String line, int level){
         //line = line.replace(" ", "");
