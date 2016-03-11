@@ -25,7 +25,7 @@ public class RunTestAgent {
             agentArgs = agentArgs.substring(0,agentArgs.length()-2);
         }
         String[] args = agentArgs.split(",");
-        if (args.length < 6 || args.length > 10){
+        if (args.length < 5 || args.length > 10){
             throw new IOException("Wrong Number Args");
         }
         String targetClassName = "";
@@ -36,8 +36,7 @@ public class RunTestAgent {
         String classPath = "";
         String testSrcPath = "";
         String testClassName = "";
-        String ifString = null;
-        String fixString = null;
+        String patch = null;
         int assertLine = -1;
         for (String arg: args) {
             int colonPos = arg.indexOf(":");
@@ -90,15 +89,9 @@ public class RunTestAgent {
                     targetVariables = concat(targetVariables, varsArray);
                 }
             }
-            else if (key.equalsIgnoreCase("if")) {
+            else if (key.equalsIgnoreCase("patch")) {
                 BASE64Decoder decoder = new BASE64Decoder();
-                ifString = new String(decoder.decodeBuffer(value), "utf-8");
-                System.out.println(ifString);
-            }
-            else if (key.equalsIgnoreCase("fix")) {
-                BASE64Decoder decoder = new BASE64Decoder();
-                fixString = new String(decoder.decodeBuffer(value), "utf-8");
-                System.out.println(fixString);
+                patch = new String(decoder.decodeBuffer(value), "utf-8");
             }
             else if (key.equalsIgnoreCase("assert")){
                 assertLine = Integer.valueOf(value);
@@ -110,14 +103,11 @@ public class RunTestAgent {
                 testSrcPath = value;
             }
         }
-        if (targetClassName.length() < 1 || targetLineNum == -1 || srcPath.length() < 1 || classPath.length() < 1){
-            throw new IOException("Wrong Agent Args");
-        }
         if (!testClassName.equals("")  && !testSrcPath.equals("")){
             inst.addTransformer(new CommentAssertTransformer(testSrcPath, testClassName));
         }
-        if (ifString!=null && fixString!= null){
-            inst.addTransformer(new AddFixTransformer(targetClassName, targetLineNum,ifString,fixString, srcPath, classPath));
+        if (patch!= null){
+            inst.addTransformer(new AddFixTransformer(targetClassName, targetLineNum, patch, srcPath, classPath));
         }
         else if (targetVariables.length != 0){
             inst.addTransformer(new AddPrintTransformer(targetClassName, targetClassFunc,targetLineNum, targetVariables, srcPath, classPath));

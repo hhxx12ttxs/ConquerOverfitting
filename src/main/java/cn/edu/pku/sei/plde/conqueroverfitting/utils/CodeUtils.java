@@ -82,6 +82,18 @@ public class CodeUtils {
         return count;
     }
 
+
+    public static String getLineFromCode(String code, int line){
+        int lineNum = 0;
+        for (String lineString: code.split("\n")){
+            lineNum++;
+            if (lineNum == line){
+                return lineString;
+            }
+        }
+        return "";
+    }
+
     public static List<String> divideParameter(String line, int level){
         //line = line.replace(" ", "");
         List<String> result = new ArrayList<String>();

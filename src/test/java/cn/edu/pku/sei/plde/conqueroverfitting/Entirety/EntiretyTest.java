@@ -3,6 +3,7 @@ package cn.edu.pku.sei.plde.conqueroverfitting.Entirety;
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.BoundaryGenerator;
 import cn.edu.pku.sei.plde.conqueroverfitting.fix.Capturer;
 import cn.edu.pku.sei.plde.conqueroverfitting.fix.JavaFixer;
+import cn.edu.pku.sei.plde.conqueroverfitting.fix.PatchGenerator;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Localization;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Suspicious;
 import org.junit.Test;
@@ -17,7 +18,7 @@ public class EntiretyTest {
 
     @Test
     public void testEntirety() throws Exception{
-        int i = 47;
+        int i = 25;
         String project = "Math-"+i;
         /* 四个整个项目需要的参数 */
         //Math,Time
@@ -62,7 +63,6 @@ public class EntiretyTest {
                 continue;
             }
             Capturer fixCapturer = new Capturer(classpath, testClasspath, testClassSrc);
-            System.out.println("if: "+ ifString);
             for (String test: suspicious.getTestClassAndFunction()){
                 if (!test.contains("#")) {
                     continue;
@@ -71,9 +71,10 @@ public class EntiretyTest {
                 if (fixString.equals("")){
                     continue;
                 }
-                System.out.println("fix: "+ fixString);
+                String patch = PatchGenerator.generate(ifString, fixString);
+                System.out.println(patch);
                 JavaFixer javaFixer = new JavaFixer(classpath, testClasspath, classSrc);
-                boolean result = javaFixer.fixWithIfStatement(suspicious.getTestClasses(),suspicious.classname(),suspicious.lastLine(),ifString,fixString);
+                boolean result = javaFixer.fixWithIfStatement(suspicious.getTestClasses(),suspicious.classname(),suspicious.lastLine(),patch);
                 if (result){
                     System.out.println("Fix Success");
                 }

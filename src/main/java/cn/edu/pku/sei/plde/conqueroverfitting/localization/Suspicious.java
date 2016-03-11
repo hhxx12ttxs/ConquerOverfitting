@@ -65,15 +65,14 @@ public class Suspicious implements Serializable{
                 }
             }
         }
-        else {
-            if (_lastLine == -1) {
-                for (String line : _lines) {
-                    if (_lastLine < Integer.valueOf(line)) {
-                        _lastLine = Integer.valueOf(line);
-                    }
+        if (_lastLine == -1) {
+            for (String line : _lines) {
+                if (_lastLine < Integer.valueOf(line)) {
+                    _lastLine = Integer.valueOf(line);
                 }
             }
         }
+
         return _lastLine;
     }
 

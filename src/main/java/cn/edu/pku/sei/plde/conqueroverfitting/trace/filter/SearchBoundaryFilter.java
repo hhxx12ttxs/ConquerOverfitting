@@ -53,12 +53,12 @@ public class SearchBoundaryFilter {
             }
 
             //如果错误的值较多,直接生成错误值区间
-            /*
-            if (entry.getValue().size()> 30) {
+
+            if (entry.getValue().size()> 30 && entry.getValue().size() < 100) {
                 result.put(entry.getKey(),entry.getValue());
                 continue;
             }
-            */
+
 
             //如果是数字变量,将搜索到的值生成区间,如果怀疑变量的值都不在该区间内,则生成该区间
             if (MathUtils.isNumberType(entry.getKey().getStringType())){
@@ -171,8 +171,12 @@ public class SearchBoundaryFilter {
         ArrayList<String> keywords = new ArrayList<String>();
         keywords.add("if");
         keywords.add(valueType);
-        keywords.add(info.variableName);
-
+        if (info.variableName.startsWith("is") && info.variableName.endsWith("()")){
+            keywords.add(info.variableName.substring(0, info.variableName.lastIndexOf("(")));
+        }
+        else {
+            keywords.add(info.variableName);
+        }
 
         File codePackage = new File("experiment/searchcode/" + StringUtils.join(keywords,"-"));
         File simpleCodePackage = new File("experiment/searchcode/" + StringUtils.join(Arrays.asList("if",info.variableName),"-"));

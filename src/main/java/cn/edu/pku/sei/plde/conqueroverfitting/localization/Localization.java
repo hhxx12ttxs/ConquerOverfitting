@@ -110,10 +110,13 @@ public class Localization  {
         StatementExt firstline = statements.get(0);
         List<String> lineNumbers = new ArrayList<String>();
         for (StatementExt statement: statements){
+            if (statement.getName().contains("exception") || statement.getName().contains("Exception")){
+                continue;
+            }
             if (getClassAddressFromStatement(statement).equals(getClassAddressFromStatement(firstline)) && getTargetFunctionFromStatement(statement).equals(getTargetFunctionFromStatement(firstline))){
                 lineNumbers.add(String.valueOf(statement.getLineNumber()));
             }else {
-                if (firstline.getTests().size()<20) {
+                if (firstline.getTests().size()<30) {
                     result.add(new Suspicious(classpath, testClassPath, getClassAddressFromStatement(firstline), getTargetFunctionFromStatement(firstline), firstline.getSuspiciousness(), firstline.getTests(), new ArrayList<String>(lineNumbers)));
                 }
                 firstline = statement;
@@ -123,7 +126,7 @@ public class Localization  {
                 }
             }
         }
-        if (lineNumbers.size() != 0 && firstline.getTests().size()< 20){
+        if (lineNumbers.size() != 0 && firstline.getTests().size()< 30){
             result.add(new Suspicious(classpath, testClassPath, getClassAddressFromStatement(firstline), getTargetFunctionFromStatement(firstline), firstline.getSuspiciousness(), firstline.getTests(), new ArrayList<String>(lineNumbers)));
         }
         try {

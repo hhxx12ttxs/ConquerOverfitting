@@ -31,24 +31,24 @@ public class JavaFixer {
         _classSrcPath = classSrcPath;
     }
 
-    public boolean fixWithIfStatement (String testClassname,String classname,int errorLine, String ifString, String fixString) throws IOException{
+    public boolean fixWithIfStatement (String testClassname,String classname,int errorLine, String patch) throws IOException{
         _testClassName = testClassname;
         _classname = classname;
         _errorLine = errorLine;
-        String shellResult = fixShell(_testClassName, _classname, _errorLine, ifString, fixString);
+        String shellResult = fixShell(_testClassName, _classname, _errorLine,patch);
         return !shellResult.contains("fail");
     }
 
-    public boolean fixWithIfStatement (List<String> testClassname,String classname,int errorLine, String ifString, String fixString) throws IOException{
+    public boolean fixWithIfStatement (List<String> testClassname,String classname,int errorLine, String patch) throws IOException{
         _testClassName = StringUtils.join(testClassname,"-");
         _classname = classname;
         _errorLine = errorLine;
-        String shellResult = fixShell(_testClassName, _classname, _errorLine, ifString, fixString);
+        String shellResult = fixShell(_testClassName, _classname, _errorLine, patch);
         return !shellResult.contains("fail");
     }
 
-    private String fixShell(String testClassname, String classname, int errorLine, String ifString, String fixString) throws IOException {
-        String agentArg = buildAgentArg(classname, errorLine, ifString, fixString);
+    private String fixShell(String testClassname, String classname, int errorLine, String patch) throws IOException {
+        String agentArg = buildAgentArg(classname, errorLine, patch);
         String classpath = buildClasspath(Arrays.asList(PathUtils.getJunitPath()));
         String[] arg = {"java","-javaagent:"+PathUtils.getAgentPath()+"="+agentArg,"-cp",classpath,"org.junit.runner.JUnitCore", testClassname.replace("-"," ")};
         String shellResult = ShellUtils.shellRun(Arrays.asList(StringUtils.join(arg, " ")));
@@ -58,21 +58,17 @@ public class JavaFixer {
         return shellResult;
     }
 
-    private String buildAgentArg(String classname, int errorLine, String ifString, String fixString) throws IOException{
+    private String buildAgentArg(String classname, int errorLine, String patch) throws IOException{
         String agentClass = "class:"+ classname;
         String agentLine = "line:"+ errorLine;
         String agentSrc = "src:" + _classSrcPath;
         String agentCp = "cp:" + _classpath;
         BASE64Encoder encoder = new BASE64Encoder();
-        String agentIf = "if:" + encoder.encode(ifString.getBytes("utf-8"));
-        if (agentIf.endsWith("=")){
-            agentIf = agentIf.substring(0, agentIf.length()-2).replace("\n","");
+        String agentPatch = "patch:" + encoder.encode(patch.getBytes("utf-8"));
+        if (agentPatch.endsWith("=")){
+            agentPatch = agentPatch.substring(0, agentPatch.length()-2).replace("\n","");
         }
-        String agentFix = "fix:" + encoder.encode(fixString.getBytes("utf-8"));
-        if (agentFix.endsWith("=")){
-            agentFix = agentFix.substring(0, agentFix.length()-2).replace("\n","");
-        }
-        return "\""+StringUtils.join(Arrays.asList(agentClass,agentLine,agentSrc,agentCp,agentIf,agentFix),",")+"\"";
+        return "\""+StringUtils.join(Arrays.asList(agentClass,agentLine,agentSrc,agentCp,agentPatch),",")+"\"";
     }
 
     private String buildClasspath(List<String> additionalPath){

@@ -43,7 +43,7 @@ public class VariableTracer {
     private String _traceResult;
     private String _testMethodName;
     private String _testSrcPath;
-    private int _errorAssertLine = -1;
+    private int _errorAssertLine = 0;
     private String _commentedTestClass = "";
     private String _trueTestClass = "";
     private int trueAssert = 0;
@@ -137,7 +137,7 @@ public class VariableTracer {
                     FileUtils.deleteDir(tempFile);
                 }
                 else {
-                    tempFile.delete();
+                    tempFile.deleteOnExit();
                 }
             }
         }
@@ -192,6 +192,9 @@ public class VariableTracer {
             String[] pairs = trace.split("\\|");
             for (String pair: pairs){
                 if (!pair.contains("=")){
+                    continue;
+                }
+                if (pair.substring(pair.indexOf("=")+1).equals("\"+"+pair.substring(0, pair.indexOf('='))+"+")){
                     continue;
                 }
                 result.put(pair.substring(0, pair.indexOf('=')),pair.substring(pair.indexOf('=')+1));
@@ -266,9 +269,10 @@ public class VariableTracer {
     }
 
     private int getErrorAssertLine(){
-        if (_errorAssertLine!= -1){
+        if (_errorAssertLine!= 0){
             return _errorAssertLine;
         }
+        int lineNum = -1;
         try{
             String trace = TestUtils.getTestTrace(_classpath, _testClasspath, _testClassname, _testMethodName);
             if (trace == null){
@@ -276,18 +280,26 @@ public class VariableTracer {
             }
             for (String line : trace.split("\n")){
                 if (line.contains(_testClassname) && line.contains(_testMethodName) && line.contains("(") && line.contains(")") && line.contains(":")){
-                    _errorAssertLine =  Integer.valueOf(line.substring(line.lastIndexOf("(")+1,line.lastIndexOf(")")).split(":")[1]);
+                    lineNum =  Integer.valueOf(line.substring(line.lastIndexOf("(")+1,line.lastIndexOf(")")).split(":")[1]);
                 }
             }
         }catch (NotFoundException e){
             System.out.println("ERROR: Cannot Find Source File: "+_testClassname+" in Source Path: "+ _testSrcPath);
         }
+        String lineString = CodeUtils.getLineFromCode(FileUtils.getCodeFromFile(FileUtils.getFileAddressOfJava(_testSrcPath, _testClassname)),_errorAssertLine).trim();
+        if (!lineString.startsWith("Assert") && !lineString.startsWith("assert") && !lineString.startsWith("fail")){
+            lineNum = -1;
+        }
+        _errorAssertLine = lineNum;
         return _errorAssertLine;
     }
 
 
     private int getTrueErrorLine(){
         int assertLine = getErrorAssertLine();
+        if (assertLine == -1){
+            return -1;
+        }
         List<Suspicious> suspiciouses = new ArrayList<>();
 
         File originJavaFile = new File(FileUtils.getFileAddressOfJava(_testSrcPath, _testClassname));

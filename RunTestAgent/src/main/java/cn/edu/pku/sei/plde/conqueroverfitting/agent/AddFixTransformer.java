@@ -14,8 +14,7 @@ public class AddFixTransformer implements ClassFileTransformer{
     public final int _targetLineNum;
     public final String _srcPath;
     public final String _classPath;
-    public final String _ifString;
-    public final String _fixString;
+    public final String _patch;
     private String _tempJavaName="";
     private String _tempClassName="";
 
@@ -24,18 +23,16 @@ public class AddFixTransformer implements ClassFileTransformer{
      *
      * @param targetClassName
      * @param targetLineNum
-     * @param ifString
-     * @param fixString
+     * @param patch
      * @param srcPath
      * @param classPath
      */
-    public AddFixTransformer(String targetClassName, int targetLineNum, String ifString, String fixString, String srcPath, String classPath){
+    public AddFixTransformer(String targetClassName, int targetLineNum, String patch, String srcPath, String classPath){
         _targetClassName = targetClassName;
         _targetLineNum = targetLineNum;
         _srcPath = srcPath;
         _classPath = classPath;
-        _ifString = ifString;
-        _fixString = fixString;
+        _patch = patch;
     }
 
     public byte[] transform(ClassLoader loader, String className, Class<?> classBeingRedefined, ProtectionDomain protectionDomain, byte[] classfileBuffer) throws IllegalClassFormatException {
@@ -55,10 +52,8 @@ public class AddFixTransformer implements ClassFileTransformer{
 
         _tempJavaName = System.getProperty("user.dir")+"/temp/"+className.replace("/", ".").substring(className.replace("/", ".").lastIndexOf(".")+1)+".java";
         _tempClassName = System.getProperty("user.dir")+"/temp/"+className.replace("/", ".").substring(className.replace("/", ".").lastIndexOf(".")+1)+".class";
-
-        String fixCode = _fixString + "{" + _fixString +"}";
         try {
-            return Utils.AddCodeToSource(_tempJavaName,_tempClassName,_classPath,_srcPath,className,_targetLineNum, fixCode);
+            return Utils.AddCodeToSource(_tempJavaName,_tempClassName,_classPath,_srcPath,className,_targetLineNum, _patch);
         }catch (IOException e){
             e.printStackTrace();
         }

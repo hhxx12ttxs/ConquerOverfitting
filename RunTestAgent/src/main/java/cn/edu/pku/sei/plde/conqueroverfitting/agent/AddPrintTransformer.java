@@ -54,10 +54,9 @@ public class AddPrintTransformer implements ClassFileTransformer {
         System.out.print(">>");
         try {
             return Utils.AddCodeToSource(_tempJavaName,_tempClassName,_classPath,_srcPath,className,_targetLineNum,printCode);
-        }catch (IOException e){
-            e.printStackTrace();
+        }catch (Exception e){
+            return classfileBuffer;
         }
-        return  classfileBuffer;
     }
 
     private String generatePrintLine(String var){
@@ -81,7 +80,7 @@ public class AddPrintTransformer implements ClassFileTransformer {
             varPrinter += "+\"|\""+");";
             printLine += "if ("+varName+".length < 100){"+varPrinter+"}";
         }
-        else if (!varType.endsWith("[]")){
+        else if (!varType.endsWith("[]") && !varName.endsWith("()")){
             printLine += "System.out.print(\"|"+varName+"=\"+(";
             printLine += varName +"== null)+\"|\""+");";
         }

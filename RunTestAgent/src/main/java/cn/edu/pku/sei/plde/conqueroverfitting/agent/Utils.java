@@ -44,12 +44,12 @@ public class Utils {
                 if (lineString.startsWith("package")){
                     outputStream.write("import java.util.Arrays;\n".getBytes());
                     outputStream.write("import java.lang.System;\n".getBytes());
-
                 }
             }
             outputStream.close();
             reader.close();
-            System.out.println(Utils.shellRun(Arrays.asList("javac -Xlint:unchecked -cp "+ classPath+" "+ tempJavaName)));
+            String result = Utils.shellRun(Arrays.asList("javac -Xlint:unchecked -cp "+ classPath+" "+ tempJavaName));
+            System.out.println(result);
         } catch (FileNotFoundException e){
             System.out.println("ERROR: Cannot Find Source File: "+className+" in Source Path: "+ srcPath);
             e.printStackTrace();
