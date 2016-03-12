@@ -20,6 +20,7 @@ public class StatementExt extends Statement  {
     private int nf;
     private Metric defaultMetric;
     private List<String> tests = new ArrayList<String>();
+    private List<String> failTests = new ArrayList<>();
 
     public StatementExt(Component c, int lN) {
         super(c, lN);
@@ -36,7 +37,9 @@ public class StatementExt extends Statement  {
         this.setLineNumber(s.getLineNumber());
     }
 
-
+    public void addFailTest(String test){
+        failTests.add(test);
+    }
     public void addTest(String test){
         tests.add(test);
     }
@@ -44,6 +47,10 @@ public class StatementExt extends Statement  {
     public List<String> getTests(){
         return tests;
     }
+    public List<String> getFailTests(){
+        return failTests;
+    }
+
 
     public int getEf() {
         return ef;

@@ -194,9 +194,13 @@ public class BoundaryGenerator {
             }
             String varType = MathUtils.getSimpleOfNumberType(entry.getKey().getStringType());
             Map<String, String> intervals = new HashMap<>();
-            intervals.put("backwardInterval", entry.getKey().variableName + " > ("+ varType+")" + smallestBoundary);
+            if (smallestBoundary < MathUtils.getMaxValueOfNumberType(entry.getKey().getStringType())){
+                intervals.put("backwardInterval", entry.getKey().variableName + " > ("+ varType+")" + smallestBoundary);
+            }
             intervals.put("innerInterval", "("+entry.getKey().variableName + " <= ("+varType+")" + smallestBoundary + " && " + entry.getKey().variableName + " >= ("+varType+")" + biggestBoundary+")");
-            intervals.put("forwardInterval", entry.getKey().variableName + " < ("+varType+")" + biggestBoundary);
+            if (biggestBoundary> MathUtils.getMinValueOfNumberType(entry.getKey().getStringType())){
+                intervals.put("forwardInterval", entry.getKey().variableName + " < ("+varType+")" + biggestBoundary);
+            }
             if (trueValues.containsKey(entry.getKey())){
                 List<String> trueValue = trueValues.get(entry.getKey());
                 for (String valueString : trueValue) {

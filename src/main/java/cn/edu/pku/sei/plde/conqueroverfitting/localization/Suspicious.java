@@ -30,18 +30,20 @@ public class Suspicious implements Serializable{
     public final String _function;
     public final double _suspiciousness;
     public final List<String> _tests;
+    public final List<String> _failTests;
     private final List<String> _lines;
     private List<VariableInfo> _variableInfo;
     private List<MethodInfo> _methodInfo;
     private int _lastLine = -1;
 
-    public Suspicious(String classpath, String testClasspath, String classname, String function, double suspiciousness, List<String> tests, List<String> lines){
+    public Suspicious(String classpath, String testClasspath, String classname, String function, double suspiciousness, List<String> tests,List<String> failTests, List<String> lines){
         _classpath = classpath;
         _testClasspath = testClasspath;
         _classname = classname;
         _function = function;
         _suspiciousness = suspiciousness;
         _tests = tests;
+        _failTests = failTests;
         _lines = lines;
 
     }
@@ -212,14 +214,28 @@ public class Suspicious implements Serializable{
     public List<TraceResult> getTraceResult(String classpath, String testClasspath, String classSrc, String testClassSrc) throws IOException{
         VariableTracer tracer = new VariableTracer(classpath, testClasspath, classSrc, testClassSrc);
         List<TraceResult> traceResults = new ArrayList<TraceResult>();
-        for (String testclass: _tests){
-            if (isSwitch()){
-                for (String line: _lines){
-                    traceResults.addAll(tracer.trace(classname(), functionname(), testclass.split("#")[0], testclass.split("#")[1], Integer.valueOf(line), getVariableInfo(classSrc), getMethodInfo(classSrc)));
-                }
+        if (_tests.size() > 10){
+            for (String testclass: _failTests){
+                //if (isSwitch()){
+                //    for (String line: _lines){
+                //        traceResults.addAll(tracer.trace(classname(), functionname(), testclass.split("#")[0], testclass.split("#")[1], Integer.valueOf(line), getVariableInfo(classSrc), getMethodInfo(classSrc)));
+                //    }
+                //}
+                //else {
+                    traceResults.addAll(tracer.trace(classname(), functionname(), testclass.split("#")[0], testclass.split("#")[1], lastLine(), getVariableInfo(classSrc), getMethodInfo(classSrc)));
+                //}
             }
-            else {
-                traceResults.addAll(tracer.trace(classname(), functionname(), testclass.split("#")[0], testclass.split("#")[1], lastLine(), getVariableInfo(classSrc), getMethodInfo(classSrc)));
+        }
+        else {
+            for (String testclass: _tests){
+                //if (isSwitch()){
+                //    for (String line: _lines){
+                //        traceResults.addAll(tracer.trace(classname(), functionname(), testclass.split("#")[0], testclass.split("#")[1], Integer.valueOf(line), getVariableInfo(classSrc), getMethodInfo(classSrc)));
+                //    }
+                //}
+                //else {
+                    traceResults.addAll(tracer.trace(classname(), functionname(), testclass.split("#")[0], testclass.split("#")[1], lastLine(), getVariableInfo(classSrc), getMethodInfo(classSrc)));
+                //}
             }
         }
         return traceResults;

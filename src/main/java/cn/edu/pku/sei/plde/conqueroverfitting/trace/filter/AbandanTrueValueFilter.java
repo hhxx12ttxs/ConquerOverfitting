@@ -43,7 +43,7 @@ public class AbandanTrueValueFilter {
                     else {
                         int count = 0;
                         for (String v: valueArray){
-                            if (trueValues.get(infoKey).toString().contains(","+v) ||
+                            if (trueValues.get(infoKey).toString().contains(", "+v) ||
                                     trueValues.get(infoKey).toString().contains(v+",") ||
                                     trueValues.get(infoKey).toString().contains("["+v+"]")
                                     ){
@@ -77,9 +77,9 @@ public class AbandanTrueValueFilter {
                 if (infoKey == null){
                     continue;
                 }
-                if (infoKey.isParameter){
-                    continue;
-                }
+                //if (infoKey.isParameter){
+                //    continue;
+                //}
 
                 List<String> value = trueValues.containsKey(infoKey)?appandList(trueValues.get(infoKey),traceResult.get(key)):traceResult.get(key);
                 trueValues.put(infoKey, value);

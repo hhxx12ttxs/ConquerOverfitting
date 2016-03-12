@@ -89,6 +89,9 @@ public class WGzoltar extends GZoltar {
                     executedAndFailedCount++;
                 }
                 s.addTest(testResult.getName());
+                if (!testResult.wasSuccessful()){
+                    s.addFailTest(testResult.getName());
+                }
                 nextTest = coverage.nextSetBit(nextTest + 1);
             }
             s.setEf(executedAndFailedCount);

@@ -89,13 +89,13 @@ public class Localization  {
     }
 
     public List<Suspicious> getSuspiciousLite(){
-        return getSuspiciousLite(0);
+        return getSuspiciousLite(true);
     }
 
-    public List<Suspicious> getSuspiciousLite(int num){
-        File suspicousFile = new File(System.getProperty("user.dir")+"/suspicious/"+ FileUtils.getMD5(StringUtils.join(testClasses,"")+classpath+testClassPath+srcPath+testSrcPath)+num+".sps");
+    public List<Suspicious> getSuspiciousLite(boolean jump){
+        File suspicousFile = new File(System.getProperty("user.dir")+"/suspicious/"+ FileUtils.getMD5(StringUtils.join(testClasses,"")+classpath+testClassPath+srcPath+testSrcPath)+".sps");
 
-        if (suspicousFile.exists()){
+        if (suspicousFile.exists() && jump){
             try {
                 ObjectInputStream objectInputStream = new ObjectInputStream(new FileInputStream(suspicousFile));
                 List<Suspicious> result = (List<Suspicious>) objectInputStream.readObject();
@@ -117,7 +117,7 @@ public class Localization  {
                 lineNumbers.add(String.valueOf(statement.getLineNumber()));
             }else {
                 if (firstline.getTests().size()<30) {
-                    result.add(new Suspicious(classpath, testClassPath, getClassAddressFromStatement(firstline), getTargetFunctionFromStatement(firstline), firstline.getSuspiciousness(), firstline.getTests(), new ArrayList<String>(lineNumbers)));
+                    result.add(new Suspicious(classpath, testClassPath, getClassAddressFromStatement(firstline), getTargetFunctionFromStatement(firstline), firstline.getSuspiciousness(), firstline.getTests(),firstline.getFailTests(), new ArrayList<String>(lineNumbers)));
                 }
                 firstline = statement;
                 lineNumbers.clear();
@@ -126,8 +126,8 @@ public class Localization  {
                 }
             }
         }
-        if (lineNumbers.size() != 0 && firstline.getTests().size()< 30){
-            result.add(new Suspicious(classpath, testClassPath, getClassAddressFromStatement(firstline), getTargetFunctionFromStatement(firstline), firstline.getSuspiciousness(), firstline.getTests(), new ArrayList<String>(lineNumbers)));
+        if (lineNumbers.size() != 0 && firstline.getTests().size()< 40){
+            result.add(new Suspicious(classpath, testClassPath, getClassAddressFromStatement(firstline), getTargetFunctionFromStatement(firstline), firstline.getSuspiciousness(), firstline.getTests(),firstline.getFailTests(), new ArrayList<String>(lineNumbers)));
         }
         try {
             boolean createResult = suspicousFile.createNewFile();

@@ -68,6 +68,60 @@ public class MathUtils {
 
     }
 
+    public static double getMaxValueOfNumberType(String type){
+        switch (type){
+            case "INT":
+            case "int":
+            case "Integer":
+                return Integer.MAX_VALUE;
+            case "double":
+            case "Double":
+            case "DOUBLE":
+                return Double.MAX_VALUE;
+            case "SHORT":
+            case "short":
+            case "Short":
+                return Short.MAX_VALUE;
+            case "FLOAT":
+            case "Float":
+            case "float":
+                return Float.MAX_VALUE;
+            case "LONG":
+            case "Long":
+            case "long":
+                return Long.MAX_VALUE;
+            default:
+                return Integer.MAX_VALUE;
+        }
+    }
+
+    public static double getMinValueOfNumberType(String type){
+        switch (type){
+            case "INT":
+            case "int":
+            case "Integer":
+                return Integer.MIN_VALUE;
+            case "double":
+            case "Double":
+            case "DOUBLE":
+                return Double.MIN_VALUE;
+            case "SHORT":
+            case "short":
+            case "Short":
+                return Short.MIN_VALUE;
+            case "FLOAT":
+            case "Float":
+            case "float":
+                return Float.MIN_VALUE;
+            case "LONG":
+            case "Long":
+            case "long":
+                return Long.MIN_VALUE;
+            default:
+                return Integer.MIN_VALUE;
+        }
+    }
+
     public static String getSimpleOfNumberType(String type){
         switch (type){
             case "INT":

@@ -25,21 +25,6 @@ public class FileUtils {
 			e.printStackTrace();
 		}
 	}
-	
-	public static String ReadFile(String filePath) {
-		StringBuilder sb = new StringBuilder();
-		try {
-			BufferedReader br = new BufferedReader(new FileReader(filePath));
-			String line = "";
-			while ((line = br.readLine()) != null) {
-				sb.append(line + "\n");
-			}
-			br.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		return sb.toString();
-	}
 
 	public static ArrayList<String> getJavaFilesInProj(String projectPath) {
 		File file = new File(projectPath);
@@ -235,6 +220,33 @@ public class FileUtils {
         // The directory is now empty so now it can be smoked
         dir.deleteOnExit();
     }
+    public static File copyFile(File src, File dst){
+        return copyFile(src.getAbsolutePath(), dst.getAbsolutePath());
+    }
 
+    public static File copyFile(String srcPath, String dstPath){
+        try{
+            FileInputStream input=new FileInputStream(srcPath);
+            FileOutputStream output=new FileOutputStream(dstPath);
+            int in=input.read();
+            while(in!=-1){
+                output.write(in);
+                in=input.read();
+            }
+            input.close();
+            output.close();
+        }catch (IOException e){
+            System.out.println(e.toString());
+        }
+        return new File(dstPath);
+    }
+
+    public static String tempJavaPath(String classname){
+        return System.getProperty("user.dir")+"/temp/"+classname.substring(classname.lastIndexOf(".")+1)+".java";
+    }
+
+    public static String tempClassPath(String classname){
+        return System.getProperty("user.dir")+"/temp/"+classname.substring(classname.lastIndexOf(".")+1)+".class";
+    }
 
 }

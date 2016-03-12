@@ -38,14 +38,13 @@ public class VariableTracer {
     private String _functionname;
     private List<VariableInfo> _vars;
     private List<MethodInfo> _methods;
-    private int _errorLine;
+    private List<Integer> _errorLine;
     private String _shellResult;
     private String _traceResult;
     private String _testMethodName;
     private String _testSrcPath;
-    private int _errorAssertLine = 0;
     private String _commentedTestClass = "";
-    private String _trueTestClass = "";
+    private AssertUtils _assertUtils;
     private int trueAssert = 0;
 
     /**
@@ -98,22 +97,12 @@ public class VariableTracer {
         _testClassname = testClassname;
         _testMethodName = testMethodName;
         _functionname = functionname;
-
+        _assertUtils = new AssertUtils(_classpath,_testClasspath,_testSrcPath,testClassname,testMethodName);
         _errorLine = getErrorLine(errorLine);
         List<TraceResult> results = new ArrayList<>();
 
-
-        _shellResult = traceShell(_testClassname,_classname,_functionname,_commentedTestClass,_vars,_methods);
-        if (_shellResult.contains(">>") && _shellResult.contains("Time:")){
-            _traceResult = analysisShellResult(_shellResult);
-            results.addAll(traceAnalysis(_traceResult));
-        }
-        else {
-            printErrorShell();
-        }
-
-        if (!_trueTestClass.equals("") && trueAssert > 0){
-            _shellResult = traceShell(_testClassname, _classname, _functionname, _trueTestClass, _vars, _methods);
+        for (int line: _errorLine){
+            _shellResult = traceShell(_testClassname,_classname,_functionname,_commentedTestClass,_vars,_methods, line);
             if (_shellResult.contains(">>") && _shellResult.contains("Time:")){
                 _traceResult = analysisShellResult(_shellResult);
                 results.addAll(traceAnalysis(_traceResult));
@@ -121,7 +110,18 @@ public class VariableTracer {
             else {
                 printErrorShell();
             }
+            if (!_assertUtils.getTrueTestFile().equals("") && trueAssert > 0){
+                _shellResult = traceShell(_testClassname, _classname, _functionname, _assertUtils.getTrueTestFile(), _vars, _methods, line);
+                if (_shellResult.contains(">>") && _shellResult.contains("Time:")){
+                    _traceResult = analysisShellResult(_shellResult);
+                    results.addAll(traceAnalysis(_traceResult));
+                }
+                else {
+                    printErrorShell();
+                }
+            }
         }
+
         deleteTempFile();
         return results;
     };
@@ -149,14 +149,24 @@ public class VariableTracer {
     }
 
 
-    private int getErrorLine(int errorLine){
+    private List<Integer> getErrorLine(int errorLine){
+        List<Integer> result = new ArrayList<>();
         int assertCount = CodeUtils.getAssertCountInTest(_testSrcPath,_testClassname,_testMethodName);
         if (assertCount < 2){
-            return errorLine;
+            result.add(errorLine);
+            return result;
         }
-        int line = getTrueErrorLine();
-        errorLine = line==-1?errorLine:line;
-        return errorLine;
+        List<Integer> lines = getTrueErrorLine();
+        for (int line: lines){
+            if (line>0 && !result.contains(line)){
+                result.add(line);
+            }
+        }
+        if (result.size()> 0){
+            return result;
+        }
+        result.add(errorLine);
+        return result;
     }
 
 
@@ -207,11 +217,11 @@ public class VariableTracer {
     }
 
 
-    private String traceShell(String testClassname, String classname, String functionname, String testClasspath, List<VariableInfo> vars, List<MethodInfo> methods) throws IOException{
+    private String traceShell(String testClassname, String classname, String functionname, String testClasspath, List<VariableInfo> vars, List<MethodInfo> methods, int errorLine) throws IOException{
         String tracePath = PathUtils.getAgentPath();
         String junitPath = PathUtils.getJunitPath();
 
-        String agentArg = buildAgentArg(classname, functionname, testClasspath, vars, methods);
+        String agentArg = buildAgentArg(classname, functionname, testClasspath, vars, methods, errorLine);
         String classpath = buildClasspath(Arrays.asList(junitPath));
         String[] arg = {"java","-javaagent:"+tracePath+"="+agentArg,"-cp",classpath,"org.junit.runner.JUnitCore", testClassname};
         System.out.print(StringUtils.join(arg," "));
@@ -223,22 +233,14 @@ public class VariableTracer {
     }
 
 
-    private String buildAgentArg(String classname,String functionname, String testClassPath, List<VariableInfo> vars, List<MethodInfo> methods){
+    private String buildAgentArg(String classname,String functionname, String testClassPath, List<VariableInfo> vars, List<MethodInfo> methods, int errorLine){
         String agentClass = "class:"+ classname;
         String agentFunc = "func:" + functionname;
-        String agentLine = "line:"+ _errorLine;
+        String agentLine = "line:"+ errorLine;
         String agentSrc = "src:" + _srcPath;
         String agentCp = "cp:" + _classpath;
         String agentTestSrc = testClassPath.equals("")?"":"testsrc: "+testClassPath.trim();
-        //String agentAssert = "";
         String agentTest = testClassPath.equals("")?"":"test:" + _testClassname;
-        //String agentTestSrc = "";
-        //int assertLine = getErrorAssertLine();
-        //if (assertLine!= -1){
-        //    agentAssert = "assert:"+String.valueOf(assertLine);
-        //    agentTest = "test:"+_testClassname+"/"+_testMethodName;
-        //    agentTestSrc = "testsrc:"+_testSrcPath;
-        //}
 
         String agentVars = "";
         if (vars.size() > 0) {
@@ -268,107 +270,84 @@ public class VariableTracer {
         return "\""+StringUtils.join(Arrays.asList(agentClass,agentFunc,agentLine,agentSrc,agentCp,agentVars,agentMethods, agentTest, agentTestSrc),",")+"\"";
     }
 
-    private int getErrorAssertLine(){
-        if (_errorAssertLine!= 0){
-            return _errorAssertLine;
+
+    private List<Integer> getTrueErrorLine(){
+        List<Integer> assertLines = _assertUtils.getErrorAssertLine();
+        List<Integer> result = new ArrayList<>();
+        if (assertLines.size() == 0){
+            return result;
         }
-        int lineNum = -1;
-        try{
-            String trace = TestUtils.getTestTrace(_classpath, _testClasspath, _testClassname, _testMethodName);
-            if (trace == null){
-                return -1;
+        for (int assertLine: assertLines){
+            List<Suspicious> suspiciouses = new ArrayList<>();
+            File originJavaFile = new File(FileUtils.getFileAddressOfJava(_testSrcPath, _testClassname));
+            File originClassFile = new File(FileUtils.getFileAddressOfClass(_testClasspath,_testClassname));
+            File renameJavaFile = new File(FileUtils.getFileAddressOfJava(_testSrcPath, _testClassname)+".temp");
+            File renameClassFile = new File(FileUtils.getFileAddressOfClass(_testClasspath,_testClassname)+".temp");
+            originJavaFile.renameTo(renameJavaFile);
+            originClassFile.renameTo(renameClassFile);
+            try {
+                if (!originJavaFile.exists()){
+                    originJavaFile.createNewFile();
+                }
+                FileOutputStream outputStream = new FileOutputStream(originJavaFile);
+                BufferedReader reader = new BufferedReader(new FileReader(_testSrcPath+"/"+_testClassname.replace(".","/")+".java.temp"));
+                String lineString = null;
+                List<Integer> functionLine = FileUtils.getTestFunctionLineFromCode(FileUtils.getCodeFromFile(_testSrcPath+"/"+_testClassname.replace(".","/")+".java.temp"),_testMethodName);
+                int beginLine = functionLine.get(0);
+                int endLine = functionLine.get(1);
+                int line = 0;
+                int tryLine = -1;
+                List<Integer> commitedAfter = new ArrayList<>();
+                while ((lineString = reader.readLine()) != null) {
+                    line++;
+                    if (lineString.trim().startsWith("try")){
+                        tryLine = line+1;
+                    }
+                    if (lineString.trim().contains("catch")){
+                        tryLine = -1;
+                    }
+                    if (line >= beginLine && line <= endLine && assertLine != line && (lineString.trim().startsWith("assert") || lineString.trim().startsWith("Assert")|| lineString.trim().startsWith("fail("))){
+                        if (lineString.trim().startsWith("fail(") && tryLine != -1){
+                            for (int i= tryLine; i< line; i++){
+                                commitedAfter.add(i);
+                            }
+                        }
+                        lineString = "//"+lineString;
+                        trueAssert++;
+                    }
+                    outputStream.write((lineString+"\n").getBytes());
+
+                }
+                outputStream.close();
+                reader.close();
+                for (int num: commitedAfter){
+                    SourceUtils.commentCodeInSourceFile(originJavaFile, num);
+                }
+                System.out.println(Utils.shellRun(Arrays.asList("javac -Xlint:unchecked -source 1.6 -target 1.7 -cp "+ buildClasspath(Arrays.asList(PathUtils.getJunitPath())) +" -d "+_testClasspath+" "+ originJavaFile.getAbsolutePath())));
+                System.out.println(Utils.shellRun(Arrays.asList("javac -Xlint:unchecked -source 1.6 -target 1.7 -cp "+ buildClasspath(Arrays.asList(PathUtils.getJunitPath())) +" -d "+System.getProperty("user.dir")+"/temp/"+" "+ originJavaFile.getAbsolutePath())));
+                _commentedTestClass = FileUtils.getFileAddressOfClass(System.getProperty("user.dir")+"/temp",_testClassname);
+                Localization localization = new Localization(_classpath, _testClasspath, _testSrcPath, _srcPath);
+                suspiciouses = localization.getSuspiciousLite(false);
+
+            } catch (NotFoundException e){
+                System.out.println("ERROR: Cannot Find Source File: "+ _testClassname +" in Source Path: "+ _testSrcPath);
+                e.printStackTrace();
+            } catch (Exception e){
+                e.printStackTrace();
             }
-            for (String line : trace.split("\n")){
-                if (line.contains(_testClassname) && line.contains(_testMethodName) && line.contains("(") && line.contains(")") && line.contains(":")){
-                    lineNum =  Integer.valueOf(line.substring(line.lastIndexOf("(")+1,line.lastIndexOf(")")).split(":")[1]);
+            originJavaFile.delete();
+            renameJavaFile.renameTo(originJavaFile);
+            originClassFile.delete();
+            renameClassFile.renameTo(originClassFile);
+
+            for (Suspicious suspicious: suspiciouses){
+                if (suspicious.functionname().equals(_functionname) && suspicious.classname().equals(_classname)){
+                    result.add(suspicious.lastLine());
+                    break;
                 }
             }
-        }catch (NotFoundException e){
-            System.out.println("ERROR: Cannot Find Source File: "+_testClassname+" in Source Path: "+ _testSrcPath);
         }
-        String lineString = CodeUtils.getLineFromCode(FileUtils.getCodeFromFile(FileUtils.getFileAddressOfJava(_testSrcPath, _testClassname)),_errorAssertLine).trim();
-        if (!lineString.startsWith("Assert") && !lineString.startsWith("assert") && !lineString.startsWith("fail")){
-            lineNum = -1;
-        }
-        _errorAssertLine = lineNum;
-        return _errorAssertLine;
-    }
-
-
-    private int getTrueErrorLine(){
-        int assertLine = getErrorAssertLine();
-        if (assertLine == -1){
-            return -1;
-        }
-        List<Suspicious> suspiciouses = new ArrayList<>();
-
-        File originJavaFile = new File(FileUtils.getFileAddressOfJava(_testSrcPath, _testClassname));
-        File originClassFile = new File(FileUtils.getFileAddressOfClass(_testClasspath,_testClassname));
-        File renameJavaFile = new File(FileUtils.getFileAddressOfJava(_testSrcPath, _testClassname)+".temp");
-        File renameClassFile = new File(FileUtils.getFileAddressOfClass(_testClasspath,_testClassname)+".temp");
-        File trueJavaFile = new File(System.getProperty("user.dir")+"/temp/true/"+_testClassname.substring(_testClassname.lastIndexOf(".")+1)+".java");
-        File trueClassFile = new File(System.getProperty("user.dir")+"/temp/true/"+_testClassname.substring(_testClassname.lastIndexOf(".")+1)+".class");
-        originJavaFile.renameTo(renameJavaFile);
-        originClassFile.renameTo(renameClassFile);
-        try {
-            if (!originJavaFile.exists()){
-                originJavaFile.createNewFile();
-            }
-            if (!trueJavaFile.exists()){
-                FileUtils.createFile(System.getProperty("user.dir")+"/temp/true/"+_testClassname.substring(_testClassname.lastIndexOf(".")+1)+".java");
-            }
-            FileOutputStream outputStream = new FileOutputStream(originJavaFile);
-            FileOutputStream trueOutputStream = new FileOutputStream(trueJavaFile);
-            BufferedReader reader = new BufferedReader(new FileReader(_testSrcPath+"/"+_testClassname.replace(".","/")+".java.temp"));
-            String lineString = null;
-            List<Integer> functionLine = FileUtils.getTestFunctionLineFromCode(FileUtils.getCodeFromFile(_testSrcPath+"/"+_testClassname.replace(".","/")+".java.temp"),_testMethodName);
-            int beginLine = functionLine.get(0);
-            int endLine = functionLine.get(1);
-            int line = 0;
-            while ((lineString = reader.readLine()) != null) {
-                line++;
-                if (line == assertLine){
-                    lineString = "//"+lineString;
-                    trueOutputStream.write((lineString+"\n").getBytes());
-                    lineString = lineString.substring(3);
-                }else {
-                    trueOutputStream.write((lineString+"\n").getBytes());
-                }
-                if (line >= beginLine && line <= endLine && line!=assertLine && (lineString.trim().startsWith("assert") || lineString.trim().startsWith("Assert")|| lineString.trim().startsWith("fail("))){
-                    lineString = "//"+lineString;
-                    trueAssert++;
-                }
-                outputStream.write((lineString+"\n").getBytes());
-
-            }
-            outputStream.close();
-            trueOutputStream.close();
-            reader.close();
-            System.out.println(Utils.shellRun(Arrays.asList("javac -Xlint:unchecked -source 1.6 -target 1.7 -cp "+ buildClasspath(Arrays.asList(PathUtils.getJunitPath())) +" -d "+_testClasspath+" "+ originJavaFile.getAbsolutePath())));
-            System.out.println(Utils.shellRun(Arrays.asList("javac -Xlint:unchecked -source 1.6 -target 1.7 -cp "+ buildClasspath(Arrays.asList(PathUtils.getJunitPath())) +" -d "+System.getProperty("user.dir")+"/temp/"+" "+ originJavaFile.getAbsolutePath())));
-            System.out.println(Utils.shellRun(Arrays.asList("javac -Xlint:unchecked -source 1.6 -target 1.7 -cp "+ buildClasspath(Arrays.asList(PathUtils.getJunitPath())) + " " + trueJavaFile.getAbsolutePath())));
-            _commentedTestClass = FileUtils.getFileAddressOfClass(System.getProperty("user.dir")+"/temp",_testClassname);
-            _trueTestClass = trueClassFile.getAbsolutePath();
-            Localization localization = new Localization(_classpath, _testClasspath, _testSrcPath, _srcPath);
-            suspiciouses = localization.getSuspiciousLite(1);
-
-        } catch (NotFoundException e){
-            System.out.println("ERROR: Cannot Find Source File: "+ _testClassname +" in Source Path: "+ _testSrcPath);
-            e.printStackTrace();
-        } catch (Exception e){
-            e.printStackTrace();
-        }
-        originJavaFile.delete();
-        renameJavaFile.renameTo(originJavaFile);
-        originClassFile.delete();
-        renameClassFile.renameTo(originClassFile);
-
-        for (Suspicious suspicious: suspiciouses){
-            if (suspicious.functionname().equals(_functionname) && suspicious.classname().equals(_classname)){
-                return suspicious.lastLine();
-            }
-        }
-        return -1;
+        return result;
     }
 
     private String buildClasspath(List<String> additionalPath){
