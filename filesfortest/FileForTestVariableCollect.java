@@ -3,7 +3,7 @@ package filefortest;
 public class FileForTestVariableCollect {
 	public Integer MAX_INTEGER = 0x7fffffff, MIN_INTEGER = 0x80000000;
 	private final String MAX_TIME = "24";
-    public FileForTestVariableCollect2 fileForTestVariableCollect2;
+    public static FileForTestVariableCollect2 fileForTestVariableCollect2;
 	public static void main(String[] args) {
 		int a = 1;
 		switch (a) {

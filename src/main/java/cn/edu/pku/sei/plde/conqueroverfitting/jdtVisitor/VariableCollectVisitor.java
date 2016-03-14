@@ -41,7 +41,7 @@ public class VariableCollectVisitor extends ASTVisitor {
     public boolean visit(FieldDeclaration node) {
         boolean isFinal = Modifier.isFinal(node.getModifiers());
         boolean isStatic = Modifier.isStatic(node.getModifiers());
-        if (isFinal && isStatic) {
+        if (isFinal) {
             return true;
         }
         TypeInference typeInference = new TypeInference(node.getType()
@@ -53,11 +53,11 @@ public class VariableCollectVisitor extends ASTVisitor {
             boolean isPublic = Modifier.isPublic(node.getModifiers());
             if (typeInference.isSimpleType) {
                 variableInfo = new VariableInfo(varName, typeInference.type,
-                        typeInference.isSimpleType, null, isPublic);
+                        typeInference.isSimpleType, null, isPublic, isStatic);
             } else {
                 variableInfo = new VariableInfo(varName, null,
                         typeInference.isSimpleType, typeInference.otherType,
-                        isPublic);
+                        isPublic, isStatic);
             }
             filedInClassList.add(variableInfo);
         }
@@ -72,9 +72,8 @@ public class VariableCollectVisitor extends ASTVisitor {
 
         for (SingleVariableDeclaration parameter : parameters) {
             boolean isFinal = Modifier.isFinal(parameter.getModifiers());
-            boolean isStatic = Modifier.isStatic(parameter.getModifiers());
-            if (isFinal && isStatic) {
-                return true;
+            if (isFinal) {
+                continue;
             }
 
             TypeInference paraTypeInference = new TypeInference(parameter.getType()
@@ -104,8 +103,7 @@ public class VariableCollectVisitor extends ASTVisitor {
     @Override
     public boolean visit(VariableDeclarationStatement node) {
         boolean isFinal = Modifier.isFinal(node.getModifiers());
-        boolean isStatic = Modifier.isStatic(node.getModifiers());
-        if (isFinal && isStatic) {
+        if (isFinal) {
             return true;
         }
 

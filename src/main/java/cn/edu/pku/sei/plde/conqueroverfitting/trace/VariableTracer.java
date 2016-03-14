@@ -16,7 +16,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.visible.VariableCollect;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.MethodInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 import com.gzoltar.core.components.Statement;
-import com.sun.tools.corba.se.idl.constExpr.Not;
+
 import javassist.NotFoundException;
 import org.apache.commons.lang.StringUtils;
 import org.junit.runner.JUnitCore;

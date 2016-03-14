@@ -12,7 +12,7 @@ import static org.junit.Assert.assertTrue;
 
 public class BoundaryCollectTest {
 
-    //@Test
+    @Test
     public void testBoundaryCollect() {
         String path = "filesfortest";
         BoundaryCollect boundaryCollect = new BoundaryCollect(path);
@@ -33,7 +33,7 @@ public class BoundaryCollectTest {
     }
 
 
-    //@Test
+    @Test
     public void testMath26() {
         String path = "experiment//searchcode//math-long-a0";
         BoundaryCollect boundaryCollect = new BoundaryCollect(path);
@@ -58,6 +58,57 @@ public class BoundaryCollectTest {
 
         assertNotNull(boundaryList);
         Log log = new Log("log//boundary-math-int-u.log");
+        for(BoundaryInfo boundaryInfo : boundaryList){
+            log.logSignLine("begin");
+            log.logStr("name: " + boundaryInfo.info);
+            log.logStr("value: " + boundaryInfo.value);
+            log.logStr("type: " + boundaryInfo.variableSimpleType);
+            log.logSignLine("end");
+        }
+    }
+
+    @Test
+    public void testTime9() {
+        String path = "experiment//searchcode//time-int-millisOffset";
+        BoundaryCollect boundaryCollect = new BoundaryCollect(path);
+        ArrayList<BoundaryInfo> boundaryList = boundaryCollect.getBoundaryList();
+
+        assertNotNull(boundaryList);
+        Log log = new Log("log//boundary-time-int-millisOffset.log");
+        for(BoundaryInfo boundaryInfo : boundaryList){
+            log.logSignLine("begin");
+            log.logStr("name: " + boundaryInfo.info);
+            log.logStr("value: " + boundaryInfo.value);
+            log.logStr("type: " + boundaryInfo.variableSimpleType);
+            log.logSignLine("end");
+        }
+    }
+
+    @Test
+    public void testMath15() {
+        String path = "experiment//searchcode//math-double-pow";
+        BoundaryCollect boundaryCollect = new BoundaryCollect(path);
+        ArrayList<BoundaryInfo> boundaryList = boundaryCollect.getBoundaryList();
+
+        assertNotNull(boundaryList);
+        Log log = new Log("log//boundary-math-double-pow.log");
+        for(BoundaryInfo boundaryInfo : boundaryList){
+            log.logSignLine("begin");
+            log.logStr("name: " + boundaryInfo.info);
+            log.logStr("value: " + boundaryInfo.value);
+            log.logStr("type: " + boundaryInfo.variableSimpleType);
+            log.logSignLine("end");
+        }
+    }
+
+    @Test
+    public void testMath37() {
+        String path = "experiment//searchcode//math-double-real";
+        BoundaryCollect boundaryCollect = new BoundaryCollect(path);
+        ArrayList<BoundaryInfo> boundaryList = boundaryCollect.getBoundaryList();
+
+        assertNotNull(boundaryList);
+        Log log = new Log("log//boundary-math-double-real.log");
         for(BoundaryInfo boundaryInfo : boundaryList){
             log.logSignLine("begin");
             log.logStr("name: " + boundaryInfo.info);

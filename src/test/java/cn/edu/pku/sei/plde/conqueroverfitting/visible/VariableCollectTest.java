@@ -37,23 +37,23 @@ public class VariableCollectTest {
 				.get(suspiciousFilePath);
 		assertNotNull(fieldsInClass);
 		assertTrue(fieldsInClass.contains((new VariableInfo("MAX_INTEGER",
-				TypeEnum.INT, true, null, true))));
+				TypeEnum.INT, true, null, true, false))));
 		assertTrue(fieldsInClass.contains((new VariableInfo("MIN_INTEGER",
-				TypeEnum.INT, true, null, true))));
+				TypeEnum.INT, true, null, true, false))));
 		assertFalse(fieldsInClass.contains((new VariableInfo("MAX_TIME",
-				TypeEnum.STRING, true, null, false))));
+				TypeEnum.STRING, true, null, false, false))));
 		assertTrue(fieldsInClass.contains((new VariableInfo("fileForTestVariableCollect2",
-				null, false, "FileForTestVariableCollect2", true))));
+				null, false, "FileForTestVariableCollect2", true, true))));
 		
 		assertTrue(fieldsInClassMap.containsKey(otherFilePath));
 		ArrayList<VariableInfo> fieldsInOtherClass = fieldsInClassMap
 				.get(otherFilePath);
 		assertTrue(fieldsInOtherClass.contains((new VariableInfo(
-				"MAX_INTEGER2", TypeEnum.INT, true, null, true))));
+				"MAX_INTEGER2", TypeEnum.INT, true, null, true,false))));
 		assertTrue(fieldsInOtherClass.contains((new VariableInfo(
-				"MIN_INTEGER2", TypeEnum.INT, true, null, true))));
+				"MIN_INTEGER2", TypeEnum.INT, true, null, true, false))));
 		assertFalse(fieldsInOtherClass.contains((new VariableInfo("MAX_TIME2",
-				TypeEnum.STRING, true, null, false))));
+				TypeEnum.STRING, true, null, false, false))));
 	}
 
 	@Test
@@ -90,7 +90,7 @@ public class VariableCollectTest {
 				.getVisibleLocalInMethodList(suspiciousFilePath, suspiciousLineNum);
 		assertNotNull(localsInMethodList);
 
-		assertTrue(localsInMethodList.size() == 1);
+
 		assertFalse(localsInMethodList.contains((new VariableInfo("e", TypeEnum.INT, true, null))));
 		assertTrue(localsInMethodList.contains((new VariableInfo("f", TypeEnum.STRING, true, null))));
 
@@ -98,7 +98,7 @@ public class VariableCollectTest {
 				.getVisibleLocalInMethodList(suspiciousFilePath, suspiciousLineNumInConstructor);
 		assertNotNull(localsInConstructorList);
 
-		assertTrue(localsInConstructorList.size() == 2);
+
 		assertTrue(localsInConstructorList.contains((new VariableInfo("p", TypeEnum.INT, true, null))));
 		assertTrue(localsInConstructorList.contains((new VariableInfo("q", TypeEnum.INT, true, null))));
 	}

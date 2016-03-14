@@ -13,9 +13,9 @@ public class GathererJavaTest extends TestCase {
 		long timeStart = System.currentTimeMillis();
 		ArrayList<String> keyWords = new ArrayList<String>();
 		keyWords.add("if");
-		keyWords.add("int");
-		keyWords.add("u");
-		GathererJava gathererJava = new GathererJava(keyWords, "math-int-u");
+		keyWords.add("double");
+		keyWords.add("real");
+		GathererJava gathererJava = new GathererJava(keyWords, "math-double-real");
 		gathererJava.searchCode();
 		long timeEnd = System.currentTimeMillis();
 		//103s

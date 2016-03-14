@@ -10,6 +10,7 @@ public class VariableInfo implements Comparable<VariableInfo>,Serializable{
 	public boolean isSimpleType;
 	public String otherType;
     public boolean isPublic;
+	public boolean isStatic;
     public int methodStartPos;
     public int methodEndPos;
     public int variablePos;
@@ -75,12 +76,13 @@ public class VariableInfo implements Comparable<VariableInfo>,Serializable{
      */
 	public VariableInfo(String variableName,
 			TypeEnum variableSimpleType, boolean isSimpleType,
-			String otherType, boolean isPublic) {
+			String otherType, boolean isPublic, boolean isStatic) {
 		this.variableName = variableName;
 		this.variableSimpleType = variableSimpleType;
 		this.isSimpleType = isSimpleType;
 		this.otherType = otherType;
 		this.isPublic = isPublic;
+		this.isStatic = isStatic;
 	}
 
 	/**
@@ -109,11 +111,13 @@ public class VariableInfo implements Comparable<VariableInfo>,Serializable{
 		if (isSimpleType) {
 			return variableName.equals(other.variableName)
 					&& variableSimpleType.equals(other.variableSimpleType)
-					&& isPublic == other.isPublic;
+					&& isPublic == other.isPublic
+					&& isStatic == other.isStatic;
 		} else {
 			return variableName.equals(other.variableName)
 					&& otherType.equals(other.otherType)
-					&& isPublic == other.isPublic;
+					&& isPublic == other.isPublic
+					&& isStatic == other.isStatic;
 		}
 	}
 
