@@ -1,6 +1,8 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.utils;
 
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.BoundaryInfo;
+import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeEnum;
+import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.MethodInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 import org.apache.commons.lang.StringUtils;
@@ -64,6 +66,12 @@ public class InfoUtils {
                 continue;
             }
             if (info.getStringType().contains("?")){
+                continue;
+            }
+            if (info.isFieldVariable && info.isSimpleType && info.variableSimpleType == TypeEnum.BOOLEAN && !info.variableName.startsWith("is") && !info.variableName.contains(".is")){
+                continue;
+            }
+            if (info.variableName.contains("<") || info.variableName.contains(">") || info.getStringType().contains("<") || info.getStringType().contains(">")){
                 continue;
             }
             result.add(info);

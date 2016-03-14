@@ -28,11 +28,18 @@ public class AddPrintTransformer implements ClassFileTransformer {
     }
 
     public byte[] transform(ClassLoader loader, String className, Class<?> classBeingRedefined, ProtectionDomain protectionDomain, byte[] classfileBuffer) throws IllegalClassFormatException {
+        _tempJavaName = System.getProperty("user.dir")+"/temp/"+className.replace("/", ".").substring(className.replace("/", ".").lastIndexOf(".")+1)+".java";
+        _tempClassName = System.getProperty("user.dir")+"/temp/"+className.replace("/", ".").substring(className.replace("/", ".").lastIndexOf(".")+1)+".class";
         /* handing the anonymity class */
         if (className.contains(_targetClassName.substring(_targetClassName.lastIndexOf("/"))) && className.contains("$") && _tempJavaName.length() > 1){
-            String tempAnonymityClassName = _tempJavaName.substring(0,_tempJavaName.lastIndexOf("/"))+className.substring(className.indexOf("/"))+".class";
+            String tempAnonymityClassName = _tempJavaName.substring(0,_tempJavaName.lastIndexOf("/"))+className.substring(className.lastIndexOf("/"))+".class";
+            System.out.println(tempAnonymityClassName);
             if (!new File(tempAnonymityClassName).exists()){
-                return classfileBuffer;
+                buildPrintClass(className, classfileBuffer);
+                if (!new File(tempAnonymityClassName).exists()){
+                    return classfileBuffer;
+                }
+                return Utils.getBytesFromFile(tempAnonymityClassName);
             }
             new File(tempAnonymityClassName).deleteOnExit();
             byte[] result = Utils.getBytesFromFile(tempAnonymityClassName);
@@ -41,12 +48,18 @@ public class AddPrintTransformer implements ClassFileTransformer {
             }
             return result;
         }
+
         /* skip the other classes*/
         if (!className.equals(_targetClassName)) {
             return classfileBuffer;
         }
-        _tempJavaName = System.getProperty("user.dir")+"/temp/"+className.replace("/", ".").substring(className.replace("/", ".").lastIndexOf(".")+1)+".java";
-        _tempClassName = System.getProperty("user.dir")+"/temp/"+className.replace("/", ".").substring(className.replace("/", ".").lastIndexOf(".")+1)+".class";
+        return buildPrintClass(className, classfileBuffer);
+    }
+
+    private byte[] buildPrintClass(String className, byte[] classfileBuffer){
+        if (className.contains("$")){
+            className = className.substring(0, className.lastIndexOf("$")).replace("/",".");
+        }
         String printCode = "";
         for (String var: _targetVariables){
             printCode += generatePrintLine(var);
@@ -58,6 +71,7 @@ public class AddPrintTransformer implements ClassFileTransformer {
             return classfileBuffer;
         }
     }
+
 
     private String generatePrintLine(String var){
         String printLine = "";

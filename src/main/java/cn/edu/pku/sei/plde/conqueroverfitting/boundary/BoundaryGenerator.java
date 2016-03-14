@@ -30,35 +30,14 @@ public class BoundaryGenerator {
             System.out.println("Cannot trace any variable");
             return "";
         }
-        Map<VariableInfo, List<String>> filteredVariable = ExceptionExtractor.extract(traceResults, suspicious.getAllInfo(classSrc));
-        Map<VariableInfo, List<String>> trueVariable = AbandanTrueValueFilter.getTrueValue(traceResults, suspicious.getAllInfo(classSrc));
+        Map<VariableInfo, List<String>> filteredVariable = ExceptionExtractor.extract(traceResults, suspicious.getAllInfo());
+        Map<VariableInfo, List<String>> trueVariable = AbandanTrueValueFilter.getTrueValue(traceResults, suspicious.getAllInfo());
         if (filteredVariable.size() != 0) {
             return generate(filteredVariable, trueVariable);
         }
-        //else {
-        //    traceResults = suspicious.getTraceResultWithAllTest(classpath,testClasspath, classSrc);
-        //    Map<VariableInfo, List<String>> trueValues = getAllTrueValue(traceResults, suspicious.getAllInfo(classSrc));
-        //    return generateTrueValueInterval(trueValues);
-        //}
         return "";
     }
 
-    /*
-    private static Map<VariableInfo,List<String>> getAllTrueValue(List<TraceResult> traceResults, List<VariableInfo> vars){
-        Map<VariableInfo, List<String>> trueValues = new HashMap<VariableInfo, List<String>>();
-        for (TraceResult traceResult: traceResults){
-            if (!traceResult.getTestResult()) {
-                continue;
-            }
-            Set<String> keys = traceResult.getResultMap().keySet();
-            for (String key: keys){
-                VariableInfo infoKey = ExceptionExtractor.getVariableInfoWithName(vars, key);
-                List<String> value = trueValues.containsKey(infoKey)?ExceptionExtractor.appandList(trueValues.get(infoKey),traceResult.get(key)):traceResult.get(key);
-                trueValues.put(infoKey, value);
-            }
-        }
-        return trueValues;
-    }*/
 
     public static String generateTrueValueInterval(Map<VariableInfo, List<String>> filteredValues, Map<VariableInfo, List<String>> trueValues) {
         String result = "";
@@ -126,13 +105,14 @@ public class BoundaryGenerator {
             result = "";
         }
         int i = 0;
-        for (Map.Entry<VariableInfo, List<String>> entry : arrayVariable.entrySet()) {
+        /*for (Map.Entry<VariableInfo, List<String>> entry : arrayVariable.entrySet()) {
             result += "\n";
             String forBoundary = "for (" + MathUtils.getNumberTypeOfArray(entry.getKey().getStringType()) + " " + "forvar" + i + ": " + entry.getKey().variableName + ")";
             forBoundary += "if (" + "forvar" + i + "==" + MathUtils.getNumberTypeOfArray(entry.getKey().getStringType(), false) + "." + "NaN" + ")";
             result += forBoundary;
             i++;
         }
+        */
         return result;
     }
 
@@ -222,7 +202,7 @@ public class BoundaryGenerator {
                     return generateWithOneInterval(intervals);
                 }
                 if (intervals.size() == 2) {
-                    return generateWithTwoInterval(intervals);
+                    return generateWithTwoInterval(intervals, entry.getValue(), smallestBoundary, biggestBoundary);
                 }
             }
 
@@ -247,7 +227,17 @@ public class BoundaryGenerator {
     }
 
 
-    private static String generateWithTwoInterval(Map<String, String> intervals) {
+    private static String generateWithTwoInterval(Map<String, String> intervals, List<String> values, double smallestBoundry, double biggestBoundry) {
+        for (String value: values){
+            if (MathUtils.parseStringValue(value) < biggestBoundry && intervals.containsKey("backwardInterval")){
+                intervals.remove("backwardInterval");
+                return generateWithOneInterval(intervals);
+            }
+            if (MathUtils.parseStringValue(value) > smallestBoundry && intervals.containsKey("forwardInterval")){
+                intervals.remove("forwardInterval");
+                return generateWithOneInterval(intervals);
+            }
+        }
         return (String) intervals.values().toArray()[0] + "||" + (String) intervals.values().toArray()[1];
     }
 

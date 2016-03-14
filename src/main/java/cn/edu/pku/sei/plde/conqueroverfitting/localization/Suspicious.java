@@ -15,10 +15,7 @@ import javassist.NotFoundException;
 import org.apache.commons.lang.StringUtils;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.List;
+import java.util.*;
 
 /**
  * Created by yanrunfa on 16/2/25.
@@ -42,11 +39,13 @@ public class Suspicious implements Serializable{
         _classname = classname;
         _function = function;
         _suspiciousness = suspiciousness;
-        _tests = tests;
-        _failTests = failTests;
+        _tests = new ArrayList(new HashSet(tests));
+        _failTests = new ArrayList(new HashSet(failTests));
         _lines = lines;
 
     }
+
+
 
     public int lastLine() {
         //如果是构造函数,则重新寻找错误行
@@ -98,6 +97,10 @@ public class Suspicious implements Serializable{
         return _tests;
     }
 
+    public List<String> getFailedTest(){
+        return _failTests;
+    }
+
     public List<String> getTestClasses(){
         List<String> classes = new ArrayList<String>();
         for (String test: _tests){
@@ -126,18 +129,18 @@ public class Suspicious implements Serializable{
 
 
 
-    public List<VariableInfo> getAllInfo(String classSrc){
-        return InfoUtils.filterBannedVariable(InfoUtils.AddMethodInfoListToVariableInfoList(getVariableInfo(classSrc), getMethodInfo(classSrc)));
+    public List<VariableInfo> getAllInfo(){
+        return InfoUtils.filterBannedVariable(InfoUtils.AddMethodInfoListToVariableInfoList(_variableInfo, _methodInfo));
     }
 
-    public List<VariableInfo> getVariableInfo(String classSrc){
-        if (_variableInfo != null){
-            return _variableInfo;
+    public List<VariableInfo> getVariableInfo(String classSrc, int line){
+        if (_variableInfo == null){
+            _variableInfo = new ArrayList<>();
         }
         List<VariableInfo> variableInfos = new ArrayList<VariableInfo>();
         String classSrcPath = getClassSrcPath(classSrc);
         VariableCollect variableCollect = VariableCollect.GetInstance(getClassSrcIndex(classSrc));
-        List<VariableInfo> parameters = variableCollect.getVisibleParametersInMethodList(classSrcPath, lastLine());
+        List<VariableInfo> parameters = variableCollect.getVisibleParametersInMethodList(classSrcPath, line);
         variableInfos.addAll(parameters);
         for (VariableInfo param: parameters){
             param.isParameter = true;
@@ -151,17 +154,18 @@ public class Suspicious implements Serializable{
                 if (classvars.containsKey(paramClassSrcPath)) {
                     List<VariableInfo> fields = classvars.get(classSrcPath);
                     for (VariableInfo field: fields){
-                        if (!field.isPublic && !paramClassSrcPath.equals(getClassSrcPath(classSrc))){
+                        VariableInfo newField = VariableInfo.copy(field);
+                        if (!newField.isPublic && !paramClassSrcPath.equals(getClassSrcPath(classSrc))){
                             continue;
                         }
-                        field.isParameter = true;
-                        field.variableName = param.variableName+"."+field.variableName;
+                        newField.isParameter = true;
+                        newField.variableName = param.variableName+"."+newField.variableName;
+                        variableInfos.add(newField);
                     }
-                    variableInfos.addAll(fields);
                 }
             }
         }
-        List<VariableInfo> locals = variableCollect.getVisibleLocalInMethodList(classSrcPath, lastLine());
+        List<VariableInfo> locals = variableCollect.getVisibleLocalInMethodList(classSrcPath, line);
         for (VariableInfo local: locals){
             local.isLocalVariable = true;
         }
@@ -175,20 +179,10 @@ public class Suspicious implements Serializable{
             }
             variableInfos.addAll(fields);
         }
-
-        List<VariableInfo> addon = new ArrayList<>();
-        for (VariableInfo info: variableInfos){
-            if (TypeUtils.isComplexType(info.getStringType()) && info.isParameter){
-                //VariableInfo newInfo = new VariableInfo(info.variableName+".isNaN",TypeEnum.BOOLEAN,true,null);
-                //if (info.isParameter){
-                //    newInfo.isParameter = true;
-                //}
-                //addon.add(newInfo);
-            }
-        }
-        variableInfos.addAll(addon);
-        _variableInfo = variableInfos;
-        return InfoUtils.filterBannedVariable(_variableInfo);
+        _variableInfo.removeAll(variableInfos);
+        _variableInfo.addAll(variableInfos);
+        _variableInfo = InfoUtils.filterBannedVariable(_variableInfo);
+        return InfoUtils.filterBannedVariable(variableInfos);
     }
 
 
@@ -212,35 +206,45 @@ public class Suspicious implements Serializable{
     }
 
     public List<TraceResult> getTraceResult(String classpath, String testClasspath, String classSrc, String testClassSrc) throws IOException{
-        VariableTracer tracer = new VariableTracer(classpath, testClasspath, classSrc, testClassSrc);
+        VariableTracer tracer = new VariableTracer(classpath, testClasspath, classSrc, testClassSrc, this);
         List<TraceResult> traceResults = new ArrayList<TraceResult>();
         if (_tests.size() > 10){
             for (String testclass: _failTests){
-                //if (isSwitch()){
-                //    for (String line: _lines){
-                //        traceResults.addAll(tracer.trace(classname(), functionname(), testclass.split("#")[0], testclass.split("#")[1], Integer.valueOf(line), getVariableInfo(classSrc), getMethodInfo(classSrc)));
-                //    }
-                //}
-                //else {
-                    traceResults.addAll(tracer.trace(classname(), functionname(), testclass.split("#")[0], testclass.split("#")[1], lastLine(), getVariableInfo(classSrc), getMethodInfo(classSrc)));
-                //}
+                traceResults.addAll(tracer.trace(classname(), functionname(), testclass.split("#")[0], testclass.split("#")[1], lastLine()));
             }
         }
         else {
             for (String testclass: _tests){
-                //if (isSwitch()){
-                //    for (String line: _lines){
-                //        traceResults.addAll(tracer.trace(classname(), functionname(), testclass.split("#")[0], testclass.split("#")[1], Integer.valueOf(line), getVariableInfo(classSrc), getMethodInfo(classSrc)));
-                //    }
-                //}
-                //else {
-                    traceResults.addAll(tracer.trace(classname(), functionname(), testclass.split("#")[0], testclass.split("#")[1], lastLine(), getVariableInfo(classSrc), getMethodInfo(classSrc)));
-                //}
+                if (!_failTests.contains(testclass) && !testFilter(testClassSrc, testclass.split("#")[0], testclass.split("#")[1])){
+                    continue;
+                }
+                traceResults.addAll(tracer.trace(classname(), functionname(), testclass.split("#")[0], testclass.split("#")[1], lastLine()));
             }
         }
         return traceResults;
     }
 
+    private boolean testFilter(String testSrcPath, String testClassname, String testMethodName){
+        List<String> assertLines = CodeUtils.getAssertInTest(testSrcPath, testClassname, testMethodName);
+        if (assertLines.size() != 1){
+            return true;
+        }
+        String assertLine = assertLines.get(0);
+        if (!assertLine.trim().startsWith("Assert.assertEquals(") && !assertLine.trim().startsWith("TestUtils.assertEquals(") ){
+            return true;
+        }
+        List<String> params = CodeUtils.divideParameter(assertLine,1);
+        String param1 = params.get(0);
+        String param2 = params.get(1);
+        if (param1.contains(".") && param1.contains("(") && param2.contains(".") && param2.contains("(")){
+            if (param1.substring(param1.indexOf("."), param1.indexOf("(")).equals(param2.substring(param2.indexOf("."), param2.indexOf("(")))){
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /*
     private boolean isSwitch(){
         if (_lines.size()<3){
             return false;

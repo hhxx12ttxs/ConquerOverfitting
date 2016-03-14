@@ -29,7 +29,7 @@ public class VariableCollect {
 				instance = new VariableCollect(projectPath);
 			}
 		}
-		if (!projectPath.equals(instance.projectPath)){
+		else if (!projectPath.equals(instance.projectPath)){
 			synchronized (VariableCollect.class) {
 				instance = new VariableCollect(projectPath);
 			}

@@ -1,12 +1,15 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.utils;
 
+import cn.edu.pku.sei.plde.conqueroverfitting.file.ReadFile;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 import javassist.NotFoundException;
+import org.eclipse.jdt.core.dom.*;
+import org.omg.CORBA.Object;
 import org.omg.PortableInterceptor.SYSTEM_EXCEPTION;
+import org.w3c.dom.NodeList;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 /**
  * Created by yanrunfa on 16/3/2.
@@ -25,6 +28,23 @@ public class CodeUtils {
         return -1;
     }
 
+    public static int countParamsOfConstructorInAssert(String assertLine){
+        return getConstructorParams(assertLine).size();
+    }
+
+
+    public static List<String> getMethodParams(String line, String methodName){
+        if (!line.contains(methodName)){
+            return new ArrayList<>();
+        }
+        List<String> params = divideParameter(line, 1);
+        for (String param: params){
+            if (param.contains(methodName)){
+                return getMethodParams(param, methodName);
+            }
+        }
+        return params;
+    }
 
     private static List<String> getConstructorParams(String line){
         List<String> params = divideParameter(line, 1);
@@ -82,6 +102,23 @@ public class CodeUtils {
         return count;
     }
 
+     public static List<String> getAssertInTest(String testSrcPath, String testClassname, String testMethodName){
+         List<String> result = new ArrayList<>();
+         try {
+             String functionCode = FileUtils.getTestFunctionCodeFromCode(FileUtils.getCodeFromFile(FileUtils.getFileAddressOfJava(testSrcPath, testClassname)), testMethodName);
+             for (String lineString: functionCode.split("\n")){
+                 if (lineString.trim().startsWith("assert")
+                         || lineString.trim().startsWith("Assert")
+                         || lineString.trim().startsWith("fail(")
+                         || lineString.trim().contains(".assert")){
+                     result.add(lineString.trim());
+                 }
+             }
+         } catch (NotFoundException e){
+             e.printStackTrace();
+         }
+         return result;
+     }
 
     public static String getLineFromCode(String code, int line){
         int lineNum = 0;
@@ -93,6 +130,7 @@ public class CodeUtils {
         }
         return "";
     }
+
 
     public static List<String> divideParameter(String line, int level){
         //line = line.replace(" ", "");
@@ -135,6 +173,29 @@ public class CodeUtils {
                     }
                     startPoint = i + 1;
                 }
+            }
+        }
+        return result;
+    }
+
+
+    public static Map<List<String>, List<Integer>> getMethodLine(String code, String methodName){
+        Map<List<String>, List<Integer>> result = new HashMap<>();
+        ASTParser parser = ASTParser.newParser(AST.JLS3);
+        parser.setSource(code.toCharArray());
+        CompilationUnit unit = (CompilationUnit) parser.createAST(null);
+        TypeDeclaration declaration = (TypeDeclaration) unit.types().get(0);
+        MethodDeclaration methodDec[] = declaration.getMethods();
+        for (MethodDeclaration method: methodDec){
+            if (method.getName().getIdentifier().equals(methodName)){
+                int startLine = unit.getLineNumber(method.getStartPosition()) -1;
+                int endLine = unit.getLineNumber(method.getStartPosition()+method.getLength()) -1;
+                List<String> parameters = new ArrayList<>();
+                List<SingleVariableDeclaration> vars = method.parameters();
+                for (SingleVariableDeclaration var: vars){
+                    parameters.add(var.getName().getIdentifier());
+                }
+                result.put(parameters, Arrays.asList(startLine,endLine));
             }
         }
         return result;

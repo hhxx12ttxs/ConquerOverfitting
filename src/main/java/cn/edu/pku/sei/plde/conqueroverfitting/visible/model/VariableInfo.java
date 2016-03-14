@@ -41,6 +41,10 @@ public class VariableInfo implements Comparable<VariableInfo>,Serializable{
 		this.variablePos = variablePos;
 	}
 
+	public static VariableInfo copy(VariableInfo info){
+		return new VariableInfo(info.variableName, info.variableSimpleType, info.isSimpleType, info.otherType, info.methodStartPos, info.methodEndPos, info.variablePos);
+	}
+
 	/**
 	 *
 	 * @param variableName

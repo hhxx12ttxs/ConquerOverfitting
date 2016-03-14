@@ -60,12 +60,23 @@ public class AssertUtils {
                 }
                 if (lineString.startsWith("fail")){
                     int num = lineNum -1;
-                    while (!CodeUtils.getLineFromCode(FileUtils.getCodeFromFile(tempJavaFile.getAbsolutePath()),num).trim().startsWith("try")){
+                    while (!CodeUtils.getLineFromCode(FileUtils.getCodeFromFile(tempJavaFile),num).trim().startsWith("try")){
                         SourceUtils.commentCodeInSourceFile(tempJavaFile, num);
                         num--;
                     }
                 }
+                int bracketCount = 0;
+                int i = 1;
                 SourceUtils.commentCodeInSourceFile(tempJavaFile,lineNum);
+                bracketCount += count(lineString,'(');
+                bracketCount -= count(lineString,')');
+                while (bracketCount > 0){
+                    SourceUtils.commentCodeInSourceFile(tempJavaFile,lineNum+i);
+                    bracketCount += count(CodeUtils.getLineFromCode(FileUtils.getCodeFromFile(tempJavaFile),lineNum+i),'(');
+                    bracketCount -= count(CodeUtils.getLineFromCode(FileUtils.getCodeFromFile(tempJavaFile),lineNum+i),')');
+                    i++;
+                }
+
                 System.out.println(Utils.shellRun(Arrays.asList("javac -Xlint:unchecked -source 1.6 -target 1.6 -cp "+ buildClasspath(Arrays.asList(PathUtils.getJunitPath(),_testClasspath,_classpath)) +" -d "+_testClasspath+" "+ tempJavaFile.getAbsolutePath())));
             }
             catch (NotFoundException e){
@@ -81,6 +92,16 @@ public class AssertUtils {
         tempJavaFile.delete();
         backupClassFile.renameTo(originClassFile);
         return result;
+    }
+
+    private int count(String s,char c){
+        int count= 0;
+        for (int i=0; i< s.length(); i++){
+            if (s.charAt(i)==c){
+                count++;
+            }
+        }
+        return count;
     }
 
     public String getTrueTestFile(){

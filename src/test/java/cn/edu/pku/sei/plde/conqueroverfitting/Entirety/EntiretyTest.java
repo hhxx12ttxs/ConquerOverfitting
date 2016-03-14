@@ -18,14 +18,14 @@ public class EntiretyTest {
 
     @Test
     public void testEntirety() throws Exception{
-        int i = 99;
-        String project = "Math-"+i;
+        int i = 9;
+        String project = "Time-"+i;
         /* 四个整个项目需要的参数 */
         //Math,Time
-        //String classpath = PATH_OF_DEFECTS4J+project+"/target/classes";              //项目的.class文件路径
-        //String testClasspath  = PATH_OF_DEFECTS4J+project+"/target/test-classes";    //项目的test的.class文件路径
-        //String classSrc = PATH_OF_DEFECTS4J + project+"/src/main/java";              //项目的源代码路径
-        //String testClassSrc = PATH_OF_DEFECTS4J + project +"/src/test/java";///java"; //项目的test的源代码路径
+        String classpath = PATH_OF_DEFECTS4J+project+"/target/classes";              //项目的.class文件路径
+        String testClasspath  = PATH_OF_DEFECTS4J+project+"/target/test-classes";    //项目的test的.class文件路径
+        String classSrc = PATH_OF_DEFECTS4J + project+"/src/main/java";              //项目的源代码路径
+        String testClassSrc = PATH_OF_DEFECTS4J + project +"/src/test/java";///java"; //项目的test的源代码路径
 
         //Closure
         //String classpath = PATH_OF_DEFECTS4J+project+"/build/classes";              //项目的.class文件路径
@@ -35,10 +35,10 @@ public class EntiretyTest {
 
 
         //Math 99...
-        String classpath = PATH_OF_DEFECTS4J+"Math-"+i+"/target/classes";              //项目的.class文件路径
-        String testClasspath  = PATH_OF_DEFECTS4J+"Math-"+i+"/target/test-classes";    //项目的test的.class文件路径
-        String classSrc = PATH_OF_DEFECTS4J + "Math-"+i+"/src/java";              //项目的源代码路径
-        String testClassSrc = PATH_OF_DEFECTS4J + "Math-"+i+"/src/test";///java"; //项目的test的源代码路径
+        //String classpath = PATH_OF_DEFECTS4J+"Math-"+i+"/target/classes";              //项目的.class文件路径
+        //String testClasspath  = PATH_OF_DEFECTS4J+"Math-"+i+"/target/test-classes";    //项目的test的.class文件路径
+        //String classSrc = PATH_OF_DEFECTS4J + "Math-"+i+"/src/java";              //项目的源代码路径
+        //String testClassSrc = PATH_OF_DEFECTS4J + "Math-"+i+"/src/test";///java"; //项目的test的源代码路径
 
 
         //Lang
@@ -63,7 +63,7 @@ public class EntiretyTest {
                 continue;
             }
             Capturer fixCapturer = new Capturer(classpath, testClasspath, testClassSrc);
-            for (String test: suspicious.getTestClassAndFunction()){
+            for (String test: suspicious.getFailedTest()){
                 if (!test.contains("#")) {
                     continue;
                 }

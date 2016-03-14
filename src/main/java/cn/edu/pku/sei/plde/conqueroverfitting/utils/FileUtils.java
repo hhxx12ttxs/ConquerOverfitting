@@ -75,7 +75,15 @@ public class FileUtils {
         return  classPath + System.getProperty("file.separator") + className.replace('.',System.getProperty("file.separator").charAt(0))+".class";
     }
 
-	public static String getCodeFromFile(String fileaddress){
+    public static String getCodeFromFile(String srcPath, String className){
+        return getCodeFromFile(getFileAddressOfJava(srcPath, className));
+    }
+    public static String getCodeFromFile(File file) {
+        return getCodeFromFile(file.getAbsolutePath());
+    }
+
+
+    public static String getCodeFromFile(String fileaddress){
 		try {
 			FileInputStream stream = new FileInputStream(new File(fileaddress));
 			byte[] b=new byte[stream.available()];

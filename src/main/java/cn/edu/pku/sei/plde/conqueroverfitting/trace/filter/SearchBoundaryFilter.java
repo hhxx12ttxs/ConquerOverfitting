@@ -63,7 +63,7 @@ public class SearchBoundaryFilter {
             //如果是数字变量,将搜索到的值生成区间,如果怀疑变量的值都不在该区间内,则生成该区间
             if (MathUtils.isNumberType(entry.getKey().getStringType())){
                 List<Double> interval = generateTrueValueInterval(BoundaryFilter.getBoundaryWithNameAndType(boundaryList, entry.getKey().variableName, entry.getKey().getStringType()));
-                if (interval.size() != 2){
+                if (interval.size() != 2 || entry.getValue().size() < 3){
                     continue;
                 }
                 //如果区间的最大值与最小值差距过大,则怀疑度减小.

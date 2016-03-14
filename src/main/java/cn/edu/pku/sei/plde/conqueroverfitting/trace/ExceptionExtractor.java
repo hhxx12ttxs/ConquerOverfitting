@@ -41,6 +41,13 @@ public class ExceptionExtractor {
             if (!var.getKey().isSimpleType && var.getKey().otherType == null){
                 continue;
             }
+            List<String> bannedValue = new ArrayList<>();
+            for (String value: var.getValue()){
+                if (MathUtils.isNumberType(var.getKey().getStringType())&&value.length()>10){
+                    bannedValue.add(value);
+                }
+            }
+            var.getValue().removeAll(bannedValue);
             //删掉疑似for循环的计数的数据
             if (isForLoopParam(unrepeatValue) || var.getValue().size()== 0){
                 continue;

@@ -28,7 +28,7 @@ public class MethodCollect {
                 instance = new MethodCollect(projectPath);
             }
         }
-        if (!projectPath.equals(instance.projectPath)) {
+        else if (!projectPath.equals(instance.projectPath)) {
             synchronized (VariableCollect.class) {
                 instance = new MethodCollect(projectPath);
             }
