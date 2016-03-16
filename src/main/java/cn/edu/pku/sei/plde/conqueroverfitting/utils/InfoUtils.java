@@ -17,6 +17,7 @@ import java.util.List;
  */
 public class InfoUtils {
     public static final List<String> BANNED_VAR_NAME = Arrays.asList("serialVersionUID","toString()");
+    public static final List<String> BANNED_METHOD_NAME = Arrays.asList("toString","hashCode");
 
     /**
      *
@@ -72,6 +73,20 @@ public class InfoUtils {
                 continue;
             }
             if (info.variableName.contains("<") || info.variableName.contains(">") || info.getStringType().contains("<") || info.getStringType().contains(">")){
+                continue;
+            }
+            result.add(info);
+        }
+        return result;
+    }
+
+    public static List<MethodInfo> filterBannedMethod(List<MethodInfo> infos) {
+        List<MethodInfo> result = new ArrayList<>();
+        for (MethodInfo info: infos){
+            if (BANNED_METHOD_NAME.contains(info.methodName)){
+                continue;
+            }
+            if (info.methodName.startsWith("get")){
                 continue;
             }
             result.add(info);

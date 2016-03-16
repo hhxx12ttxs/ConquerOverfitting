@@ -129,6 +129,9 @@ public class Localization  {
         if (lineNumbers.size() != 0 && firstline.getTests().size()< 40){
             result.add(new Suspicious(classpath, testClassPath, getClassAddressFromStatement(firstline), getTargetFunctionFromStatement(firstline), firstline.getSuspiciousness(), firstline.getTests(),firstline.getFailTests(), new ArrayList<String>(lineNumbers)));
         }
+        if (!jump){
+            return result;
+        }
         try {
             boolean createResult = suspicousFile.createNewFile();
             if (!createResult){

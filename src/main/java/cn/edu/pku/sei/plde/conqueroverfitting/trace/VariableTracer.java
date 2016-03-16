@@ -39,6 +39,7 @@ public class VariableTracer {
     private String _classname;
     private String _functionname;
     private List<VariableInfo> _vars = new ArrayList<>();
+    private List<VariableInfo> _bannedVars = new ArrayList<>();
     private List<MethodInfo> _methods = new ArrayList<>();
     private List<Integer> _errorLine;
     private String _shellResult;
@@ -103,7 +104,8 @@ public class VariableTracer {
         List<TraceResult> results = new ArrayList<>();
 
         for (int line: _errorLine){
-            _vars = _vars.size()==0?_suspicious.getVariableInfo(_srcPath, line):_vars;
+            _vars = _suspicious.getVariableInfo(_srcPath, line);
+            _vars.removeAll(_bannedVars);
             if (_vars.size() == 0 && _methods.size() == 0){
                 continue;
             }
@@ -156,6 +158,11 @@ public class VariableTracer {
 
     private List<Integer> getErrorLine(int errorLine){
         List<Integer> result = new ArrayList<>();
+        String code = FileUtils.getCodeFromFile(_srcPath,_classname);
+        if (CodeUtils.isConstructor(_classname,_functionname)){
+            List<Integer> returnLine = CodeUtils.getReturnLine(code, functionname(),CodeUtils.getConstructorParamsCount(_functionname));
+            result.addAll(returnLine);
+        }
         List<String> assertLines = CodeUtils.getAssertInTest(_testSrcPath,_testClassname,_testMethodName);
         if (assertLines.size() < 1){
             result.add(errorLine);
@@ -163,19 +170,16 @@ public class VariableTracer {
         }
         if (assertLines.size() < 2){
             String assertLine = assertLines.get(0);
-            String code = FileUtils.getCodeFromFile(_srcPath,_classname);
             int methodParam = CodeUtils.getMethodParams(assertLine, functionname()).size();
             Map<List<String>, List<Integer>> methodLine = CodeUtils.getMethodLine(code,functionname());
             for (Map.Entry<List<String>, List<Integer>> entry: methodLine.entrySet()){
                 if (entry.getKey().size() == methodParam){
                     _vars = _suspicious.getVariableInfo(_srcPath, errorLine);
-                    List<VariableInfo> removedParams = new ArrayList<>();
                     for (VariableInfo info: _vars){
                         if (info.isParameter && !entry.getKey().contains(info.variableName)){
-                            removedParams.add(info);
+                            _bannedVars.add(info);
                         }
                     }
-                    _vars.removeAll(removedParams);
                 }
             }
             result.add(errorLine);
@@ -261,7 +265,7 @@ public class VariableTracer {
         String agentFunc = "func:" + functionname;
         String agentLine = "line:"+ errorLine;
         String agentSrc = "src:" + _srcPath;
-        String agentCp = "cp:" + _classpath;
+        String agentCp = "cp:" + "\""+_classpath+":"+"/Users/yanrunfa/.m2/repository/org/joda/joda-convert/1.2/joda-convert-1.2.jar\"";
         String agentTestSrc = testClassPath.equals("")?"":"testsrc: "+testClassPath.trim();
         String agentTest = testClassPath.equals("")?"":"test:" + _testClassname;
 
@@ -396,8 +400,6 @@ public class VariableTracer {
         path += _classpath;
         path += System.getProperty("path.separator");
         path += _testClasspath;
-        path += System.getProperty("path.separator");
-        path += "/Users/yanrunfa/.m2/repository/org/joda/joda-convert/1.2/joda-convert-1.2.jar";
         path += System.getProperty("path.separator");
         path += JunitRunner.class.getProtectionDomain().getCodeSource().getLocation().getFile();
         path += System.getProperty("path.separator");

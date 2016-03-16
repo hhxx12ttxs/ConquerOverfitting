@@ -104,6 +104,9 @@ public class FileUtils {
 			String[] tests = code.split("@Test");
 			for (String test: tests){
 				if (test.contains("public void "+targetFunctionName+"()")){
+					if (test.contains("private void ")){
+						test = test.split("private void ")[0];
+					}
 					return test;
 				}
 			}
@@ -174,6 +177,7 @@ public class FileUtils {
 
 	private static List<String> divideTestFunction(String code){
 		List<String> result = new ArrayList<String>();
+		code = code.replaceAll("private void","public void");
 		String[] items = code.split("public void");
 		for (int j = 1; j<items.length; j++){
 			String item = items[j];

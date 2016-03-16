@@ -11,6 +11,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 import org.apache.commons.lang.StringUtils;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.*;
 
 /**
@@ -25,8 +26,7 @@ public class SearchBoundaryFilter {
     public static Map<VariableInfo, List<String>> filter(Map<VariableInfo, List<String>> exceptionVariable, Map<VariableInfo, List<String>> trueValues){
         Map<VariableInfo, List<String>> result = new HashMap<VariableInfo, List<String>>();
         for (Map.Entry<VariableInfo, List<String>> entry: exceptionVariable.entrySet()){
-            String variableName = entry.getKey().variableName.contains(".")?entry.getKey().variableName.substring(entry.getKey().variableName.lastIndexOf(".")+1):entry.getKey().variableName;
-
+            String variableName = variableName(entry);
             List<BoundaryInfo> boundaryList = getSearchBoundaryInfo(entry.getKey());
             if (boundaryList == null){
                 continue;
@@ -35,29 +35,43 @@ public class SearchBoundaryFilter {
             for (String value: entry.getValue()){
                 int valueCount = BoundaryFilter.countTheValueOccurs(boundaryList,value, entry.getKey().getStringType());
                 if (Config.judgeResultOfFilterWithSearchBoundary(boundaryList.size(),valueCount, value, variableName, entry.getKey())){
-                    // isNaN=true在修补中总是对的
-                    if (variableName.equals("isNaN")){
-                        value = "true";
-                    }
-                    if (result.containsKey(entry.getKey())){
-                        result.get(entry.getKey()).add(value);
-                    }
-                    else {
-                        result.put(entry.getKey(),new ArrayList<String>(Arrays.asList(value)));
-                    }
+                    addValueToResult(entry,result,value);
+                }
+                //如果是整数,把怀疑值的+1与-1也考虑在内
+                if (MathUtils.isNumberType(entry.getKey().getStringType())&&(!value.contains(".")||value.contains(".0"))){
+                    try {
+                        double doubleValue = MathUtils.parseStringValue(value);
+                        valueCount = BoundaryFilter.countTheValueOccurs(boundaryList,String.valueOf(doubleValue-1), entry.getKey().getStringType());
+                        if (Config.judgeResultOfFilterWithSearchBoundary(boundaryList.size(),valueCount, String.valueOf(doubleValue-1), variableName, entry.getKey())){
+                            addValueToResult(entry,result,String.valueOf(doubleValue-1));
+                        }
+                        valueCount = BoundaryFilter.countTheValueOccurs(boundaryList,String.valueOf(doubleValue+1), entry.getKey().getStringType());
+                        if (Config.judgeResultOfFilterWithSearchBoundary(boundaryList.size(),valueCount, String.valueOf(doubleValue+1), variableName, entry.getKey())){
+                            addValueToResult(entry,result,String.valueOf(doubleValue+1));
+                        }
+                        if (doubleValue < 0){
+                            valueCount = BoundaryFilter.countTheValueOccurs(boundaryList,String.valueOf(-doubleValue-1), entry.getKey().getStringType());
+                            if (Config.judgeResultOfFilterWithSearchBoundary(boundaryList.size(),valueCount, String.valueOf(-doubleValue-1), variableName, entry.getKey())){
+                                addValueToResult(entry,result,String.valueOf(-doubleValue-1));
+                                addValueToResult(entry,result,String.valueOf(doubleValue+1));
+                            }
+                            valueCount = BoundaryFilter.countTheValueOccurs(boundaryList,String.valueOf(-doubleValue+1), entry.getKey().getStringType());
+                            if (Config.judgeResultOfFilterWithSearchBoundary(boundaryList.size(),valueCount, String.valueOf(-doubleValue+1), variableName, entry.getKey())){
+                                addValueToResult(entry,result,String.valueOf(-doubleValue+1));
+                                addValueToResult(entry,result,String.valueOf(doubleValue-1));
+                            }
+                        }
+                    } catch (NumberFormatException e){}
                 }
             }
             if (result.containsKey(entry.getKey())){
                 continue;
             }
-
             //如果错误的值较多,直接生成错误值区间
-
             if (entry.getValue().size()> 30 && entry.getValue().size() < 100) {
-                result.put(entry.getKey(),entry.getValue());
+                addValueToResult(entry, result, entry.getValue());
                 continue;
             }
-
 
             //如果是数字变量,将搜索到的值生成区间,如果怀疑变量的值都不在该区间内,则生成该区间
             if (MathUtils.isNumberType(entry.getKey().getStringType())){
@@ -66,7 +80,7 @@ public class SearchBoundaryFilter {
                     continue;
                 }
                 //如果区间的最大值与最小值差距过大,则怀疑度减小.
-                if ((interval.get(0) / interval.get(1) > 100 || interval.get(1) / interval.get(0) > 100) && Math.abs(interval.get(0)-interval.get(1)) > 100){
+                if ((interval.get(0) / interval.get(1) > 100 || interval.get(1) / interval.get(0) > 100) || Math.abs(interval.get(0)-interval.get(1)) > 100){
                     continue;
                 }
                 int count = 0;
@@ -82,12 +96,12 @@ public class SearchBoundaryFilter {
                 }
                 if (count == entry.getValue().size()){
                     entry.getKey().interval = true;
-                    result.put(entry.getKey(),new ArrayList<>(Arrays.asList(String.valueOf(interval.get(0)),String.valueOf(interval.get(1)))));
+                    addValueToResult(entry,result,new ArrayList<>(Arrays.asList(String.valueOf(interval.get(0)),String.valueOf(interval.get(1)))));
                 }
             }
             //如果参数是数字数组,保证每个数组元素都不为NaN
             if (MathUtils.isNumberArray(entry.getKey().getStringType()) && ! result.containsKey(entry.getKey()) && entry.getKey().isParameter){
-                result.put(entry.getKey(),new ArrayList<>(Arrays.asList("null")));
+                addValueToResult(entry,result,"null");
                 continue;
             }
             /*
@@ -111,10 +125,10 @@ public class SearchBoundaryFilter {
                 }
                 if (count == trueValues.get(entry.getKey()).size()){
                     if (Double.valueOf(value) < 0){
-                        result.put(entry.getKey(), Arrays.asList("-0"));
+                        addValueToResult(entry,result,"+0");
                     }
                     else {
-                        result.put(entry.getKey(), Arrays.asList("+0"));
+                        addValueToResult(entry,result,"-0");
                     }
                 }
             }
@@ -245,7 +259,27 @@ public class SearchBoundaryFilter {
         }
         return filteredList;
     }
+    private static String variableName(Map.Entry<VariableInfo, List<String>> entry){
+        return entry.getKey().variableName.contains(".")?entry.getKey().variableName.substring(entry.getKey().variableName.lastIndexOf(".")+1):entry.getKey().variableName;
+    }
 
+    private static void addValueToResult(Map.Entry<VariableInfo, List<String>> entry, Map<VariableInfo, List<String>> result,String value){
+        // isNaN=true在修补中总是对的
+        if (variableName(entry).equals("isNaN")){
+            value = "true";
+        }
+        if (result.containsKey(entry.getKey())){
+            result.get(entry.getKey()).add(value);
+        }
+        else {
+            result.put(entry.getKey(),new ArrayList<String>(Arrays.asList(value)));
+        }
+    }
 
+    private static void addValueToResult(Map.Entry<VariableInfo, List<String>> entry, Map<VariableInfo, List<String>> result,List<String> value){
+        for (String v: value){
+            addValueToResult(entry, result,v);
+        }
+    }
 
 }

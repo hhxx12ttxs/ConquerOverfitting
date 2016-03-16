@@ -49,12 +49,16 @@ public class Utils {
             outputStream.close();
             reader.close();
             String result = Utils.shellRun(Arrays.asList("javac -Xlint:unchecked -cp "+ classPath+" "+ tempJavaName));
-            System.out.println(result);
+            if (result.contains("找不到文件")){
+                throw new FileNotFoundException();
+            }
+            //System.out.println(result);
         } catch (FileNotFoundException e){
-            System.out.println("ERROR: Cannot Find Source File: "+className+" in Source Path: "+ srcPath);
-            e.printStackTrace();
+            System.out.println("FileNotFound");
+            throw new FileNotFoundException();
         } catch (IOException e){
-            e.printStackTrace();
+            System.out.println("FileNotFound");
+            throw new FileNotFoundException();
         }
         return getBytesFromFile(tempClassName);
     }

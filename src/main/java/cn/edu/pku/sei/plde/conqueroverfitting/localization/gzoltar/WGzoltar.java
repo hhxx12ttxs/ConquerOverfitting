@@ -13,6 +13,7 @@ import com.gzoltar.core.components.Statement;
 import com.gzoltar.core.instr.testing.TestResult;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.metric.Metric;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.metric.Ochiai;
+import javassist.NotFoundException;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -128,7 +129,23 @@ public class WGzoltar extends GZoltar {
         LocalizationInConstructor constructor = new LocalizationInConstructor(srcPath, FileUtils.getFileAddressOfJava(testSrcPath, classname), functionName);
         HashMap<String, ArrayList<ConstructorDeclarationInfo>> constructMap = constructor.getConstructorMap();
         if (constructMap.size() == 0){
-
+            try {
+                String code = FileUtils.getCodeFromFile(testSrcPath, classname);
+                String functionCode = FileUtils.getTestFunctionCodeFromCode(code, functionName);
+                for (String line: functionCode.split("\n")){
+                    if (!line.contains("(") || !line.contains(")") || line.contains("=")){
+                        continue;
+                    }
+                    String callMethod = line.substring(0, line.indexOf("(")).trim();
+                    if (code.contains("void "+callMethod+"(")){
+                        constructor = new LocalizationInConstructor(srcPath, FileUtils.getFileAddressOfJava(testSrcPath, classname), callMethod);
+                        constructMap = constructor.getConstructorMap();
+                        break;
+                    }
+                }
+            } catch (NotFoundException e){
+                return result;
+            }
         }
         for (String key: constructMap.keySet()){
             String packageName = PathUtils.getPackageNameFromPath(key);
@@ -145,15 +162,15 @@ public class WGzoltar extends GZoltar {
             }
             else {
                 info = constructors.get(0);
-                for (ConstructorDeclarationInfo info1: constructors){
-                    if (info1.parameterNum == paramCount){
-                        info = info1;
-                    }
-                }
+                //for (ConstructorDeclarationInfo info1: constructors){
+                //    if (info1.parameterNum == paramCount){
+                //        info = info1;
+                //    }
+                //}
             }
             Clazz clazz = new Clazz(packageName);
             clazz.setSource(key.substring(key.lastIndexOf(PathUtils.getFileSeparator())+1));
-            Method method = new Method(clazz, info.methodName+"("+paramCount+")");
+            Method method = new Method(clazz, info.methodName+"("+info.parameterNum+")");
             Statement statement = new Statement(method,info.endPos);
             statement.setCount(i,1);
             statement.setCoverage(i);

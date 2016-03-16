@@ -33,13 +33,14 @@ public class AddPrintTransformer implements ClassFileTransformer {
         /* handing the anonymity class */
         if (className.contains(_targetClassName.substring(_targetClassName.lastIndexOf("/"))) && className.contains("$") && _tempJavaName.length() > 1){
             String tempAnonymityClassName = _tempJavaName.substring(0,_tempJavaName.lastIndexOf("/"))+className.substring(className.lastIndexOf("/"))+".class";
-            System.out.println(tempAnonymityClassName);
             if (!new File(tempAnonymityClassName).exists()){
                 buildPrintClass(className, classfileBuffer);
                 if (!new File(tempAnonymityClassName).exists()){
                     return classfileBuffer;
                 }
-                return Utils.getBytesFromFile(tempAnonymityClassName);
+                else {
+                    return Utils.getBytesFromFile(tempAnonymityClassName);
+                }
             }
             new File(tempAnonymityClassName).deleteOnExit();
             byte[] result = Utils.getBytesFromFile(tempAnonymityClassName);
@@ -57,8 +58,9 @@ public class AddPrintTransformer implements ClassFileTransformer {
     }
 
     private byte[] buildPrintClass(String className, byte[] classfileBuffer){
+        String trueClassName = className;
         if (className.contains("$")){
-            className = className.substring(0, className.lastIndexOf("$")).replace("/",".");
+            trueClassName = className.substring(0, className.lastIndexOf("$")).replace("/",".");
         }
         String printCode = "";
         for (String var: _targetVariables){
@@ -66,8 +68,14 @@ public class AddPrintTransformer implements ClassFileTransformer {
         }
         System.out.print(">>");
         try {
-            return Utils.AddCodeToSource(_tempJavaName,_tempClassName,_classPath,_srcPath,className,_targetLineNum,printCode);
-        }catch (Exception e){
+            return Utils.AddCodeToSource(_tempJavaName,_tempClassName,_classPath,_srcPath,trueClassName,_targetLineNum,printCode);
+        }catch (FileNotFoundException e){
+            try {
+                return Utils.AddCodeToSource(_tempJavaName,_tempClassName,_classPath,_srcPath,className.replace("/","."),_targetLineNum,printCode);
+            } catch (IOException ee){
+                return classfileBuffer;
+            }
+        }catch (IOException e){
             return classfileBuffer;
         }
     }
@@ -100,7 +108,6 @@ public class AddPrintTransformer implements ClassFileTransformer {
         }
         printLine += "} catch (Exception e) {}\n";
         if (!printLine.contains("try {}")){
-            System.out.println(printLine);
             return printLine;
         }
         return "";

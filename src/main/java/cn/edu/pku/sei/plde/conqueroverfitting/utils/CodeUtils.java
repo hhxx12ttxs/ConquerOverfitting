@@ -1,6 +1,7 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.utils;
 
 import cn.edu.pku.sei.plde.conqueroverfitting.file.ReadFile;
+import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.MethodInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 import javassist.NotFoundException;
 import org.eclipse.jdt.core.dom.*;
@@ -104,13 +105,21 @@ public class CodeUtils {
 
      public static List<String> getAssertInTest(String testSrcPath, String testClassname, String testMethodName){
          List<String> result = new ArrayList<>();
+         String code = FileUtils.getCodeFromFile(FileUtils.getFileAddressOfJava(testSrcPath, testClassname));
          try {
-             String functionCode = FileUtils.getTestFunctionCodeFromCode(FileUtils.getCodeFromFile(FileUtils.getFileAddressOfJava(testSrcPath, testClassname)), testMethodName);
+             String functionCode = FileUtils.getTestFunctionCodeFromCode(code, testMethodName);
              for (String lineString: functionCode.split("\n")){
                  if (lineString.trim().startsWith("assert")
                          || lineString.trim().startsWith("Assert")
                          || lineString.trim().startsWith("fail(")
                          || lineString.trim().contains(".assert")){
+                     result.add(lineString.trim());
+                 }
+                 else if (!lineString.contains("(") || !lineString.contains(")") || lineString.contains("=")){
+                     continue;
+                 }
+                 String callMethod = lineString.substring(0, lineString.indexOf("(")).trim();
+                 if (code.contains("void "+callMethod+"(")){
                      result.add(lineString.trim());
                  }
              }
@@ -178,26 +187,75 @@ public class CodeUtils {
         return result;
     }
 
+    private static List<MethodDeclaration> getMethod(String code, String methodName) {
+        List<MethodDeclaration> result = new ArrayList<>();
+        ASTParser parser = ASTParser.newParser(AST.JLS3);
+        parser.setSource(code.toCharArray());
+        CompilationUnit unit = (CompilationUnit) parser.createAST(null);
+        TypeDeclaration declaration = (TypeDeclaration) unit.types().get(0);
+        MethodDeclaration methodDec[] = declaration.getMethods();
+        for (MethodDeclaration method : methodDec) {
+            if (method.getName().getIdentifier().equals(methodName)) {
+                result.add(method);
+            }
+        }
+        return result;
+    }
+
+    public static List<Integer> getReturnLine(String code, String methodName, int paramCount){
+        List<Integer> result = new ArrayList<>();
+        ASTParser parser = ASTParser.newParser(AST.JLS3);
+        parser.setSource(code.toCharArray());
+        CompilationUnit unit = (CompilationUnit) parser.createAST(null);
+        List<MethodDeclaration> methodDec = getMethod(code, methodName);
+        for (MethodDeclaration method: methodDec){
+            if (method.parameters().size() != paramCount){
+                continue;
+            }
+            Block body =method.getBody();
+            List<Statement> statements = body.statements();
+            for (Statement statement: statements){
+                if (statement.toString().contains("return;")){
+                    int startLine = unit.getLineNumber(statement.getStartPosition()) -1;
+                    int lineOffset = 0;
+                    for (String line: statement.toString().split("\n")){
+                        lineOffset++;
+                        if (line.contains("return;")){
+                            result.add(startLine+lineOffset);
+                        }
+                    }
+                }
+            }
+
+        }
+        return result;
+    }
+
+    public static int getConstructorParamsCount(String functionName){
+        return Integer.valueOf(functionName.substring(functionName.indexOf("(")+1,functionName.indexOf(")")));
+    }
+
 
     public static Map<List<String>, List<Integer>> getMethodLine(String code, String methodName){
         Map<List<String>, List<Integer>> result = new HashMap<>();
         ASTParser parser = ASTParser.newParser(AST.JLS3);
         parser.setSource(code.toCharArray());
         CompilationUnit unit = (CompilationUnit) parser.createAST(null);
-        TypeDeclaration declaration = (TypeDeclaration) unit.types().get(0);
-        MethodDeclaration methodDec[] = declaration.getMethods();
+        List<MethodDeclaration> methodDec = getMethod(code, methodName);
         for (MethodDeclaration method: methodDec){
-            if (method.getName().getIdentifier().equals(methodName)){
-                int startLine = unit.getLineNumber(method.getStartPosition()) -1;
-                int endLine = unit.getLineNumber(method.getStartPosition()+method.getLength()) -1;
-                List<String> parameters = new ArrayList<>();
-                List<SingleVariableDeclaration> vars = method.parameters();
-                for (SingleVariableDeclaration var: vars){
-                    parameters.add(var.getName().getIdentifier());
-                }
-                result.put(parameters, Arrays.asList(startLine,endLine));
+            int startLine = unit.getLineNumber(method.getStartPosition()) -1;
+            int endLine = unit.getLineNumber(method.getStartPosition()+method.getLength()) -1;
+            List<String> parameters = new ArrayList<>();
+            List<SingleVariableDeclaration> vars = method.parameters();
+            for (SingleVariableDeclaration var: vars){
+                parameters.add(var.getName().getIdentifier());
             }
+            result.put(parameters, Arrays.asList(startLine,endLine));
         }
         return result;
+    }
+
+    public static boolean isConstructor(String classname, String function){
+        return  classname.substring(classname.lastIndexOf(".") + 1).equals(function.substring(0, function.indexOf('(')));
     }
 }

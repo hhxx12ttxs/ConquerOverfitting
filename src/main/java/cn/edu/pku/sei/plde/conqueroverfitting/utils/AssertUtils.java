@@ -58,6 +58,13 @@ public class AssertUtils {
                 if (lineString.startsWith("Assert") || lineString.startsWith("assert") || lineString.startsWith("fail")){
                     result.add(lineNum);
                 }
+                else if (lineString.contains("(") && lineString.contains(")") && !lineString.contains("=")){
+                    String callMethod = lineString.substring(0, lineString.indexOf("(")).trim();
+                    if (FileUtils.getCodeFromFile(tempJavaFile).contains("void "+callMethod+"(")){
+                        result.add(lineNum);
+                    }
+                }
+
                 if (lineString.startsWith("fail")){
                     int num = lineNum -1;
                     while (!CodeUtils.getLineFromCode(FileUtils.getCodeFromFile(tempJavaFile),num).trim().startsWith("try")){

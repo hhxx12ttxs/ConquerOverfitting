@@ -54,7 +54,7 @@ public class Suspicious implements Serializable{
                 try {
                     String testTrace = TestUtils.getTestTrace(_classpath, _testClasspath, test.split("#")[0], test.split("#")[1]);
                     for (String line : testTrace.split("\n")) {
-                        if (line.contains(classname()) && line.contains("(") && line.contains(")")) {
+                        if (line.contains(classname()+".") && line.contains("(") && line.contains(")")) {
                             if (_lastLine!= -1){
                                 continue;
                             }
@@ -166,6 +166,9 @@ public class Suspicious implements Serializable{
             }
         }
         List<VariableInfo> locals = variableCollect.getVisibleLocalInMethodList(classSrcPath, line);
+        if (locals.size() == 0){
+            locals = variableCollect.getVisibleLocalInMethodList(classSrcPath, line-1);
+        }
         for (VariableInfo local: locals){
             local.isLocalVariable = true;
         }
@@ -174,6 +177,15 @@ public class Suspicious implements Serializable{
         LinkedHashMap<String, ArrayList<VariableInfo>> classvars = variableCollect.getVisibleFieldInAllClassMap(classSrcPath);
         if (classvars.containsKey(classSrcPath)){
             List<VariableInfo> fields = classvars.get(classSrcPath);
+            List<VariableInfo> staticVars = new ArrayList<>();
+            if (MethodCollect.checkIsStaticMethod(getClassSrcPath(classSrc),_function.substring(0, _function.indexOf("(")))){
+                for (VariableInfo info: fields){
+                    if (!info.isStatic){
+                        staticVars.add(info);
+                    }
+                }
+            }
+            fields.removeAll(staticVars);
             for (VariableInfo field: fields){
                 field.isFieldVariable = true;
             }
@@ -202,6 +214,7 @@ public class Suspicious implements Serializable{
             }
         }
         _methodInfo.removeAll(staticMethod);
+        _methodInfo = InfoUtils.filterBannedMethod(_methodInfo);
         return _methodInfo;
     }
 
