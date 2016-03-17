@@ -129,22 +129,21 @@ public class WGzoltar extends GZoltar {
         LocalizationInConstructor constructor = new LocalizationInConstructor(srcPath, FileUtils.getFileAddressOfJava(testSrcPath, classname), functionName);
         HashMap<String, ArrayList<ConstructorDeclarationInfo>> constructMap = constructor.getConstructorMap();
         if (constructMap.size() == 0){
-            try {
-                String code = FileUtils.getCodeFromFile(testSrcPath, classname);
-                String functionCode = FileUtils.getTestFunctionCodeFromCode(code, functionName);
-                for (String line: functionCode.split("\n")){
-                    if (!line.contains("(") || !line.contains(")") || line.contains("=")){
-                        continue;
-                    }
-                    String callMethod = line.substring(0, line.indexOf("(")).trim();
-                    if (code.contains("void "+callMethod+"(")){
-                        constructor = new LocalizationInConstructor(srcPath, FileUtils.getFileAddressOfJava(testSrcPath, classname), callMethod);
-                        constructMap = constructor.getConstructorMap();
-                        break;
-                    }
-                }
-            } catch (NotFoundException e){
+            String code = FileUtils.getCodeFromFile(testSrcPath, classname);
+            String functionCode = FileUtils.getTestFunctionCodeFromCode(code, functionName);
+            if (functionCode.equals("")){
                 return result;
+            }
+            for (String line: functionCode.split("\n")){
+                if (!line.contains("(") || !line.contains(")") || line.contains("=")){
+                    continue;
+                }
+                String callMethod = line.substring(0, line.indexOf("(")).trim();
+                if (code.contains("void "+callMethod+"(")){
+                    constructor = new LocalizationInConstructor(srcPath, FileUtils.getFileAddressOfJava(testSrcPath, classname), callMethod);
+                    constructMap = constructor.getConstructorMap();
+                    break;
+                }
             }
         }
         for (String key: constructMap.keySet()){

@@ -90,15 +90,14 @@ public class CodeUtils {
 
     public static int getAssertCountInTest(String testSrcPath, String testClassname, String testMethodName){
         int count = 0;
-        try {
-            String functionCode = FileUtils.getTestFunctionCodeFromCode(FileUtils.getCodeFromFile(FileUtils.getFileAddressOfJava(testSrcPath, testClassname)), testMethodName);
-            for (String lineString: functionCode.split("\n")){
-                if (lineString.trim().startsWith("assert") || lineString.trim().startsWith("Assert") || lineString.trim().startsWith("fail(")){
-                    count++;
-                }
-            }
-        } catch (NotFoundException e){
+        String functionCode = FileUtils.getTestFunctionCodeFromCode(FileUtils.getCodeFromFile(FileUtils.getFileAddressOfJava(testSrcPath, testClassname)), testMethodName);
+        if (functionCode.equals("")){
             return -1;
+        }
+        for (String lineString: functionCode.split("\n")){
+            if (lineString.trim().startsWith("assert") || lineString.trim().startsWith("Assert") || lineString.trim().startsWith("fail(")){
+                count++;
+            }
         }
         return count;
     }
@@ -106,26 +105,23 @@ public class CodeUtils {
      public static List<String> getAssertInTest(String testSrcPath, String testClassname, String testMethodName){
          List<String> result = new ArrayList<>();
          String code = FileUtils.getCodeFromFile(FileUtils.getFileAddressOfJava(testSrcPath, testClassname));
-         try {
-             String functionCode = FileUtils.getTestFunctionCodeFromCode(code, testMethodName);
-             for (String lineString: functionCode.split("\n")){
-                 if (lineString.trim().startsWith("assert")
-                         || lineString.trim().startsWith("Assert")
-                         || lineString.trim().startsWith("fail(")
-                         || lineString.trim().contains(".assert")){
-                     result.add(lineString.trim());
-                 }
-                 else if (!lineString.contains("(") || !lineString.contains(")") || lineString.contains("=")){
-                     continue;
-                 }
-                 String callMethod = lineString.substring(0, lineString.indexOf("(")).trim();
-                 if (code.contains("void "+callMethod+"(")){
-                     result.add(lineString.trim());
-                 }
+         String functionCode = FileUtils.getTestFunctionCodeFromCode(code, testMethodName);
+         for (String lineString: functionCode.split("\n")){
+             if (lineString.trim().startsWith("assert")
+                     || lineString.trim().startsWith("Assert")
+                     || lineString.trim().startsWith("fail(")
+                     || lineString.trim().contains(".assert")){
+                 result.add(lineString.trim());
              }
-         } catch (NotFoundException e){
-             e.printStackTrace();
+             else if (!lineString.contains("(") || !lineString.contains(")") || lineString.contains("=")){
+                 continue;
+             }
+             String callMethod = lineString.substring(0, lineString.indexOf("(")).trim();
+             if (code.contains("void "+callMethod+"(")){
+                 result.add(lineString.trim());
+             }
          }
+
          return result;
      }
 
@@ -235,6 +231,18 @@ public class CodeUtils {
         return Integer.valueOf(functionName.substring(functionName.indexOf("(")+1,functionName.indexOf(")")));
     }
 
+    public static int getLineNumOfLineString(String code, String lineString, int startLine){
+        String[] codeLines = code.split("\n");
+        for (int i= startLine; i< codeLines.length; i++){
+            if (codeLines[i].trim().equals(lineString.trim())){
+                return i+1;
+            }
+        }
+        return -1;
+    }
+    public static int getLineNumOfLineString(String code, String lineString) {
+        return getLineNumOfLineString(code,lineString,0);
+    }
 
     public static Map<List<String>, List<Integer>> getMethodLine(String code, String methodName){
         Map<List<String>, List<Integer>> result = new HashMap<>();

@@ -20,6 +20,12 @@ public class MathUtils {
         if (value.equals("Integer.MAX_VALUE")){
             return Integer.MAX_VALUE;
         }
+        if (value.equals("Infinity")){
+            return Double.POSITIVE_INFINITY;
+        }
+        if (value.equals("-Infinity")){
+            return Double.NEGATIVE_INFINITY;
+        }
         if (value.endsWith(".0")){
             value = value.substring(0, value.lastIndexOf("."));
         }

@@ -18,7 +18,7 @@ public class EntiretyTest {
 
     @Test
     public void testEntirety() throws Exception{
-        int i = 26;
+        int i = 37;
         String project = "Math-"+i;
         /* 四个整个项目需要的参数 */
         //Math,Time

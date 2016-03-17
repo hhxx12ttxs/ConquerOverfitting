@@ -25,11 +25,19 @@ public class BoundaryCollect {
 	public ArrayList<BoundaryInfo> getBoundaryList(){
 		filesPath = FileUtils.getJavaFilesInProj(rootPath);
 		for(String filePath : filesPath){
-			ASTNode root = JDTUtils.createASTForSource(new ReadFile(filePath).getSource(), ASTParser.K_COMPILATION_UNIT);
-			BoundaryCollectVisitor boundaryCollectVisitor = new BoundaryCollectVisitor();
-			root.accept(boundaryCollectVisitor);
+			try {
+				ASTNode root = JDTUtils.createASTForSource(new ReadFile(filePath).getSource(), ASTParser.K_COMPILATION_UNIT);
+				if (root == null){
+					return new ArrayList<>();
+				}
+				BoundaryCollectVisitor boundaryCollectVisitor = new BoundaryCollectVisitor();
+				root.accept(boundaryCollectVisitor);
 
-			boundaryList.addAll(boundaryCollectVisitor.getBoundaryInfoList());
+				boundaryList.addAll(boundaryCollectVisitor.getBoundaryInfoList());
+			}
+			catch (NullPointerException e){
+				continue;
+			}
 		}
 		return boundaryList;
 	}

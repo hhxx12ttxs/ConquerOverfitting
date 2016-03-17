@@ -23,14 +23,15 @@ public class SearchBoundaryFilter {
      * @param exceptionVariable the  key-value map to be filtered
      * @return the filtered key-value map
      */
-    public static Map<VariableInfo, List<String>> filter(Map<VariableInfo, List<String>> exceptionVariable, Map<VariableInfo, List<String>> trueValues){
-        Map<VariableInfo, List<String>> result = new HashMap<VariableInfo, List<String>>();
+    public static Map<VariableInfo, List<BoundaryInfo>> getBoundary(Map<VariableInfo, List<String>> exceptionVariable){
+        Map<VariableInfo, List<BoundaryInfo>> result = new HashMap<VariableInfo, List<BoundaryInfo>>();
         for (Map.Entry<VariableInfo, List<String>> entry: exceptionVariable.entrySet()){
-            String variableName = variableName(entry);
+            //String variableName = variableName(entry);
             List<BoundaryInfo> boundaryList = getSearchBoundaryInfo(entry.getKey());
-            if (boundaryList == null){
-                continue;
+            if (boundaryList != null && boundaryList.size()> 0){
+                result.put(entry.getKey(),boundaryList);
             }
+            /*
             //根据值在搜索中出现的次数来确定怀疑目标
             for (String value: entry.getValue()){
                 int valueCount = BoundaryFilter.countTheValueOccurs(boundaryList,value, entry.getKey().getStringType());
@@ -109,7 +110,7 @@ public class SearchBoundaryFilter {
                 //对于复杂的数据结构,不等于null总是一个好的方法
                 result.put(entry.getKey(),new ArrayList<String>(Arrays.asList("null")));
             }*/
-
+            /*
             if (entry.getKey().isParameter && trueValues.containsKey(entry.getKey()) && MathUtils.isNumberType(entry.getKey().getStringType())){
                 List<String> values = new ArrayList<>(entry.getValue());
                 values.removeAll(trueValues.get(entry.getKey()));
@@ -131,9 +132,10 @@ public class SearchBoundaryFilter {
                         addValueToResult(entry,result,"-0");
                     }
                 }
-            }
+            }*/
 
         }
+        /*
         if (result.size() == 0){
             int boolCount = 0;
             Map.Entry<VariableInfo, List<String>> boolEntry = null;
@@ -146,7 +148,7 @@ public class SearchBoundaryFilter {
             if (boolCount == 1 && boolEntry!= null && trueValues.containsKey(boolEntry.getKey())){
                 result.put(boolEntry.getKey(),boolEntry.getValue());
             }
-        }
+        }*/
         return result;
     }
 
@@ -254,11 +256,12 @@ public class SearchBoundaryFilter {
         BoundaryCollect boundaryCollect = new BoundaryCollect(codePackage.getAbsolutePath());
         List<BoundaryInfo> boundaryList = boundaryCollect.getBoundaryList();
         List<BoundaryInfo> filteredList = BoundaryFilter.getBoundaryWithName(boundaryList, variableName);
-        if (filteredList.size() == 0 && !info.isSimpleType){
-            filteredList = BoundaryFilter.getBoundaryWithType(boundaryList, info.getStringType());
-        }
+        //if (filteredList.size() == 0 && !info.isSimpleType){
+        //    filteredList = BoundaryFilter.getBoundaryWithType(boundaryList, info.getStringType());
+        //}
         return filteredList;
     }
+
     private static String variableName(Map.Entry<VariableInfo, List<String>> entry){
         return entry.getKey().variableName.contains(".")?entry.getKey().variableName.substring(entry.getKey().variableName.lastIndexOf(".")+1):entry.getKey().variableName;
     }

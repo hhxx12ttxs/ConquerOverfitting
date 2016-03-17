@@ -223,7 +223,7 @@ public class Suspicious implements Serializable{
         List<TraceResult> traceResults = new ArrayList<TraceResult>();
         if (_tests.size() > 10){
             for (String testclass: _failTests){
-                traceResults.addAll(tracer.trace(classname(), functionname(), testclass.split("#")[0], testclass.split("#")[1], lastLine()));
+                traceResults.addAll(tracer.trace(classname(), functionname(), testclass.split("#")[0], testclass.split("#")[1], lastLine(), false));
             }
         }
         else {
@@ -231,7 +231,7 @@ public class Suspicious implements Serializable{
                 if (!_failTests.contains(testclass) && !testFilter(testClassSrc, testclass.split("#")[0], testclass.split("#")[1])){
                     continue;
                 }
-                traceResults.addAll(tracer.trace(classname(), functionname(), testclass.split("#")[0], testclass.split("#")[1], lastLine()));
+                traceResults.addAll(tracer.trace(classname(), functionname(), testclass.split("#")[0], testclass.split("#")[1], lastLine(), !_failTests.contains(testclass)));
             }
         }
         return traceResults;

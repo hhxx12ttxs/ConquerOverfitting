@@ -10,6 +10,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.localization.common.synth.TestClas
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.gzoltar.GZoltarSuspiciousProgramStatements;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.common.library.JavaLibrary;
 import com.sun.glass.ui.EventLoop;
+import javassist.NotFoundException;
 import org.apache.commons.lang.StringUtils;
 
 import java.io.*;
@@ -105,14 +106,11 @@ public class Localization  {
             }
         }
 
-        List<StatementExt> statements = this.getSuspiciousListWithSuspiciousnessBiggerThanZero();
+        List<StatementExt> statements = statementFilter(this.getSuspiciousListWithSuspiciousnessBiggerThanZero());
         List<Suspicious> result = new ArrayList<Suspicious>();
         StatementExt firstline = statements.get(0);
         List<String> lineNumbers = new ArrayList<String>();
         for (StatementExt statement: statements){
-            if (statement.getName().contains("exception") || statement.getName().contains("Exception")){
-                continue;
-            }
             if (getClassAddressFromStatement(statement).equals(getClassAddressFromStatement(firstline)) && getTargetFunctionFromStatement(statement).equals(getTargetFunctionFromStatement(firstline))){
                 lineNumbers.add(String.valueOf(statement.getLineNumber()));
             }else {
@@ -143,6 +141,28 @@ public class Localization  {
         } catch (IOException e){
             e.printStackTrace();
             return new ArrayList<Suspicious>();
+        }
+        return result;
+    }
+
+    private List<StatementExt> statementFilter(List<StatementExt> statements){
+        List<StatementExt> result = new ArrayList<>();
+        for (StatementExt statement: statements){
+            if (getFunctionNameFromStatement(statement).equals("valueOf")){
+                continue;
+            }
+            if (statement.getName().contains("exception") || statement.getName().contains("Exception")){
+                continue;
+            }
+            for (String test: statement.getFailTests()) {
+                String testClass = test.split("#")[0];
+                String testMethod = test.split("#")[1];
+                String code = FileUtils.getCodeFromFile(testSrcPath, testClass);
+                String methodCode = FileUtils.getTestFunctionCodeFromCode(code, testMethod);
+                if (methodCode.contains(getFunctionNameFromStatement(statement))) {
+                    result.add(statement);
+                }
+            }
         }
         return result;
     }
@@ -222,6 +242,10 @@ public class Localization  {
      */
     public static String getTargetFunctionFromStatement(Statement statement){
         return statement.getLabel().split("\\{")[1].split("\\)")[0]+"\\)";
+    }
+
+    public static String getFunctionNameFromStatement(Statement statement){
+        return getTargetFunctionFromStatement(statement).split("\\(")[0];
     }
 
     public static String getErrorTestsStringFromStatement(StatementExt statementExt){

@@ -63,7 +63,7 @@ public class BoundaryFilter {
             if (!info.isSimpleType && info.otherType == null){
                 continue;
             }
-            String infoType = info.isSimpleType?info.variableSimpleType.toString():info.otherType;
+            String infoType = info.getStringType();
             if (info.name.equals(name) && (infoType.equals(type) || (MathUtils.isNumberType(infoType) && MathUtils.isNumberType(type)))){
                 result.add(info);
             }

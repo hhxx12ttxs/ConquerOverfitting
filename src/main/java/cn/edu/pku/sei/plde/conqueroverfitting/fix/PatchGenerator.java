@@ -7,6 +7,7 @@ public class PatchGenerator {
     public static String generate(String ifString, String fixString){
         String patch = "";
         ifString = ifString.replace("(int)-2.147483648E9","Integer.MIN_VALUE");
+        ifString = ifString.replace("(double)1.7976931348623157E308","Double.MAX_VALUE");
         for (String _if: ifString.split("\n")){
             patch += _if + "{" + fixString + "}\n";
         }

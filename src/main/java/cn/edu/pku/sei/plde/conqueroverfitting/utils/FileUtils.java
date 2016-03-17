@@ -99,7 +99,7 @@ public class FileUtils {
 		}
 	}
 
-	public static String getTestFunctionCodeFromCode(String code, String targetFunctionName) throws NotFoundException{
+	public static String getTestFunctionCodeFromCode(String code, String targetFunctionName) {
 		if (code.contains("@Test")){
 			String[] tests = code.split("@Test");
 			for (String test: tests){
@@ -119,8 +119,7 @@ public class FileUtils {
 				}
 			}
 		}
-
-		throw new NotFoundException("Target function: "+ targetFunctionName+ " No Found");
+		return "";
 	}
 
 	public static List<Integer> getTestFunctionLineFromCode(String code, String targetFunctionName) throws NotFoundException{
@@ -129,7 +128,7 @@ public class FileUtils {
 			String[] tests = code.split("@Test");
 			for (String test: tests){
 				if (test.contains("public void "+targetFunctionName+"()")){
-					int firstLine = getLineNumberOfLine(code,test.split("\n")[0]);
+					int firstLine = getLineNumberOfLine(code,test.split("\n")[1]);
 					result.add(firstLine);
 					result.add(firstLine+test.split("\n").length);
 					break;

@@ -193,8 +193,6 @@ public class Capturer {
     }
 
 
-
-
     private String staticSlicingProcess(List<String> returnParam, List<String> callParam, String statements){
         for (int i=0; i<returnParam.size(); i++){
             if (StringUtils.isNumeric(returnParam.get(i))){

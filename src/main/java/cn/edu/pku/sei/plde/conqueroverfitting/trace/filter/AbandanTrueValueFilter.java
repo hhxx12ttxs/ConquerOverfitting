@@ -13,7 +13,6 @@ public class AbandanTrueValueFilter {
     public static Map<VariableInfo, List<String>> filter(List<TraceResult> traceResults, List<VariableInfo> vars){
         Map<VariableInfo, List<String>> trueValues = filterTrueValue(traceResults, vars);
         Map<VariableInfo, List<String>> exceptionValues = new HashMap<VariableInfo, List<String>>();
-        // Add the exception values to the exceptionValues List
         for (TraceResult traceResult: traceResults){
             if (traceResult.getTestResult()){
                 continue;
@@ -50,7 +49,8 @@ public class AbandanTrueValueFilter {
                                 count++;
                             }
                         }
-                        if (count < valueArray.length){
+                        //if (count < valueArray.length){
+                        if (count == 0){
                             exceptionValues.get(infoKey).add(value);
                         }
                     }
@@ -77,10 +77,6 @@ public class AbandanTrueValueFilter {
                 if (infoKey == null){
                     continue;
                 }
-                //if (infoKey.isParameter){
-                //    continue;
-                //}
-
                 List<String> value = trueValues.containsKey(infoKey)?appandList(trueValues.get(infoKey),traceResult.get(key)):traceResult.get(key);
                 trueValues.put(infoKey, value);
             }
@@ -106,6 +102,25 @@ public class AbandanTrueValueFilter {
             }
         }
         return trueValues;
+    }
+
+    public static Map<VariableInfo, List<String>> getFalseValue(List<TraceResult> traceResults, List<VariableInfo> vars){
+        Map<VariableInfo, List<String>> falseValues = new HashMap<VariableInfo, List<String>>();
+        for (TraceResult traceResult: traceResults){
+            if (traceResult.getTestResult()) {
+                continue;
+            }
+            Set<String> keys = traceResult.getResultMap().keySet();
+            for (String key: keys){
+                VariableInfo infoKey = getVariableInfoWithName(vars, key);
+                if (infoKey == null){
+                    continue;
+                }
+                List<String> value = falseValues.containsKey(infoKey)?appandList(falseValues.get(infoKey),traceResult.get(key)):traceResult.get(key);
+                falseValues.put(infoKey, value);
+            }
+        }
+        return falseValues;
     }
 
     public static <T> List<T> appandList(List<T> aa, List<T> bb){

@@ -8,6 +8,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.main.Config;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.filter.AbandanTrueValueFilter;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.filter.SearchBoundaryFilter;
 import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeUtils;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.InfoUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.MathUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 import org.apache.commons.lang.StringUtils;
@@ -22,10 +23,72 @@ public class ExceptionExtractor {
 
     public static Map<VariableInfo, List<String>> extract(List<TraceResult> traceResults, List<VariableInfo> vars){
         Map<VariableInfo, List<String>> exceptionVariable = AbandanTrueValueFilter.filter(traceResults, vars);
-        Map<VariableInfo, List<String>> trueVariable = AbandanTrueValueFilter.getTrueValue(traceResults, vars);
         Map<VariableInfo, List<String>> cleanedVariable = cleanVariables(exceptionVariable);
-        exceptionVariable = SearchBoundaryFilter.filter(cleanedVariable, trueVariable);
-        return exceptionVariable;
+        Map<VariableInfo, List<BoundaryInfo>> variableBoundary = SearchBoundaryFilter.getBoundary(cleanedVariable);
+        return getBoundaryIntervals(cleanedVariable, variableBoundary);
+    }
+
+    private static Map<VariableInfo, List<String>> getBoundaryIntervals(Map<VariableInfo, List<String>> variableValue, Map<VariableInfo, List<BoundaryInfo>> variableBoundary){
+        Map<VariableInfo, List<String>> result = new HashMap<>();
+        for (Map.Entry<VariableInfo, List<String>> entry: variableValue.entrySet()){
+            if (!variableBoundary.containsKey(entry.getKey()) || variableBoundary.get(entry.getKey()).size() == 0){
+                continue;
+            }
+            List<BoundaryInfo> boundaryList = variableBoundary.get(entry.getKey());
+            if (MathUtils.isNumberType(entry.getKey().getStringType())) {
+                double smallestValue = MathUtils.parseStringValue(entry.getValue().get(0));
+                double biggestValue = MathUtils.parseStringValue(entry.getValue().get(0));
+                for (String value : entry.getValue()) {
+                    double doubleValue = Double.valueOf(value);
+                    if (Double.compare(doubleValue, smallestValue) < 0) {
+                        smallestValue = doubleValue;
+                    }
+                    if (Double.compare(doubleValue, biggestValue) > 0) {
+                        biggestValue = doubleValue;
+                    }
+                }
+
+                double biggestBoundary = -Double.MAX_VALUE;
+                double smallestBoundary = Double.MAX_VALUE;
+
+                for (BoundaryInfo info : boundaryList) {
+                    try {
+                        double doubleValue = MathUtils.parseStringValue(info.value);
+                        if (doubleValue >= biggestBoundary && doubleValue <= smallestValue) {
+                            biggestBoundary = doubleValue;
+                        }
+                        if (doubleValue <= smallestBoundary && doubleValue >= biggestValue) {
+                            smallestBoundary = doubleValue;
+                        }
+                    } catch (NumberFormatException e){
+                        e.printStackTrace();
+                    }
+                }
+                if (biggestBoundary == -Double.MAX_VALUE && smallestBoundary == Double.MAX_VALUE){
+                    for (BoundaryInfo info : boundaryList) {
+                        try {
+                            double doubleValue = MathUtils.parseStringValue(info.value);
+                            if (doubleValue <= smallestBoundary && doubleValue >= smallestValue) {
+                                smallestBoundary = doubleValue;
+                            }
+                            if (doubleValue >= biggestBoundary && doubleValue <= biggestValue) {
+                                biggestBoundary = doubleValue;
+                            }
+                        } catch (NumberFormatException e){
+                            e.printStackTrace();
+                        }
+                    }
+                    if (biggestBoundary == -Double.MAX_VALUE || smallestBoundary == Double.MAX_VALUE){
+                        continue;
+                    }
+                }
+                result.put(entry.getKey(),Arrays.asList(String.valueOf(smallestBoundary), String.valueOf(biggestBoundary)));
+            }
+            else {
+                result.put(entry.getKey(), entry.getValue());
+            }
+        }
+        return result;
     }
 
     private static Map<VariableInfo, List<String>> cleanVariables(Map<VariableInfo, List<String>> exceptionVariable){
@@ -40,6 +103,11 @@ public class ExceptionExtractor {
             }
             if (!var.getKey().isSimpleType && var.getKey().otherType == null){
                 continue;
+            }
+            if (var.getKey().getStringType().equals("BOOLEAB")){
+                if (var.getValue().contains("true") && var.getValue().contains("false")){
+                    continue;
+                }
             }
             List<String> bannedValue = new ArrayList<>();
             for (String value: var.getValue()){
