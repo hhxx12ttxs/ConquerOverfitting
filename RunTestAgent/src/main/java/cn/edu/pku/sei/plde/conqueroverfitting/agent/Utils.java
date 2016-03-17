@@ -49,7 +49,7 @@ public class Utils {
             outputStream.close();
             reader.close();
             String result = Utils.shellRun(Arrays.asList("javac -Xlint:unchecked -cp "+ classPath+" "+ tempJavaName));
-            if (result.contains("找不到文件")){
+            if (result.contains("找不到文件") || result.contains("not found")){
                 throw new FileNotFoundException();
             }
             //System.out.println(result);
