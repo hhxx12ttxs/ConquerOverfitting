@@ -130,7 +130,8 @@ public class FileUtils {
 				if (test.contains("public void "+targetFunctionName+"()")){
 					int firstLine = getLineNumberOfLine(code,test.split("\n")[1]);
 					result.add(firstLine);
-					result.add(firstLine+test.split("\n").length);
+					test = test.substring(test.indexOf('{'), test.lastIndexOf('}'));
+					result.add(firstLine+test.split("\n").length-2);
 					break;
 				}
 			}

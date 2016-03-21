@@ -115,9 +115,9 @@ public class AddPrintTransformer implements ClassFileTransformer {
 
     boolean isSimpleType(String type){
         String[] simpleType = {"byte", "short", "int", "long", "float", "double", "character", "boolean", "string", "null"};
-        if (type.endsWith("[]")){
-            type = type.substring(0, type.lastIndexOf("["));
-        }
+        //if (type.endsWith("[]")){
+        //    type = type.substring(0, type.lastIndexOf("["));
+        //}
         for (String simple: simpleType){
             if (simple.equals(type)){
                 return true;

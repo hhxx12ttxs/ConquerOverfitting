@@ -75,6 +75,9 @@ public class InfoUtils {
             if (info.variableName.contains("<") || info.variableName.contains(">") || info.getStringType().contains("<") || info.getStringType().contains(">")){
                 continue;
             }
+            if (info.variableName.toUpperCase().equals(info.variableName)){
+                continue;
+            }
             result.add(info);
         }
         return result;

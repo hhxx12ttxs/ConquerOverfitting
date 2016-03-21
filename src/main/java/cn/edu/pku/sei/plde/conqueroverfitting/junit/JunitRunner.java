@@ -24,7 +24,6 @@ public class JunitRunner {
             System.out.println(failure.getMessage());
             System.out.println(failure.getDescription().toString());
             System.out.println(failure.getTrace());
-            failure.getException().printStackTrace();
         }
         System.exit(0);
     }

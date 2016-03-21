@@ -4,6 +4,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.file.ReadFile;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.MethodInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 import javassist.NotFoundException;
+import org.apache.commons.lang.StringUtils;
 import org.eclipse.jdt.core.dom.*;
 import org.omg.CORBA.Object;
 import org.omg.PortableInterceptor.SYSTEM_EXCEPTION;
@@ -130,7 +131,7 @@ public class CodeUtils {
         for (String lineString: code.split("\n")){
             lineNum++;
             if (lineNum == line){
-                return lineString;
+                return lineString.trim();
             }
         }
         return "";
@@ -265,5 +266,37 @@ public class CodeUtils {
 
     public static boolean isConstructor(String classname, String function){
         return  classname.substring(classname.lastIndexOf(".") + 1).equals(function.substring(0, function.indexOf('(')));
+    }
+
+    public static int isForLoopParam(List<String> vars){
+        List<Integer> nums = new ArrayList<>();
+        for (String var: vars){
+            if (!StringUtils.isNumeric(var)){
+                return -1;
+            }
+            try {
+                int num = Integer.parseInt(var);
+                nums.add(num);
+            }catch (Exception e){
+                return -1;
+            }
+        }
+        if (nums.size() < 5){
+            return -1;
+        }
+        Collections.sort(nums);
+        int first = nums.get(0);
+        int max = nums.get(0);
+        for (int i=1; i< nums.size();i++){
+            if (nums.get(i)> max){
+                max = nums.get(i);
+            }
+            int second = nums.get(i);
+            if (Math.abs(first-second) != 1){
+                return -1;
+            }
+            first = second;
+        }
+        return max;
     }
 }

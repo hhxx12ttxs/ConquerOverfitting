@@ -10,6 +10,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.localization.common.synth.TestClas
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.gzoltar.GZoltarSuspiciousProgramStatements;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.common.library.JavaLibrary;
 import com.sun.glass.ui.EventLoop;
+import com.sun.tools.javac.code.Attribute;
 import javassist.NotFoundException;
 import org.apache.commons.lang.StringUtils;
 
@@ -58,7 +59,7 @@ public class Localization  {
         List<StatementExt> statements = this.getSuspiciousList();
         List<StatementExt> result = new ArrayList<StatementExt>();
         for (StatementExt statement: statements){
-            if (statement.getSuspiciousness()>0){
+            if (statement.getSuspiciousness()>0 && (statement.getTests().size()- statement.getFailTests().size())< 10){
                 result.add(statement);
             }
         }
@@ -108,6 +109,9 @@ public class Localization  {
 
         List<StatementExt> statements = statementFilter(this.getSuspiciousListWithSuspiciousnessBiggerThanZero());
         List<Suspicious> result = new ArrayList<Suspicious>();
+        if (statements.size() == 0){
+            return result;
+        }
         StatementExt firstline = statements.get(0);
         List<String> lineNumbers = new ArrayList<String>();
         for (StatementExt statement: statements){
@@ -146,9 +150,10 @@ public class Localization  {
     }
 
     private List<StatementExt> statementFilter(List<StatementExt> statements){
+        List<String> bannedMethodName = Arrays.asList("valueOf","toString","reflectionToString");
         List<StatementExt> result = new ArrayList<>();
         for (StatementExt statement: statements){
-            if (getFunctionNameFromStatement(statement).equals("valueOf")){
+            if (bannedMethodName.contains(getFunctionNameFromStatement(statement))){
                 continue;
             }
             if (statement.getName().contains("exception") || statement.getName().contains("Exception")){

@@ -2,7 +2,9 @@ package cn.edu.pku.sei.plde.conqueroverfitting.trace.filter;
 
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.TraceResult;
 import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeUtils;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.CodeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
+import org.eclipse.jdt.core.dom.PrimitiveType;
 
 import java.util.*;
 
@@ -50,11 +52,13 @@ public class AbandanTrueValueFilter {
                             }
                         }
                         //if (count < valueArray.length){
-                        if (count == 0){
+                        if (count == 0 ){
                             exceptionValues.get(infoKey).add(value);
                         }
                     }
-
+                }
+                if (CodeUtils.isForLoopParam(traceResult.get(key))!=-1){
+                    exceptionValues.get(infoKey).addAll(traceResult.get(key));
                 }
                 //delete the blank key-value
                 if (exceptionValues.get(infoKey).size() == 0){

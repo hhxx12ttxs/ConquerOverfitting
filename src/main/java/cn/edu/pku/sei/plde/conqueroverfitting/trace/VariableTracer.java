@@ -42,6 +42,7 @@ public class VariableTracer {
     private List<VariableInfo> _bannedVars = new ArrayList<>();
     private List<MethodInfo> _methods = new ArrayList<>();
     private List<String> _commentedTestClass = new ArrayList<>();
+    private String  _trueTestClass = "";
     private List<Integer> _errorLine;
     private String _shellResult;
     private String _traceResult;
@@ -99,6 +100,7 @@ public class VariableTracer {
         _testMethodName = testMethodName;
         _functionname = functionname;
         _methods = _suspicious.getMethodInfo(_srcPath);
+        _commentedTestClass = new ArrayList<>();
         _assertUtils = new AssertUtils(_classpath,_testClasspath,_testSrcPath,testClassname,testMethodName);
         _errorLine = isSuccess?Arrays.asList(errorLine):getErrorLine(errorLine);
         List<TraceResult> results = new ArrayList<>();
@@ -109,6 +111,9 @@ public class VariableTracer {
             if (_vars.size() == 0 && _methods.size() == 0){
                 continue;
             }
+            if (_commentedTestClass.size() == 0){
+                _commentedTestClass.add("");
+            }
             for (String commentedTestClass: _commentedTestClass) {
                 _shellResult = traceShell(_testClassname, _classname, _functionname, commentedTestClass, _vars, _methods, line);
                 if (_shellResult.contains(">>") && _shellResult.contains("<<")) {
@@ -118,8 +123,8 @@ public class VariableTracer {
                     printErrorShell();
                 }
             }
-            if (trueAssert > 0 && !_assertUtils.getTrueTestFile().equals("")){
-                _shellResult = traceShell(_testClassname, _classname, _functionname, _assertUtils.getTrueTestFile(), _vars, _methods, line);
+            if (trueAssert > 0 && !_trueTestClass.equals("")){
+                _shellResult = traceShell(_testClassname, _classname, _functionname, _trueTestClass, _vars, _methods, line);
                 if (_shellResult.contains(">>") && _shellResult.contains("<<")){
                     _traceResult = analysisShellResult(_shellResult);
                     results.addAll(traceAnalysis(_traceResult));
@@ -301,6 +306,7 @@ public class VariableTracer {
 
     private List<Integer> getTrueErrorLine(){
         List<Integer> assertLines = _assertUtils.getErrorAssertLine();
+        _trueTestClass = _assertUtils.getTrueTestFile();
         List<Integer> result = new ArrayList<>();
         if (assertLines.size() == 0){
             return result;
@@ -337,7 +343,7 @@ public class VariableTracer {
                     if (lineString.trim().contains("catch")){
                         tryLine = -1;
                     }
-                    if (line >= beginLine && line <= endLine && !assertDependences.contains(line)){
+                    if (line >= beginLine && line <= endLine && !assertDependences.contains(line) && !lineString.contains("{") && !lineString.contains("}")){
                         if (lineString.trim().startsWith("fail(") && tryLine != -1){
                             for (int i= tryLine; i< line; i++){
                                 commitedAfter.add(i);
@@ -361,9 +367,9 @@ public class VariableTracer {
                 for (int num: commitedAfter){
                     SourceUtils.commentCodeInSourceFile(originJavaFile, num);
                 }
-                System.out.println(Utils.shellRun(Arrays.asList("javac -Xlint:unchecked -source 1.6 -target 1.7 -cp "+ buildClasspath(Arrays.asList(PathUtils.getJunitPath())) +" -d "+_testClasspath+" "+ originJavaFile.getAbsolutePath())));
-                new File(System.getProperty("user.dir")+"/temp"+assertLine).mkdirs();
-                System.out.println(Utils.shellRun(Arrays.asList("javac -Xlint:unchecked -source 1.6 -target 1.7 -cp "+ buildClasspath(Arrays.asList(PathUtils.getJunitPath())) +" -d "+System.getProperty("user.dir")+"/temp/"+assertLine+"/ "+ originJavaFile.getAbsolutePath())));
+                System.out.println(Utils.shellRun(Arrays.asList("javac -Xlint:unchecked -source 1.6 -target 1.6 -cp "+ buildClasspath(Arrays.asList(PathUtils.getJunitPath())) +" -d "+_testClasspath+" "+ originJavaFile.getAbsolutePath())));
+                new File(System.getProperty("user.dir")+"/temp/"+assertLine).mkdirs();
+                System.out.println(Utils.shellRun(Arrays.asList("javac -Xlint:unchecked -source 1.6 -target 1.6 -cp "+ buildClasspath(Arrays.asList(PathUtils.getJunitPath())) +" -d "+System.getProperty("user.dir")+"/temp/"+assertLine+"/ "+ originJavaFile.getAbsolutePath())));
                 _commentedTestClass.add(FileUtils.getFileAddressOfClass(System.getProperty("user.dir")+"/temp/"+assertLine,_testClassname));
                 Localization localization = new Localization(_classpath, _testClasspath, _testSrcPath, _srcPath, _testClassname);
                 suspiciouses = localization.getSuspiciousLite(false);

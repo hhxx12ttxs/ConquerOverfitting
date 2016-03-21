@@ -8,6 +8,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.main.Config;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.filter.AbandanTrueValueFilter;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.filter.SearchBoundaryFilter;
 import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeUtils;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.CodeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.InfoUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.MathUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
@@ -116,40 +117,18 @@ public class ExceptionExtractor {
                 }
             }
             var.getValue().removeAll(bannedValue);
-            //删掉疑似for循环的计数的数据
-            if (isForLoopParam(unrepeatValue) || var.getValue().size()== 0){
-                continue;
+            //如果是for循环的计数的数据,取最大值.
+            if (CodeUtils.isForLoopParam(unrepeatValue)!=-1){
+                unrepeatValue.clear();
+                unrepeatValue.add(String.valueOf(CodeUtils.isForLoopParam(unrepeatValue)));
+            }
+            if (var.getValue().size()== 0){
+                 continue;
             }
             cleanedVariable.put(var.getKey(), unrepeatValue);
         }
         return cleanedVariable;
     }
 
-    private static boolean isForLoopParam(List<String> vars){
-        List<Integer> nums = new ArrayList<>();
-        for (String var: vars){
-            if (!StringUtils.isNumeric(var)){
-                return false;
-            }
-            try {
-                int num = Integer.parseInt(var);
-                nums.add(num);
-            }catch (Exception e){
-                return false;
-            }
-        }
-        if (nums.size() < 5){
-            return false;
-        }
-        Collections.sort(nums);
-        int first = nums.get(0);
-        for (int i=1; i< nums.size();i++){
-            int second = nums.get(i);
-            if (Math.abs(first-second) != 1){
-                return false;
-            }
-            first = second;
-        }
-        return true;
-    }
+
 }

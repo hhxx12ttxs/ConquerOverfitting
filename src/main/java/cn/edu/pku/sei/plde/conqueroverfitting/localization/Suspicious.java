@@ -238,6 +238,11 @@ public class Suspicious implements Serializable{
     }
 
     private boolean testFilter(String testSrcPath, String testClassname, String testMethodName){
+        String code = FileUtils.getCodeFromFile(testSrcPath, testClassname);
+        String methodCode = FileUtils.getTestFunctionCodeFromCode(code, testMethodName);
+        if (methodCode.equals("")){
+            return false;
+        }
         List<String> assertLines = CodeUtils.getAssertInTest(testSrcPath, testClassname, testMethodName);
         if (assertLines.size() != 1){
             return true;

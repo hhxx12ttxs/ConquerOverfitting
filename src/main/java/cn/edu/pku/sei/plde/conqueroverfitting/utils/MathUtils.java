@@ -26,6 +26,9 @@ public class MathUtils {
         if (value.equals("-Infinity")){
             return Double.NEGATIVE_INFINITY;
         }
+        if (value.equals("null")||value.equals("NaN")){
+            return Double.NaN;
+        }
         if (value.endsWith(".0")){
             value = value.substring(0, value.lastIndexOf("."));
         }
