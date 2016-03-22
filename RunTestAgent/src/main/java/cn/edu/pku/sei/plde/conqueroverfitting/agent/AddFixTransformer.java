@@ -4,6 +4,7 @@ import java.io.*;
 import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.IllegalClassFormatException;
 import java.security.ProtectionDomain;
+import java.util.List;
 
 /**
  * Created by yanrunfa on 16/2/24.
@@ -11,7 +12,7 @@ import java.security.ProtectionDomain;
 public class AddFixTransformer implements ClassFileTransformer{
 
     public final String _targetClassName;
-    public final int _targetLineNum;
+    public final List<Integer> _targetLineNum;
     public final String _srcPath;
     public final String _classPath;
     public final String _patch;
@@ -27,7 +28,7 @@ public class AddFixTransformer implements ClassFileTransformer{
      * @param srcPath
      * @param classPath
      */
-    public AddFixTransformer(String targetClassName, int targetLineNum, String patch, String srcPath, String classPath){
+    public AddFixTransformer(String targetClassName, List<Integer> targetLineNum, String patch, String srcPath, String classPath){
         _targetClassName = targetClassName;
         _targetLineNum = targetLineNum;
         _srcPath = srcPath;

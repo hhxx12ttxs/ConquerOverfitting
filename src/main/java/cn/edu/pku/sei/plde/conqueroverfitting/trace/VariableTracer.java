@@ -1,28 +1,19 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.trace;
 
-import cn.edu.pku.sei.plde.conqueroverfitting.agent.RunTestAgent;
 import cn.edu.pku.sei.plde.conqueroverfitting.agent.Utils;
+import cn.edu.pku.sei.plde.conqueroverfitting.assertCollect.Asserts;
 import cn.edu.pku.sei.plde.conqueroverfitting.junit.JunitRunner;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Localization;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Suspicious;
-import cn.edu.pku.sei.plde.conqueroverfitting.localization.common.library.JavaLibrary;
-import cn.edu.pku.sei.plde.conqueroverfitting.localization.gzoltar.GZoltarSuspiciousProgramStatements;
-import cn.edu.pku.sei.plde.conqueroverfitting.localization.gzoltar.StatementExt;
-import cn.edu.pku.sei.plde.conqueroverfitting.localization.metric.Ochiai;
-import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.*;
 
-import cn.edu.pku.sei.plde.conqueroverfitting.visible.VariableCollect;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.MethodInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
-import com.gzoltar.core.components.Statement;
 
 import javassist.NotFoundException;
 import org.apache.commons.lang.StringUtils;
-import org.junit.runner.JUnitCore;
 
 import java.io.*;
-import java.net.URL;
 import java.util.*;
 
 /**
@@ -38,54 +29,24 @@ public class VariableTracer {
     private String _testClassname;
     private String _classname;
     private String _functionname;
-    private List<VariableInfo> _vars = new ArrayList<>();
-    private List<VariableInfo> _bannedVars = new ArrayList<>();
-    private List<MethodInfo> _methods = new ArrayList<>();
     private List<String> _commentedTestClass = new ArrayList<>();
-    private String  _trueTestClass = "";
-    private List<Integer> _errorLine;
-    private String _shellResult;
-    private String _traceResult;
     private String _testMethodName;
     private String _testSrcPath;
-    private AssertUtils _assertUtils;
-    private int trueAssert = 0;
+    private Asserts _asserts;
 
     /**
      *
-     * @param classpath the path of .class file
-     * @param testClasspath the path of .class test file
      * @param srcPath the path of source file
      */
-    public VariableTracer(String classpath, String testClasspath, String srcPath, String testSrcPath, Suspicious suspicious){
-        _classpath = classpath;
-        _testClasspath = testClasspath;
+    public VariableTracer(String srcPath, String testSrcPath, Suspicious suspicious){
+        _classpath = suspicious._classpath;
+        _testClasspath = suspicious._testClasspath;
         _srcPath = srcPath;
         _testSrcPath = testSrcPath;
         _suspicious = suspicious;
     }
 
-    public String functionname(){
-        return _functionname.substring(0, _functionname.indexOf("("));
-    }
 
-    private String analysisShellResult(String shellResult){
-        String result = shellResult.substring(shellResult.indexOf(">>")+2,shellResult.indexOf("<<"));
-        if (result.equals("") ){
-            return result;
-        }
-        // get the data segment of shell out
-        if (result.contains("|")){
-            result =  result.substring(result.indexOf("|"));
-        }
-        while (!(result.charAt(result.length()-1) == 'E' || result.charAt(result.length()-1) == '|')){
-            result = result.substring(0, result.length()-1);
-            if (result.length()== 0){
-                break;
-            }
-        }
-        return result;
-    }
     /**
      *
      * @param classname the tracing class name
@@ -99,42 +60,37 @@ public class VariableTracer {
         _testClassname = testClassname;
         _testMethodName = testMethodName;
         _functionname = functionname;
-        _methods = _suspicious.getMethodInfo(_srcPath);
         _commentedTestClass = new ArrayList<>();
-        _assertUtils = new AssertUtils(_classpath,_testClasspath,_testSrcPath,testClassname,testMethodName);
-        _errorLine = isSuccess?Arrays.asList(errorLine):getErrorLine(errorLine);
+        _asserts = new Asserts(_classpath,_testClasspath,_testSrcPath,testClassname,testMethodName);
+
+        List<MethodInfo> methodInfos = _suspicious.getMethodInfo(_srcPath);
+        List<Integer> errorLines = isSuccess?Arrays.asList(errorLine):getErrorLine(errorLine);
         List<TraceResult> results = new ArrayList<>();
 
-        for (int line: _errorLine){
-            _vars = _suspicious.getVariableInfo(_srcPath, line);
-            _vars.removeAll(_bannedVars);
-            if (_vars.size() == 0 && _methods.size() == 0){
+        for (int line: errorLines){
+            List<VariableInfo> variableInfos = _suspicious.getVariableInfo(_srcPath, line);
+            variableInfos.removeAll(getBannedVariables(line));
+            if (variableInfos.size() == 0 &&  methodInfos.size() == 0){
                 continue;
             }
             if (_commentedTestClass.size() == 0){
                 _commentedTestClass.add("");
             }
-            for (String commentedTestClass: _commentedTestClass) {
-                _shellResult = traceShell(_testClassname, _classname, _functionname, commentedTestClass, _vars, _methods, line);
-                if (_shellResult.contains(">>") && _shellResult.contains("<<")) {
-                    _traceResult = analysisShellResult(_shellResult);
-                    results.addAll(traceAnalysis(_traceResult));
-                } else {
-                    printErrorShell();
-                }
+            if (_asserts.trueAssertNum() > 0 && !_asserts.getTrueTestFile().equals("")){
+                _commentedTestClass.add(_asserts.getTrueTestFile());
             }
-            if (trueAssert > 0 && !_trueTestClass.equals("")){
-                _shellResult = traceShell(_testClassname, _classname, _functionname, _trueTestClass, _vars, _methods, line);
-                if (_shellResult.contains(">>") && _shellResult.contains("<<")){
-                    _traceResult = analysisShellResult(_shellResult);
-                    results.addAll(traceAnalysis(_traceResult));
-                }
-                else {
-                    printErrorShell();
+            for (String commentedTestClass: _commentedTestClass) {
+                String shellResult = traceShell(_testClassname, _classname, _functionname, commentedTestClass, variableInfos, methodInfos, line);
+                if (shellResult.contains(">>") && shellResult.contains("<<")) {
+                    String traceResult = analysisShellResult(shellResult);
+                    results.addAll(traceAnalysis(traceResult));
+                } else {
+                    printErrorShell(shellResult);
                 }
             }
         }
-
+        _suspicious._assertsMap.put(_testClassname, _asserts);
+        _suspicious._errorLineMap.put(_testClassname, errorLines);
         deleteTempFile();
         return results;
     }
@@ -156,9 +112,28 @@ public class VariableTracer {
         }
     }
 
-    private void printErrorShell(){
+    private void printErrorShell(String shellResult){
         System.out.println("Trace Fial in Output:");
-        System.out.println(_shellResult);
+        System.out.println(shellResult);
+    }
+
+    private List<VariableInfo> getBannedVariables(int errorLine){
+        List<VariableInfo> bannedVariables = new ArrayList<>();
+        String assertLine = _asserts._asserts.get(0);
+        String code = FileUtils.getCodeFromFile(_srcPath,_classname);
+        int methodParam = CodeUtils.getMethodParams(assertLine, functionname()).size();
+        Map<List<String>, List<Integer>> methodLine = CodeUtils.getMethodLine(code,functionname());
+        for (Map.Entry<List<String>, List<Integer>> entry: methodLine.entrySet()){
+            if (entry.getKey().size() == methodParam){
+                List<VariableInfo> variableInfos = _suspicious.getVariableInfo(_srcPath, errorLine);
+                for (VariableInfo info: variableInfos){
+                    if (info.isParameter && !entry.getKey().contains(info.variableName)){
+                        bannedVariables.add(info);
+                    }
+                }
+            }
+        }
+        return bannedVariables;
     }
 
 
@@ -169,26 +144,10 @@ public class VariableTracer {
             List<Integer> returnLine = CodeUtils.getReturnLine(code, functionname(),CodeUtils.getConstructorParamsCount(_functionname));
             result.addAll(returnLine);
         }
-        List<String> assertLines = CodeUtils.getAssertInTest(_testSrcPath,_testClassname,_testMethodName);
-        if (assertLines.size() < 1){
-            result.add(errorLine);
-            return result;
-        }
-        if (assertLines.size() < 2){
-            String assertLine = assertLines.get(0);
-            int methodParam = CodeUtils.getMethodParams(assertLine, functionname()).size();
-            Map<List<String>, List<Integer>> methodLine = CodeUtils.getMethodLine(code,functionname());
-            for (Map.Entry<List<String>, List<Integer>> entry: methodLine.entrySet()){
-                if (entry.getKey().size() == methodParam){
-                    _vars = _suspicious.getVariableInfo(_srcPath, errorLine);
-                    for (VariableInfo info: _vars){
-                        if (info.isParameter && !entry.getKey().contains(info.variableName)){
-                            _bannedVars.add(info);
-                        }
-                    }
-                }
+        if (_asserts._assertNums < 2){
+            if (!result.contains(errorLine)){
+                result.add(errorLine);
             }
-            result.add(errorLine);
             return result;
         }
         List<Integer> lines = getTrueErrorLine();
@@ -305,8 +264,7 @@ public class VariableTracer {
 
 
     private List<Integer> getTrueErrorLine(){
-        List<Integer> assertLines = _assertUtils.getErrorAssertLine();
-        _trueTestClass = _assertUtils.getTrueTestFile();
+        List<Integer> assertLines = _asserts._errorLines;
         List<Integer> result = new ArrayList<>();
         if (assertLines.size() == 0){
             return result;
@@ -332,7 +290,7 @@ public class VariableTracer {
                 int line = 0;
                 int tryLine = -1;
                 List<Integer> commitedAfter = new ArrayList<>();
-                List<Integer> assertDependences = _assertUtils.dependenceOfAssert(assertLine);
+                List<Integer> assertDependences = _asserts.dependenceOfAssert(assertLine);
                 assertDependences.add(assertLine);
                 int bracketCount = 0;
                 while ((lineString = reader.readLine()) != null) {
@@ -352,7 +310,6 @@ public class VariableTracer {
                         bracketCount+= count(lineString,'(');
                         bracketCount-= count(lineString,')');
                         lineString = "//"+lineString;
-                        trueAssert++;
                     }
                     else if (bracketCount > 0){
                         lineString = "//"+lineString;
@@ -387,7 +344,7 @@ public class VariableTracer {
 
             for (Suspicious suspicious: suspiciouses){
                 if (suspicious.functionname().equals(_functionname) && suspicious.classname().equals(_classname)){
-                    result.add(suspicious.lastLine());
+                    result.add(suspicious.getDefaultErrorLine());
                     break;
                 }
             }
@@ -440,6 +397,29 @@ public class VariableTracer {
     private String getClassSrcIndex(String classSrc){
         String classSrcPath = getClassSrcPath(classSrc);
         return classSrcPath.substring(0,classSrcPath.lastIndexOf(System.getProperty("file.separator"))).replace(" ","");
+    }
+
+
+    public String functionname(){
+        return _functionname.substring(0, _functionname.indexOf("("));
+    }
+
+    private String analysisShellResult(String shellResult){
+        String result = shellResult.substring(shellResult.indexOf(">>")+2,shellResult.indexOf("<<"));
+        if (result.equals("") ){
+            return result;
+        }
+        // get the data segment of shell out
+        if (result.contains("|")){
+            result =  result.substring(result.indexOf("|"));
+        }
+        while (!(result.charAt(result.length()-1) == 'E' || result.charAt(result.length()-1) == '|')){
+            result = result.substring(0, result.length()-1);
+            if (result.length()== 0){
+                break;
+            }
+        }
+        return result;
     }
 
 }

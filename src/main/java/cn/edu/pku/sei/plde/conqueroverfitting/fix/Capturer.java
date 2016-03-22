@@ -1,10 +1,7 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.fix;
 
 import cn.edu.pku.sei.plde.conqueroverfitting.slice.StaticSlice;
-import cn.edu.pku.sei.plde.conqueroverfitting.utils.CodeUtils;
-import cn.edu.pku.sei.plde.conqueroverfitting.utils.FileUtils;
-import cn.edu.pku.sei.plde.conqueroverfitting.utils.ShellUtils;
-import cn.edu.pku.sei.plde.conqueroverfitting.utils.TestUtils;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.*;
 import com.gzoltar.core.GZoltar;
 import com.gzoltar.core.instr.testing.TestResult;
 import de.unisb.cs.st.javaslicer.slicing.Slicer;
@@ -35,6 +32,7 @@ public class Capturer {
     public String _classCode;
     public String _functionCode;
     public int _errorLineNum;
+    public int _assertLine = -1;
     /**
      *
      * @param classpath The class path
@@ -65,12 +63,23 @@ public class Capturer {
         return "";
     }
 
+
+    public String getFixFrom(String classname, String functionname, int assertLine){
+        _assertLine = assertLine;
+        return getFixFrom(classname, functionname);
+    }
+
     private String run() throws Exception{
         _testTrace = TestUtils.getTestTrace(_classpath, _testclasspath,_classname,_functionname);
         _classCode = FileUtils.getCodeFromFile(_fileaddress);
         _functionCode = FileUtils.getTestFunctionCodeFromCode(_classCode, _functionname);
         _errorLineNum = getErrorLineNumFromTestTrace();
-        return fixTest();
+        if (_assertLine == -1){
+            return fixTest();
+        }
+        else {
+            return getFixFromLine(_assertLine);
+        }
     }
 
     private int getErrorLineNumFromTestTrace(){
@@ -136,6 +145,45 @@ public class Capturer {
         throw new Exception("No Fix Found for This Test");
     }
 
+    private String getFixFromLine(int assertLine){
+        String lineString = CodeUtils.getLineFromCode(_classCode, assertLine);
+        if (lineString.startsWith("fail(")){
+            for (int i = 1; i < _functionCode.split("\n").length; i++){
+                String nextLine = CodeUtils.getLineFromCode(_classCode, assertLine+i);
+                if (!nextLine.contains("Exception") || !nextLine.contains("catch")){
+                    continue;
+                }
+                return exceptionProcessing(lineString);
+            }
+        }
+        else if (lineString.contains("assert")){
+            try {
+                String functionBody = _functionCode.substring(_functionCode.indexOf('{')+1,_functionCode.lastIndexOf('}'));
+                return assertProcessing(lineString, functionBody.split(lineString)[0]);
+            }
+            catch (Exception e){
+                e.printStackTrace();
+            }
+        }
+        else if (_functionCode.startsWith("(expected")){
+            String expectedClass = _functionCode.substring(_functionCode.indexOf("=")+1,_functionCode.indexOf(")"));
+            return "throw new " +expectedClass.replace(".class","").trim() + "();";
+        }
+        else if (lineString.contains("(") && lineString.contains(")") && !lineString.contains("=")){
+            String callMethod = lineString.substring(0, lineString.indexOf("(")).trim();
+            if (_classCode.contains("void "+callMethod+"(")){
+                _functionCode = FileUtils.getTestFunctionCodeFromCode(_classCode, callMethod);
+                try {
+                    return fixTest();
+                }
+                catch (Exception e){
+                    e.printStackTrace();
+                }
+            }
+        }
+        return "";
+    }
+
     private String exceptionProcessing(String exceptionLine){
         String exceptionName = exceptionLine.substring(exceptionLine.indexOf("(")+1, exceptionLine.indexOf(")")).trim().split(" ")[0];
         return "throw new " + exceptionName + "();";
@@ -165,7 +213,13 @@ public class Capturer {
                 returnExpression = parameters.get(0);
             }
             callParam = CodeUtils.divideParameter(callExpression,1);
+            if (callParam.size() == 0){
+                callParam.add(callExpression);
+            }
             returnParam = CodeUtils.divideParameter(returnExpression, 1);
+            if (returnParam.size() == 0){
+                returnParam.add(returnExpression);
+            }
             returnString = "return "+returnExpression;
             if (callExpression.contains(".")){
                 String testClass = callExpression.substring(0,callExpression.indexOf("."));
@@ -215,7 +269,15 @@ public class Capturer {
         String result = "";
         for (String param: returnParam){
             StaticSlice staticSlice = new StaticSlice(statements, param);
-            result += staticSlice.getSliceStatements();
+            String sliceResult = staticSlice.getSliceStatements();
+            List<String> trueResult = new ArrayList<>();
+            for (String line: sliceResult.split("\n")){
+                if (AssertUtils.isAssertLine(line,_classCode)){
+                    continue;
+                }
+                trueResult.add(line);
+            }
+            result += StringUtils.join(trueResult,"\n");
         }
         return result;
     }

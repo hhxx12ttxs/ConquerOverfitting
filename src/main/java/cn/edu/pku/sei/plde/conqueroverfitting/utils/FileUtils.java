@@ -6,6 +6,7 @@ import javassist.NotFoundException;
 import java.io.*;
 import java.security.MessageDigest;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -127,6 +128,9 @@ public class FileUtils {
 		if (code.contains("@Test")){
 			String[] tests = code.split("@Test");
 			for (String test: tests){
+				if (test.contains("private void ")){
+					test = test.split("private void ")[0];
+				}
 				if (test.contains("public void "+targetFunctionName+"()")){
 					int firstLine = getLineNumberOfLine(code,test.split("\n")[1]);
 					result.add(firstLine);
@@ -222,7 +226,6 @@ public class FileUtils {
 
 
     public static void deleteDir(File dir) {
-
         if (dir.isDirectory()) {
             String[] children = dir.list();
             for (int i=0; i<children.length; i++) {
@@ -230,8 +233,11 @@ public class FileUtils {
             }
         }
         // The directory is now empty so now it can be smoked
-        dir.deleteOnExit();
+        dir.delete();
     }
+
+
+
     public static File copyFile(File src, File dst){
         return copyFile(src.getAbsolutePath(), dst.getAbsolutePath());
     }
@@ -257,8 +263,46 @@ public class FileUtils {
         return System.getProperty("user.dir")+"/temp/"+classname.substring(classname.lastIndexOf(".")+1)+".java";
     }
 
+	public static String tempJavaPath(String classname, String identifier){
+		return System.getProperty("user.dir")+"/temp/"+identifier+"/"+classname.substring(classname.lastIndexOf(".")+1)+".java";
+	}
+
     public static String tempClassPath(String classname){
         return System.getProperty("user.dir")+"/temp/"+classname.substring(classname.lastIndexOf(".")+1)+".class";
     }
+	public static String tempClassPath(String classname, String identifier){
+		return System.getProperty("user.dir")+"/temp/"+identifier+"/"+classname.substring(classname.lastIndexOf(".")+1)+".class";
+	}
+	public static boolean copyDirectory(String src, String dst){
+		if (!new File(src).isDirectory()){
+			return false;
+		}
+		try {
+			String result = ShellUtils.shellRun(Arrays.asList("cp -rf "+src+" "+dst));
+			System.out.println(result);
+			return true;
+		}
+		catch (IOException e){
+			e.printStackTrace();
+		}
+		return false;
+	}
 
+	public static boolean deleteDirNow(String path){
+		if (!path.contains(System.getProperty("user.dir")) || path.equals(System.getProperty("user.dir"))){
+			return false;
+		}
+		if (!new File(path).isDirectory()){
+			return false;
+		}
+		try {
+			String result = ShellUtils.shellRun(Arrays.asList("rm -rf "+path));
+			System.out.println(result);
+			return true;
+		}
+		catch (IOException e){
+			e.printStackTrace();
+		}
+		return false;
+	}
 }

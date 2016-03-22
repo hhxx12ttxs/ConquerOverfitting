@@ -1,17 +1,25 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.fix;
 
 import cn.edu.pku.sei.plde.conqueroverfitting.agent.RunTestAgent;
+import cn.edu.pku.sei.plde.conqueroverfitting.agent.Utils;
+import cn.edu.pku.sei.plde.conqueroverfitting.assertCollect.Asserts;
+import cn.edu.pku.sei.plde.conqueroverfitting.junit.JunitRunner;
+import cn.edu.pku.sei.plde.conqueroverfitting.localization.Suspicious;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.CodeUtils;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.FileUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.PathUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.ShellUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.MethodInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 import org.apache.commons.lang.StringUtils;
+import org.eclipse.jdt.core.dom.PrimitiveType;
+import org.eclipse.jdt.internal.compiler.ast.OR_OR_Expression;
 import org.junit.runner.JUnitCore;
 import sun.misc.BASE64Encoder;
 
+import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
 /**
  * Created by yanrunfa on 16/2/24.
@@ -20,34 +28,111 @@ public class JavaFixer {
     private final String _classpath;
     private final String _testClassPath;
     private final String _classSrcPath;
+    private final String _testSrcPath;
+    private Suspicious _suspicious;
+    private List<Patch> _patches = new ArrayList<>();
 
-    private String _testClassName;
-    private String _classname;
-    private int _errorLine;
-
-    public JavaFixer(String classpath, String testClassPath, String classSrcPath){
-        _classpath = classpath;
-        _testClassPath = testClassPath;
+    public JavaFixer(Suspicious suspicious, String classSrcPath, String testSrcPath){
+        _classpath = suspicious._classpath;
+        _testClassPath = suspicious._testClasspath;
         _classSrcPath = classSrcPath;
+        _testSrcPath = testSrcPath;
     }
 
-    public boolean fixWithIfStatement (String testClassname,String classname,int errorLine, String patch) throws IOException{
-        _testClassName = testClassname;
-        _classname = classname;
-        _errorLine = errorLine;
-        String shellResult = fixShell(_testClassName, _classname, _errorLine,patch);
-        return !shellResult.contains("fail");
+    public boolean addPatch(Patch patch){
+        File targetJavaFile = new File(FileUtils.getFileAddressOfJava(_classSrcPath, patch._className));
+        File targetClassFile = new File(FileUtils.getFileAddressOfClass(_classpath, patch._className));
+        File javaBackup = FileUtils.copyFile(targetJavaFile.getAbsolutePath(), FileUtils.tempJavaPath(patch._className,"JavaFixer"));
+        File classBackup = FileUtils.copyFile(targetClassFile.getAbsolutePath(), FileUtils.tempClassPath(patch._className,"JavaFixer"));
+
+        CodeUtils.addCodeToFile(targetJavaFile, patch._patchString, patch._patchLines);
+        try {
+            System.out.println(Utils.shellRun(Arrays.asList("javac -Xlint:unchecked -source 1.6 -target 1.6 -cp "+ buildClasspath(Arrays.asList(PathUtils.getJunitPath())) +" -d "+_testClassPath+" "+ targetJavaFile.getAbsolutePath())));
+        }
+        catch (IOException e){
+            return false;
+        }
+        Asserts asserts = new Asserts(_classpath, _testClassPath, _testSrcPath, patch._testClassName, patch._testMethodName);
+        int errAssertNumAfterFix = asserts.errorAssertNum();
+        int errAssertBeforeFix = _suspicious._assertsMap.get(patch._className).errorAssertNum();
+        FileUtils.copyFile(javaBackup, targetJavaFile);
+        FileUtils.copyFile(classBackup, targetClassFile);
+        if (errAssertNumAfterFix < errAssertBeforeFix){
+            _patches.add(patch);
+            return true;
+        }
+        return false;
     }
 
-    public boolean fixWithIfStatement (List<String> testClassname,String classname,int errorLine, String patch) throws IOException{
-        _testClassName = StringUtils.join(testClassname,"-");
-        _classname = classname;
-        _errorLine = errorLine;
-        String shellResult = fixShell(_testClassName, _classname, _errorLine, patch);
-        return !shellResult.contains("fail");
+
+    public int fix(){
+        Map<File, File> backups = new HashMap<>();
+        List<File> tobeCompile = new ArrayList<>();
+        for (Patch patch: _patches){
+            File targetJavaFile = new File(FileUtils.getFileAddressOfJava(_classSrcPath, patch._className));
+            File targetClassFile = new File(FileUtils.getFileAddressOfClass(_classpath, patch._className));
+            File javaBackup = FileUtils.copyFile(targetJavaFile.getAbsolutePath(), FileUtils.tempJavaPath(patch._className,"JavaFixer"));
+            File classBackup = FileUtils.copyFile(targetClassFile.getAbsolutePath(), FileUtils.tempClassPath(patch._className,"JavaFixer"));
+            if (!backups.containsKey(targetJavaFile)){
+                backups.put(targetJavaFile, javaBackup);
+            }
+            if (!backups.containsKey(targetClassFile)){
+                backups.put(targetClassFile, classBackup);
+            }
+            CodeUtils.addCodeToFile(targetJavaFile, patch._patchString, patch._patchLines);
+            tobeCompile.add(targetJavaFile);
+        }
+        for (File javaFile: tobeCompile){
+            try {
+                System.out.println(Utils.shellRun(Arrays.asList("javac -Xlint:unchecked -source 1.6 -target 1.6 -cp "+ buildClasspath(Arrays.asList(PathUtils.getJunitPath())) +" -d "+_testClassPath+" "+ javaFile.getAbsolutePath())));
+            }
+            catch (IOException e){
+                return -1;
+            }
+        }
+        int errAssertNumAfterFix = 0;
+        for (Map.Entry<String, String> test: getTestsOfPatch().entrySet()){
+            Asserts asserts = new Asserts(_classpath, _testClassPath, _testSrcPath, test.getValue(), test.getKey());
+            errAssertNumAfterFix += asserts.errorAssertNum();
+
+        }
+        int errAssertNumBeforeFix = _suspicious.errorAssertNums();
+        if (errAssertNumAfterFix < errAssertNumBeforeFix){
+            return errAssertNumAfterFix;
+        }
+        for (Map.Entry<File, File> backup: backups.entrySet()){
+            FileUtils.copyFile(backup.getValue(), backup.getKey());
+        }
+        return -1;
     }
 
-    private String fixShell(String testClassname, String classname, int errorLine, String patch) throws IOException {
+
+    private Map<String, String> getTestsOfPatch(){
+        Map<String, String> result = new HashMap<>();
+        for (Patch patch: _patches){
+            if (!result.containsKey(patch._testMethodName)){
+                result.put(patch._testMethodName, patch._testClassName);
+            }
+        }
+        return result;
+    }
+
+
+    private String buildClasspath(List<String> additionalPath){
+        String path = "\"";
+        path += _classpath;
+        path += System.getProperty("path.separator");
+        path += _testClassPath;
+        path += System.getProperty("path.separator");
+        path += JunitRunner.class.getProtectionDomain().getCodeSource().getLocation().getFile();
+        path += System.getProperty("path.separator");
+        path += StringUtils.join(additionalPath,System.getProperty("path.separator"));
+        path += "\"";
+        return path;
+    }
+
+    /*
+    private String fixShell(String testClassname, String classname, List<Integer> errorLine, String patch) throws IOException {
         String agentArg = buildAgentArg(classname, errorLine, patch);
         String classpath = buildClasspath(Arrays.asList(PathUtils.getJunitPath()));
         String[] arg = {"java","-javaagent:"+PathUtils.getAgentPath()+"="+agentArg,"-cp",classpath,"org.junit.runner.JUnitCore", testClassname.replace("-"," ")};
@@ -58,9 +143,9 @@ public class JavaFixer {
         return shellResult;
     }
 
-    private String buildAgentArg(String classname, int errorLine, String patch) throws IOException{
+    private String buildAgentArg(String classname, List<Integer> errorLine, String patch) throws IOException{
         String agentClass = "class:"+ classname;
-        String agentLine = "line:"+ errorLine;
+        String agentLine = "line:"+ StringUtils.join(errorLine,"-");
         String agentSrc = "src:" + _classSrcPath;
         String agentCp = "cp:" + _classpath;
         BASE64Encoder encoder = new BASE64Encoder();
@@ -90,4 +175,5 @@ public class JavaFixer {
         path += "\"";
         return path;
     }
+    */
 }

@@ -118,7 +118,7 @@ public class Localization  {
             if (getClassAddressFromStatement(statement).equals(getClassAddressFromStatement(firstline)) && getTargetFunctionFromStatement(statement).equals(getTargetFunctionFromStatement(firstline))){
                 lineNumbers.add(String.valueOf(statement.getLineNumber()));
             }else {
-                if (firstline.getTests().size()<30) {
+                if (firstline.getTests().size() < 30) {
                     result.add(new Suspicious(classpath, testClassPath, getClassAddressFromStatement(firstline), getTargetFunctionFromStatement(firstline), firstline.getSuspiciousness(), firstline.getTests(),firstline.getFailTests(), new ArrayList<String>(lineNumbers)));
                 }
                 firstline = statement;
@@ -128,7 +128,7 @@ public class Localization  {
                 }
             }
         }
-        if (lineNumbers.size() != 0 && firstline.getTests().size()< 40){
+        if (lineNumbers.size() != 0 && firstline.getTests().size()< 30){
             result.add(new Suspicious(classpath, testClassPath, getClassAddressFromStatement(firstline), getTargetFunctionFromStatement(firstline), firstline.getSuspiciousness(), firstline.getTests(),firstline.getFailTests(), new ArrayList<String>(lineNumbers)));
         }
         if (!jump){

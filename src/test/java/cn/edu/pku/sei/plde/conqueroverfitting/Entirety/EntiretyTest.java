@@ -3,29 +3,90 @@ package cn.edu.pku.sei.plde.conqueroverfitting.Entirety;
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.BoundaryGenerator;
 import cn.edu.pku.sei.plde.conqueroverfitting.fix.Capturer;
 import cn.edu.pku.sei.plde.conqueroverfitting.fix.JavaFixer;
-import cn.edu.pku.sei.plde.conqueroverfitting.fix.PatchGenerator;
+import cn.edu.pku.sei.plde.conqueroverfitting.fix.Patch;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Localization;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Suspicious;
+import cn.edu.pku.sei.plde.conqueroverfitting.trace.TraceResult;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.FileUtils;
 import org.junit.Test;
+import org.omg.Messaging.SYNC_WITH_TRANSPORT;
 
+import java.io.File;
 import java.util.*;
 
 /**
  * Created by yanrunfa on 16/2/21.
  */
 public class EntiretyTest {
-    private final String PATH_OF_DEFECTS4J = "/Users/yanrunfa/Documents/defects4j/tmp/";
+    private final  String PATH_OF_DEFECTS4J = "/Users/yanrunfa/Documents/defects4j/tmp/";
+    private String classpath = System.getProperty("user.dir")+"/project/classpath/";
+    private String classSrc = System.getProperty("user.dir")+"/project/classSrc/";
+    private String testClasspath = System.getProperty("user.dir")+"/project/testClasspath";
+    private String testClassSrc = System.getProperty("user.dir")+"/project/testClassSrc/";
 
     @Test
     public void testEntirety() throws Exception{
-        int i = 37;
-        String project = "Math-"+i;
+        setWorkDirectory("Math", 37);
+        Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc);
+        List<Suspicious> suspiciouses = localization.getSuspiciousLite();
+
+        for (Suspicious suspicious: suspiciouses){
+            List<TraceResult> traceResults = suspicious.getTraceResult(classSrc, testClassSrc);
+            String ifString = BoundaryGenerator.generate(suspicious, traceResults);
+            if (ifString.equals("")){
+                continue;
+            }
+            Capturer fixCapturer = new Capturer(classpath, testClasspath, testClassSrc);
+            JavaFixer javaFixer = new JavaFixer(suspicious, classSrc, testClassSrc);
+            for (String test: suspicious.getFailedTest()){
+                String testClassName = test.split("#")[0];
+                String testMethodName = test.split("#")[1];
+                List<Integer> errorLine = suspicious._errorLineMap.get(testClassName);
+
+                for (int assertLine: suspicious._assertsMap.get(testClassName)._errorLines){
+                    String fixString = fixCapturer.getFixFrom(testClassName, testMethodName, assertLine);
+                    if (fixString.equals("")){
+                        continue;
+                    }
+                    Patch patch = new Patch(testClassName, testMethodName, suspicious.classname(),errorLine, ifString, fixString);
+                    boolean result = javaFixer.addPatch(patch);
+                    if (result){
+                        break;
+                    }
+                }
+            }
+            int finalErrorNums = javaFixer.fix();
+            if (finalErrorNums == -1){
+                System.out.println("Fix fail, Try next suspicious...");
+                continue;
+            }
+            if (finalErrorNums == 0){
+                System.out.println("Fix success");
+                break;
+            }
+
+        }
+    }
+
+
+    public void setWorkDirectory(String projectName, int number){
+        File projectDir = new File(System.getProperty("user.dir")+"/project/");
+        if (!projectDir.exists()){
+            projectDir.mkdirs();
+        }
+        FileUtils.deleteDirNow(classpath);
+        FileUtils.deleteDirNow(testClasspath);
+        FileUtils.deleteDirNow(classSrc);
+        FileUtils.deleteDirNow(testClassSrc);
+        String project = "Math-"+number;
         /* 四个整个项目需要的参数 */
         //Math,Time
-        String classpath = PATH_OF_DEFECTS4J+project+"/target/classes";              //项目的.class文件路径
-        String testClasspath  = PATH_OF_DEFECTS4J+project+"/target/test-classes";    //项目的test的.class文件路径
-        String classSrc = PATH_OF_DEFECTS4J + project+"/src/main/java";              //项目的源代码路径
-        String testClassSrc = PATH_OF_DEFECTS4J + project +"/src/test/java";///java"; //项目的test的源代码路径
+        if (projectName.equals("Math") || projectName.equals("Time")){
+            FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project+"/target/classes",classpath);
+            FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project+"/target/test-classes",testClasspath);
+            FileUtils.copyDirectory(PATH_OF_DEFECTS4J + project+"/src/main/java", classSrc);
+            FileUtils.copyDirectory(PATH_OF_DEFECTS4J + project +"/src/test/java", testClassSrc);
+        }
 
         //Closure
         //String classpath = PATH_OF_DEFECTS4J+project+"/build/classes";              //项目的.class文件路径
@@ -59,34 +120,5 @@ public class EntiretyTest {
         //String classSrc = PATH_OF_DEFECTS4J + "Chart-"+i+"/source";              //项目的源代码路径
         //String testClassSrc = PATH_OF_DEFECTS4J + "Chart-"+i+"/tests";///java";          //项目的test的源代码路径
 
-
-        Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc);
-        List<Suspicious> suspiciouses = localization.getSuspiciousLite();
-
-        for (Suspicious suspicious: suspiciouses){
-            String ifString = BoundaryGenerator.generate(classpath,testClasspath, classSrc, testClassSrc, suspicious);
-            if (ifString.equals("")){
-                continue;
-            }
-            Capturer fixCapturer = new Capturer(classpath, testClasspath, testClassSrc);
-            for (String test: suspicious.getFailedTest()){
-                if (!test.contains("#")) {
-                    continue;
-                }
-                String fixString = fixCapturer.getFixFrom(test.split("#")[0], test.split("#")[1]);
-                if (fixString.equals("")){
-                    continue;
-                }
-                String patch = PatchGenerator.generate(ifString, fixString);
-                System.out.println(patch);
-                JavaFixer javaFixer = new JavaFixer(classpath, testClasspath, classSrc);
-                boolean result = javaFixer.fixWithIfStatement(suspicious.getTestClasses(),suspicious.classname(),suspicious.lastLine(),patch);
-                if (result){
-                    System.out.println("Fix Success");
-                }
-            }
-
-
-        }
     }
 }

@@ -24,12 +24,7 @@ import java.util.regex.Matcher;
  */
 public class BoundaryGenerator {
 
-    public static String generate(String classpath, String testClasspath, String classSrc, String testClassSrc, Suspicious suspicious) throws IOException {
-        List<TraceResult> traceResults = suspicious.getTraceResult(classpath, testClasspath, classSrc, testClassSrc);
-        if (traceResults.size() == 0) {
-            System.out.println("Cannot trace any variable");
-            return "";
-        }
+    public static String generate(Suspicious suspicious, List<TraceResult> traceResults) throws IOException {
         Map<VariableInfo, List<String>> filteredVariable = ExceptionExtractor.extract(traceResults, suspicious.getAllInfo());
         Map<VariableInfo, List<String>> trueVariable = AbandanTrueValueFilter.getTrueValue(traceResults, suspicious.getAllInfo());
         Map<VariableInfo, List<String>> falseVariable = AbandanTrueValueFilter.getFalseValue(traceResults, suspicious.getAllInfo());

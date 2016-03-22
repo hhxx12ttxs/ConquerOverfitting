@@ -268,6 +268,42 @@ public class CodeUtils {
         return  classname.substring(classname.lastIndexOf(".") + 1).equals(function.substring(0, function.indexOf('(')));
     }
 
+
+    public static void addCodeToFile(File file, String addingCode, List<Integer> targetLine){
+        File newFile = new File(file.getAbsolutePath()+".temp");
+        try {
+            if (!newFile.exists()) {
+                newFile.createNewFile();
+            }
+            FileOutputStream outputStream = new FileOutputStream(newFile);
+            BufferedReader reader = new BufferedReader(new FileReader(file));
+            String lineString = null;
+            int line = 0;
+            boolean writed = false;
+            while ((lineString = reader.readLine()) != null) {
+                line++;
+                if (targetLine.contains(line + 1)) {
+                    if ((!lineString.contains(";") && !lineString.contains(":") && !lineString.contains("{") && !lineString.contains("}")) || lineString.contains("return ") || lineString.contains("if (")) {
+                        outputStream.write(addingCode.getBytes());
+                        writed = true;
+                    }
+                }
+                if (targetLine.contains(line) && !writed) {
+                    outputStream.write(addingCode.getBytes());
+                }
+                writed = false;
+                outputStream.write((lineString + "\n").getBytes());
+            }
+            outputStream.close();
+            reader.close();
+        } catch (IOException e){
+            e.printStackTrace();
+        }
+        if (file.delete()){
+            newFile.renameTo(file);
+        }
+    }
+
     public static int isForLoopParam(List<String> vars){
         List<Integer> nums = new ArrayList<>();
         for (String var: vars){

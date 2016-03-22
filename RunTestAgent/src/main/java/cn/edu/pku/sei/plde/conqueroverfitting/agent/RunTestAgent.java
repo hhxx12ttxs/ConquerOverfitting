@@ -30,7 +30,7 @@ public class RunTestAgent {
         }
         String targetClassName = "";
         String targetClassFunc = "";
-        int targetLineNum = -1;
+        List<Integer> targetLineNum = new ArrayList<>();
         String[] targetVariables = {};
         String srcPath = "";
         String classPath = "";
@@ -52,7 +52,9 @@ public class RunTestAgent {
                 targetClassFunc = value;
             }
             else if (key.equalsIgnoreCase("line")){
-                targetLineNum = Integer.valueOf(value);
+                for (String num: value.split("-")){
+                    targetLineNum.add(Integer.valueOf(num));
+                }
             }
             else if (key.equalsIgnoreCase("var")){
                 if (targetVariables.length == 0){
@@ -110,7 +112,7 @@ public class RunTestAgent {
             inst.addTransformer(new AddFixTransformer(targetClassName, targetLineNum, patch, srcPath, classPath));
         }
         else if (targetVariables.length != 0){
-            inst.addTransformer(new AddPrintTransformer(targetClassName, targetClassFunc,targetLineNum, targetVariables, srcPath, classPath));
+            inst.addTransformer(new AddPrintTransformer(targetClassName, targetClassFunc,targetLineNum.get(0), targetVariables, srcPath, classPath));
         }
         else {
             System.out.println("Wrong Agent Args");

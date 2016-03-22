@@ -1,5 +1,6 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.localization;
 
+import cn.edu.pku.sei.plde.conqueroverfitting.assertCollect.Asserts;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.common.library.JavaLibrary;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.common.synth.TestClassesFinder;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.TraceResult;
@@ -21,8 +22,8 @@ import java.util.*;
  * Created by yanrunfa on 16/2/25.
  */
 public class Suspicious implements Serializable{
-    private final String _classpath;
-    private final String _testClasspath;
+    public final String _classpath;
+    public final String _testClasspath;
     public final String _classname;
     public final String _function;
     public final double _suspiciousness;
@@ -31,8 +32,9 @@ public class Suspicious implements Serializable{
     private final List<String> _lines;
     private List<VariableInfo> _variableInfo;
     private List<MethodInfo> _methodInfo;
-    private int _lastLine = -1;
-
+    public Map<String, Asserts> _assertsMap = new HashMap<>();
+    public Map<String, List<Integer>> _errorLineMap = new HashMap<>();
+    private int _defaultErrorLine = -1;
     public Suspicious(String classpath, String testClasspath, String classname, String function, double suspiciousness, List<String> tests,List<String> failTests, List<String> lines){
         _classpath = classpath;
         _testClasspath = testClasspath;
@@ -42,12 +44,19 @@ public class Suspicious implements Serializable{
         _tests = new ArrayList(new HashSet(tests));
         _failTests = new ArrayList(new HashSet(failTests));
         _lines = lines;
+    }
 
+    public int errorAssertNums(){
+        int errAssertNum = 0;
+        for (Asserts asserts: _assertsMap.values()){
+            errAssertNum += asserts.errorAssertNum();
+        }
+        return errAssertNum;
     }
 
 
 
-    public int lastLine() {
+    public int getDefaultErrorLine() {
         //如果是构造函数,则重新寻找错误行
         if (_classname.substring(_classname.lastIndexOf(".") + 1).equals(_function.substring(0, _function.indexOf('(')))) {
             for (String test : _tests) {
@@ -55,10 +64,10 @@ public class Suspicious implements Serializable{
                     String testTrace = TestUtils.getTestTrace(_classpath, _testClasspath, test.split("#")[0], test.split("#")[1]);
                     for (String line : testTrace.split("\n")) {
                         if (line.contains(classname()+".") && line.contains("(") && line.contains(")")) {
-                            if (_lastLine!= -1){
+                            if (_defaultErrorLine!= -1){
                                 continue;
                             }
-                            _lastLine = Integer.valueOf(line.substring(line.indexOf("(") + 1, line.indexOf(")")).split(":")[1]);
+                            _defaultErrorLine = Integer.valueOf(line.substring(line.indexOf("(") + 1, line.indexOf(")")).split(":")[1]);
                         }
                     }
                 }catch(NotFoundException e){
@@ -66,15 +75,15 @@ public class Suspicious implements Serializable{
                 }
             }
         }
-        if (_lastLine == -1) {
+        if (_defaultErrorLine == -1) {
             for (String line : _lines) {
-                if (_lastLine < Integer.valueOf(line)) {
-                    _lastLine = Integer.valueOf(line);
+                if (_defaultErrorLine < Integer.valueOf(line)) {
+                    _defaultErrorLine = Integer.valueOf(line);
                 }
             }
         }
 
-        return _lastLine;
+        return _defaultErrorLine;
     }
 
     public String classname(){
@@ -118,13 +127,13 @@ public class Suspicious implements Serializable{
             classname = _classname.substring(0, _classname.lastIndexOf('$'));
         }
         String result =  classSrc + System.getProperty("file.separator") + classname.replace(".",System.getProperty("file.separator")) + ".java";
-        return result.replace(" ","");
+        return result.replace(" ","").replace("//","/");
     }
 
 
     public String getClassSrcIndex(String classSrc){
         String classSrcPath = getClassSrcPath(classSrc);
-        return classSrcPath.substring(0,classSrcPath.lastIndexOf(System.getProperty("file.separator"))).replace(" ","");
+        return classSrcPath.substring(0,classSrcPath.lastIndexOf(System.getProperty("file.separator"))).replace(" ","").replace("//","/");
     }
 
 
@@ -205,6 +214,10 @@ public class Suspicious implements Serializable{
         MethodCollect methodCollect = MethodCollect.GetInstance(getClassSrcIndex(classSrc));
         LinkedHashMap<String, ArrayList<MethodInfo>> methods = methodCollect.getVisibleMethodWithoutParametersInAllClassMap(getClassSrcPath(classSrc));
         _methodInfo = methods.get(getClassSrcPath(classSrc));
+        if (_methodInfo == null){
+            _methodInfo = new ArrayList<>();
+        }
+
         List<MethodInfo> staticMethod = new ArrayList<>();
         if (MethodCollect.checkIsStaticMethod(getClassSrcPath(classSrc),_function.substring(0, _function.indexOf("(")))){
             for (MethodInfo info: _methodInfo){
@@ -218,12 +231,12 @@ public class Suspicious implements Serializable{
         return _methodInfo;
     }
 
-    public List<TraceResult> getTraceResult(String classpath, String testClasspath, String classSrc, String testClassSrc) throws IOException{
-        VariableTracer tracer = new VariableTracer(classpath, testClasspath, classSrc, testClassSrc, this);
+    public List<TraceResult> getTraceResult(String classSrc, String testClassSrc) throws IOException{
+        VariableTracer tracer = new VariableTracer(classSrc, testClassSrc, this);
         List<TraceResult> traceResults = new ArrayList<TraceResult>();
         if (_tests.size() > 10){
             for (String testclass: _failTests){
-                traceResults.addAll(tracer.trace(classname(), functionname(), testclass.split("#")[0], testclass.split("#")[1], lastLine(), false));
+                traceResults.addAll(tracer.trace(classname(), functionname(), testclass.split("#")[0], testclass.split("#")[1], getDefaultErrorLine(), false));
             }
         }
         else {
@@ -231,7 +244,7 @@ public class Suspicious implements Serializable{
                 if (!_failTests.contains(testclass) && !testFilter(testClassSrc, testclass.split("#")[0], testclass.split("#")[1])){
                     continue;
                 }
-                traceResults.addAll(tracer.trace(classname(), functionname(), testclass.split("#")[0], testclass.split("#")[1], lastLine(), !_failTests.contains(testclass)));
+                traceResults.addAll(tracer.trace(classname(), functionname(), testclass.split("#")[0], testclass.split("#")[1], getDefaultErrorLine(), !_failTests.contains(testclass)));
             }
         }
         return traceResults;
@@ -262,51 +275,4 @@ public class Suspicious implements Serializable{
         return true;
     }
 
-    /*
-    private boolean isSwitch(){
-        if (_lines.size()<3){
-            return false;
-        }
-        int lineNum = Integer.valueOf(_lines.get(0));
-        for (int i=1; i< _lines.size(); i++){
-            if (Math.abs(Integer.valueOf(_lines.get(i))-lineNum) != 2){
-                return false;
-            }
-            lineNum = Integer.valueOf(_lines.get(i));
-        }
-        return true;
-    }
-
-    /*
-    public List<TraceResult> getTraceResultWithAllTest(String classpath, String testClasspath, String classSrc) throws IOException{
-        File traceFile = new File(System.getProperty("user.dir")+"/traceresult/"+ FileUtils.getMD5(classpath+testClasspath+classname()+functionname()+lastLine())+".sps");
-        if (traceFile.exists()){
-            try {
-                ObjectInputStream objectInputStream = new ObjectInputStream(new FileInputStream(traceFile));
-                List<TraceResult> result = (List<TraceResult>) objectInputStream.readObject();
-                return result;
-            }catch (Exception e){
-                System.out.println("Reloading Localization Result...");
-            }
-        }
-        VariableTracer tracer = new VariableTracer(classpath, testClasspath, classSrc);
-        List<TraceResult> traceResults = new ArrayList<TraceResult>();
-        String[] testClasses = new TestClassesFinder().findIn(JavaLibrary.classpathFrom(testClasspath), false);
-        for (String testclass: testClasses){
-            traceResults.addAll(tracer.trace(classname(), functionname(), testclass, lastLine(), getVariableInfo(classSrc), getMethodInfo(classSrc)));
-        }
-        try {
-            boolean createResult = traceFile.createNewFile();
-            if (!createResult){
-                System.out.println("File Create Error");
-            }
-            ObjectOutputStream objectOutputStream = new ObjectOutputStream(new FileOutputStream(traceFile));
-            objectOutputStream.writeObject(traceResults);
-            objectOutputStream.close();
-        } catch (IOException e){
-            e.printStackTrace();
-        }
-        return traceResults;
-    }
-    */
 }
