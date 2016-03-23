@@ -83,13 +83,39 @@ public class ExceptionExtractor {
                         continue;
                     }
                 }
-                result.put(entry.getKey(),Arrays.asList(String.valueOf(smallestBoundary), String.valueOf(biggestBoundary)));
+                if (isSymmetricalList(entry.getValue())){
+                    if (Math.abs(biggestBoundary)>Math.abs(smallestBoundary)){
+                        result.put(entry.getKey(),Arrays.asList(String.valueOf(-biggestBoundary), String.valueOf(biggestBoundary)));
+                    }
+                    else {
+                        result.put(entry.getKey(),Arrays.asList(String.valueOf(smallestBoundary), String.valueOf(-smallestBoundary)));
+                    }
+                }
+                else {
+                    result.put(entry.getKey(),Arrays.asList(String.valueOf(smallestBoundary), String.valueOf(biggestBoundary)));
+                }
             }
             else {
                 result.put(entry.getKey(), entry.getValue());
             }
         }
         return result;
+    }
+
+    private static boolean isSymmetricalList(List<String> list){
+        List<Double> values = new ArrayList<>();
+        for (String value: list){
+            try {
+                values.add(MathUtils.parseStringValue(value));
+            } catch (Exception e){}
+        }
+
+        for (double value: values){
+            if (!values.contains(-value)){
+                return false;
+            }
+        }
+        return true;
     }
 
     private static Map<VariableInfo, List<String>> cleanVariables(Map<VariableInfo, List<String>> exceptionVariable){

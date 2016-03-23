@@ -208,7 +208,7 @@ public class Asserts {
         }
         File tempJavaFile = FileUtils.copyFile(
                 FileUtils.getFileAddressOfJava(_testSrcPath, _testClassname),
-                FileUtils.tempJavaPath(_testClassname));
+                FileUtils.tempJavaPath(_testClassname, "Asserts"));
         List<String> assertLines = CodeUtils.getAssertInTest(_testSrcPath,_testClassname,_testMethodName);
         for (int assertLine: errorAssertLines){
             String assertString = CodeUtils.getLineFromCode(_code, assertLine);

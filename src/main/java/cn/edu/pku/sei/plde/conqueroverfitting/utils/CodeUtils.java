@@ -271,6 +271,10 @@ public class CodeUtils {
 
     public static void addCodeToFile(File file, String addingCode, List<Integer> targetLine){
         File newFile = new File(file.getAbsolutePath()+".temp");
+        Map<Integer, Boolean> writedMap = new HashMap<>();
+        for (int line: targetLine){
+            writedMap.put(line, false);
+        }
         try {
             if (!newFile.exists()) {
                 newFile.createNewFile();
@@ -279,19 +283,19 @@ public class CodeUtils {
             BufferedReader reader = new BufferedReader(new FileReader(file));
             String lineString = null;
             int line = 0;
-            boolean writed = false;
             while ((lineString = reader.readLine()) != null) {
                 line++;
                 if (targetLine.contains(line + 1)) {
                     if ((!lineString.contains(";") && !lineString.contains(":") && !lineString.contains("{") && !lineString.contains("}")) || lineString.contains("return ") || lineString.contains("if (")) {
                         outputStream.write(addingCode.getBytes());
-                        writed = true;
+                        writedMap.put(line+1, true);
+
                     }
                 }
-                if (targetLine.contains(line) && !writed) {
+                if (targetLine.contains(line) && !writedMap.get(line)) {
                     outputStream.write(addingCode.getBytes());
                 }
-                writed = false;
+                writedMap.put(line+1, true);
                 outputStream.write((lineString + "\n").getBytes());
             }
             outputStream.close();

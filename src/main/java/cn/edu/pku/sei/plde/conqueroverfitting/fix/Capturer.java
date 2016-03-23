@@ -25,14 +25,16 @@ public class Capturer {
     public final String _classpath;
     public final String _testclasspath;
     public final String _testsrcpath;
-    public String _classname;
-    public String _functionname;
+    public String _testClassName;
+    public String _testMethodName;
     public String _fileaddress;
     public String _testTrace;
     public String _classCode;
     public String _functionCode;
     public int _errorLineNum;
     public int _assertLine = -1;
+    public String _classname;
+    public String _methodName;
     /**
      *
      * @param classpath The class path
@@ -47,14 +49,16 @@ public class Capturer {
     }
     /**
      *
-     * @param classname The test's class name to be fixed
-     * @param functionname the name of test function
+     * @param testClassName The test's class name to be fixed
+     * @param testMethodName the name of test function
      * @return the fix string
      */
-    public String getFixFrom(String classname, String functionname){
+    public String getFixFrom(String testClassName, String testMethodName, String classname, String methodName){
+        _testClassName = testClassName;
+        _testMethodName = testMethodName;
         _classname = classname;
-        _functionname = functionname;
-        _fileaddress = _testsrcpath + System.getProperty("file.separator") + _classname.replace('.',System.getProperty("file.separator").charAt(0))+".java";
+        _methodName = methodName;
+        _fileaddress = _testsrcpath + System.getProperty("file.separator") + _testClassName.replace('.',System.getProperty("file.separator").charAt(0))+".java";
         try {
             return run();
         } catch (Exception e){
@@ -64,15 +68,16 @@ public class Capturer {
     }
 
 
-    public String getFixFrom(String classname, String functionname, int assertLine){
+    public String getFixFrom(String testClassName, String testMethodName, int assertLine, String classname, String methodName){
         _assertLine = assertLine;
-        return getFixFrom(classname, functionname);
+
+        return getFixFrom(testClassName, testMethodName, classname, methodName);
     }
 
     private String run() throws Exception{
-        _testTrace = TestUtils.getTestTrace(_classpath, _testclasspath,_classname,_functionname);
+        _testTrace = TestUtils.getTestTrace(_classpath, _testclasspath,_testClassName,_testMethodName);
         _classCode = FileUtils.getCodeFromFile(_fileaddress);
-        _functionCode = FileUtils.getTestFunctionCodeFromCode(_classCode, _functionname);
+        _functionCode = FileUtils.getTestFunctionCodeFromCode(_classCode, _testMethodName);
         _errorLineNum = getErrorLineNumFromTestTrace();
         if (_assertLine == -1){
             return fixTest();
@@ -88,7 +93,7 @@ public class Capturer {
         }
         String[] traces = _testTrace.split("\n");
         for (String trace: traces){
-            if (trace.contains(_classname+"."+_functionname)){
+            if (trace.contains(_testClassName+"."+_testMethodName)){
                 return Integer.valueOf(trace.substring(trace.lastIndexOf(':')+1, trace.lastIndexOf(')')));
             }
         }
@@ -197,14 +202,14 @@ public class Capturer {
             throw new Exception("Function divideParameter Error!");
         }
 
-        if (assertType.contains("assertEquals")){
+        if (assertType.contains("assertEquals") || assertType.contains("assertSame")){
             String callExpression="";
             String returnExpression="";
             List<String> callParam;
             List<String> returnParam;
             String returnString;
 
-            if (parameters.get(0).contains("(") && parameters.get(0).contains(")")){
+            if (parameters.get(0).contains("(") && parameters.get(0).contains(")") && parameters.get(0).contains(_methodName)){
                 callExpression = parameters.get(0);
                 returnExpression = parameters.get(1);
             }
@@ -309,7 +314,7 @@ public class Capturer {
             }
         }
         if (assertLineNum == 0){
-            throw new NotFoundException("Cannot Found Assert Line :"+assertLine+" in Class "+_classname);
+            throw new NotFoundException("Cannot Found Assert Line :"+assertLine+" in Class "+_testClassName);
         }
         List<String> args = new ArrayList<String>();
         List<Integer> lineToBeAdd = new ArrayList<Integer>();
@@ -318,10 +323,10 @@ public class Capturer {
             slicePath = slicePath.substring(1);
         }
         for (String var: returnParam){
-            String[] arg = {"java -Xmx2g -jar",slicePath,"-p",System.getProperty("user.dir")+"/temp/"+"/test.trace",_classname+"."+_functionname+":"+assertLineNum+":{"+var+"}"};
+            String[] arg = {"java -Xmx2g -jar",slicePath,"-p",System.getProperty("user.dir")+"/temp/"+"/test.trace",_testClassName+"."+_testMethodName+":"+assertLineNum+":{"+var+"}"};
             args.add(StringUtils.join(arg," ")+'\n');
         }
-        String slicingResult = slicing(_classpath,_testclasspath,_classname, args);
+        String slicingResult = slicing(_classpath,_testclasspath,_testClassName, args);
         //System.out.print(slicingResult);
         for (String var: returnParam){
             if (slicingResult.contains("Error occurred during initialization of VM")){
@@ -332,7 +337,7 @@ public class Capturer {
             }
             String[] sliceResult = slicingResult.substring(slicingResult.indexOf("{"+var+"}"), slicingResult.indexOf("Computation took",slicingResult.indexOf("{"+var+"}"))).split("\n");
             for (String line: sliceResult){
-                if (line.contains(_classname+"."+_functionname)){
+                if (line.contains(_testClassName+"."+_testMethodName)){
                     lineToBeAdd.add(Integer.valueOf(line.substring(line.indexOf(':')+1,line.indexOf(' '))));
                 }
             }
@@ -345,7 +350,7 @@ public class Capturer {
         return result;
     }
 
-    private String slicing(String classpath, String testclasspath, String classname, List<String> sliceArgs) throws Exception{
+    private String slicing(String classpath, String testclasspath, String testClassName, List<String> sliceArgs) throws Exception{
         String tracePath = TracerAgent.class.getProtectionDomain().getCodeSource().getLocation().getFile();
         String junitPath = JUnitCore.class.getProtectionDomain().getCodeSource().getLocation().getFile();
 
@@ -358,7 +363,7 @@ public class Capturer {
                 "java", "-javaagent:"+tracePath+"=tracefile:"+System.getProperty("user.dir")+"/temp/"+"/test.trace",
                 "-cp","\""+classpath+System.getProperty("path.separator")+testclasspath+System.getProperty("path.separator")+junitPath+"\"",
                 "org.junit.runner.JUnitCore",
-                classname
+                testClassName
         };
         String arg = StringUtils.join(args, ' ')+'\n';
         sliceArgs.add(arg);

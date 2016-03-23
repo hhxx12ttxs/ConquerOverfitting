@@ -31,42 +31,53 @@ public class EntiretyTest {
         List<Suspicious> suspiciouses = localization.getSuspiciousLite();
 
         for (Suspicious suspicious: suspiciouses){
-            List<TraceResult> traceResults = suspicious.getTraceResult(classSrc, testClassSrc);
-            String ifString = BoundaryGenerator.generate(suspicious, traceResults);
-            if (ifString.equals("")){
-                continue;
-            }
-            Capturer fixCapturer = new Capturer(classpath, testClasspath, testClassSrc);
-            JavaFixer javaFixer = new JavaFixer(suspicious, classSrc, testClassSrc);
-            for (String test: suspicious.getFailedTest()){
-                String testClassName = test.split("#")[0];
-                String testMethodName = test.split("#")[1];
-                List<Integer> errorLine = suspicious._errorLineMap.get(testClassName);
-
-                for (int assertLine: suspicious._assertsMap.get(testClassName)._errorLines){
-                    String fixString = fixCapturer.getFixFrom(testClassName, testMethodName, assertLine);
-                    if (fixString.equals("")){
-                        continue;
-                    }
-                    Patch patch = new Patch(testClassName, testMethodName, suspicious.classname(),errorLine, ifString, fixString);
-                    boolean result = javaFixer.addPatch(patch);
-                    if (result){
-                        break;
-                    }
-                }
-            }
-            int finalErrorNums = javaFixer.fix();
-            if (finalErrorNums == -1){
-                System.out.println("Fix fail, Try next suspicious...");
-                continue;
-            }
-            if (finalErrorNums == 0){
-                System.out.println("Fix success");
+            if (fixSuspicious(suspicious)){
                 break;
             }
-
         }
     }
+
+
+    public boolean fixSuspicious(Suspicious suspicious) throws Exception{
+        List<TraceResult> traceResults = suspicious.getTraceResult(classSrc, testClassSrc);
+        String ifString = BoundaryGenerator.generate(suspicious, traceResults);
+        if (ifString.equals("")){
+            return false;
+        }
+        Capturer fixCapturer = new Capturer(classpath, testClasspath, testClassSrc);
+        JavaFixer javaFixer = new JavaFixer(suspicious, classSrc, testClassSrc);
+        for (String test: suspicious.getFailedTest()){
+            String testClassName = test.split("#")[0];
+            String testMethodName = test.split("#")[1];
+            List<Integer> errorLine = suspicious._errorLineMap.get(test);
+
+            for (int assertLine: suspicious._assertsMap.get(test)._errorLines){
+                String fixString = fixCapturer.getFixFrom(testClassName, testMethodName, assertLine, suspicious.classname(), suspicious.functionnameWithoutParam());
+                if (suspicious._isConstructor && fixString.contains("return")){
+                    continue;
+                }
+                if (fixString.equals("")){
+                    continue;
+                }
+                Patch patch = new Patch(testClassName, testMethodName, suspicious.classname(),errorLine, ifString, fixString);
+                boolean result = javaFixer.addPatch(patch);
+                if (result){
+                    break;
+                }
+            }
+        }
+        int finalErrorNums = javaFixer.fix();
+        if (finalErrorNums == -1){
+            System.out.println("Fix fail, Try next suspicious...");
+            return false;
+        }
+        if (finalErrorNums == 0){
+            System.out.println("Fix success");
+            return true;
+        }
+        return fixSuspicious(suspicious);
+    }
+
 
 
     public void setWorkDirectory(String projectName, int number){

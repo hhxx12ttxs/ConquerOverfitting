@@ -264,6 +264,7 @@ public class FileUtils {
     }
 
 	public static String tempJavaPath(String classname, String identifier){
+		new File(System.getProperty("user.dir")+"/temp/"+identifier).mkdirs();
 		return System.getProperty("user.dir")+"/temp/"+identifier+"/"+classname.substring(classname.lastIndexOf(".")+1)+".java";
 	}
 
@@ -271,6 +272,7 @@ public class FileUtils {
         return System.getProperty("user.dir")+"/temp/"+classname.substring(classname.lastIndexOf(".")+1)+".class";
     }
 	public static String tempClassPath(String classname, String identifier){
+		new File(System.getProperty("user.dir")+"/temp/"+identifier).mkdirs();
 		return System.getProperty("user.dir")+"/temp/"+identifier+"/"+classname.substring(classname.lastIndexOf(".")+1)+".class";
 	}
 	public static boolean copyDirectory(String src, String dst){

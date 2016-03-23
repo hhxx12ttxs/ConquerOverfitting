@@ -18,6 +18,8 @@ public class CommentAssertTransformer implements ClassFileTransformer {
         _testSrcPath = testSrcPath;
         _testClassName = testClassName.trim().replace(".","/");
         System.out.println("CommentAssertTransformer Start");
+        System.out.println(_testSrcPath);
+        System.out.println(_testClassName);
     }
 
 
@@ -41,6 +43,7 @@ public class CommentAssertTransformer implements ClassFileTransformer {
         }
         else {
             if (!new File(_testSrcPath.trim()).exists()){
+                System.out.println("Class File: "+_testSrcPath+" Not Exist!");
                 return classfileBuffer;
             }
             return Utils.getBytesFromFile(_testSrcPath.trim());

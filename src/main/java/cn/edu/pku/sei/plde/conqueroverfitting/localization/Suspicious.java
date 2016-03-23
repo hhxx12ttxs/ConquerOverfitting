@@ -26,6 +26,7 @@ public class Suspicious implements Serializable{
     public final String _testClasspath;
     public final String _classname;
     public final String _function;
+    public final boolean _isConstructor;
     public final double _suspiciousness;
     public final List<String> _tests;
     public final List<String> _failTests;
@@ -44,6 +45,7 @@ public class Suspicious implements Serializable{
         _tests = new ArrayList(new HashSet(tests));
         _failTests = new ArrayList(new HashSet(failTests));
         _lines = lines;
+        _isConstructor = CodeUtils.isConstructor(_classname, _function);
     }
 
     public int errorAssertNums(){

@@ -1,9 +1,9 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.agent;
 
+import com.sun.org.apache.xpath.internal.operations.Bool;
+
 import java.io.*;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
 /**
  * Created by yanrunfa on 2016/2/20.
@@ -28,25 +28,28 @@ public class Utils {
     }
 
     public static byte[] AddCodeToSource(String tempJavaName, String tempClassName, String classPath, String srcPath, String className, List<Integer> targetLine, String addingCode) throws IOException{
+        Map<Integer, Boolean> writedMap = new HashMap<>();
+        for (int line: targetLine){
+            writedMap.put(line, false);
+        }
         File tempJavaFile = new File(tempJavaName);
         try {
             FileOutputStream outputStream = new FileOutputStream(tempJavaFile);
             BufferedReader reader = new BufferedReader(new FileReader(srcPath+"/"+className.replace(".","/")+".java"));
             String lineString = null;
             int line = 0;
-            boolean writed = false;
             while ((lineString = reader.readLine()) != null) {
                 line++;
                 if (targetLine.contains(line+1)){
                     if ((!lineString.contains(";") && !lineString.contains(":") && !lineString.contains("{") && !lineString.contains("}"))|| lineString.contains("return ") || lineString.contains("if (")){
                         outputStream.write(addingCode.getBytes());
-                        writed = true;
+                        writedMap.put(line+1, true);
                     }
                 }
-                if (targetLine.contains(line) && !writed){
+                if (targetLine.contains(line) && !writedMap.get(line)){
                     outputStream.write(addingCode.getBytes());
+                    writedMap.put(line, true);
                 }
-                writed = false;
                 outputStream.write((lineString+"\n").getBytes());
                 if (lineString.startsWith("package")){
                     outputStream.write("import java.util.Arrays;\n".getBytes());

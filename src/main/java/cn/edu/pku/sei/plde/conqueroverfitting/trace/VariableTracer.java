@@ -29,7 +29,7 @@ public class VariableTracer {
     private String _testClassname;
     private String _classname;
     private String _functionname;
-    private List<String> _commentedTestClass = new ArrayList<>();
+    private Map<String, Integer> _commentedTestClass = new HashMap<>();
     private String _testMethodName;
     private String _testSrcPath;
     private Asserts _asserts;
@@ -60,7 +60,7 @@ public class VariableTracer {
         _testClassname = testClassname;
         _testMethodName = testMethodName;
         _functionname = functionname;
-        _commentedTestClass = new ArrayList<>();
+        _commentedTestClass.clear();
         _asserts = new Asserts(_classpath,_testClasspath,_testSrcPath,testClassname,testMethodName);
 
         List<MethodInfo> methodInfos = _suspicious.getMethodInfo(_srcPath);
@@ -74,23 +74,23 @@ public class VariableTracer {
                 continue;
             }
             if (_commentedTestClass.size() == 0){
-                _commentedTestClass.add("");
+                _commentedTestClass.put("", -1);
             }
             if (_asserts.trueAssertNum() > 0 && !_asserts.getTrueTestFile().equals("")){
-                _commentedTestClass.add(_asserts.getTrueTestFile());
+                _commentedTestClass.put(_asserts.getTrueTestFile(), -1);
             }
-            for (String commentedTestClass: _commentedTestClass) {
-                String shellResult = traceShell(_testClassname, _classname, _functionname, commentedTestClass, variableInfos, methodInfos, line);
+            for (Map.Entry<String, Integer> commentedTestClass: _commentedTestClass.entrySet()) {
+                String shellResult = traceShell(_testClassname, _classname, _functionname, commentedTestClass.getKey(), variableInfos, methodInfos, line);
                 if (shellResult.contains(">>") && shellResult.contains("<<")) {
                     String traceResult = analysisShellResult(shellResult);
-                    results.addAll(traceAnalysis(traceResult));
+                    results.addAll(traceAnalysis(traceResult, commentedTestClass.getValue()));
                 } else {
                     printErrorShell(shellResult);
                 }
             }
         }
-        _suspicious._assertsMap.put(_testClassname, _asserts);
-        _suspicious._errorLineMap.put(_testClassname, errorLines);
+        _suspicious._assertsMap.put(_testClassname+"#"+_testMethodName, _asserts);
+        _suspicious._errorLineMap.put(_testClassname+"#"+_testMethodName, errorLines);
         deleteTempFile();
         return results;
     }
@@ -165,10 +165,11 @@ public class VariableTracer {
 
 
 
-    private List<TraceResult> traceAnalysis(String traceResult){
+    private List<TraceResult> traceAnalysis(String traceResult, int assertLine){
         if (traceResult.equals("")){
             return new ArrayList<>();
         }
+
         List<String> traces = new ArrayList<String>();
         String line = "";
         for (String unit: traceResult.split("\\.")){
@@ -191,12 +192,15 @@ public class VariableTracer {
         List<TraceResult> results = new ArrayList<TraceResult>();
         for (String trace: traces){
             TraceResult result = new TraceResult(!trace.endsWith("E"));
+            result._assertLine = assertLine;
+            result._testClass = _testClassname;
+            result._testMethod = _testMethodName;
             String[] pairs = trace.split("\\|");
             for (String pair: pairs){
                 if (!pair.contains("=")){
                     continue;
                 }
-                if (pair.substring(pair.indexOf("=")+1).equals("\"+"+pair.substring(0, pair.indexOf('='))+"+")){
+                if (pair.substring(pair.indexOf("=")+1).equals("\"+"+pair.substring(0, pair.indexOf('='))+"+\"")){
                     continue;
                 }
                 result.put(pair.substring(0, pair.indexOf('=')),pair.substring(pair.indexOf('=')+1));
@@ -327,7 +331,7 @@ public class VariableTracer {
                 System.out.println(Utils.shellRun(Arrays.asList("javac -Xlint:unchecked -source 1.6 -target 1.6 -cp "+ buildClasspath(Arrays.asList(PathUtils.getJunitPath())) +" -d "+_testClasspath+" "+ originJavaFile.getAbsolutePath())));
                 new File(System.getProperty("user.dir")+"/temp/"+assertLine).mkdirs();
                 System.out.println(Utils.shellRun(Arrays.asList("javac -Xlint:unchecked -source 1.6 -target 1.6 -cp "+ buildClasspath(Arrays.asList(PathUtils.getJunitPath())) +" -d "+System.getProperty("user.dir")+"/temp/"+assertLine+"/ "+ originJavaFile.getAbsolutePath())));
-                _commentedTestClass.add(FileUtils.getFileAddressOfClass(System.getProperty("user.dir")+"/temp/"+assertLine,_testClassname));
+                _commentedTestClass.put(FileUtils.getFileAddressOfClass(System.getProperty("user.dir")+"/temp/"+assertLine,_testClassname), assertLine);
                 Localization localization = new Localization(_classpath, _testClasspath, _testSrcPath, _srcPath, _testClassname);
                 suspiciouses = localization.getSuspiciousLite(false);
 

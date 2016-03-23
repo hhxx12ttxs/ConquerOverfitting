@@ -33,6 +33,7 @@ public class JavaFixer {
     private List<Patch> _patches = new ArrayList<>();
 
     public JavaFixer(Suspicious suspicious, String classSrcPath, String testSrcPath){
+        _suspicious = suspicious;
         _classpath = suspicious._classpath;
         _testClassPath = suspicious._testClasspath;
         _classSrcPath = classSrcPath;
@@ -54,9 +55,10 @@ public class JavaFixer {
         }
         Asserts asserts = new Asserts(_classpath, _testClassPath, _testSrcPath, patch._testClassName, patch._testMethodName);
         int errAssertNumAfterFix = asserts.errorAssertNum();
-        int errAssertBeforeFix = _suspicious._assertsMap.get(patch._className).errorAssertNum();
+        int errAssertBeforeFix = _suspicious._assertsMap.get(patch._testClassName+"#"+patch._testMethodName).errorAssertNum();
         FileUtils.copyFile(javaBackup, targetJavaFile);
         FileUtils.copyFile(classBackup, targetClassFile);
+        System.out.println(patch._patchString);
         if (errAssertNumAfterFix < errAssertBeforeFix){
             _patches.add(patch);
             return true;
@@ -66,6 +68,9 @@ public class JavaFixer {
 
 
     public int fix(){
+        if (_patches.size() == 0){
+            return -1;
+        }
         Map<File, File> backups = new HashMap<>();
         List<File> tobeCompile = new ArrayList<>();
         for (Patch patch: _patches){

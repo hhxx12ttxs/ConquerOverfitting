@@ -72,7 +72,11 @@ public class BoundaryGenerator {
         if (MathUtils.isNumberType(entry.getKey().getStringType())) {
             double biggestBoundary = MathUtils.parseStringValue(entry.getValue().get(1));
             double smallestBoundary = MathUtils.parseStringValue(entry.getValue().get(0));
-
+            if (biggestBoundary > smallestBoundary){
+                double temp = biggestBoundary;
+                biggestBoundary = smallestBoundary;
+                smallestBoundary = temp;
+            }
             String varType = MathUtils.getSimpleOfNumberType(entry.getKey().getStringType());
             Map<String, String> intervals = new HashMap<>();
             //if (smallestBoundary < MathUtils.getMaxValueOfNumberType(entry.getKey().getStringType())){
@@ -103,7 +107,7 @@ public class BoundaryGenerator {
                     return generateWithOneInterval(intervals);
                 }
                 if (intervals.size() == 2) {
-                    return generateWithTwoInterval(intervals, entry.getValue(), smallestBoundary, biggestBoundary);
+                    return generateWithTwoInterval(intervals, trueValues.get(entry.getKey()), smallestBoundary, biggestBoundary);
                 }
             }
 
@@ -129,16 +133,16 @@ public class BoundaryGenerator {
 
 
     private static String generateWithTwoInterval(Map<String, String> intervals, List<String> values, double smallestBoundry, double biggestBoundry) {
-        for (String value: values){
-            if (MathUtils.parseStringValue(value) < biggestBoundry && intervals.containsKey("backwardInterval")){
-                intervals.remove("backwardInterval");
-                return generateWithOneInterval(intervals);
-            }
-            if (MathUtils.parseStringValue(value) > smallestBoundry && intervals.containsKey("forwardInterval")){
-                intervals.remove("forwardInterval");
-                return generateWithOneInterval(intervals);
-            }
-        }
+        //for (String value: values){
+        //    if (MathUtils.parseStringValue(value) < biggestBoundry && intervals.containsKey("backwardInterval")){
+        //        intervals.remove("backwardInterval");
+        //        return generateWithOneInterval(intervals);
+        //    }
+        //    if (MathUtils.parseStringValue(value) > smallestBoundry && intervals.containsKey("forwardInterval")){
+        //        intervals.remove("forwardInterval");
+        //        return generateWithOneInterval(intervals);
+        //    }
+        //}
         return (String) intervals.values().toArray()[0] + "||" + (String) intervals.values().toArray()[1];
     }
 
