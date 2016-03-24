@@ -105,8 +105,12 @@ public class AddPrintTransformer implements ClassFileTransformer {
             printLine += "if ("+varName+".length < 100){"+varPrinter+"}";
         }
         else if (!varType.endsWith("[]") && !varName.endsWith("()")){
-            printLine += "System.out.print(\"|"+varName+"=\"+(";
+            printLine += "System.out.print(\"|"+varName+".null=\"+(";
             printLine += varName +"== null)+\"|\""+");";
+            printLine += "} catch (Exception e) {}\n";
+            printLine += "try {";
+            printLine += "System.out.print(\"|"+varName+".Comparable=\"+(";
+            printLine += varName +" instanceof Comparable<?>)+\"|\""+");";
         }
         printLine += "} catch (Exception e) {}\n";
         if (!printLine.contains("try {}")){

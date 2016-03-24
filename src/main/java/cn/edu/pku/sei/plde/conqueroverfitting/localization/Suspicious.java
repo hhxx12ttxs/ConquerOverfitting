@@ -185,22 +185,24 @@ public class Suspicious implements Serializable{
         }
         variableInfos.addAll(locals);
 
-        LinkedHashMap<String, ArrayList<VariableInfo>> classvars = variableCollect.getVisibleFieldInAllClassMap(classSrcPath);
-        if (classvars.containsKey(classSrcPath)){
-            List<VariableInfo> fields = classvars.get(classSrcPath);
-            List<VariableInfo> staticVars = new ArrayList<>();
-            if (MethodCollect.checkIsStaticMethod(getClassSrcPath(classSrc),_function.substring(0, _function.indexOf("(")))){
-                for (VariableInfo info: fields){
-                    if (!info.isStatic){
-                        staticVars.add(info);
+        if (!_isConstructor){
+            LinkedHashMap<String, ArrayList<VariableInfo>> classvars = variableCollect.getVisibleFieldInAllClassMap(classSrcPath);
+            if (classvars.containsKey(classSrcPath)){
+                List<VariableInfo> fields = classvars.get(classSrcPath);
+                List<VariableInfo> staticVars = new ArrayList<>();
+                if (MethodCollect.checkIsStaticMethod(getClassSrcPath(classSrc),_function.substring(0, _function.indexOf("(")))){
+                    for (VariableInfo info: fields){
+                        if (!info.isStatic){
+                            staticVars.add(info);
+                        }
                     }
                 }
+                fields.removeAll(staticVars);
+                for (VariableInfo field: fields){
+                    field.isFieldVariable = true;
+                }
+                variableInfos.addAll(fields);
             }
-            fields.removeAll(staticVars);
-            for (VariableInfo field: fields){
-                field.isFieldVariable = true;
-            }
-            variableInfos.addAll(fields);
         }
         _variableInfo.removeAll(variableInfos);
         _variableInfo.addAll(variableInfos);
@@ -211,6 +213,10 @@ public class Suspicious implements Serializable{
 
     public List<MethodInfo> getMethodInfo(String classSrc){
         if (_methodInfo != null){
+            return _methodInfo;
+        }
+        if (_isConstructor){
+            _methodInfo = new ArrayList<>();
             return _methodInfo;
         }
         MethodCollect methodCollect = MethodCollect.GetInstance(getClassSrcIndex(classSrc));

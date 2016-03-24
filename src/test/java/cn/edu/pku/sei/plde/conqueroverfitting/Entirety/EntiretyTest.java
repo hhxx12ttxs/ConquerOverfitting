@@ -26,7 +26,7 @@ public class EntiretyTest {
 
     @Test
     public void testEntirety() throws Exception{
-        setWorkDirectory("Math", 37);
+        setWorkDirectory("Math", 93);
         Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc);
         List<Suspicious> suspiciouses = localization.getSuspiciousLite();
 
@@ -91,12 +91,21 @@ public class EntiretyTest {
         FileUtils.deleteDirNow(testClassSrc);
         String project = "Math-"+number;
         /* 四个整个项目需要的参数 */
+
+        if (projectName.equals("Math") && number>=86){
+            FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project+"/target/classes",classpath);
+            FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project+"/target/test-classes",testClasspath);
+            FileUtils.copyDirectory(PATH_OF_DEFECTS4J + project+"/src/java", classSrc);
+            FileUtils.copyDirectory(PATH_OF_DEFECTS4J + project +"/src/test", testClassSrc);
+        }
+
         //Math,Time
         if (projectName.equals("Math") || projectName.equals("Time")){
             FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project+"/target/classes",classpath);
             FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project+"/target/test-classes",testClasspath);
             FileUtils.copyDirectory(PATH_OF_DEFECTS4J + project+"/src/main/java", classSrc);
             FileUtils.copyDirectory(PATH_OF_DEFECTS4J + project +"/src/test/java", testClassSrc);
+            return;
         }
 
         //Closure

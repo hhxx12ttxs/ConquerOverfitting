@@ -3,6 +3,7 @@ package cn.edu.pku.sei.plde.conqueroverfitting.trace.filter;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.TraceResult;
 import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.CodeUtils;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.InfoUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 import org.eclipse.jdt.core.dom.PrimitiveType;
 
@@ -12,6 +13,27 @@ import java.util.*;
  * Created by yanrunfa on 16/3/4.
  */
 public class AbandanTrueValueFilter {
+    public static Map<VariableInfo, List<String>> abandon(List<TraceResult> traceResults, List<VariableInfo> vars) {
+        Map<VariableInfo, List<String>> exceptionValues = new HashMap<VariableInfo, List<String>>();
+        Map<VariableInfo, List<String>> trueVariable = AbandanTrueValueFilter.getTrueValue(traceResults, vars);
+        Map<VariableInfo, List<String>> falseVariable = AbandanTrueValueFilter.getFalseValue(traceResults, vars);
+        for (Map.Entry<VariableInfo, List<String>> entry: falseVariable.entrySet()){
+            if (!trueVariable.containsKey(entry.getKey())){
+                continue;
+            }
+            List<String> values = entry.getValue();
+            int before = values.size();
+            values.removeAll(trueVariable.get(entry.getKey()));
+            int after = values.size();
+            if (before == after){
+                exceptionValues.put(entry.getKey(), entry.getValue());
+            }
+        }
+        return exceptionValues;
+    }
+
+
+
     public static Map<VariableInfo, List<String>> filter(List<TraceResult> traceResults, List<VariableInfo> vars){
         Map<VariableInfo, List<String>> trueValues = filterTrueValue(traceResults, vars);
         Map<VariableInfo, List<String>> exceptionValues = new HashMap<VariableInfo, List<String>>();
@@ -143,7 +165,17 @@ public class AbandanTrueValueFilter {
     }
 
     public static VariableInfo getVariableInfoWithName(List<VariableInfo> infos, String name){
+        List<VariableInfo> addons = new ArrayList<>();
         for (VariableInfo info: infos){
+            if (info.variableName.equals(name)){
+                return info;
+            }
+            if (TypeUtils.isComplexType(info.getStringType())){
+                addons.addAll(InfoUtils.changeObjectInfo(info));
+            }
+        }
+        for (VariableInfo info: addons){
+            info.isAddon = true;
             if (info.variableName.equals(name)){
                 return info;
             }

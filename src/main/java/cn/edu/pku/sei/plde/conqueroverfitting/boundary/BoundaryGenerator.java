@@ -66,9 +66,26 @@ public class BoundaryGenerator {
     }
 
     private static String generateWithSingleWord(Map.Entry<VariableInfo, List<String>> entry, Map<VariableInfo, List<String>> trueValues, Map<VariableInfo, List<String>> falseValues) {
-        if (entry.getValue().size() == 1 && !MathUtils.isNumberType(entry.getKey().getStringType())) {
-            return entry.getKey().variableName + " == " + entry.getValue().get(0);
+        if (entry.getValue().size() == 1 && entry.getKey().isAddon){
+            String variableName = entry.getKey().variableName.substring(0,entry.getKey().variableName.indexOf("."));
+            if (entry.getKey().variableName.endsWith(".Comparable")){
+                switch (entry.getValue().get(0)){
+                    case "true":
+                        return variableName+" instanceof Comparable<?>";
+                    case "false":
+                        return "!("+variableName+" instanceof Comparable<?>)";
+                }
+            }
+            if (entry.getKey().variableName.endsWith(".null")){
+                switch (entry.getValue().get(0)){
+                    case "true":
+                        return variableName+" == null";
+                    case "false":
+                        return variableName+" != null";
+                }
+            }
         }
+
         if (MathUtils.isNumberType(entry.getKey().getStringType())) {
             double biggestBoundary = MathUtils.parseStringValue(entry.getValue().get(1));
             double smallestBoundary = MathUtils.parseStringValue(entry.getValue().get(0));

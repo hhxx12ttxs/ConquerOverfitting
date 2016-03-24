@@ -18,6 +18,7 @@ public class VariableInfo implements Comparable<VariableInfo>,Serializable{
 	public boolean isParameter = false;
 	public boolean isLocalVariable = false;
 	public boolean isFieldVariable = false;
+	public boolean isAddon = false;
 
 
 	/**
@@ -119,6 +120,16 @@ public class VariableInfo implements Comparable<VariableInfo>,Serializable{
 					&& isPublic == other.isPublic
 					&& isStatic == other.isStatic;
 		}
+	}
+
+	@Override
+	public int hashCode(){
+		int result = 0;
+		String code = variableName+getStringType();
+		for (Character ch: code.toCharArray()){
+			result += ch;
+		}
+		return result;
 	}
 
 	public int compareTo(VariableInfo variableInfo) {

@@ -23,7 +23,7 @@ import java.util.*;
 public class ExceptionExtractor {
 
     public static Map<VariableInfo, List<String>> extract(List<TraceResult> traceResults, List<VariableInfo> vars){
-        Map<VariableInfo, List<String>> exceptionVariable = AbandanTrueValueFilter.filter(traceResults, vars);
+        Map<VariableInfo, List<String>> exceptionVariable = AbandanTrueValueFilter.abandon(traceResults, vars);
         Map<VariableInfo, List<String>> cleanedVariable = cleanVariables(exceptionVariable);
         Map<VariableInfo, List<BoundaryInfo>> variableBoundary = SearchBoundaryFilter.getBoundary(cleanedVariable);
         return getBoundaryIntervals(cleanedVariable, variableBoundary);
@@ -32,7 +32,7 @@ public class ExceptionExtractor {
     private static Map<VariableInfo, List<String>> getBoundaryIntervals(Map<VariableInfo, List<String>> variableValue, Map<VariableInfo, List<BoundaryInfo>> variableBoundary){
         Map<VariableInfo, List<String>> result = new HashMap<>();
         for (Map.Entry<VariableInfo, List<String>> entry: variableValue.entrySet()){
-            if (!variableBoundary.containsKey(entry.getKey()) || variableBoundary.get(entry.getKey()).size() == 0){
+            if ((!variableBoundary.containsKey(entry.getKey()) || variableBoundary.get(entry.getKey()).size() == 0) && !entry.getKey().isAddon){
                 continue;
             }
             List<BoundaryInfo> boundaryList = variableBoundary.get(entry.getKey());

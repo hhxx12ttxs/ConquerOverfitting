@@ -55,8 +55,19 @@ public class InfoUtils {
     public static List<VariableInfo> AddMethodInfoListToVariableInfoList(List<VariableInfo> variableInfos, List<MethodInfo> methodInfos){
         List<VariableInfo> result = new ArrayList<VariableInfo>();
         result.addAll(variableInfos);
+
         result.addAll(changeMethodInfoToVariableInfo(methodInfos));
         return result;
+    }
+
+
+    public static List<VariableInfo> changeObjectInfo(VariableInfo info){
+        if (!TypeUtils.isComplexType(info.getStringType())){
+            return Arrays.asList(info);
+        }
+        VariableInfo info1 = new VariableInfo(info.variableName+".isNaN",TypeEnum.BOOLEAN,true,null);
+        VariableInfo info2 = new VariableInfo(info.variableName+".Comparable",TypeEnum.BOOLEAN,true,null);
+        return Arrays.asList(info1, info2);
     }
 
 

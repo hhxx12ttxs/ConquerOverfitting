@@ -31,6 +31,9 @@ public class SearchBoundaryFilter {
             if (boundaryList != null && boundaryList.size()> 0){
                 result.put(entry.getKey(),boundaryList);
             }
+            if (entry.getKey().isAddon){
+                result.put(entry.getKey(),boundaryList);
+            }
             /*
             //根据值在搜索中出现的次数来确定怀疑目标
             for (String value: entry.getValue()){

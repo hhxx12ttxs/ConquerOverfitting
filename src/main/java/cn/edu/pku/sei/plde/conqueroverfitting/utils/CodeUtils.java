@@ -212,12 +212,12 @@ public class CodeUtils {
             Block body =method.getBody();
             List<Statement> statements = body.statements();
             for (Statement statement: statements){
-                if (statement.toString().contains("return;")){
+                if (statement.toString().contains("return;") || statement.toString().contains("throw new ")){
                     int startLine = unit.getLineNumber(statement.getStartPosition()) -1;
                     int lineOffset = 0;
                     for (String line: statement.toString().split("\n")){
                         lineOffset++;
-                        if (line.contains("return;")){
+                        if (line.contains("return;")|| line.contains("throw new ")){
                             result.add(startLine+lineOffset);
                         }
                     }
@@ -286,7 +286,9 @@ public class CodeUtils {
             while ((lineString = reader.readLine()) != null) {
                 line++;
                 if (targetLine.contains(line + 1)) {
-                    if ((!lineString.contains(";") && !lineString.contains(":") && !lineString.contains("{") && !lineString.contains("}")) || lineString.contains("return ") || lineString.contains("if (")) {
+                    if ((!lineString.contains(";") && !lineString.contains(":") && !lineString.contains("{") && !lineString.contains("}")) ||
+                            lineString.contains("return ") ||
+                            lineString.contains("if (")) {
                         outputStream.write(addingCode.getBytes());
                         writedMap.put(line+1, true);
 
@@ -294,8 +296,8 @@ public class CodeUtils {
                 }
                 if (targetLine.contains(line) && !writedMap.get(line)) {
                     outputStream.write(addingCode.getBytes());
+                    writedMap.put(line, true);
                 }
-                writedMap.put(line+1, true);
                 outputStream.write((lineString + "\n").getBytes());
             }
             outputStream.close();

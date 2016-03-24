@@ -167,6 +167,15 @@ public class Localization  {
                 if (methodCode.contains(getFunctionNameFromStatement(statement))) {
                     result.add(statement);
                 }
+                for (String lineString: methodCode.split("\n")) {
+                    if (lineString.contains("(") && lineString.contains(")") && !lineString.contains("=")) {
+                        String callMethod = lineString.substring(0, lineString.indexOf("(")).trim();
+                        if (code.contains("void " + callMethod + "(")) {
+                            result.add(statement);
+                            break;
+                        }
+                    }
+                }
             }
         }
         return result;

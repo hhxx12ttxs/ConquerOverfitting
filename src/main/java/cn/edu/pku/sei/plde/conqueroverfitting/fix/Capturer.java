@@ -158,7 +158,7 @@ public class Capturer {
                 if (!nextLine.contains("Exception") || !nextLine.contains("catch")){
                     continue;
                 }
-                return exceptionProcessing(lineString);
+                return exceptionProcessing(nextLine);
             }
         }
         else if (lineString.contains("assert")){

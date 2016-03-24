@@ -48,7 +48,7 @@ public class JavaFixer {
 
         CodeUtils.addCodeToFile(targetJavaFile, patch._patchString, patch._patchLines);
         try {
-            System.out.println(Utils.shellRun(Arrays.asList("javac -Xlint:unchecked -source 1.6 -target 1.6 -cp "+ buildClasspath(Arrays.asList(PathUtils.getJunitPath())) +" -d "+_testClassPath+" "+ targetJavaFile.getAbsolutePath())));
+            System.out.println(Utils.shellRun(Arrays.asList("javac -Xlint:unchecked -source 1.6 -target 1.6 -cp "+ buildClasspath(Arrays.asList(PathUtils.getJunitPath())) +" -d "+_classpath+" "+ targetJavaFile.getAbsolutePath())));
         }
         catch (IOException e){
             return false;
@@ -89,7 +89,7 @@ public class JavaFixer {
         }
         for (File javaFile: tobeCompile){
             try {
-                System.out.println(Utils.shellRun(Arrays.asList("javac -Xlint:unchecked -source 1.6 -target 1.6 -cp "+ buildClasspath(Arrays.asList(PathUtils.getJunitPath())) +" -d "+_testClassPath+" "+ javaFile.getAbsolutePath())));
+                System.out.println(Utils.shellRun(Arrays.asList("javac -Xlint:unchecked -source 1.6 -target 1.6 -cp "+ buildClasspath(Arrays.asList(PathUtils.getJunitPath())) +" -d "+_classpath+" "+ javaFile.getAbsolutePath())));
             }
             catch (IOException e){
                 return -1;
