@@ -19,6 +19,7 @@ public class StatementExt extends Statement  {
     private int np;
     private int nf;
     private Metric defaultMetric;
+    private float suspiciousWeight = 1;
     private List<String> tests = new ArrayList<String>();
     private List<String> failTests = new ArrayList<>();
 
@@ -89,14 +90,19 @@ public class StatementExt extends Statement  {
         return getSuspiciousness(this.defaultMetric);
     }
 
+    public void setSuspiciousWeight(float weight){
+        suspiciousWeight = weight;
+    }
+
+
     public double getSuspiciousness(Metric metric) {
         if (getLabel().contains("(") && getLabel().contains(")")){
             if (StringUtils.isNumeric(getLabel().substring(getLabel().lastIndexOf("(")+1,getLabel().lastIndexOf(")")))){
-                return metric.value(ef, ep, nf, np)/4;
+                return metric.value(ef, ep, nf, np)/4*suspiciousWeight;
             }
         }
 
-        return metric.value(ef, ep, nf, np);
+        return metric.value(ef, ep, nf, np)*suspiciousWeight;
     }
 
     @Override

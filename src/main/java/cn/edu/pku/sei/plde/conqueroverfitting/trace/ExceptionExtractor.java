@@ -32,6 +32,10 @@ public class ExceptionExtractor {
     private static Map<VariableInfo, List<String>> getBoundaryIntervals(Map<VariableInfo, List<String>> variableValue, Map<VariableInfo, List<BoundaryInfo>> variableBoundary){
         Map<VariableInfo, List<String>> result = new HashMap<>();
         for (Map.Entry<VariableInfo, List<String>> entry: variableValue.entrySet()){
+            if (CodeUtils.isForLoopParam(entry.getValue())!=-1){
+                result.put(entry.getKey(), entry.getValue());
+                continue;
+            }
             if ((!variableBoundary.containsKey(entry.getKey()) || variableBoundary.get(entry.getKey()).size() == 0) && !entry.getKey().isAddon){
                 continue;
             }
@@ -144,10 +148,10 @@ public class ExceptionExtractor {
             }
             var.getValue().removeAll(bannedValue);
             //如果是for循环的计数的数据,取最大值.
-            if (CodeUtils.isForLoopParam(unrepeatValue)!=-1){
-                unrepeatValue.clear();
-                unrepeatValue.add(String.valueOf(CodeUtils.isForLoopParam(unrepeatValue)));
-            }
+            //if (CodeUtils.isForLoopParam(unrepeatValue)!=-1){
+            //    unrepeatValue.clear();
+            //    unrepeatValue.add(String.valueOf(CodeUtils.isForLoopParam(unrepeatValue)));
+            //}
             if (var.getValue().size()== 0){
                  continue;
             }

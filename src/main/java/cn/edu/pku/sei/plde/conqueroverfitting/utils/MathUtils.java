@@ -2,6 +2,7 @@ package cn.edu.pku.sei.plde.conqueroverfitting.utils;
 
 import org.apache.commons.lang.StringUtils;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -187,4 +188,21 @@ public class MathUtils {
                 return "";
         }
     }
+
+
+    public static List<Integer> changeStringListToInteger(List<String> list){
+        List<Integer> nums = new ArrayList<>();
+        for (String var: list){
+            if (!StringUtils.isNumeric(var)){
+                continue;
+            }
+            try {
+                int num = Integer.parseInt(var);
+                nums.add(num);
+            }catch (Exception e){}
+        }
+        return nums;
+    }
+
 }
+

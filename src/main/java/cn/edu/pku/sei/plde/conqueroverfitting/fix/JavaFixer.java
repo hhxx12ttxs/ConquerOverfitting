@@ -47,6 +47,9 @@ public class JavaFixer {
         File classBackup = FileUtils.copyFile(targetClassFile.getAbsolutePath(), FileUtils.tempClassPath(patch._className,"JavaFixer"));
 
         CodeUtils.addCodeToFile(targetJavaFile, patch._patchString, patch._patchLines);
+        if (!patch._addonFunction.equals("")){
+            CodeUtils.addMethodToFile(targetJavaFile, patch._addonFunction, patch._className.substring(patch._className.lastIndexOf(".")+1));
+        }
         try {
             System.out.println(Utils.shellRun(Arrays.asList("javac -Xlint:unchecked -source 1.6 -target 1.6 -cp "+ buildClasspath(Arrays.asList(PathUtils.getJunitPath())) +" -d "+_classpath+" "+ targetJavaFile.getAbsolutePath())));
         }

@@ -1,6 +1,8 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.localization;
 
+import cn.edu.pku.sei.plde.conqueroverfitting.assertCollect.Asserts;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.gzoltar.StatementExt;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.CodeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.FileUtils;
 import com.gzoltar.core.components.Statement;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.common.SuspiciousField;
@@ -131,6 +133,12 @@ public class Localization  {
         if (lineNumbers.size() != 0 && firstline.getTests().size()< 30){
             result.add(new Suspicious(classpath, testClassPath, getClassAddressFromStatement(firstline), getTargetFunctionFromStatement(firstline), firstline.getSuspiciousness(), firstline.getTests(),firstline.getFailTests(), new ArrayList<String>(lineNumbers)));
         }
+        Collections.sort(result, new Comparator<Suspicious>() {
+            @Override
+            public int compare(Suspicious o1, Suspicious o2) {
+                return Double.compare(o2._suspiciousness, o1._suspiciousness);
+            }
+        });
         if (!jump){
             return result;
         }
@@ -152,6 +160,7 @@ public class Localization  {
     private List<StatementExt> statementFilter(List<StatementExt> statements){
         List<String> bannedMethodName = Arrays.asList("valueOf","toString","reflectionToString");
         List<StatementExt> result = new ArrayList<>();
+        Map<String, String> errorLineMap = new HashMap<>();
         for (StatementExt statement: statements){
             if (bannedMethodName.contains(getFunctionNameFromStatement(statement))){
                 continue;
@@ -164,7 +173,23 @@ public class Localization  {
                 String testMethod = test.split("#")[1];
                 String code = FileUtils.getCodeFromFile(testSrcPath, testClass);
                 String methodCode = FileUtils.getTestFunctionCodeFromCode(code, testMethod);
-                if (methodCode.contains(getFunctionNameFromStatement(statement))) {
+                String errorAssertCode = "";
+                if (!errorLineMap.containsKey(test)){
+                    Asserts asserts = new Asserts(classpath, testClassPath, testSrcPath, testClass, testMethod);
+                    for (int i: asserts._errorLines){
+                        errorAssertCode += CodeUtils.getLineFromCode(code, i)+"\n";
+                    }
+                    errorLineMap.put(test, errorAssertCode);
+                }
+                else {
+                    errorAssertCode = errorLineMap.get(test);
+                }
+
+                if (errorAssertCode.contains(getClassNameFromStatement(statement)+"."+getFunctionNameFromStatement(statement)+"(")) {
+                    result.add(statement);
+                }
+                else if (methodCode.contains(getFunctionNameFromStatement(statement))){
+                    statement.setSuspiciousWeight(0.5f);
                     result.add(statement);
                 }
                 for (String lineString: methodCode.split("\n")) {
@@ -229,6 +254,11 @@ public class Localization  {
      */
     public static String getClassAddressFromStatement(Statement statement){
         return statement.getLabel().split("\\{")[0];
+    }
+
+    public static String getClassNameFromStatement(Statement statement){
+        String classAddress = getClassAddressFromStatement(statement);
+        return classAddress.substring(classAddress.lastIndexOf(".")+1);
     }
 
     /**

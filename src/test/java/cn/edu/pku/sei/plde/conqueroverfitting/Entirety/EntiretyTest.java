@@ -44,7 +44,7 @@ public class EntiretyTest {
         if (ifString.equals("")){
             return false;
         }
-        Capturer fixCapturer = new Capturer(classpath, testClasspath, testClassSrc);
+        Capturer fixCapturer = new Capturer(classpath,classSrc, testClasspath, testClassSrc);
         JavaFixer javaFixer = new JavaFixer(suspicious, classSrc, testClassSrc);
         for (String test: suspicious.getFailedTest()){
             String testClassName = test.split("#")[0];

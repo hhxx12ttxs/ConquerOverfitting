@@ -160,13 +160,13 @@ public class Suspicious implements Serializable{
                 if (paramClass.equals("")){
                     continue;
                 }
-                String paramClassSrcPath =  classSrc + System.getProperty("file.separator") + paramClass.replace(".",System.getProperty("file.separator")) + ".java";
+                String paramClassSrcPath =  (classSrc + System.getProperty("file.separator") + paramClass.replace(".",System.getProperty("file.separator")) + ".java").replace("//","/");
                 LinkedHashMap<String, ArrayList<VariableInfo>> classvars = variableCollect.getVisibleFieldInAllClassMap(paramClassSrcPath);
                 if (classvars.containsKey(paramClassSrcPath)) {
                     List<VariableInfo> fields = classvars.get(classSrcPath);
                     for (VariableInfo field: fields){
                         VariableInfo newField = VariableInfo.copy(field);
-                        if (!newField.isPublic && !paramClassSrcPath.equals(getClassSrcPath(classSrc))){
+                        if (!newField.isPublic && !paramClassSrcPath.equals(getClassSrcPath(classSrc)) || (newField.isStatic && paramClassSrcPath.equals(getClassSrcPath(classSrc)))){
                             continue;
                         }
                         newField.isParameter = true;

@@ -48,6 +48,16 @@ public class CodeUtils {
         return params;
     }
 
+    public static List<String> getMethodParamsName(String line, String methodName){
+        List<String> params = getMethodParams(line, methodName);
+        List<String> result = new ArrayList<>();
+        for (String param: params){
+            param = param.substring(param.lastIndexOf(" "));
+            result.add(param.trim());
+        }
+        return result;
+    }
+
     private static List<String> getConstructorParams(String line){
         List<String> params = divideParameter(line, 1);
         for (String param: params){
@@ -139,7 +149,7 @@ public class CodeUtils {
 
 
     public static List<String> divideParameter(String line, int level){
-        //line = line.replace(" ", "");
+        line = line.replace("(double)", "").replace("(int)","");
         List<String> result = new ArrayList<String>();
         int bracketCount = 0;
         int startPoint = 0;
@@ -197,6 +207,21 @@ public class CodeUtils {
             }
         }
         return result;
+    }
+
+    public static String getMethodString(String code, String methodName){
+        methodName = methodName.trim();
+        ASTParser parser = ASTParser.newParser(AST.JLS3);
+        parser.setSource(code.toCharArray());
+        CompilationUnit unit = (CompilationUnit) parser.createAST(null);
+        TypeDeclaration declaration = (TypeDeclaration) unit.types().get(0);
+        MethodDeclaration methodDec[] = declaration.getMethods();
+        for (MethodDeclaration method : methodDec) {
+            if (method.getName().getIdentifier().equals(methodName)) {
+                return method.toString();
+            }
+        }
+        return "";
     }
 
     public static List<Integer> getReturnLine(String code, String methodName, int paramCount){
@@ -268,6 +293,30 @@ public class CodeUtils {
         return  classname.substring(classname.lastIndexOf(".") + 1).equals(function.substring(0, function.indexOf('(')));
     }
 
+    public static void addMethodToFile(File file, String addingCode, String className){
+        File newFile = new File(file.getAbsolutePath()+".temp");
+        try {
+            if (!newFile.exists()) {
+                newFile.createNewFile();
+            }
+            FileOutputStream outputStream = new FileOutputStream(newFile);
+            BufferedReader reader = new BufferedReader(new FileReader(file));
+            String lineString = null;
+            while ((lineString = reader.readLine()) != null) {
+                outputStream.write((lineString + "\n").getBytes());
+                if (lineString.contains("class "+className)){
+                    outputStream.write((addingCode+"\n").getBytes());
+                }
+            }
+            outputStream.close();
+            reader.close();
+        } catch (IOException e){
+            e.printStackTrace();
+        }
+        if (file.delete()){
+            newFile.renameTo(file);
+        }
+    }
 
     public static void addCodeToFile(File file, String addingCode, List<Integer> targetLine){
         File newFile = new File(file.getAbsolutePath()+".temp");

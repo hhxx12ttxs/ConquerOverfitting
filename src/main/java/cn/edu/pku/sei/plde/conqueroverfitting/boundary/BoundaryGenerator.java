@@ -6,6 +6,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.trace.ExceptionExtractor;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.TraceResult;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.filter.AbandanTrueValueFilter;
 import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeUtils;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.CodeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.InfoUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.MathUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
@@ -66,6 +67,19 @@ public class BoundaryGenerator {
     }
 
     private static String generateWithSingleWord(Map.Entry<VariableInfo, List<String>> entry, Map<VariableInfo, List<String>> trueValues, Map<VariableInfo, List<String>> falseValues) {
+        if (CodeUtils.isForLoopParam(entry.getValue())!=-1){
+            int falseMax = Collections.max(MathUtils.changeStringListToInteger(falseValues.get(entry.getKey())));
+            int falseMin = Collections.min(MathUtils.changeStringListToInteger(falseValues.get(entry.getKey())));
+            int trueMax = Collections.max(MathUtils.changeStringListToInteger(trueValues.get(entry.getKey())));
+            int trueMin = Collections.min(MathUtils.changeStringListToInteger(trueValues.get(entry.getKey())));
+            if (falseMax < trueMin){
+                return entry.getKey().variableName + " < "+trueMin;
+            }
+            if (falseMin > trueMax){
+                return entry.getKey().variableName + " > " + trueMax;
+            }
+            return "";
+        }
         if (entry.getValue().size() == 1 && entry.getKey().isAddon){
             String variableName = entry.getKey().variableName.substring(0,entry.getKey().variableName.indexOf("."));
             if (entry.getKey().variableName.endsWith(".Comparable")){

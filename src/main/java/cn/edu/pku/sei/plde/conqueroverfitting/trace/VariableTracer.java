@@ -73,10 +73,10 @@ public class VariableTracer {
             if (variableInfos.size() == 0 &&  methodInfos.size() == 0){
                 continue;
             }
-            if (_commentedTestClass.size() == 0){
-                _commentedTestClass.put("", -1);
+            if (_commentedTestClass.size() <= 1){
+                _commentedTestClass.put("", line);
             }
-            if (_asserts.trueAssertNum() > 0 && !_asserts.getTrueTestFile().equals("")){
+            if (_asserts.trueAssertNum() > 0 && _asserts.errorAssertNum() > 1 && !_asserts.getTrueTestFile().equals("")){
                 _commentedTestClass.put(_asserts.getTrueTestFile(), -1);
             }
             for (Map.Entry<String, Integer> commentedTestClass: _commentedTestClass.entrySet()) {
@@ -270,7 +270,7 @@ public class VariableTracer {
     private List<Integer> getTrueErrorLine(){
         List<Integer> assertLines = _asserts._errorLines;
         List<Integer> result = new ArrayList<>();
-        if (assertLines.size() == 0){
+        if (assertLines.size() <= 1){
             return result;
         }
         for (int assertLine: assertLines){

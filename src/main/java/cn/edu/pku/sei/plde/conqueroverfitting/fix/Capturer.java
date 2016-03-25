@@ -4,6 +4,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.slice.StaticSlice;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.*;
 import com.gzoltar.core.GZoltar;
 import com.gzoltar.core.instr.testing.TestResult;
+import com.sun.org.apache.bcel.internal.classfile.Code;
 import de.unisb.cs.st.javaslicer.slicing.Slicer;
 import de.unisb.cs.st.javaslicer.tracer.TracerAgent;
 import javassist.NotFoundException;
@@ -25,6 +26,7 @@ public class Capturer {
     public final String _classpath;
     public final String _testclasspath;
     public final String _testsrcpath;
+    public final String _classSrcPath;
     public String _testClassName;
     public String _testMethodName;
     public String _fileaddress;
@@ -35,17 +37,18 @@ public class Capturer {
     public int _assertLine = -1;
     public String _classname;
     public String _methodName;
+
     /**
      *
      * @param classpath The class path
      * @param testclasspath The test's class path
      * @param testsrcpath the test's source path
      */
-    public Capturer(String classpath, String testclasspath, String testsrcpath){
+    public Capturer(String classpath, String classSrcPath, String testclasspath, String testsrcpath){
         _classpath = classpath;
         _testclasspath = testclasspath;
         _testsrcpath = testsrcpath;
-
+        _classSrcPath = classSrcPath;
     }
     /**
      *
@@ -201,6 +204,9 @@ public class Capturer {
             System.out.println(Arrays.toString(parameters.toArray()));
             throw new Exception("Function divideParameter Error!");
         }
+        if (parameters.size() == 4){
+            parameters.remove(0);
+        }
 
         if (assertType.contains("assertEquals") || assertType.contains("assertSame")){
             String callExpression="";
@@ -235,9 +241,12 @@ public class Capturer {
 
                 }
             }
+
             //String attachLines = slicingProcess(returnParam, callParam, assertLine);
             String attachLines = staticSlicingProcess(returnParam, callParam, statements);
-            return attachLines + returnString + ";";
+            String addonFunction = addonFunctions(returnExpression);
+            returnString = syncParams(returnString);
+            return attachLines + returnString + ";" + addonFunction;
         }
         else if (assertType.contains("assertNull")){
             return "return null;";
@@ -251,6 +260,42 @@ public class Capturer {
         throw new Exception("Unknown assert type");
     }
 
+    private String addonFunctions(String returnExpression){
+        if (!returnExpression.contains("(")|| !returnExpression.contains(")")){
+            return "";
+        }
+        String methodName = returnExpression.substring(0, returnExpression.indexOf("(")).trim();
+        String methodCode = CodeUtils.getMethodString(_classCode, methodName);
+        if (methodCode.equals("")){
+            return "";
+        }
+        methodCode = methodCode.replace("public ","private ");
+        methodCode = methodCode.replace("private ","private static ");
+        return ">>>"+methodName+"<<<"+methodCode;
+    }
+
+    private String syncParams(String returnString){
+        if (!(returnString.contains("(") && returnString.contains(")") && !returnString.contains("()"))){
+            return returnString;
+        }
+        String code = FileUtils.getCodeFromFile(_classSrcPath, _classname);
+        String methodCode = CodeUtils.getMethodString(code, _methodName);
+        for (String line: methodCode.split("\n")){
+            if (line.contains(_methodName) && line.contains("(") && line.contains(")")){
+                List<String> params = CodeUtils.getMethodParamsName(line, _methodName);
+
+                List<String> paramsInReturn = CodeUtils.divideParameter(returnString, 1);
+                if (params.size()!=paramsInReturn.size()){
+                    return returnString;
+                }
+                for (int i=0; i< params.size(); i++){
+                    paramsInReturn.set(i,params.get(i));
+                }
+                return returnString.substring(0,returnString.indexOf("("))+"("+StringUtils.join(paramsInReturn,",")+")";
+            }
+        }
+        return returnString;
+    }
 
     private String staticSlicingProcess(List<String> returnParam, List<String> callParam, String statements){
         for (int i=0; i<returnParam.size(); i++){

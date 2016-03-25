@@ -44,7 +44,11 @@ public class VariableInfo implements Comparable<VariableInfo>,Serializable{
 	}
 
 	public static VariableInfo copy(VariableInfo info){
-		return new VariableInfo(info.variableName, info.variableSimpleType, info.isSimpleType, info.otherType, info.methodStartPos, info.methodEndPos, info.variablePos);
+		VariableInfo newInfo =  new VariableInfo(info.variableName, info.variableSimpleType, info.isSimpleType, info.otherType, info.methodStartPos, info.methodEndPos, info.variablePos);
+		newInfo.isStatic = info.isStatic;
+		newInfo.isPublic = info.isPublic;
+		newInfo.isAddon = info.isAddon;
+		return newInfo;
 	}
 
 	/**

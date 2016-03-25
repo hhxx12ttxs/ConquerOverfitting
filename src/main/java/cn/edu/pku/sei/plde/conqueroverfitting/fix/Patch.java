@@ -1,5 +1,6 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.fix;
 
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.CodeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.FileUtils;
 
 import java.util.ArrayList;
@@ -14,6 +15,8 @@ public class Patch {
     public final String _className;
     public final List<Integer> _patchLines = new ArrayList<>();
     public final String _patchString;
+    public String _addonFunction = "";
+
 
 
     public boolean equals(Patch patch){
@@ -29,8 +32,17 @@ public class Patch {
         _testMethodName = testMethodName;
         _className = className;
         _patchLines.addAll(patchLine);
+        if (fixString.contains(">>>")){
+            String addonFunctionName = fixString.split(">>>")[1].split("<<<")[0];
+            _addonFunction = fixString.split(">>>")[1].split("<<<")[1];
+            _addonFunction = _addonFunction.replace(addonFunctionName, "patch_method");
+            fixString = fixString.split(">>>")[0];
+            fixString = fixString.replace(addonFunctionName, "patch_method");
+        }
         _patchString = generatePatchString(ifString, fixString);
     }
+
+
 
 
 
