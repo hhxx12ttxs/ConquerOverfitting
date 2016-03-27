@@ -91,10 +91,50 @@ public class VariableTracer {
         }
         _suspicious._assertsMap.put(_testClassname+"#"+_testMethodName, _asserts);
         _suspicious._errorLineMap.put(_testClassname+"#"+_testMethodName, errorLines);
+        results.addAll(getAddonResult());
         deleteTempFile();
         return results;
     }
 
+    private List<TraceResult> getAddonResult(){
+        List<TraceResult> results = new ArrayList<>();
+        String firstAssert = _asserts._asserts.get(0);
+        if (_asserts._asserts.size() == 1 && firstAssert.contains("Equals")){
+            List<String> params = CodeUtils.divideParameter(firstAssert, 1);
+            if (params.size() == 2){
+                String param1 = params.get(0).contains(_functionname)?params.get(0):params.get(1);
+                String param2 = params.get(0).contains(_functionname)?params.get(1):params.get(0);
+                String className = _classname.substring(_classname.lastIndexOf(".")+1);
+                if (param1.startsWith(className+".") && param2.startsWith(className+".") && param1.contains("()") && count(param1,'.') >1){
+                    TraceResult traceResult = new TraceResult(false);
+                    traceResult._assertLine = _asserts._errorLines.get(0);
+                    traceResult._testClass = _testClassname;
+                    traceResult._testMethod = _testMethodName;
+                    traceResult.put("this", param1.substring(param1.indexOf(".")+1,param1.lastIndexOf(".")));
+                    results.add(traceResult);
+                }
+            }
+        }
+        if (_asserts._asserts.size() == 1 && firstAssert.contains("True") && firstAssert.contains(">=")){
+            String classCode = FileUtils.getCodeFromFile(_srcPath, _classname);
+            String methodCode = CodeUtils.getMethodBody(classCode, _suspicious.functionnameWithoutParam());
+            String firstStatement = methodCode.substring(1,methodCode.length()-1).split("\n")[0];
+            if (firstStatement.startsWith("return")){
+                String returnString = methodCode.substring(firstStatement.indexOf(" ")+1, firstStatement.length()-1);
+                String param = CodeUtils.divideParameter(firstAssert, 1).get(0);
+                String numParam = param.split(">=")[0].contains(_functionname)?param.split(">=")[1]:param.split(">=")[0];
+                if (numParam.matches("^(-?\\d+)(\\.\\d+)?$")){
+                    TraceResult traceResult = new TraceResult(false);
+                    traceResult._assertLine = _asserts._errorLines.get(0);
+                    traceResult._testClass = _testClassname;
+                    traceResult._testMethod = _testMethodName;
+                    traceResult.put("return", "("+returnString+")" + "<" + numParam);
+                    results.add(traceResult);
+                }
+            }
+        }
+        return results;
+    }
 
     private void deleteTempFile(){
         //clean temp file

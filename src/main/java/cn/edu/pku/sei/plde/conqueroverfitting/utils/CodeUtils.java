@@ -149,7 +149,7 @@ public class CodeUtils {
 
 
     public static List<String> divideParameter(String line, int level){
-        line = line.replace("(double)", "").replace("(int)","");
+        line = line.replace("(double)", "").replace("(int)","").replace(" ","");
         List<String> result = new ArrayList<String>();
         int bracketCount = 0;
         int startPoint = 0;
@@ -219,6 +219,21 @@ public class CodeUtils {
         for (MethodDeclaration method : methodDec) {
             if (method.getName().getIdentifier().equals(methodName)) {
                 return method.toString();
+            }
+        }
+        return "";
+    }
+
+    public static String getMethodBody(String code, String methodName){
+        methodName = methodName.trim();
+        ASTParser parser = ASTParser.newParser(AST.JLS3);
+        parser.setSource(code.toCharArray());
+        CompilationUnit unit = (CompilationUnit) parser.createAST(null);
+        TypeDeclaration declaration = (TypeDeclaration) unit.types().get(0);
+        MethodDeclaration methodDec[] = declaration.getMethods();
+        for (MethodDeclaration method : methodDec) {
+            if (method.getName().getIdentifier().equals(methodName)) {
+                return method.getBody().statements().toString();
             }
         }
         return "";

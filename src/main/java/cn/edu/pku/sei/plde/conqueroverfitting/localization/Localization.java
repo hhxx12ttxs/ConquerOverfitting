@@ -173,6 +173,9 @@ public class Localization  {
                 String testMethod = test.split("#")[1];
                 String code = FileUtils.getCodeFromFile(testSrcPath, testClass);
                 String methodCode = FileUtils.getTestFunctionCodeFromCode(code, testMethod);
+                if (methodCode.equals("")){
+                    continue;
+                }
                 String errorAssertCode = "";
                 if (!errorLineMap.containsKey(test)){
                     Asserts asserts = new Asserts(classpath, testClassPath, testSrcPath, testClass, testMethod);
@@ -185,11 +188,11 @@ public class Localization  {
                     errorAssertCode = errorLineMap.get(test);
                 }
 
-                if (errorAssertCode.contains(getClassNameFromStatement(statement)+"."+getFunctionNameFromStatement(statement)+"(")) {
+                if (errorAssertCode.contains(getFunctionNameFromStatement(statement)+"(")) {
+                    statement.setSuspiciousWeight(5.0f);
                     result.add(statement);
                 }
                 else if (methodCode.contains(getFunctionNameFromStatement(statement))){
-                    statement.setSuspiciousWeight(0.5f);
                     result.add(statement);
                 }
                 for (String lineString: methodCode.split("\n")) {

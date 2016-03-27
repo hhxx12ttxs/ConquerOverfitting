@@ -25,7 +25,7 @@ import java.util.regex.Matcher;
  */
 public class BoundaryGenerator {
 
-    public static String generate(Suspicious suspicious, List<TraceResult> traceResults) throws IOException {
+    public static Map<VariableInfo, String> generate(Suspicious suspicious, List<TraceResult> traceResults) throws IOException {
         Map<VariableInfo, List<String>> filteredVariable = ExceptionExtractor.extract(traceResults, suspicious.getAllInfo());
         Map<VariableInfo, List<String>> trueVariable = AbandanTrueValueFilter.getTrueValue(traceResults, suspicious.getAllInfo());
         Map<VariableInfo, List<String>> falseVariable = AbandanTrueValueFilter.getFalseValue(traceResults, suspicious.getAllInfo());
@@ -33,36 +33,37 @@ public class BoundaryGenerator {
         if (filteredVariable.size() != 0) {
             return generate(filteredVariable, trueVariable, falseVariable);
         }
-        return "";
+        return new HashMap<>();
     }
 
 
 
-    private static String generate(Map<VariableInfo, List<String>> entrys, Map<VariableInfo, List<String>> trueValues, Map<VariableInfo, List<String>> falseValues) {
+    private static Map<VariableInfo, String> generate(Map<VariableInfo, List<String>> entrys, Map<VariableInfo, List<String>> trueValues, Map<VariableInfo, List<String>> falseValues) {
         if (entrys.size() < 1) {
             System.out.println("No Data in the Map");
-            return "";
+            return new HashMap<>();
         }
         Iterator<Map.Entry<VariableInfo, List<String>>> iterator = entrys.entrySet().iterator();
         Map<VariableInfo, List<String>> arrayVariable = new HashMap<>();
-        String result = "if ((";
+        //String result = "if ((";
+        Map<VariableInfo, String> result = new HashMap<>();
         while (iterator.hasNext()) {
             Map.Entry<VariableInfo, List<String>> entry = iterator.next();
             if (MathUtils.isNumberArray(entry.getKey().getStringType()) && entry.getValue().size() == 1 && entry.getValue().get(0).equals("null")) {
                 arrayVariable.put(entry.getKey(), entry.getValue());
                 continue;
             }
-            result += generateWithSingleWord(entry, trueValues, falseValues);
-            if (iterator.hasNext()) {
-                result += ")||(";
-            }
+            result.put(entry.getKey(), generateWithSingleWord(entry, trueValues, falseValues));
+            //if (iterator.hasNext()) {
+            //    result += ")||(";
+            //}
         }
-        result += "))";
-        result = result.replace("||()","");
-        result = result.replace("()||","");
-        if (result.equals("if (())")) {
-            result = "";
-        }
+        //result += "))";
+        //result = result.replace("||()","");
+        //result = result.replace("()||","");
+        //if (result.equals("if (())")) {
+        //    result = "";
+        //}
         return result;
     }
 
@@ -81,8 +82,8 @@ public class BoundaryGenerator {
             return "";
         }
         if (entry.getValue().size() == 1 && entry.getKey().isAddon){
-            String variableName = entry.getKey().variableName.substring(0,entry.getKey().variableName.indexOf("."));
             if (entry.getKey().variableName.endsWith(".Comparable")){
+                String variableName = entry.getKey().variableName.substring(0,entry.getKey().variableName.indexOf("."));
                 switch (entry.getValue().get(0)){
                     case "true":
                         return variableName+" instanceof Comparable<?>";
@@ -91,12 +92,19 @@ public class BoundaryGenerator {
                 }
             }
             if (entry.getKey().variableName.endsWith(".null")){
+                String variableName = entry.getKey().variableName.substring(0,entry.getKey().variableName.indexOf("."));
                 switch (entry.getValue().get(0)){
                     case "true":
                         return variableName+" == null";
                     case "false":
                         return variableName+" != null";
                 }
+            }
+            if (entry.getKey().variableName.equals("this")){
+                return "this.equals("+entry.getValue().get(0)+")";
+            }
+            if (entry.getKey().variableName.equals("return")){
+                return entry.getValue().get(0);
             }
         }
 

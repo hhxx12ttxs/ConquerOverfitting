@@ -19,6 +19,7 @@ public class AbandanTrueValueFilter {
         Map<VariableInfo, List<String>> falseVariable = AbandanTrueValueFilter.getFalseValue(traceResults, vars);
         for (Map.Entry<VariableInfo, List<String>> entry: falseVariable.entrySet()){
             if (!trueVariable.containsKey(entry.getKey())){
+                exceptionValues.put(entry.getKey(), entry.getValue());
                 continue;
             }
             List<String> values = entry.getValue();

@@ -1,6 +1,7 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.Entirety;
 
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.BoundaryGenerator;
+import cn.edu.pku.sei.plde.conqueroverfitting.boundary.BoundarySorter;
 import cn.edu.pku.sei.plde.conqueroverfitting.fix.Capturer;
 import cn.edu.pku.sei.plde.conqueroverfitting.fix.JavaFixer;
 import cn.edu.pku.sei.plde.conqueroverfitting.fix.Patch;
@@ -8,6 +9,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.localization.Localization;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Suspicious;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.TraceResult;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.FileUtils;
+import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 import org.junit.Test;
 import org.omg.Messaging.SYNC_WITH_TRANSPORT;
 
@@ -26,7 +28,7 @@ public class EntiretyTest {
 
     @Test
     public void testEntirety() throws Exception{
-        setWorkDirectory("Math", 93);
+        setWorkDirectory("Math", 105);
         Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc);
         List<Suspicious> suspiciouses = localization.getSuspiciousLite();
 
@@ -40,8 +42,10 @@ public class EntiretyTest {
 
     public boolean fixSuspicious(Suspicious suspicious) throws Exception{
         List<TraceResult> traceResults = suspicious.getTraceResult(classSrc, testClassSrc);
-        String ifString = BoundaryGenerator.generate(suspicious, traceResults);
-        if (ifString.equals("")){
+        Map<VariableInfo, String> boundarys = BoundaryGenerator.generate(suspicious, traceResults);
+        BoundarySorter sorter = new BoundarySorter(suspicious, classSrc);
+        List<String> ifStrings = sorter.sort(boundarys);
+        if (boundarys.size() == 0){
             return false;
         }
         Capturer fixCapturer = new Capturer(classpath,classSrc, testClasspath, testClassSrc);
@@ -59,7 +63,7 @@ public class EntiretyTest {
                 if (fixString.equals("")){
                     continue;
                 }
-                Patch patch = new Patch(testClassName, testMethodName, suspicious.classname(),errorLine, ifString, fixString);
+                Patch patch = new Patch(testClassName, testMethodName, suspicious.classname(),errorLine, ifStrings, fixString);
                 boolean result = javaFixer.addPatch(patch);
                 if (result){
                     break;

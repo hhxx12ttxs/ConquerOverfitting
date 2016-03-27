@@ -26,6 +26,9 @@ public class SearchBoundaryFilter {
     public static Map<VariableInfo, List<BoundaryInfo>> getBoundary(Map<VariableInfo, List<String>> exceptionVariable){
         Map<VariableInfo, List<BoundaryInfo>> result = new HashMap<VariableInfo, List<BoundaryInfo>>();
         for (Map.Entry<VariableInfo, List<String>> entry: exceptionVariable.entrySet()){
+            if (entry.getKey().variableName.equals("this") || entry.getKey().variableName.equals("return")){
+                continue;
+            }
             //String variableName = variableName(entry);
             List<BoundaryInfo> boundaryList = getSearchBoundaryInfo(entry.getKey());
             if (boundaryList != null && boundaryList.size()> 0){

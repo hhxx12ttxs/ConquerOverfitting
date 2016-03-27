@@ -41,7 +41,11 @@ public class Asserts {
         _testMethodName = testMethodName;
         _code = FileUtils.getCodeFromFile(_testSrcPath, _testClassname);
         _methodCode = FileUtils.getTestFunctionCodeFromCode(_code,_testMethodName);
-        _methodStartLine =((List<Integer>) CodeUtils.getMethodLine(_code,_testMethodName).values().toArray()[0]).get(0);
+        List<List<Integer>> methodLines = new ArrayList<>(CodeUtils.getMethodLine(_code,_testMethodName).values());
+        if (methodLines.size() == 0){
+
+        }
+        _methodStartLine =methodLines.get(0).get(0);
         _asserts = CodeUtils.getAssertInTest(testSrcPath, testClassname, testMethodName);
         _assertNums = _asserts.size();
         _errorLines = getErrorAssertLine();

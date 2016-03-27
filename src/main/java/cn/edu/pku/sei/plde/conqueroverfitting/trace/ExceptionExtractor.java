@@ -155,6 +155,11 @@ public class ExceptionExtractor {
             if (var.getValue().size()== 0){
                  continue;
             }
+            if (var.getKey().variableName.equals("this") || var.getKey().variableName.equals("return")){
+                cleanedVariable.clear();
+                cleanedVariable.put(var.getKey(), unrepeatValue);
+                break;
+            }
             cleanedVariable.put(var.getKey(), unrepeatValue);
         }
         return cleanedVariable;

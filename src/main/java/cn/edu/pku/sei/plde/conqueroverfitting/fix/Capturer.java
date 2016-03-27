@@ -1,6 +1,7 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.fix;
 
 import cn.edu.pku.sei.plde.conqueroverfitting.slice.StaticSlice;
+import cn.edu.pku.sei.plde.conqueroverfitting.trace.TraceResult;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.*;
 import com.gzoltar.core.GZoltar;
 import com.gzoltar.core.instr.testing.TestResult;
@@ -255,6 +256,12 @@ public class Capturer {
             return "return false;";
         }
         else if (assertType.contains("assertTrue")){
+            if (parameters.get(0).contains(">=")){
+                String numParam = parameters.get(0).split(">=")[0].contains(_methodName)?parameters.get(0).split(">=")[1]:parameters.get(0).split(">=")[0];
+                if (numParam.matches("^(-?\\d+)(\\.\\d+)?$")){
+                    return "return "+numParam+";";
+                }
+            }
             return "return true;";
         }
         throw new Exception("Unknown assert type");

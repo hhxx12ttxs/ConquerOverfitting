@@ -46,25 +46,30 @@ public class JavaFixer {
         File javaBackup = FileUtils.copyFile(targetJavaFile.getAbsolutePath(), FileUtils.tempJavaPath(patch._className,"JavaFixer"));
         File classBackup = FileUtils.copyFile(targetClassFile.getAbsolutePath(), FileUtils.tempClassPath(patch._className,"JavaFixer"));
 
-        CodeUtils.addCodeToFile(targetJavaFile, patch._patchString, patch._patchLines);
-        if (!patch._addonFunction.equals("")){
-            CodeUtils.addMethodToFile(targetJavaFile, patch._addonFunction, patch._className.substring(patch._className.lastIndexOf(".")+1));
-        }
-        try {
-            System.out.println(Utils.shellRun(Arrays.asList("javac -Xlint:unchecked -source 1.6 -target 1.6 -cp "+ buildClasspath(Arrays.asList(PathUtils.getJunitPath())) +" -d "+_classpath+" "+ targetJavaFile.getAbsolutePath())));
-        }
-        catch (IOException e){
-            return false;
-        }
-        Asserts asserts = new Asserts(_classpath, _testClassPath, _testSrcPath, patch._testClassName, patch._testMethodName);
-        int errAssertNumAfterFix = asserts.errorAssertNum();
-        int errAssertBeforeFix = _suspicious._assertsMap.get(patch._testClassName+"#"+patch._testMethodName).errorAssertNum();
-        FileUtils.copyFile(javaBackup, targetJavaFile);
-        FileUtils.copyFile(classBackup, targetClassFile);
-        System.out.println(patch._patchString);
-        if (errAssertNumAfterFix < errAssertBeforeFix){
-            _patches.add(patch);
-            return true;
+        for (String patchString: patch._patchString){
+            CodeUtils.addCodeToFile(targetJavaFile, patchString, patch._patchLines);
+            if (!patch._addonFunction.equals("")){
+                CodeUtils.addMethodToFile(targetJavaFile, patch._addonFunction, patch._className.substring(patch._className.lastIndexOf(".")+1));
+            }
+            try {
+                System.out.println(Utils.shellRun(Arrays.asList("javac -Xlint:unchecked -source 1.6 -target 1.6 -cp "+ buildClasspath(Arrays.asList(PathUtils.getJunitPath())) +" -d "+_classpath+" "+ targetJavaFile.getAbsolutePath())));
+            }
+            catch (IOException e){
+                continue;
+            }
+            Asserts asserts = new Asserts(_classpath, _testClassPath, _testSrcPath, patch._testClassName, patch._testMethodName);
+            int errAssertNumAfterFix = asserts.errorAssertNum();
+            int errAssertBeforeFix = _suspicious._assertsMap.get(patch._testClassName+"#"+patch._testMethodName).errorAssertNum();
+            FileUtils.copyFile(javaBackup, targetJavaFile);
+            FileUtils.copyFile(classBackup, targetClassFile);
+            System.out.println(patch._patchString);
+            if (errAssertNumAfterFix < errAssertBeforeFix){
+                patch._patchString.clear();;
+                patch._patchString.add(patchString);
+                _patches.add(patch);
+                return true;
+
+            }
         }
         return false;
     }
@@ -87,7 +92,7 @@ public class JavaFixer {
             if (!backups.containsKey(targetClassFile)){
                 backups.put(targetClassFile, classBackup);
             }
-            CodeUtils.addCodeToFile(targetJavaFile, patch._patchString, patch._patchLines);
+            CodeUtils.addCodeToFile(targetJavaFile, patch._patchString.get(0), patch._patchLines);
             tobeCompile.add(targetJavaFile);
         }
         for (File javaFile: tobeCompile){

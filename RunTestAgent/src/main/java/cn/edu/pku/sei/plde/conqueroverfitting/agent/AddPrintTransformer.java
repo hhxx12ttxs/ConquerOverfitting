@@ -87,7 +87,7 @@ public class AddPrintTransformer implements ClassFileTransformer {
         String printLine = "";
         String varName = var.contains("?")?var.substring(0, var.lastIndexOf("?")):var;
         String varType = var.contains("?")?var.substring(var.lastIndexOf("?")+1):null;
-        if (varName.equals(_targetClassFunc)){
+        if (varName.equals(_targetClassFunc) || varName.equals("this") || varName.equals("return")){
             return "";
         }
         printLine += "try {";

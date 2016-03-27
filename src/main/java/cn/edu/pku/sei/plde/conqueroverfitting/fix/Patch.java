@@ -14,7 +14,7 @@ public class Patch {
     public final String _testMethodName;
     public final String _className;
     public final List<Integer> _patchLines = new ArrayList<>();
-    public final String _patchString;
+    public final List<String> _patchString = new ArrayList<>();
     public String _addonFunction = "";
 
 
@@ -27,7 +27,7 @@ public class Patch {
                 _patchLines.containsAll(patch._patchLines);
     }
 
-    public Patch(String testClassName, String testMethodName, String className, List<Integer> patchLine, String ifString, String fixString){
+    public Patch(String testClassName, String testMethodName, String className, List<Integer> patchLine, List<String> ifStrings, String fixString){
         _testClassName = testClassName;
         _testMethodName = testMethodName;
         _className = className;
@@ -39,7 +39,9 @@ public class Patch {
             fixString = fixString.split(">>>")[0];
             fixString = fixString.replace(addonFunctionName, "patch_method");
         }
-        _patchString = generatePatchString(ifString, fixString);
+        for (String ifString: ifStrings){
+            _patchString.add(generatePatchString(ifString, fixString));
+        }
     }
 
 
