@@ -105,6 +105,12 @@ public final class GZoltarSuspiciousProgramStatements implements SuspiciousProgr
         for (String packageName : packageNames) {
             gzoltar.addPackageToInstrument(packageName);
         }
+        for (URL url: classpath){
+            if (url.getPath().endsWith(".jar")){
+                gzoltar.addClassNotToInstrument(url.getPath());
+                gzoltar.addPackageNotToInstrument(url.getPath());
+            }
+        }
     }
 
     /**

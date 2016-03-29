@@ -62,7 +62,7 @@ public class Utils {
             if (result.contains("找不到文件") || result.contains("not found")){
                 throw new FileNotFoundException();
             }
-            //System.out.println(result);
+            System.out.println(result);
         } catch (FileNotFoundException e){
             System.out.println("FileNotFound");
             throw new FileNotFoundException();
@@ -93,7 +93,6 @@ public class Utils {
             byte[] bytes=out.toByteArray();
             return bytes;
         } catch (Exception e) {
-            e.printStackTrace();
             return null;
         }
     }
@@ -119,7 +118,6 @@ public class Utils {
                 sb.append(s);
             }
         } catch (IOException e) {
-            System.out.println(e.getMessage());
             throw e;
         } finally {
             if (br != null){

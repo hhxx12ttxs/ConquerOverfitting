@@ -61,7 +61,7 @@ public class VariableTracer {
         _testMethodName = testMethodName;
         _functionname = functionname;
         _commentedTestClass.clear();
-        _asserts = new Asserts(_classpath,_testClasspath,_testSrcPath,testClassname,testMethodName);
+        _asserts = new Asserts(_classpath,_testClasspath,_testSrcPath,testClassname,testMethodName, _suspicious._libPath);
 
         List<MethodInfo> methodInfos = _suspicious.getMethodInfo(_srcPath);
         List<Integer> errorLines = isSuccess?Arrays.asList(errorLine):getErrorLine(errorLine);
@@ -76,7 +76,7 @@ public class VariableTracer {
             if (_commentedTestClass.size() <= 1){
                 _commentedTestClass.put("", line);
             }
-            if (_asserts.trueAssertNum() > 0 && _asserts.errorAssertNum() > 1 && !_asserts.getTrueTestFile().equals("")){
+            if (_asserts.trueAssertNum() > 0 && _asserts.errorAssertNum() > 0 && !_asserts.getTrueTestFile().equals("")){
                 _commentedTestClass.put(_asserts.getTrueTestFile(), -1);
             }
             for (Map.Entry<String, Integer> commentedTestClass: _commentedTestClass.entrySet()) {
@@ -98,7 +98,14 @@ public class VariableTracer {
 
     private List<TraceResult> getAddonResult(){
         List<TraceResult> results = new ArrayList<>();
+        if (_asserts._asserts.size() == 0){
+            return results;
+        }
         String firstAssert = _asserts._asserts.get(0);
+        String classCode = FileUtils.getCodeFromFile(_srcPath, _classname);
+        String methodCode = CodeUtils.getMethodBody(classCode, _suspicious.functionnameWithoutParam());
+        String firstStatement = methodCode.substring(1,methodCode.length()-1).split("\n")[0];
+
         if (_asserts._asserts.size() == 1 && firstAssert.contains("Equals")){
             List<String> params = CodeUtils.divideParameter(firstAssert, 1);
             if (params.size() == 2){
@@ -116,9 +123,6 @@ public class VariableTracer {
             }
         }
         if (_asserts._asserts.size() == 1 && firstAssert.contains("True") && firstAssert.contains(">=")){
-            String classCode = FileUtils.getCodeFromFile(_srcPath, _classname);
-            String methodCode = CodeUtils.getMethodBody(classCode, _suspicious.functionnameWithoutParam());
-            String firstStatement = methodCode.substring(1,methodCode.length()-1).split("\n")[0];
             if (firstStatement.startsWith("return")){
                 String returnString = methodCode.substring(firstStatement.indexOf(" ")+1, firstStatement.length()-1);
                 String param = CodeUtils.divideParameter(firstAssert, 1).get(0);
@@ -132,6 +136,14 @@ public class VariableTracer {
                     results.add(traceResult);
                 }
             }
+        }
+        if (firstStatement.equals("return true;") || firstStatement.equals("return false;")){
+            TraceResult traceResult = new TraceResult(false);
+            traceResult._assertLine = -1;
+            traceResult._testClass = _testClassname;
+            traceResult._testMethod = _testMethodName;
+            traceResult.put("return", "true");
+            results.add(traceResult);
         }
         return results;
     }
@@ -159,6 +171,9 @@ public class VariableTracer {
 
     private List<VariableInfo> getBannedVariables(int errorLine){
         List<VariableInfo> bannedVariables = new ArrayList<>();
+        if (_asserts._asserts.size() == 0){
+            return bannedVariables;
+        }
         String assertLine = _asserts._asserts.get(0);
         String code = FileUtils.getCodeFromFile(_srcPath,_classname);
         int methodParam = CodeUtils.getMethodParams(assertLine, functionname()).size();
@@ -274,7 +289,7 @@ public class VariableTracer {
         String agentFunc = "func:" + functionname;
         String agentLine = "line:"+ errorLine;
         String agentSrc = "src:" + _srcPath;
-        String agentCp = "cp:" + "\""+_classpath+":"+"/Users/yanrunfa/.m2/repository/org/joda/joda-convert/1.2/joda-convert-1.2.jar\"";
+        String agentCp = "cp:" + "\""+_classpath+":"+StringUtils.join(_suspicious._libPath,":")+"/Users/yanrunfa/.m2/repository/org/joda/joda-convert/1.2/joda-convert-1.2.jar\"";
         String agentTestSrc = testClassPath.equals("")?"":"testsrc: "+testClassPath.trim();
         String agentTest = testClassPath.equals("")?"":"test:" + _testClassname;
 
@@ -407,6 +422,10 @@ public class VariableTracer {
     }
 
     private String buildClasspath(List<String> additionalPath){
+        if (_suspicious._libPath.size()!=0){
+            additionalPath = new ArrayList<>(additionalPath);
+            additionalPath.addAll(_suspicious._libPath);
+        }
         String path = "\"";
         path += _classpath;
         path += System.getProperty("path.separator");

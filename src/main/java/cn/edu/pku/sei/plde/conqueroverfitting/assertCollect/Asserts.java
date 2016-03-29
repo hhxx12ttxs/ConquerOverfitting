@@ -27,29 +27,45 @@ public class Asserts {
     private String _testClassname;
     private String _testMethodName;
     private String _code;
+    private List<String> _libPath;
     private String _methodCode;
     private int _methodStartLine;
     public List<Integer> _errorLines = new ArrayList<>();
     public int _assertNums;
     public List<String> _asserts;
 
-    public Asserts(String classpath, String testClasspath, String testSrcPath, String testClassname, String testMethodName){
+    public Asserts(String classpath, String testClasspath, String testSrcPath, String testClassname, String testMethodName, List<String> libPath) {
+        _libPath = libPath;
         _classpath = classpath;
         _testClassname = testClassname;
         _testClasspath = testClasspath;
         _testSrcPath = testSrcPath;
         _testMethodName = testMethodName;
         _code = FileUtils.getCodeFromFile(_testSrcPath, _testClassname);
-        _methodCode = FileUtils.getTestFunctionCodeFromCode(_code,_testMethodName);
+        if (!_code.contains(_testMethodName) && _code.contains(" extends ")){
+            String extendsClass = _code.split(" extends ")[1].substring(0, _code.split(" extends ")[1].indexOf("{"));
+            String className = CodeUtils.getClassNameOfImportClass(_code, extendsClass);
+            if (className.equals("")){
+                className = CodeUtils.getPackageName(_code)+"."+extendsClass;
+            }
+            String extendsCode = FileUtils.getCodeFromFile(testSrcPath, className.trim());
+            if (!extendsCode.equals("")){
+                _code = extendsCode;
+            }
+        }
+        _methodCode = FileUtils.getTestFunctionCodeFromCode(_code,_testMethodName, _testSrcPath);
         List<List<Integer>> methodLines = new ArrayList<>(CodeUtils.getMethodLine(_code,_testMethodName).values());
         if (methodLines.size() == 0){
 
         }
         _methodStartLine =methodLines.get(0).get(0);
-        _asserts = CodeUtils.getAssertInTest(testSrcPath, testClassname, testMethodName);
+        _asserts = CodeUtils.getAssertInTest(_code, testMethodName);
         _assertNums = _asserts.size();
         _errorLines = getErrorAssertLine();
+    }
 
+    public Asserts(String classpath, String testClasspath, String testSrcPath, String testClassname, String testMethodName){
+        this(classpath, testClasspath, testSrcPath, testClassname, testMethodName, new ArrayList<String>());
     }
 
     private List<Integer> getErrorAssertLine(){
@@ -63,8 +79,10 @@ public class Asserts {
         while (true){
             int lineNum = 0;
             try{
-                String trace = TestUtils.getTestTrace(_classpath, _testClasspath, _testClassname, _testMethodName);
-                if (trace == null || trace.equals(oldTrace)){
+                List<String> classpaths = new ArrayList<>(_libPath);
+                classpaths.add(_classpath);
+                String trace = TestUtils.getTestTrace(classpaths, _testClasspath, _testClassname, _testMethodName);
+                if (trace == null || trace.equals(oldTrace) || trace.contains("NoClassDefFoundError")){
                     break;
                 }
                 oldTrace = trace;
@@ -103,9 +121,11 @@ public class Asserts {
             }
             catch (NotFoundException e){
                 System.out.println("ERROR: Cannot Find Source File: " + _testClassname + " in temp file package\n");
+                break;
             }
             catch (IOException e){
                 e.printStackTrace();
+                break;
             }
         }
         originClassFile.delete();
@@ -247,11 +267,19 @@ public class Asserts {
         return _trueClassPath;
     }
 
-    public static String buildClasspath(List<String> pathList){
+    public String buildClasspath(List<String> pathList){
+        pathList = new ArrayList<>(pathList);
+        if (_libPath!= null){
+            pathList.addAll(_libPath);
+        }
         String path = "\"";
         path += StringUtils.join(pathList,System.getProperty("path.separator"));
         path += "\"";
         return path;
+    }
+
+    public String buildClasspath(String path){
+        return buildClasspath(new ArrayList<String>(Arrays.asList(path)));
     }
 
     private static String tempJavaPath(String classname){

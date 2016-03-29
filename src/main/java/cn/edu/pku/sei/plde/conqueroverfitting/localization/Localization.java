@@ -30,11 +30,18 @@ public class Localization  {
     public String[] testClasses;
     public String testSrcPath;
     public String srcPath;
+    public List<String> libPaths = new ArrayList<>();
 
     /**
      * @param classPath the path of project's class file
      * @param testClassPath the path of project's test class file
      */
+    public Localization(String classPath, String testClassPath, String testSrcPath, String srcPath, List<String> libPaths) {
+        this(classPath, testClassPath, testSrcPath, srcPath);
+        this.libPaths = libPaths;
+    }
+
+
     public Localization(String classPath, String testClassPath, String testSrcPath, String srcPath){
         this.classpath = classPath;
         this.testClassPath = testClassPath;
@@ -121,7 +128,7 @@ public class Localization  {
                 lineNumbers.add(String.valueOf(statement.getLineNumber()));
             }else {
                 if (firstline.getTests().size() < 30) {
-                    result.add(new Suspicious(classpath, testClassPath, getClassAddressFromStatement(firstline), getTargetFunctionFromStatement(firstline), firstline.getSuspiciousness(), firstline.getTests(),firstline.getFailTests(), new ArrayList<String>(lineNumbers)));
+                    result.add(new Suspicious(classpath, testClassPath, getClassAddressFromStatement(firstline), getTargetFunctionFromStatement(firstline), firstline.getSuspiciousness(), firstline.getTests(),firstline.getFailTests(), new ArrayList<String>(lineNumbers),libPaths));
                 }
                 firstline = statement;
                 lineNumbers.clear();
@@ -131,7 +138,7 @@ public class Localization  {
             }
         }
         if (lineNumbers.size() != 0 && firstline.getTests().size()< 30){
-            result.add(new Suspicious(classpath, testClassPath, getClassAddressFromStatement(firstline), getTargetFunctionFromStatement(firstline), firstline.getSuspiciousness(), firstline.getTests(),firstline.getFailTests(), new ArrayList<String>(lineNumbers)));
+            result.add(new Suspicious(classpath, testClassPath, getClassAddressFromStatement(firstline), getTargetFunctionFromStatement(firstline), firstline.getSuspiciousness(), firstline.getTests(),firstline.getFailTests(), new ArrayList<String>(lineNumbers),libPaths));
         }
         Collections.sort(result, new Comparator<Suspicious>() {
             @Override
@@ -161,6 +168,14 @@ public class Localization  {
         List<String> bannedMethodName = Arrays.asList("valueOf","toString","reflectionToString");
         List<StatementExt> result = new ArrayList<>();
         Map<String, String> errorLineMap = new HashMap<>();
+        String packageName = "";
+        for (int i=0; i< 3; i++){
+            String[] test = testClasses[0].split("\\.");
+            packageName += test[i];
+            if (i!=2){
+                packageName += ".";
+            }
+        }
         for (StatementExt statement: statements){
             if (bannedMethodName.contains(getFunctionNameFromStatement(statement))){
                 continue;
@@ -168,17 +183,37 @@ public class Localization  {
             if (statement.getName().contains("exception") || statement.getName().contains("Exception")){
                 continue;
             }
+            if (!statement.getLabel().startsWith(packageName)){
+                continue;
+            }
+
             for (String test: statement.getFailTests()) {
                 String testClass = test.split("#")[0];
                 String testMethod = test.split("#")[1];
                 String code = FileUtils.getCodeFromFile(testSrcPath, testClass);
                 String methodCode = FileUtils.getTestFunctionCodeFromCode(code, testMethod);
                 if (methodCode.equals("")){
-                    continue;
+                    if (code.contains(" extends ")){
+                        String extendsClass = code.split(" extends ")[1].substring(0, code.split(" extends ")[1].indexOf("{"));
+                        String className = CodeUtils.getClassNameOfImportClass(code, extendsClass);
+                        if (className.equals("")){
+                            className = CodeUtils.getPackageName(code)+"."+extendsClass;
+                        }
+                        String extendsCode = FileUtils.getCodeFromFile(testSrcPath, className.trim());
+                        if (!extendsCode.equals("")){
+                            code = extendsCode;
+                            methodCode = FileUtils.getTestFunctionCodeFromCode(code, testMethod);
+                            statement.getFailTests().remove(test);
+                            statement.getFailTests().add(className.trim()+"#"+testMethod);
+                        }
+                    }
                 }
                 String errorAssertCode = "";
                 if (!errorLineMap.containsKey(test)){
-                    Asserts asserts = new Asserts(classpath, testClassPath, testSrcPath, testClass, testMethod);
+                    Asserts asserts = new Asserts(classpath, testClassPath, testSrcPath, testClass, testMethod,libPaths);
+                    if (asserts._errorLines.size() == 0){
+                        continue;
+                    }
                     for (int i: asserts._errorLines){
                         errorAssertCode += CodeUtils.getLineFromCode(code, i)+"\n";
                     }
@@ -204,6 +239,8 @@ public class Localization  {
                         }
                     }
                 }
+                statement.setSuspiciousWeight(0.5f);
+                result.add(statement);
             }
         }
         return result;
@@ -246,6 +283,11 @@ public class Localization  {
     public List<StatementExt> getSuspiciousListWithMetric(Metric metric){
         URL[] classpaths = JavaLibrary.classpathFrom(testClassPath);
         classpaths = JavaLibrary.extendClasspathWith(classpath, classpaths);
+        if (libPaths != null){
+            for (String path: libPaths){
+                classpaths = JavaLibrary.extendClasspathWith(path, classpaths);
+            }
+        }
         GZoltarSuspiciousProgramStatements gZoltar = GZoltarSuspiciousProgramStatements.create(classpaths, testClasses, new Ochiai(),testSrcPath, srcPath);
         return gZoltar.sortBySuspiciousness(testClasses);
     }

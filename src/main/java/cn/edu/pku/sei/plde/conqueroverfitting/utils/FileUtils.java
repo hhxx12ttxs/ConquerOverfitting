@@ -100,6 +100,24 @@ public class FileUtils {
 		}
 	}
 
+	public static String getTestFunctionCodeFromCode(String code, String targetFunctionName, String testSrcPath){
+		String result = getTestFunctionCodeFromCode(code, targetFunctionName);
+		if (result.equals("")){
+			if (code.contains(" extends ")){
+				String extendsClass = code.split(" extends ")[1].substring(0, code.split(" extends ")[1].indexOf("{"));
+				String className = CodeUtils.getClassNameOfImportClass(code, extendsClass);
+				if (className.equals("")){
+					className = CodeUtils.getPackageName(code)+"."+extendsClass;
+				}
+				String extendsCode = FileUtils.getCodeFromFile(testSrcPath, className.trim());
+				if (!extendsCode.equals("")){
+					return getTestFunctionCodeFromCode(extendsCode, targetFunctionName, testSrcPath);
+				}
+			}
+		}
+		return result;
+	}
+
 	public static String getTestFunctionCodeFromCode(String code, String targetFunctionName) {
 		if (code.contains("@Test")){
 			String[] tests = code.split("@Test");

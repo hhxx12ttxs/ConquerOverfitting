@@ -6,6 +6,7 @@ import javassist.NotFoundException;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -19,9 +20,11 @@ public class TestUtils {
      * @param classname
      * @return
      */
-    public static String getTestTrace(String classpath, String testPath, String classname, String functionname) throws NotFoundException{
+    public static String getTestTrace(List<String> classpath, String testPath, String classname, String functionname) throws NotFoundException{
         ArrayList<String> classpaths = new ArrayList<String>();
-        classpaths.add(classpath);
+        for (String path: classpath){
+            classpaths.add(path);
+        }
         classpaths.add(testPath);
         GZoltar gzoltar;
         try {
@@ -46,5 +49,8 @@ public class TestUtils {
             }
         }
         throw new NotFoundException("No Test Named "+functionname + " Found in Test Class " + classname);
+    }
+    public static String getTestTrace(String classpath, String testPath, String classname, String functionname) throws NotFoundException{
+        return getTestTrace(Arrays.asList(classpath),testPath, classname, functionname);
     }
 }

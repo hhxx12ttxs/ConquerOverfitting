@@ -3,13 +3,17 @@ package cn.edu.pku.sei.plde.conqueroverfitting.utils;
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.BoundaryInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeEnum;
 import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeUtils;
+import cn.edu.pku.sei.plde.conqueroverfitting.visible.MethodCollect;
+import cn.edu.pku.sei.plde.conqueroverfitting.visible.VariableCollect;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.MethodInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
+import com.sun.xml.internal.ws.api.model.MEP;
 import org.apache.commons.lang.StringUtils;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
 
 /**
@@ -54,9 +58,12 @@ public class InfoUtils {
      */
     public static List<VariableInfo> AddMethodInfoListToVariableInfoList(List<VariableInfo> variableInfos, List<MethodInfo> methodInfos){
         List<VariableInfo> result = new ArrayList<VariableInfo>();
-        result.addAll(variableInfos);
-
-        result.addAll(changeMethodInfoToVariableInfo(methodInfos));
+        if (variableInfos!= null){
+            result.addAll(variableInfos);
+        }
+        if (methodInfos!= null){
+            result.addAll(changeMethodInfoToVariableInfo(methodInfos));
+        }
         return result;
     }
 
@@ -100,9 +107,12 @@ public class InfoUtils {
             if (BANNED_METHOD_NAME.contains(info.methodName)){
                 continue;
             }
-            if (info.methodName.startsWith("get")){
+            if (info.methodName.contains("Next")){
                 continue;
             }
+            //if (info.methodName.startsWith("get")){
+            //    continue;
+            //}
             result.add(info);
         }
         return result;
@@ -119,6 +129,46 @@ public class InfoUtils {
             keywords.remove(info.variableName);
         }
         return keywords;
+    }
+
+    public static List<VariableInfo> getSubInfoOfComplexVariable(VariableInfo info, String classSrc, String parentInfoSrcPath){
+        if (!TypeUtils.isComplexType(info.getStringType())) {
+            return new ArrayList<>();
+        }
+        String paramClass = CodeUtils.getClassNameOfVariable(info, parentInfoSrcPath);
+        if (paramClass.equals("")){
+            return new ArrayList<>();
+        }
+        List<VariableInfo> variableInfos = new ArrayList<>();
+        String paramClassSrcPath =  (classSrc + System.getProperty("file.separator") + paramClass.replace(".",System.getProperty("file.separator")) + ".java").replace("//","/");
+        VariableCollect paramFieldCollect = VariableCollect.GetInstance(paramClassSrcPath.substring(0, paramClassSrcPath.lastIndexOf("/")));
+        LinkedHashMap<String, ArrayList<VariableInfo>> classvars = paramFieldCollect.getVisibleFieldInAllClassMap(paramClassSrcPath);
+        if (classvars.containsKey(paramClassSrcPath)) {
+            List<VariableInfo> fields = InfoUtils.filterBannedVariable(classvars.get(paramClassSrcPath));
+            for (VariableInfo field: fields){
+                VariableInfo newField = VariableInfo.copy(field);
+                if (!newField.isPublic && !paramClassSrcPath.equals(parentInfoSrcPath) || (newField.isStatic && paramClassSrcPath.equals(parentInfoSrcPath))){
+                    continue;
+                }
+                newField.isParameter = true;
+                newField.variableName = info.variableName+"."+newField.variableName;
+                variableInfos.add(newField);
+            }
+        }
+        MethodCollect methodCollect = MethodCollect.GetInstance(paramClassSrcPath.substring(0, paramClassSrcPath.lastIndexOf("/")));
+        LinkedHashMap<String, ArrayList<MethodInfo>> methods = methodCollect.getVisibleMethodWithoutParametersInAllClassMap(paramClassSrcPath);
+        if (methods.containsKey(paramClassSrcPath)){
+            List<MethodInfo> methodInfos = InfoUtils.filterBannedMethod(methods.get(paramClassSrcPath));
+            for (MethodInfo methodInfo: methodInfos){
+                if (methodInfo.isPublic && !methodInfo.isStatic && !TypeUtils.isComplexType(methodInfo.getStringType())){
+                    VariableInfo newField = VariableInfo.copy(InfoUtils.changeMethodInfoToVariableInfo(methodInfo));
+                    newField.isParameter = true;
+                    newField.variableName = info.variableName+"."+newField.variableName;
+                    variableInfos.add(newField);
+                }
+            }
+        }
+        return variableInfos;
     }
 
 

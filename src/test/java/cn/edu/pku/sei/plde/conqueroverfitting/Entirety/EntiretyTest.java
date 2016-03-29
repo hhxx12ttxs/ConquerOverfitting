@@ -25,14 +25,15 @@ public class EntiretyTest {
     private String classSrc = System.getProperty("user.dir")+"/project/classSrc/";
     private String testClasspath = System.getProperty("user.dir")+"/project/testClasspath";
     private String testClassSrc = System.getProperty("user.dir")+"/project/testClassSrc/";
-
+    private List<String> libPath = new ArrayList<>();
     @Test
     public void testEntirety() throws Exception{
-        setWorkDirectory("Math", 105);
-        Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc);
+        setWorkDirectory("Closure", 86);
+        Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc,libPath);
         List<Suspicious> suspiciouses = localization.getSuspiciousLite();
 
         for (Suspicious suspicious: suspiciouses){
+            suspicious._libPath = libPath;
             if (fixSuspicious(suspicious)){
                 break;
             }
@@ -86,14 +87,11 @@ public class EntiretyTest {
 
     public void setWorkDirectory(String projectName, int number){
         File projectDir = new File(System.getProperty("user.dir")+"/project/");
+        FileUtils.deleteDirNow(projectDir.getAbsolutePath());
         if (!projectDir.exists()){
             projectDir.mkdirs();
         }
-        FileUtils.deleteDirNow(classpath);
-        FileUtils.deleteDirNow(testClasspath);
-        FileUtils.deleteDirNow(classSrc);
-        FileUtils.deleteDirNow(testClassSrc);
-        String project = "Math-"+number;
+        String project = projectName+"-"+number;
         /* 四个整个项目需要的参数 */
 
         if (projectName.equals("Math") && number>=86){
@@ -104,12 +102,23 @@ public class EntiretyTest {
         }
 
         //Math,Time
-        if (projectName.equals("Math") || projectName.equals("Time")){
+        if (projectName.equals("Math") || projectName.equals("Time") || projectName.equals("Lang")){
             FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project+"/target/classes",classpath);
             FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project+"/target/test-classes",testClasspath);
             FileUtils.copyDirectory(PATH_OF_DEFECTS4J + project+"/src/main/java", classSrc);
             FileUtils.copyDirectory(PATH_OF_DEFECTS4J + project +"/src/test/java", testClassSrc);
             return;
+        }
+        if (projectName.equals("Closure")){
+            FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project,projectDir.getAbsolutePath());
+            classpath = projectDir.getAbsolutePath()+"/"+project +"/build/classes/";
+            testClasspath = projectDir.getAbsolutePath()+"/"+project +"/build/test/";
+            classSrc = projectDir.getAbsolutePath()+"/"+project +"/src/";
+            testClassSrc = projectDir.getAbsolutePath()+"/"+project +"/test/";
+            File libPkg = new File(projectDir.getAbsolutePath()+"/"+project+"/lib/");
+            for (String p: libPkg.list()){
+                libPath.add(libPkg.getAbsolutePath()+"/"+p);
+            }
         }
 
         //Closure

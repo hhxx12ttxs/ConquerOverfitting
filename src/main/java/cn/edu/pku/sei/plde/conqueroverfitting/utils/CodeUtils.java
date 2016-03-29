@@ -73,12 +73,16 @@ public class CodeUtils {
         List<String> packages = FileUtils.getPackageImportFromCode(code);
         for (String packageName: packages){
             if (getClassNameFromPackage(packageName).equals(info.getStringType())){
+                if (packageName.startsWith("package ") || packageName.startsWith("import ")){
+                    packageName = packageName.split(" ")[1];
+                    packageName = packageName.substring(0, packageName.length()-1);
+                }
                 return packageName;
             }
         }
         String selfPackage = "";
         for (String line: code.split("\n")){
-            if (line.startsWith("package ")){
+            if (line.startsWith("package ") || line.startsWith("import ")){
                 selfPackage = line.split(" ")[1];
                 selfPackage = selfPackage.substring(0, selfPackage.length()-1);
             }
@@ -86,6 +90,31 @@ public class CodeUtils {
                 if (!selfPackage.equals("")){
                     return selfPackage+"."+info.getStringType();
                 }
+            }
+        }
+        return "";
+    }
+
+    public static String getPackageName(String code) {
+        for (String line : code.split("\n")) {
+            if (line.startsWith("package ")) {
+                return line.split(" ")[1].substring(0, line.split(" ")[1].length()-1).trim();
+            }
+        }
+        return "";
+    }
+
+    public static String getClassNameOfImportClass(String code, String className){
+        List<String> packages = FileUtils.getPackageImportFromCode(code);
+        for (String packageName: packages){
+            if (getClassNameFromPackage(packageName).equals(className)){
+                if (packageName.startsWith("import")){
+                    packageName = packageName.substring(packageName.indexOf(" "));
+                }
+                if (packageName.endsWith(";")){
+                    packageName = packageName.substring(0, packageName.length()-1);
+                }
+                return packageName;
             }
         }
         return "";
@@ -113,27 +142,31 @@ public class CodeUtils {
         return count;
     }
 
-     public static List<String> getAssertInTest(String testSrcPath, String testClassname, String testMethodName){
-         List<String> result = new ArrayList<>();
-         String code = FileUtils.getCodeFromFile(FileUtils.getFileAddressOfJava(testSrcPath, testClassname));
-         String functionCode = FileUtils.getTestFunctionCodeFromCode(code, testMethodName);
-         for (String lineString: functionCode.split("\n")){
-             if (lineString.trim().startsWith("assert")
-                     || lineString.trim().startsWith("Assert")
-                     || lineString.trim().startsWith("fail(")
-                     || lineString.trim().contains(".assert")){
-                 result.add(lineString.trim());
-             }
-             else if (!lineString.contains("(") || !lineString.contains(")") || lineString.contains("=")){
-                 continue;
-             }
-             String callMethod = lineString.substring(0, lineString.indexOf("(")).trim();
-             if (code.contains("void "+callMethod+"(")){
-                 result.add(lineString.trim());
-             }
-         }
+    public static List<String> getAssertInTest(String code, String testMethodName){
+        List<String> result = new ArrayList<>();
+        String functionCode = FileUtils.getTestFunctionCodeFromCode(code, testMethodName);
+        for (String lineString: functionCode.split("\n")){
+            if (lineString.trim().startsWith("assert")
+                    || lineString.trim().startsWith("Assert")
+                    || lineString.trim().startsWith("fail(")
+                    || lineString.trim().contains(".assert")){
+                result.add(lineString.trim());
+            }
+            else if (!lineString.contains("(") || !lineString.contains(")") || lineString.contains("=")){
+                continue;
+            }
+            String callMethod = lineString.substring(0, lineString.indexOf("(")).trim();
+            if (code.contains("void "+callMethod+"(")){
+                result.add(lineString.trim());
+            }
+        }
 
-         return result;
+        return result;
+    }
+
+    public static List<String> getAssertInTest(String testSrcPath, String testClassname, String testMethodName){
+         String code = FileUtils.getCodeFromFile(FileUtils.getFileAddressOfJava(testSrcPath, testClassname));
+         return getAssertInTest(code, testMethodName);
      }
 
     public static String getLineFromCode(String code, int line){

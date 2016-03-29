@@ -23,6 +23,7 @@ import java.util.*;
  */
 public class Suspicious implements Serializable{
     public final String _classpath;
+    public List<String> _libPath = new ArrayList<>();
     public final String _testClasspath;
     public final String _classname;
     public final String _function;
@@ -36,7 +37,12 @@ public class Suspicious implements Serializable{
     public Map<String, Asserts> _assertsMap = new HashMap<>();
     public Map<String, List<Integer>> _errorLineMap = new HashMap<>();
     private int _defaultErrorLine = -1;
-    public Suspicious(String classpath, String testClasspath, String classname, String function, double suspiciousness, List<String> tests,List<String> failTests, List<String> lines){
+    public Suspicious(String classpath, String testClasspath, String classname, String function, double suspiciousness, List<String> tests,List<String> failTests, List<String> lines) {
+        this(classpath, testClasspath, classname, function, suspiciousness, tests, failTests, lines, new ArrayList<String>());
+    }
+
+
+    public Suspicious(String classpath, String testClasspath, String classname, String function, double suspiciousness, List<String> tests,List<String> failTests, List<String> lines, List<String> libPaths){
         _classpath = classpath;
         _testClasspath = testClasspath;
         _classname = classname;
@@ -155,26 +161,7 @@ public class Suspicious implements Serializable{
         variableInfos.addAll(parameters);
         for (VariableInfo param: parameters){
             param.isParameter = true;
-            if (TypeUtils.isComplexType(param.getStringType())){
-                String paramClass = CodeUtils.getClassNameOfVariable(param, classSrcPath);
-                if (paramClass.equals("")){
-                    continue;
-                }
-                String paramClassSrcPath =  (classSrc + System.getProperty("file.separator") + paramClass.replace(".",System.getProperty("file.separator")) + ".java").replace("//","/");
-                LinkedHashMap<String, ArrayList<VariableInfo>> classvars = variableCollect.getVisibleFieldInAllClassMap(paramClassSrcPath);
-                if (classvars.containsKey(paramClassSrcPath)) {
-                    List<VariableInfo> fields = classvars.get(classSrcPath);
-                    for (VariableInfo field: fields){
-                        VariableInfo newField = VariableInfo.copy(field);
-                        if (!newField.isPublic && !paramClassSrcPath.equals(getClassSrcPath(classSrc)) || (newField.isStatic && paramClassSrcPath.equals(getClassSrcPath(classSrc)))){
-                            continue;
-                        }
-                        newField.isParameter = true;
-                        newField.variableName = param.variableName+"."+newField.variableName;
-                        variableInfos.add(newField);
-                    }
-                }
-            }
+            variableInfos.addAll(InfoUtils.getSubInfoOfComplexVariable(param,classSrc, classSrcPath));
         }
         List<VariableInfo> locals = variableCollect.getVisibleLocalInMethodList(classSrcPath, line);
         if (locals.size() == 0){
@@ -272,7 +259,7 @@ public class Suspicious implements Serializable{
 
     private boolean testFilter(String testSrcPath, String testClassname, String testMethodName){
         String code = FileUtils.getCodeFromFile(testSrcPath, testClassname);
-        String methodCode = FileUtils.getTestFunctionCodeFromCode(code, testMethodName);
+        String methodCode = FileUtils.getTestFunctionCodeFromCode(code, testMethodName,testSrcPath);
         if (methodCode.equals("")){
             return false;
         }

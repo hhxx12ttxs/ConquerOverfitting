@@ -45,4 +45,9 @@ public class MethodInfo implements Serializable {
 					&& hasParameter == hasParameter;
 		}
 	}
+
+	public String getStringType(){
+		return isSimpleType?variableSimpleType.toString():otherType;
+	}
+
 }
