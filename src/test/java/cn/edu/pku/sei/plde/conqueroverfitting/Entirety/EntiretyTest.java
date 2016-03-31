@@ -28,7 +28,7 @@ public class EntiretyTest {
     private List<String> libPath = new ArrayList<>();
     @Test
     public void testEntirety() throws Exception{
-        setWorkDirectory("Closure", 86);
+        setWorkDirectory("Math", 63);
         Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc,libPath);
         List<Suspicious> suspiciouses = localization.getSuspiciousLite();
 
@@ -42,7 +42,7 @@ public class EntiretyTest {
 
 
     public boolean fixSuspicious(Suspicious suspicious) throws Exception{
-        List<TraceResult> traceResults = suspicious.getTraceResult(classSrc, testClassSrc);
+        List<TraceResult> traceResults = suspicious.getTraceResult();
         Map<VariableInfo, String> boundarys = BoundaryGenerator.generate(suspicious, traceResults);
         BoundarySorter sorter = new BoundarySorter(suspicious, classSrc);
         List<String> ifStrings = sorter.sort(boundarys);
@@ -50,7 +50,7 @@ public class EntiretyTest {
             return false;
         }
         Capturer fixCapturer = new Capturer(classpath,classSrc, testClasspath, testClassSrc);
-        JavaFixer javaFixer = new JavaFixer(suspicious, classSrc, testClassSrc);
+        JavaFixer javaFixer = new JavaFixer(suspicious);
         for (String test: suspicious.getFailedTest()){
             String testClassName = test.split("#")[0];
             String testMethodName = test.split("#")[1];

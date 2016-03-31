@@ -32,12 +32,12 @@ public class JavaFixer {
     private Suspicious _suspicious;
     private List<Patch> _patches = new ArrayList<>();
 
-    public JavaFixer(Suspicious suspicious, String classSrcPath, String testSrcPath){
+    public JavaFixer(Suspicious suspicious){
         _suspicious = suspicious;
         _classpath = suspicious._classpath;
         _testClassPath = suspicious._testClasspath;
-        _classSrcPath = classSrcPath;
-        _testSrcPath = testSrcPath;
+        _classSrcPath = suspicious._srcPath;
+        _testSrcPath = suspicious._testSrcPath;
     }
 
     public boolean addPatch(Patch patch){
@@ -57,7 +57,7 @@ public class JavaFixer {
             catch (IOException e){
                 continue;
             }
-            Asserts asserts = new Asserts(_classpath, _testClassPath, _testSrcPath, patch._testClassName, patch._testMethodName);
+            Asserts asserts = new Asserts(_classpath,_classSrcPath, _testClassPath, _testSrcPath, patch._testClassName, patch._testMethodName);
             int errAssertNumAfterFix = asserts.errorAssertNum();
             int errAssertBeforeFix = _suspicious._assertsMap.get(patch._testClassName+"#"+patch._testMethodName).errorAssertNum();
             FileUtils.copyFile(javaBackup, targetJavaFile);
@@ -105,7 +105,7 @@ public class JavaFixer {
         }
         int errAssertNumAfterFix = 0;
         for (Map.Entry<String, String> test: getTestsOfPatch().entrySet()){
-            Asserts asserts = new Asserts(_classpath, _testClassPath, _testSrcPath, test.getValue(), test.getKey());
+            Asserts asserts = new Asserts(_classpath,_classSrcPath, _testClassPath, _testSrcPath, test.getValue(), test.getKey());
             errAssertNumAfterFix += asserts.errorAssertNum();
 
         }

@@ -41,6 +41,10 @@ public class ExceptionExtractor {
             }
             List<BoundaryInfo> boundaryList = variableBoundary.get(entry.getKey());
             if (MathUtils.isNumberType(entry.getKey().getStringType())) {
+                if (entry.getValue().size() == 1 && entry.getValue().get(0).equals("NaN")){
+                    result.put(entry.getKey(), entry.getValue());
+                    continue;
+                }
                 double smallestValue = MathUtils.parseStringValue(entry.getValue().get(0));
                 double biggestValue = MathUtils.parseStringValue(entry.getValue().get(0));
                 for (String value : entry.getValue()) {

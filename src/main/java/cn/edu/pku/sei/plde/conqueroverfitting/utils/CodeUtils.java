@@ -1,11 +1,17 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.utils;
 
 import cn.edu.pku.sei.plde.conqueroverfitting.file.ReadFile;
+import cn.edu.pku.sei.plde.conqueroverfitting.localization.gzoltar.StatementExt;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.MethodInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 import javassist.NotFoundException;
 import org.apache.commons.lang.StringUtils;
 import org.eclipse.jdt.core.dom.*;
+import org.eclipse.jdt.core.dom.Block;
+import org.eclipse.jdt.core.dom.MethodDeclaration;
+import org.eclipse.jdt.core.dom.Statement;
+import org.eclipse.jdt.core.dom.TypeDeclaration;
+import org.eclipse.jdt.internal.compiler.ast.*;
 import org.omg.CORBA.Object;
 import org.omg.PortableInterceptor.SYSTEM_EXCEPTION;
 import org.w3c.dom.NodeList;
@@ -46,6 +52,24 @@ public class CodeUtils {
             }
         }
         return params;
+    }
+
+    public static Map<String, String> getMethodParamsFromDefine(String methodCode, String methodName){
+        Map<String, String> result = new HashMap<>();
+        for (String line: methodCode.split("\n")){
+            if (line.contains(" "+methodName+"(")){
+                List<String> params = Arrays.asList(line.substring(line.indexOf("(")+1, line.lastIndexOf(")")).split(","));
+                for (String param: params){
+                    param = param.trim();
+                    if (!param.contains(" ")){
+                        continue;
+                    }
+                    result.put(param.split(" ")[1], param.split(" ")[0]);
+                }
+                break;
+            }
+        }
+        return result;
     }
 
     public static List<String> getMethodParamsName(String line, String methodName){
@@ -128,39 +152,62 @@ public class CodeUtils {
         return name;
     }
 
-    public static int getAssertCountInTest(String testSrcPath, String testClassname, String testMethodName){
-        int count = 0;
-        String functionCode = FileUtils.getTestFunctionCodeFromCode(FileUtils.getCodeFromFile(FileUtils.getFileAddressOfJava(testSrcPath, testClassname)), testMethodName);
-        if (functionCode.equals("")){
-            return -1;
-        }
-        for (String lineString: functionCode.split("\n")){
-            if (lineString.trim().startsWith("assert") || lineString.trim().startsWith("Assert") || lineString.trim().startsWith("fail(")){
-                count++;
-            }
-        }
-        return count;
-    }
-
     public static List<String> getAssertInTest(String code, String testMethodName){
         List<String> result = new ArrayList<>();
-        String functionCode = FileUtils.getTestFunctionCodeFromCode(code, testMethodName);
+        String functionCode = CodeUtils.getMethodBody(code, testMethodName);
+        int bracket  = 0;
+        String line = "";
         for (String lineString: functionCode.split("\n")){
-            if (lineString.trim().startsWith("assert")
-                    || lineString.trim().startsWith("Assert")
-                    || lineString.trim().startsWith("fail(")
-                    || lineString.trim().contains(".assert")){
-                result.add(lineString.trim());
-            }
-            else if (!lineString.contains("(") || !lineString.contains(")") || lineString.contains("=")){
+            if (bracket != 0){
+                bracket += countChar(lineString,'(');
+                bracket -= countChar(lineString,')');
+                line += lineString.trim();
+                if (bracket == 0){
+                    result.add(line);
+                }
                 continue;
             }
-            String callMethod = lineString.substring(0, lineString.indexOf("(")).trim();
-            if (code.contains("void "+callMethod+"(")){
-                result.add(lineString.trim());
+            if (AssertUtils.isAssertLine(lineString, code)){
+                line = lineString.trim();
+                bracket += countChar(lineString,'(');
+                bracket -= countChar(lineString,')');
+                if (bracket == 0){
+                    result.add(line);
+                }
             }
         }
+        return result;
+    }
 
+    public static Map<String, Integer> getAssertInTest(String code, String testMethodName, int methodStartLine){
+        Map<String, Integer> result = new HashMap<>();
+        String methodCode = FileUtils.getTestFunctionBodyFromCode(code, testMethodName);
+        int bracket  = 0;
+        String line = "";
+        int assertStartLine = 0;
+        for (String lineString: methodCode.split("\n")){
+            methodStartLine++;
+            if (bracket != 0){
+                bracket += countChar(lineString,'(');
+                bracket -= countChar(lineString,')');
+                line += lineString.trim();
+                if (bracket == 0){
+                    result.put(line, assertStartLine);
+                }
+                continue;
+            }
+            if (AssertUtils.isAssertLine(lineString, code)){
+                line = lineString.trim();
+                bracket += countChar(lineString,'(');
+                bracket -= countChar(lineString,')');
+                if (bracket == 0){
+                    result.put(line, methodStartLine);
+                }
+                else {
+                    assertStartLine = methodStartLine;
+                }
+            }
+        }
         return result;
     }
 
@@ -178,6 +225,16 @@ public class CodeUtils {
             }
         }
         return "";
+    }
+
+    public static String getWholeLineFromCode(String code, int line){
+        String result = "";
+        int brackets;
+        do {
+            result += getLineFromCode(code, line++);
+            brackets = CodeUtils.countChar(result, '(') - CodeUtils.countChar(result, ')');
+        } while (brackets != 0);
+        return result;
     }
 
 
@@ -228,6 +285,7 @@ public class CodeUtils {
     }
 
     private static List<MethodDeclaration> getMethod(String code, String methodName) {
+        methodName = methodName.trim();
         List<MethodDeclaration> result = new ArrayList<>();
         ASTParser parser = ASTParser.newParser(AST.JLS3);
         parser.setSource(code.toCharArray());
@@ -243,33 +301,57 @@ public class CodeUtils {
     }
 
     public static String getMethodString(String code, String methodName){
+        List<MethodDeclaration> declarations = getMethod(code, methodName);
+        if (declarations.size() == 0){
+            return "";
+        }
+        return declarations.get(0).toString();
+    }
+
+    /**
+     * Important Alert: insensitive with \n
+     * @param code
+     * @param methodName
+     * @return
+     */
+    public static String getMethodBody(String code, String methodName){
+        String methodString = getMethodString(code, methodName);
+        methodString = methodString.substring(methodString.indexOf("{")+1, methodString.lastIndexOf("}"));
+        while (methodString.startsWith("\n")){
+            methodString = methodString.substring(1);
+        }
+        while (methodString.endsWith("\n")){
+            methodString = methodString.substring(0, methodString.length()-1);
+        }
+        return methodString;
+    }
+
+    public static String getMethodString(String code, String methodName, int methodStartLine){
         methodName = methodName.trim();
         ASTParser parser = ASTParser.newParser(AST.JLS3);
         parser.setSource(code.toCharArray());
         CompilationUnit unit = (CompilationUnit) parser.createAST(null);
-        TypeDeclaration declaration = (TypeDeclaration) unit.types().get(0);
-        MethodDeclaration methodDec[] = declaration.getMethods();
-        for (MethodDeclaration method : methodDec) {
-            if (method.getName().getIdentifier().equals(methodName)) {
+        List<MethodDeclaration> declarations = getMethod(code, methodName);
+        for (MethodDeclaration method : declarations) {
+            int startLine = unit.getLineNumber(method.getStartPosition()) -1;
+            int endLine = unit.getLineNumber(method.getStartPosition()+method.getLength()) -1;
+            if (startLine <= methodStartLine && endLine >= methodStartLine){
                 return method.toString();
             }
         }
         return "";
     }
 
-    public static String getMethodBody(String code, String methodName){
-        methodName = methodName.trim();
-        ASTParser parser = ASTParser.newParser(AST.JLS3);
-        parser.setSource(code.toCharArray());
-        CompilationUnit unit = (CompilationUnit) parser.createAST(null);
-        TypeDeclaration declaration = (TypeDeclaration) unit.types().get(0);
-        MethodDeclaration methodDec[] = declaration.getMethods();
-        for (MethodDeclaration method : methodDec) {
-            if (method.getName().getIdentifier().equals(methodName)) {
-                return method.getBody().statements().toString();
-            }
+    public static String getMethodBody(String code, String methodName, int methodStartLine){
+        String methodString = getMethodString(code, methodName, methodStartLine);
+        methodString = methodString.substring(methodString.indexOf("{")+1, methodString.lastIndexOf("}"));
+        while (methodString.startsWith("\n")){
+            methodString = methodString.substring(1);
         }
-        return "";
+        while (methodString.endsWith("\n")){
+            methodString = methodString.substring(0, methodString.length()-1);
+        }
+        return methodString;
     }
 
     public static List<Integer> getReturnLine(String code, String methodName, int paramCount){
@@ -308,7 +390,7 @@ public class CodeUtils {
     public static int getLineNumOfLineString(String code, String lineString, int startLine){
         String[] codeLines = code.split("\n");
         for (int i= startLine; i< codeLines.length; i++){
-            if (codeLines[i].trim().equals(lineString.trim())){
+            if (codeLines[i].replace(" ","").equals(lineString.replace(" ",""))){
                 return i+1;
             }
         }
@@ -318,6 +400,12 @@ public class CodeUtils {
         return getLineNumOfLineString(code,lineString,0);
     }
 
+    /**
+     * 考虑重名函数的情况
+     * @param code
+     * @param methodName
+     * @return
+     */
     public static Map<List<String>, List<Integer>> getMethodLine(String code, String methodName){
         Map<List<String>, List<Integer>> result = new HashMap<>();
         ASTParser parser = ASTParser.newParser(AST.JLS3);
@@ -325,8 +413,13 @@ public class CodeUtils {
         CompilationUnit unit = (CompilationUnit) parser.createAST(null);
         List<MethodDeclaration> methodDec = getMethod(code, methodName);
         for (MethodDeclaration method: methodDec){
-            int startLine = unit.getLineNumber(method.getStartPosition()) -1;
-            int endLine = unit.getLineNumber(method.getStartPosition()+method.getLength()) -1;
+            List<Statement> statements = method.getBody().statements();
+            if (statements.size() == 0){
+                continue;
+            }
+            Statement firstStatement = (Statement) method.getBody().statements().get(0);
+            int startLine = unit.getLineNumber(firstStatement.getStartPosition()) -1;
+            int endLine = unit.getLineNumber(firstStatement.getStartPosition()+method.getBody().getLength()) -2;
             List<String> parameters = new ArrayList<>();
             List<SingleVariableDeclaration> vars = method.parameters();
             for (SingleVariableDeclaration var: vars){
@@ -337,8 +430,31 @@ public class CodeUtils {
         return result;
     }
 
+    /**
+     * 不考虑重名函数,有重名函数的话取第一个
+     * @param code
+     * @param methodName
+     * @return
+     */
+    public static List<Integer> getSingleMethodLine(String code, String methodName){
+        ASTParser parser = ASTParser.newParser(AST.JLS3);
+        parser.setSource(code.toCharArray());
+        CompilationUnit unit = (CompilationUnit) parser.createAST(null);
+        List<MethodDeclaration> methodDec = getMethod(code, methodName);
+        for (MethodDeclaration method: methodDec){
+            Statement firstStatement = (Statement) method.getBody().statements().get(0);
+            int startLine = unit.getLineNumber(firstStatement.getStartPosition()) -1;
+            int endLine = unit.getLineNumber(firstStatement.getStartPosition()+method.getBody().getLength()) -2;
+            return Arrays.asList(startLine, endLine);
+        }
+        return new ArrayList<>();
+    }
+
     public static boolean isConstructor(String classname, String function){
-        return  classname.substring(classname.lastIndexOf(".") + 1).equals(function.substring(0, function.indexOf('(')));
+        if (function.contains("(")){
+            function = function.substring(0, function.indexOf('('));
+        }
+        return  classname.substring(classname.lastIndexOf(".") + 1).equals(function);
     }
 
     public static void addMethodToFile(File file, String addingCode, String className){
@@ -437,5 +553,25 @@ public class CodeUtils {
             first = second;
         }
         return max;
+    }
+
+    public static int countChar(String s,char c){
+        int count= 0;
+        for (int i=0; i< s.length(); i++){
+            if (s.charAt(i)==c){
+                count++;
+            }
+        }
+        return count;
+    }
+
+    public static int getMethodStartLine(int lineInsideMethod, String code ,String methodName){
+        for (int i= lineInsideMethod; i> 0; i--){
+            String line = CodeUtils.getLineFromCode(code, i);
+            if (line.contains(" "+methodName+"(")){
+                return i;
+            }
+        }
+        return -1;
     }
 }

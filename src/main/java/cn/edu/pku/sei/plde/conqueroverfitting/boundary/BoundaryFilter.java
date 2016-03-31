@@ -26,6 +26,16 @@ public class BoundaryFilter {
             if (info.name.equals(name)){
                 result.add(info);
             }
+            else if (name.startsWith("is") && name.endsWith("()")){
+                if (info.name.equals(name.substring(0, name.lastIndexOf("(")))){
+                    result.add(info);
+                }
+            }
+            else if (name.contains("[") && name.contains("]") && !name.contains("[]")){
+                if (info.name.equals(name.substring(0, name.indexOf("[")))){
+                    result.add(info);
+                }
+            }
         }
         return result;
     }

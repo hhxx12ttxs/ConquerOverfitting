@@ -141,6 +141,19 @@ public class FileUtils {
 		return "";
 	}
 
+	public static String getTestFunctionBodyFromCode(String code, String targetFunctionName) {
+		String methodString = getTestFunctionCodeFromCode(code, targetFunctionName);
+		methodString = methodString.substring(methodString.indexOf("{")+1, methodString.lastIndexOf("}"));
+		while (methodString.startsWith("\n")){
+			methodString = methodString.substring(1);
+		}
+		while (methodString.endsWith("\n")){
+			methodString = methodString.substring(0, methodString.length()-1);
+		}
+		return methodString;
+	}
+
+
 	public static List<Integer> getTestFunctionLineFromCode(String code, String targetFunctionName) throws NotFoundException{
 		List<Integer> result = new ArrayList<>();
 		if (code.contains("@Test")){

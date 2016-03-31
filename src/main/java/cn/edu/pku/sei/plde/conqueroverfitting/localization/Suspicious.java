@@ -27,6 +27,8 @@ public class Suspicious implements Serializable{
     public final String _testClasspath;
     public final String _classname;
     public final String _function;
+    public final String _srcPath;
+    public final String _testSrcPath;
     public final boolean _isConstructor;
     public final double _suspiciousness;
     public final List<String> _tests;
@@ -37,15 +39,36 @@ public class Suspicious implements Serializable{
     public Map<String, Asserts> _assertsMap = new HashMap<>();
     public Map<String, List<Integer>> _errorLineMap = new HashMap<>();
     private int _defaultErrorLine = -1;
-    public Suspicious(String classpath, String testClasspath, String classname, String function, double suspiciousness, List<String> tests,List<String> failTests, List<String> lines) {
-        this(classpath, testClasspath, classname, function, suspiciousness, tests, failTests, lines, new ArrayList<String>());
+    public Suspicious(String classpath,
+                      String testClasspath,
+                      String srcPath,
+                      String testSrcPath,
+                      String classname,
+                      String function,
+                      double suspiciousness,
+                      List<String> tests,
+                      List<String> failTests,
+                      List<String> lines) {
+        this(classpath, testClasspath,srcPath, testSrcPath, classname, function, suspiciousness, tests, failTests, lines, new ArrayList<String>());
     }
 
-
-    public Suspicious(String classpath, String testClasspath, String classname, String function, double suspiciousness, List<String> tests,List<String> failTests, List<String> lines, List<String> libPaths){
+    public Suspicious(String classpath,
+                      String testClasspath,
+                      String srcPath,
+                      String testSrcPath,
+                      String classname,
+                      String function,
+                      double suspiciousness,
+                      List<String> tests,
+                      List<String> failTests,
+                      List<String> lines,
+                      List<String> libPaths){
         _classpath = classpath;
         _testClasspath = testClasspath;
         _classname = classname;
+        _srcPath = srcPath;
+        _testSrcPath = testSrcPath;
+        _libPath = libPaths;
         _function = function;
         _suspiciousness = suspiciousness;
         _tests = new ArrayList(new HashSet(tests));
@@ -191,14 +214,14 @@ public class Suspicious implements Serializable{
                 variableInfos.addAll(fields);
             }
         }
-        variableInfos.addAll(addonVariableInfos());
+        variableInfos.addAll(addonVariableInfos(line, parameters));
         _variableInfo.removeAll(variableInfos);
         _variableInfo.addAll(variableInfos);
         _variableInfo = InfoUtils.filterBannedVariable(_variableInfo);
         return InfoUtils.filterBannedVariable(variableInfos);
     }
 
-    private List<VariableInfo> addonVariableInfos(){
+    private List<VariableInfo> addonVariableInfos(int line, List<VariableInfo> parameters){
         List<VariableInfo> infos = new ArrayList<>();
         VariableInfo thisInfo = new VariableInfo("this", null, false, classname().substring(classname().lastIndexOf(".")+1));
         thisInfo.isAddon = true;
@@ -206,6 +229,28 @@ public class Suspicious implements Serializable{
         VariableInfo returnInfo = new VariableInfo("return", null, false, "returnType");
         returnInfo.isAddon = true;
         infos.add(returnInfo);
+        String code = FileUtils.getCodeFromFile(_srcPath, _classname);
+        String lineString = CodeUtils.getLineFromCode(code, line-1);
+        List<String> parameterNames = new ArrayList<>();
+        for (VariableInfo info: parameters){
+            parameterNames.add(info.variableName);
+        }
+        if (LineUtils.isParameterTraversalForLoop(lineString, parameterNames)){
+            for (VariableInfo info: parameters){
+                if (!TypeUtils.isSimpleArray(info.getStringType())){
+                    continue;
+                }
+                VariableInfo traversalInfo = new VariableInfo(
+                        info.variableName+"[i]",
+                        TypeUtils.getTypeEnumOfSimpleType(info.getStringType()),
+                        true,
+                        null
+                        );
+                traversalInfo.isLocalVariable = true;
+                infos.add(traversalInfo);
+
+            }
+        }
         return infos;
     }
 
@@ -238,8 +283,8 @@ public class Suspicious implements Serializable{
         return _methodInfo;
     }
 
-    public List<TraceResult> getTraceResult(String classSrc, String testClassSrc) throws IOException{
-        VariableTracer tracer = new VariableTracer(classSrc, testClassSrc, this);
+    public List<TraceResult> getTraceResult() throws IOException{
+        VariableTracer tracer = new VariableTracer(_srcPath, _testSrcPath, this);
         List<TraceResult> traceResults = new ArrayList<TraceResult>();
         if (_tests.size() > 10){
             for (String testclass: _failTests){
@@ -248,7 +293,7 @@ public class Suspicious implements Serializable{
         }
         else {
             for (String testclass: _tests){
-                if (!_failTests.contains(testclass) && !testFilter(testClassSrc, testclass.split("#")[0], testclass.split("#")[1])){
+                if (!_failTests.contains(testclass) && !testFilter(_testSrcPath, testclass.split("#")[0], testclass.split("#")[1])){
                     continue;
                 }
                 traceResults.addAll(tracer.trace(classname(), functionname(), testclass.split("#")[0], testclass.split("#")[1], getDefaultErrorLine(), !_failTests.contains(testclass)));

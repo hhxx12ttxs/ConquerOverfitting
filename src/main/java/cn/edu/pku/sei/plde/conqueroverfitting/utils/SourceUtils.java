@@ -59,16 +59,20 @@ public class SourceUtils {
             BufferedReader reader = new BufferedReader(new FileReader(file));
             String lineString = null;
             int lineNum = 0;
+            int brackets = 0;
             while ((lineString = reader.readLine()) != null) {
                 lineNum++;
                 if (lineNum == line-1 && (!lineString.contains(";") && !lineString.contains(":") && !lineString.contains("{") && !lineString.contains("}"))){
                     lineString = "//"+lineString;
+                    brackets += CodeUtils.countChar(lineString, '(');
+                    brackets -= CodeUtils.countChar(lineString, ')');
                 }
-                if (lineNum == line) {
+                if (lineNum == line || brackets > 0) {
                     lineString = "//"+lineString;
+                    brackets += CodeUtils.countChar(lineString, '(');
+                    brackets -= CodeUtils.countChar(lineString, ')');
                 }
                 outputStream.write((lineString+"\n").getBytes());
-
             }
             outputStream.close();
             reader.close();

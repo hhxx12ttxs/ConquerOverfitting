@@ -195,6 +195,9 @@ public class SearchBoundaryFilter {
         if (info.variableName.startsWith("is") && info.variableName.endsWith("()")){
             keywords.add(info.variableName.substring(0, info.variableName.lastIndexOf("(")));
         }
+        else if (info.variableName.contains("[")){
+            keywords.add(info.variableName.substring(0, info.variableName.indexOf("[")));
+        }
         else {
             keywords.add(info.variableName);
         }

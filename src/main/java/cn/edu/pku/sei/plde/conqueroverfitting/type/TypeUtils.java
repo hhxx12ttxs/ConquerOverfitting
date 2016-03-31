@@ -53,6 +53,60 @@ public class TypeUtils {
         return isSimpleType(type);
     }
 
+    public static String getTypeOfSimpleArray(String type){
+        if (!isSimpleArray(type)){
+            return "";
+        }
+        return type.substring(0, type.lastIndexOf("["));
+    }
+
+
+    public static TypeEnum getTypeEnumOfSimpleType(String type){
+        if (isSimpleArray(type)){
+            type = getTypeOfSimpleArray(type);
+        }
+        switch (type){
+            case "BYTE":
+            case "Byte":
+            case "byte":
+                return TypeEnum.BYTE;
+            case "SHORT":
+            case "Short":
+            case "short":
+                return TypeEnum.SHORT;
+            case "INT":
+            case "Integer":
+            case "int":
+                return TypeEnum.INT;
+            case "LONG":
+            case "Long":
+            case "long":
+                return TypeEnum.LONG;
+            case "FLOAT":
+            case "Float":
+            case "float":
+                return TypeEnum.FLOAT;
+            case "DOUBLE":
+            case "Double":
+            case "double":
+                return TypeEnum.DOUBLE;
+            case "CHARACTER":
+            case "Character":
+            case "char":
+                return TypeEnum.CHARACTER;
+            case "BOOLEAN":
+            case "Boolean":
+            case "bool":
+                return TypeEnum.BOOLEAN;
+            case "STRING":
+            case "String":
+                return TypeEnum.STRING;
+            case "NULL":case "null":
+                return TypeEnum.NULL;
+        }
+        return null;
+    }
+
     public static boolean isComplexType(String type){
         if (type.endsWith("[]")){
             return false;

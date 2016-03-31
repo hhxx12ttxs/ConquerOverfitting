@@ -128,7 +128,7 @@ public class Localization  {
                 lineNumbers.add(String.valueOf(statement.getLineNumber()));
             }else {
                 if (firstline.getTests().size() < 30) {
-                    result.add(new Suspicious(classpath, testClassPath, getClassAddressFromStatement(firstline), getTargetFunctionFromStatement(firstline), firstline.getSuspiciousness(), firstline.getTests(),firstline.getFailTests(), new ArrayList<String>(lineNumbers),libPaths));
+                    result.add(new Suspicious(classpath, testClassPath,srcPath,testSrcPath, getClassAddressFromStatement(firstline), getTargetFunctionFromStatement(firstline), firstline.getSuspiciousness(), firstline.getTests(),firstline.getFailTests(), new ArrayList<String>(lineNumbers),libPaths));
                 }
                 firstline = statement;
                 lineNumbers.clear();
@@ -138,7 +138,7 @@ public class Localization  {
             }
         }
         if (lineNumbers.size() != 0 && firstline.getTests().size()< 30){
-            result.add(new Suspicious(classpath, testClassPath, getClassAddressFromStatement(firstline), getTargetFunctionFromStatement(firstline), firstline.getSuspiciousness(), firstline.getTests(),firstline.getFailTests(), new ArrayList<String>(lineNumbers),libPaths));
+            result.add(new Suspicious(classpath, testClassPath,srcPath,testSrcPath, getClassAddressFromStatement(firstline), getTargetFunctionFromStatement(firstline), firstline.getSuspiciousness(), firstline.getTests(),firstline.getFailTests(), new ArrayList<String>(lineNumbers),libPaths));
         }
         Collections.sort(result, new Comparator<Suspicious>() {
             @Override
@@ -210,7 +210,7 @@ public class Localization  {
                 }
                 String errorAssertCode = "";
                 if (!errorLineMap.containsKey(test)){
-                    Asserts asserts = new Asserts(classpath, testClassPath, testSrcPath, testClass, testMethod,libPaths);
+                    Asserts asserts = new Asserts(classpath, srcPath, testClassPath, testSrcPath, testClass, testMethod,libPaths);
                     if (asserts._errorLines.size() == 0){
                         continue;
                     }
@@ -239,8 +239,10 @@ public class Localization  {
                         }
                     }
                 }
-                statement.setSuspiciousWeight(0.5f);
-                result.add(statement);
+                if (!result.contains(statement)){
+                    statement.setSuspiciousWeight(0.5f);
+                    result.add(statement);
+                }
             }
         }
         return result;

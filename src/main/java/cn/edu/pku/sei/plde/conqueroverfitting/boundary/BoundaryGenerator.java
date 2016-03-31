@@ -109,6 +109,11 @@ public class BoundaryGenerator {
         }
 
         if (MathUtils.isNumberType(entry.getKey().getStringType())) {
+            if (entry.getValue().size() == 1){
+                if (entry.getValue().get(0).equals("NaN")){
+                    return entry.getKey().variableName +" == " + MathUtils.getComplexOfNumberType(entry.getKey().getStringType()) +".NaN";
+                }
+            }
             double biggestBoundary = MathUtils.parseStringValue(entry.getValue().get(1));
             double smallestBoundary = MathUtils.parseStringValue(entry.getValue().get(0));
             if (biggestBoundary > smallestBoundary){

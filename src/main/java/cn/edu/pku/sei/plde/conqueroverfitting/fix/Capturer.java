@@ -196,6 +196,9 @@ public class Capturer {
             String expectedClass = _functionCode.substring(_functionCode.indexOf("=")+1,_functionCode.indexOf(")"));
             return "throw new " +expectedClass.replace(".class","").trim() + "();";
         }
+        else if (lineString.startsWith("check")){
+            return "";
+        }
         else if (lineString.contains("(") && lineString.contains(")") && !lineString.contains("=")){
             String callMethod = lineString.substring(0, lineString.indexOf("(")).trim();
             if (_classCode.contains("void "+callMethod+"(")){
