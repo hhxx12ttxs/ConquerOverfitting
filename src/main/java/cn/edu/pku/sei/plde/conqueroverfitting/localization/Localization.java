@@ -68,7 +68,7 @@ public class Localization  {
         List<StatementExt> statements = this.getSuspiciousList();
         List<StatementExt> result = new ArrayList<StatementExt>();
         for (StatementExt statement: statements){
-            if (statement.getSuspiciousness()>0 && (statement.getTests().size()- statement.getFailTests().size())< 10){
+            if (statement.getSuspiciousness()>0 && (statement.getTests().size()- statement.getFailTests().size())< 15){
                 result.add(statement);
             }
         }

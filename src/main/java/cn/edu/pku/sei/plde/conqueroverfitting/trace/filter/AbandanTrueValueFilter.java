@@ -29,6 +29,19 @@ public class AbandanTrueValueFilter {
             if (before == after){
                 exceptionValues.put(entry.getKey(), entry.getValue());
             }
+
+            if (TypeUtils.isArrayFromName(entry.getKey().variableName)){
+                List<String> falseValues = new ArrayList<>();
+                List<String> trueValues = trueVariable.get(entry.getKey());
+                for (String value: entry.getValue()){
+                    if (!trueValues.contains(value)){
+                        falseValues.add(value);
+                    }
+                }
+                if (falseValues.size() != 0){
+                    exceptionValues.put(entry.getKey(), falseValues);
+                }
+            }
         }
         return exceptionValues;
     }

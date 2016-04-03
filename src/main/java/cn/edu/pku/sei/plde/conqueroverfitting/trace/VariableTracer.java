@@ -5,6 +5,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.assertCollect.Asserts;
 import cn.edu.pku.sei.plde.conqueroverfitting.junit.JunitRunner;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Localization;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Suspicious;
+import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.*;
 
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.MethodInfo;
@@ -181,7 +182,7 @@ public class VariableTracer {
             if (entry.getKey().size() == methodParam){
                 List<VariableInfo> variableInfos = _suspicious.getVariableInfo(_srcPath, errorLine);
                 for (VariableInfo info: variableInfos){
-                    if (info.isParameter && !entry.getKey().contains(info.variableName)){
+                    if (info.isParameter && !entry.getKey().contains(info.variableName) && !TypeUtils.isArrayFromName(info.variableName)){
                         bannedVariables.add(info);
                     }
                 }

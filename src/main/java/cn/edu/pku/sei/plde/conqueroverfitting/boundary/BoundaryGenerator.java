@@ -31,21 +31,20 @@ public class BoundaryGenerator {
         Map<VariableInfo, List<String>> falseVariable = AbandanTrueValueFilter.getFalseValue(traceResults, suspicious.getAllInfo());
 
         if (filteredVariable.size() != 0) {
-            return generate(filteredVariable, trueVariable, falseVariable);
+            return generate(filteredVariable, trueVariable, falseVariable, suspicious.getAllInfo());
         }
         return new HashMap<>();
     }
 
 
 
-    private static Map<VariableInfo, String> generate(Map<VariableInfo, List<String>> entrys, Map<VariableInfo, List<String>> trueValues, Map<VariableInfo, List<String>> falseValues) {
+    private static Map<VariableInfo, String> generate(Map<VariableInfo, List<String>> entrys, Map<VariableInfo, List<String>> trueValues, Map<VariableInfo, List<String>> falseValues, List<VariableInfo> variableInfos) {
         if (entrys.size() < 1) {
             System.out.println("No Data in the Map");
             return new HashMap<>();
         }
         Iterator<Map.Entry<VariableInfo, List<String>>> iterator = entrys.entrySet().iterator();
         Map<VariableInfo, List<String>> arrayVariable = new HashMap<>();
-        //String result = "if ((";
         Map<VariableInfo, String> result = new HashMap<>();
         while (iterator.hasNext()) {
             Map.Entry<VariableInfo, List<String>> entry = iterator.next();
@@ -54,16 +53,18 @@ public class BoundaryGenerator {
                 continue;
             }
             result.put(entry.getKey(), generateWithSingleWord(entry, trueValues, falseValues));
-            //if (iterator.hasNext()) {
-            //    result += ")||(";
-            //}
+            if (TypeUtils.isArrayFromName(entry.getKey().variableName) && entry.getKey().isParameter){
+                for (VariableInfo info: variableInfos){
+                    if (TypeUtils.isArrayFromName(info.variableName) &&
+                            info.isParameter &&
+                            info.getStringType().equals(entry.getKey().getStringType()) && !entry.getKey().variableName.equals(info.variableName)){
+                        Map<VariableInfo, List<String>> tempMap = new HashMap<>();
+                        tempMap.put(info, entry.getValue());
+                        result.put(info, generateWithSingleWord(tempMap.entrySet().iterator().next(),trueValues,falseValues));
+                    }
+                }
+            }
         }
-        //result += "))";
-        //result = result.replace("||()","");
-        //result = result.replace("()||","");
-        //if (result.equals("if (())")) {
-        //    result = "";
-        //}
         return result;
     }
 
@@ -111,7 +112,7 @@ public class BoundaryGenerator {
         if (MathUtils.isNumberType(entry.getKey().getStringType())) {
             if (entry.getValue().size() == 1){
                 if (entry.getValue().get(0).equals("NaN")){
-                    return entry.getKey().variableName +" == " + MathUtils.getComplexOfNumberType(entry.getKey().getStringType()) +".NaN";
+                    return  MathUtils.getComplexOfNumberType(entry.getKey().getStringType()) +".isNaN("+entry.getKey().variableName+")";
                 }
             }
             double biggestBoundary = MathUtils.parseStringValue(entry.getValue().get(1));
@@ -140,7 +141,7 @@ public class BoundaryGenerator {
                     if (value > smallestBoundary) {
                         intervals.put("backwardInterval", entry.getKey().variableName + " > ("+ varType+")" + smallestBoundary);
                     }
-                    if (value < smallestBoundary && value > biggestBoundary) {
+                    if (value <= smallestBoundary && value >= biggestBoundary) {
                         intervals.put("innerInterval", "("+entry.getKey().variableName + " <= ("+varType+")" + smallestBoundary + " && " + entry.getKey().variableName + " >= ("+varType+")" + biggestBoundary+")");
                     }
                 }
@@ -165,6 +166,9 @@ public class BoundaryGenerator {
             } else {
                 return entry.getKey().variableName + " <= ("+varType+")" + smallestBoundary + " && " + entry.getKey().variableName + " >= ("+varType+")" + biggestBoundary;
             }
+        }
+        if (entry.getValue().size() == 1){
+            return entry.getKey().variableName + "==" + entry.getValue().get(0);
         }
         System.out.println("Nonsupport Condition for Create IF Expression");
         return "";

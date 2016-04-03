@@ -72,7 +72,7 @@ public class InfoUtils {
         if (!TypeUtils.isComplexType(info.getStringType())){
             return Arrays.asList(info);
         }
-        VariableInfo info1 = new VariableInfo(info.variableName+".isNaN",TypeEnum.BOOLEAN,true,null);
+        VariableInfo info1 = new VariableInfo(info.variableName+".null",TypeEnum.BOOLEAN,true,null);
         VariableInfo info2 = new VariableInfo(info.variableName+".Comparable",TypeEnum.BOOLEAN,true,null);
         return Arrays.asList(info1, info2);
     }
@@ -141,6 +141,9 @@ public class InfoUtils {
         }
         List<VariableInfo> variableInfos = new ArrayList<>();
         String paramClassSrcPath =  (classSrc + System.getProperty("file.separator") + paramClass.replace(".",System.getProperty("file.separator")) + ".java").replace("//","/");
+        if (!new File(paramClassSrcPath).exists()){
+            return new ArrayList<>();
+        }
         VariableCollect paramFieldCollect = VariableCollect.GetInstance(paramClassSrcPath.substring(0, paramClassSrcPath.lastIndexOf("/")));
         LinkedHashMap<String, ArrayList<VariableInfo>> classvars = paramFieldCollect.getVisibleFieldInAllClassMap(paramClassSrcPath);
         if (classvars.containsKey(paramClassSrcPath)) {

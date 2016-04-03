@@ -2,8 +2,9 @@ package cn.edu.pku.sei.plde.conqueroverfitting.Entirety;
 
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.BoundaryGenerator;
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.BoundarySorter;
-import cn.edu.pku.sei.plde.conqueroverfitting.fix.Capturer;
-import cn.edu.pku.sei.plde.conqueroverfitting.fix.JavaFixer;
+import cn.edu.pku.sei.plde.conqueroverfitting.fix.MethodTwoFixer;
+import cn.edu.pku.sei.plde.conqueroverfitting.fix.ReturnCapturer;
+import cn.edu.pku.sei.plde.conqueroverfitting.fix.MethodOneFixer;
 import cn.edu.pku.sei.plde.conqueroverfitting.fix.Patch;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Localization;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Suspicious;
@@ -11,7 +12,6 @@ import cn.edu.pku.sei.plde.conqueroverfitting.trace.TraceResult;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.FileUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 import org.junit.Test;
-import org.omg.Messaging.SYNC_WITH_TRANSPORT;
 
 import java.io.File;
 import java.util.*;
@@ -27,8 +27,9 @@ public class EntiretyTest {
     private String testClassSrc = System.getProperty("user.dir")+"/project/testClassSrc/";
     private List<String> libPath = new ArrayList<>();
     @Test
+
     public void testEntirety() throws Exception{
-        setWorkDirectory("Math", 63);
+        setWorkDirectory("Time", 9);
         Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc,libPath);
         List<Suspicious> suspiciouses = localization.getSuspiciousLite();
 
@@ -40,17 +41,33 @@ public class EntiretyTest {
         }
     }
 
-
     public boolean fixSuspicious(Suspicious suspicious) throws Exception{
         List<TraceResult> traceResults = suspicious.getTraceResult();
         Map<VariableInfo, String> boundarys = BoundaryGenerator.generate(suspicious, traceResults);
-        BoundarySorter sorter = new BoundarySorter(suspicious, classSrc);
-        List<String> ifStrings = sorter.sort(boundarys);
         if (boundarys.size() == 0){
             return false;
         }
-        Capturer fixCapturer = new Capturer(classpath,classSrc, testClasspath, testClassSrc);
-        JavaFixer javaFixer = new JavaFixer(suspicious);
+        BoundarySorter sorter = new BoundarySorter(suspicious, classSrc);
+        List<String> ifStrings = sorter.sort(boundarys);
+        //return fixMethodOne(suspicious, ifStrings);
+        return fixMethodTwo(suspicious, ifStrings);
+    }
+
+    public boolean fixMethodTwo(Suspicious suspicious, List<String> ifStrings) throws Exception{
+        MethodTwoFixer fixer = new MethodTwoFixer(suspicious);
+        if (fixer.fix(ifStrings)){
+            System.out.println("Fix success");
+            return true;
+        }
+        else {
+            System.out.println("Fix fail, Try next suspicious...");
+            return false;
+        }
+    }
+
+    public boolean fixMethodOne(Suspicious suspicious, List<String> ifStrings) throws Exception{
+        ReturnCapturer fixCapturer = new ReturnCapturer(classpath,classSrc, testClasspath, testClassSrc);
+        MethodOneFixer methodOneFixer = new MethodOneFixer(suspicious);
         for (String test: suspicious.getFailedTest()){
             String testClassName = test.split("#")[0];
             String testMethodName = test.split("#")[1];
@@ -64,14 +81,14 @@ public class EntiretyTest {
                 if (fixString.equals("")){
                     continue;
                 }
-                Patch patch = new Patch(testClassName, testMethodName, suspicious.classname(),errorLine, ifStrings, fixString);
-                boolean result = javaFixer.addPatch(patch);
+                Patch patch = new Patch(testClassName, testMethodName, suspicious.classname(), errorLine, ifStrings, fixString);
+                boolean result = methodOneFixer.addPatch(patch);
                 if (result){
                     break;
                 }
             }
         }
-        int finalErrorNums = javaFixer.fix();
+        int finalErrorNums = methodOneFixer.fix();
         if (finalErrorNums == -1){
             System.out.println("Fix fail, Try next suspicious...");
             return false;
@@ -94,7 +111,7 @@ public class EntiretyTest {
         String project = projectName+"-"+number;
         /* 四个整个项目需要的参数 */
 
-        if (projectName.equals("Math") && number>=86){
+        if ((projectName.equals("Math") && number>=86) || (projectName.equals("Lang") && number == 39)){
             FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project+"/target/classes",classpath);
             FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project+"/target/test-classes",testClasspath);
             FileUtils.copyDirectory(PATH_OF_DEFECTS4J + project+"/src/java", classSrc);

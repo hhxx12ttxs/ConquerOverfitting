@@ -116,4 +116,8 @@ public class TypeUtils {
         }
         return true;
     }
+
+    public static boolean isArrayFromName(String name){
+        return name.endsWith("[i]");
+    }
 }

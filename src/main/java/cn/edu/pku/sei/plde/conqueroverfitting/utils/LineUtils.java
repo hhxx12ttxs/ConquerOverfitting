@@ -9,7 +9,7 @@ import java.util.List;
 public class LineUtils {
 
     public static boolean isForLoopLine(String line){
-        return line.contains("for ");
+        return line.contains("for ") && CodeUtils.countChar(line, ';') == 2;
     }
 
     public static boolean isParameterTraversalForLoop(String line, List<String> parameterName){

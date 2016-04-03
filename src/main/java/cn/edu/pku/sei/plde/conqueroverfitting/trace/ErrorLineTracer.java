@@ -64,14 +64,14 @@ public class ErrorLineTracer {
         List<Integer> result = new ArrayList<>();
         String methodCode = CodeUtils.getMethodString(code, methodName, methodStartLine);
         Map<String, String> methodParams = CodeUtils.getMethodParamsFromDefine(methodCode, methodName);
+        Map<String, String> arrayParams = new HashMap<>();
         for (Map.Entry<String, String> entry: methodParams.entrySet()){
-            //only when all params are numeric array.
-            if (!TypeUtils.isSimpleArray(entry.getValue())){
-                return result;
+            if (TypeUtils.isSimpleArray(entry.getValue())){
+                arrayParams.put(entry.getKey(),entry.getValue());
             }
         }
         for (String line: methodCode.split("\n")){
-            if (LineUtils.isParameterTraversalForLoop(line, new ArrayList<String>(methodParams.keySet()))) {
+            if (LineUtils.isParameterTraversalForLoop(line, new ArrayList<String>(arrayParams.keySet()))) {
                 result.add(CodeUtils.getLineNumOfLineString(code, line, methodStartLine) + 1);
             }
         }
@@ -174,7 +174,7 @@ public class ErrorLineTracer {
             backupClassFile.renameTo(originClassFile);
 
             for (Suspicious suspicious: suspiciouses){
-                if (suspicious.functionname().equals(methodName) && suspicious.classname().equals(classname)){
+                if (suspicious.functionnameWithoutParam().equals(methodName) && suspicious.classname().equals(classname)){
                     result.add(suspicious.getDefaultErrorLine());
                     break;
                 }

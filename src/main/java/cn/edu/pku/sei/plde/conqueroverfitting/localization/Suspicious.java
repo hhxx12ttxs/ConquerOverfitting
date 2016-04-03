@@ -85,6 +85,17 @@ public class Suspicious implements Serializable{
         return errAssertNum;
     }
 
+    public Set<Integer> errorLines(){
+        if (_assertsMap.size() == 0){
+            return new HashSet<>();
+        }
+        Set<Integer> result = new HashSet<>();
+        for (Map.Entry<String, List<Integer>> entry: _errorLineMap.entrySet()){
+            result.addAll(entry.getValue());
+        }
+        return result;
+    }
+
 
 
     public int getDefaultErrorLine() {
@@ -233,7 +244,9 @@ public class Suspicious implements Serializable{
         String lineString = CodeUtils.getLineFromCode(code, line-1);
         List<String> parameterNames = new ArrayList<>();
         for (VariableInfo info: parameters){
-            parameterNames.add(info.variableName);
+            if (TypeUtils.isSimpleArray(info.getStringType())){
+                parameterNames.add(info.variableName);
+            }
         }
         if (LineUtils.isParameterTraversalForLoop(lineString, parameterNames)){
             for (VariableInfo info: parameters){
@@ -246,7 +259,7 @@ public class Suspicious implements Serializable{
                         true,
                         null
                         );
-                traversalInfo.isLocalVariable = true;
+                traversalInfo.isParameter = true;
                 infos.add(traversalInfo);
 
             }

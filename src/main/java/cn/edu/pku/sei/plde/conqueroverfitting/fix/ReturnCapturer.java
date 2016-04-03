@@ -23,7 +23,7 @@ import java.util.List;
  * Created by yanrunfa on 16/2/16.
  */
 
-public class Capturer {
+public class ReturnCapturer {
     public final String _classpath;
     public final String _testclasspath;
     public final String _testsrcpath;
@@ -45,7 +45,7 @@ public class Capturer {
      * @param testclasspath The test's class path
      * @param testsrcpath the test's source path
      */
-    public Capturer(String classpath, String classSrcPath, String testclasspath, String testsrcpath){
+    public ReturnCapturer(String classpath, String classSrcPath, String testclasspath, String testsrcpath){
         _classpath = classpath;
         _testclasspath = testclasspath;
         _testsrcpath = testsrcpath;
@@ -186,7 +186,14 @@ public class Capturer {
         else if (lineString.contains("assert")){
             try {
                 String functionBody = _functionCode.substring(_functionCode.indexOf('{')+1,_functionCode.lastIndexOf('}'));
-                return assertProcessing(lineString, functionBody.split(lineString)[0]);
+                String linesBefore = "";
+                for (String line: functionBody.split("\n")){
+                    if (line.trim().equals(lineString)){
+                        break;
+                    }
+                    linesBefore += line +"\n";
+                }
+                return assertProcessing(lineString, linesBefore);
             }
             catch (Exception e){
                 e.printStackTrace();

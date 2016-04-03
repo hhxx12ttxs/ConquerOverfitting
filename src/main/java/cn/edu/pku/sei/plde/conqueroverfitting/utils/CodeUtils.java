@@ -12,6 +12,7 @@ import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.Statement;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
 import org.eclipse.jdt.internal.compiler.ast.*;
+import org.eclipse.jdt.internal.core.dom.NaiveASTFlattener;
 import org.omg.CORBA.Object;
 import org.omg.PortableInterceptor.SYSTEM_EXCEPTION;
 import org.w3c.dom.NodeList;
@@ -287,7 +288,7 @@ public class CodeUtils {
     private static List<MethodDeclaration> getMethod(String code, String methodName) {
         methodName = methodName.trim();
         List<MethodDeclaration> result = new ArrayList<>();
-        ASTParser parser = ASTParser.newParser(AST.JLS3);
+        ASTParser parser = ASTParser.newParser(AST.JLS4);
         parser.setSource(code.toCharArray());
         CompilationUnit unit = (CompilationUnit) parser.createAST(null);
         TypeDeclaration declaration = (TypeDeclaration) unit.types().get(0);
@@ -305,7 +306,13 @@ public class CodeUtils {
         if (declarations.size() == 0){
             return "";
         }
-        return declarations.get(0).toString();
+        NaiveASTFlattener printer = new NaiveASTFlattener();
+        declarations.get(0).accept(printer);
+        String method =  printer.getResult();
+        while (method.trim().startsWith("/**")){
+            method = method.substring(method.indexOf("*/")+2);
+        }
+        return method.trim();
     }
 
     /**
@@ -317,13 +324,7 @@ public class CodeUtils {
     public static String getMethodBody(String code, String methodName){
         String methodString = getMethodString(code, methodName);
         methodString = methodString.substring(methodString.indexOf("{")+1, methodString.lastIndexOf("}"));
-        while (methodString.startsWith("\n")){
-            methodString = methodString.substring(1);
-        }
-        while (methodString.endsWith("\n")){
-            methodString = methodString.substring(0, methodString.length()-1);
-        }
-        return methodString;
+        return methodString.trim();
     }
 
     public static String getMethodString(String code, String methodName, int methodStartLine){
@@ -430,13 +431,8 @@ public class CodeUtils {
         return result;
     }
 
-    /**
-     * 不考虑重名函数,有重名函数的话取第一个
-     * @param code
-     * @param methodName
-     * @return
-     */
-    public static List<Integer> getSingleMethodLine(String code, String methodName){
+
+    public static List<Integer> getSingleMethodLine(String code, String methodName, int errorLine){
         ASTParser parser = ASTParser.newParser(AST.JLS3);
         parser.setSource(code.toCharArray());
         CompilationUnit unit = (CompilationUnit) parser.createAST(null);
@@ -445,9 +441,21 @@ public class CodeUtils {
             Statement firstStatement = (Statement) method.getBody().statements().get(0);
             int startLine = unit.getLineNumber(firstStatement.getStartPosition()) -1;
             int endLine = unit.getLineNumber(firstStatement.getStartPosition()+method.getBody().getLength()) -2;
-            return Arrays.asList(startLine, endLine);
+            if ((startLine <= errorLine && endLine >= errorLine)|| errorLine == -1){
+                return Arrays.asList(startLine, endLine);
+            }
         }
         return new ArrayList<>();
+    }
+
+    /**
+     * 不考虑重名函数,有重名函数的话取第一个
+     * @param code
+     * @param methodName
+     * @return
+     */
+    public static List<Integer> getSingleMethodLine(String code, String methodName){
+        return getSingleMethodLine(code, methodName, -1);
     }
 
     public static boolean isConstructor(String classname, String function){
@@ -480,6 +488,9 @@ public class CodeUtils {
         if (file.delete()){
             newFile.renameTo(file);
         }
+    }
+    public static void addCodeToFile(File file, String addingCode, int targetLine) {
+        addCodeToFile(file, addingCode, Arrays.asList(targetLine));
     }
 
     public static void addCodeToFile(File file, String addingCode, List<Integer> targetLine){

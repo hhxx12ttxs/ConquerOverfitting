@@ -24,7 +24,7 @@ public class SourceUtils {
             int lineNum = 0;
             boolean writed = false;
             while ((lineString = reader.readLine()) != null) {
-                line++;
+                lineNum++;
                 if (lineNum == line - 1){
                     if ((!lineString.contains(";") && !lineString.contains(":") && !lineString.contains("{") && !lineString.contains("}"))|| lineString.contains("return ") || lineString.contains("if (")){
                         outputStream.write(code.getBytes());
@@ -33,6 +33,38 @@ public class SourceUtils {
                 }
                 if (lineNum == line && !writed){
                     outputStream.write(code.getBytes());
+                }
+                outputStream.write((lineString+"\n").getBytes());
+            }
+            outputStream.close();
+            reader.close();
+        } catch (FileNotFoundException e){
+            e.printStackTrace();
+        } catch (IOException e){
+            e.printStackTrace();
+        }
+        FileUtils.copyFile(tempFile.getAbsolutePath(),file.getAbsolutePath());
+        tempFile.delete();
+    }
+
+    public static void insertIfStatementToSourceFile(File file, String ifStatement, int startLine, int endLine){
+        int i=0;
+        while (new File(System.getProperty("user.dir")+"/temp/source"+i+".temp").exists()){
+            i++;
+        }
+        File tempFile = new File(System.getProperty("user.dir")+"/temp/source"+i+".temp");
+        try {
+            FileOutputStream outputStream = new FileOutputStream(tempFile);
+            BufferedReader reader = new BufferedReader(new FileReader(file));
+            String lineString = null;
+            int lineNum = 0;
+            while ((lineString = reader.readLine()) != null) {
+                lineNum++;
+                if (lineNum == startLine){
+                    outputStream.write((ifStatement+"\n").getBytes());
+                }
+                if (lineNum == endLine){
+                    outputStream.write("}\n".getBytes());
                 }
                 outputStream.write((lineString+"\n").getBytes());
             }
