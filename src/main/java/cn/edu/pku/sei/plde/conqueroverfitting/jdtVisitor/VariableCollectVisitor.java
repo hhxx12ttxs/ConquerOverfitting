@@ -17,12 +17,14 @@ public class VariableCollectVisitor extends ASTVisitor {
     private ArrayList<VariableInfo> parametersInMethodList;
     private ArrayList<VariableInfo> localsInMethodList;
     private int[] lineCounter;
+    private String className;
 
-    public VariableCollectVisitor(int[] lineCounter) {
+    public VariableCollectVisitor(int[] lineCounter, String className) {
         filedInClassList = new ArrayList<VariableInfo>();
         parametersInMethodList = new ArrayList<VariableInfo>();
         localsInMethodList = new ArrayList<VariableInfo>();
         this.lineCounter = lineCounter;
+        this.className = className;
     }
 
     public ArrayList<VariableInfo> getFiledsInClassList() {
@@ -44,6 +46,13 @@ public class VariableCollectVisitor extends ASTVisitor {
         //if (isFinal) {
         //return true;
         //}
+        if(node.getParent() == null){
+            return true;
+        }
+        if(!node.getParent().toString().contains(" class " + className + " {")){
+            return true;
+        }
+
         TypeInference typeInference = new TypeInference(node.getType()
                 .toString());
         for (Object obj : node.fragments()) {

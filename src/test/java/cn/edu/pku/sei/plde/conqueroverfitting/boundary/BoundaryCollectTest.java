@@ -117,4 +117,22 @@ public class BoundaryCollectTest {
             log.logSignLine("end");
         }
     }
+
+
+    @Test
+    public void testMath47() {
+        String path = "experiment//searchcode//math-complex";
+        BoundaryCollect boundaryCollect = new BoundaryCollect(path);
+        ArrayList<BoundaryInfo> boundaryList = boundaryCollect.getBoundaryList();
+
+        assertNotNull(boundaryList);
+        Log log = new Log("log//boundary-math-complex.log");
+        for(BoundaryInfo boundaryInfo : boundaryList){
+            log.logSignLine("begin");
+            log.logStr("name: " + boundaryInfo.info);
+            log.logStr("value: " + boundaryInfo.value);
+            log.logStr("type: " + boundaryInfo.variableSimpleType);
+            log.logSignLine("end");
+        }
+    }
 }

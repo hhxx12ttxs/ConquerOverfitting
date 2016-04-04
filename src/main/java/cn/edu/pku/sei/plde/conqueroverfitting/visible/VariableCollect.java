@@ -1,5 +1,6 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.visible;
 
+import java.io.File;
 import java.util.*;
 
 import cn.edu.pku.sei.plde.conqueroverfitting.jdtVisitor.VariableCollectVisitor;
@@ -47,7 +48,7 @@ public class VariableCollect {
 			String source = new ReadFile(filePath).getSource();
 			ASTNode root = JDTUtils.createASTForSource(source, ASTParser.K_COMPILATION_UNIT);
 			int[] lineCounter = JDTUtils.getLineCounter(source);
-			VariableCollectVisitor variableCollectVisitor = new VariableCollectVisitor(lineCounter);
+			VariableCollectVisitor variableCollectVisitor = new VariableCollectVisitor(lineCounter, new File(filePath).getName().replace(".java", ""));
 			root.accept(variableCollectVisitor);
 
 			ArrayList<VariableInfo> filedInClassList = variableCollectVisitor.getFiledsInClassList();
