@@ -67,7 +67,7 @@ public class Localization  {
         List<StatementExt> statements = this.getSuspiciousList();
         List<StatementExt> result = new ArrayList<StatementExt>();
         for (StatementExt statement: statements){
-            if (statement.getSuspiciousness()>0 && (statement.getTests().size()- statement.getFailTests().size())< 30){
+            if (statement.getSuspiciousness()>0){
                 result.add(statement);
             }
         }
@@ -168,7 +168,7 @@ public class Localization  {
         List<StatementExt> result = new ArrayList<>();
         Map<String, String> errorLineMap = new HashMap<>();
         String packageName = "";
-        for (int i=0; i< 3; i++){
+        for (int i=0; i< 2; i++){
             String[] test = testClasses[0].split("\\.");
             packageName += test[i];
             if (i!=2){

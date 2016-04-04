@@ -29,7 +29,7 @@ public class EntiretyTest {
     @Test
 
     public void testEntirety() throws Exception{
-        setWorkDirectory("Time", 3);
+        setWorkDirectory("Closure", 1);
         Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc,libPath);
         List<Suspicious> suspiciouses = localization.getSuspiciousLite();
 
@@ -116,6 +116,7 @@ public class EntiretyTest {
             FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project+"/target/test-classes",testClasspath);
             FileUtils.copyDirectory(PATH_OF_DEFECTS4J + project+"/src/java", classSrc);
             FileUtils.copyDirectory(PATH_OF_DEFECTS4J + project +"/src/test", testClassSrc);
+            return;
         }
 
         //Math,Time
@@ -134,8 +135,24 @@ public class EntiretyTest {
             testClassSrc = projectDir.getAbsolutePath()+"/"+project +"/test/";
             File libPkg = new File(projectDir.getAbsolutePath()+"/"+project+"/lib/");
             for (String p: libPkg.list()){
-                libPath.add(libPkg.getAbsolutePath()+"/"+p);
+                if (p.endsWith(".jar")){
+                    libPath.add(libPkg.getAbsolutePath()+"/"+p);
+                }
             }
+            libPkg = new File(projectDir.getAbsolutePath()+"/"+project+"/build/lib/");
+            for (String p: libPkg.list()){
+                if (p.endsWith(".jar")){
+                    libPath.add(libPkg.getAbsolutePath()+"/"+p);
+                }
+            }
+            return;
+        }
+        if (projectName.equals("Chart")){
+            FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project+"/build",classpath);
+            FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project+"/build-tests",testClasspath);
+            FileUtils.copyDirectory(PATH_OF_DEFECTS4J + project+"/source", classSrc);
+            FileUtils.copyDirectory(PATH_OF_DEFECTS4J + project +"/tests", testClassSrc);
+            return;
         }
 
         //Closure
