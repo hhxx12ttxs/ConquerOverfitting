@@ -231,7 +231,7 @@ public class VariableTracer {
                 if (!pair.contains("=")){
                     continue;
                 }
-                if (pair.substring(pair.indexOf("=")+1).equals("\"+"+pair.substring(0, pair.indexOf('='))+"+\"")){
+                if (pair.substring(pair.indexOf("=")+1).startsWith("\"+") && pair.substring(pair.indexOf("=")+1).endsWith("+\"")){
                     continue;
                 }
                 result.put(pair.substring(0, pair.indexOf('=')),pair.substring(pair.indexOf('=')+1));

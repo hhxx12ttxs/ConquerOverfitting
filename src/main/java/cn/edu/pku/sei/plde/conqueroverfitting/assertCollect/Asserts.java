@@ -177,7 +177,7 @@ public class Asserts {
         if (lineString.contains("=")){
             lineString = lineString.substring(lineString.indexOf("=")+1);
         }
-        List<String> params = CodeUtils.divideParameter(lineString, 1);
+        List<String> params = CodeUtils.divideParameter(lineString, 2);
         for (String param: params){
             StaticSlice staticSlice = new StaticSlice(_methodCode, param);
             String result = staticSlice.getSliceStatements();

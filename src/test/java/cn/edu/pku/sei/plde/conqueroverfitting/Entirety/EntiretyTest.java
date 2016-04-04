@@ -29,7 +29,7 @@ public class EntiretyTest {
     @Test
 
     public void testEntirety() throws Exception{
-        setWorkDirectory("Time", 9);
+        setWorkDirectory("Time", 3);
         Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc,libPath);
         List<Suspicious> suspiciouses = localization.getSuspiciousLite();
 

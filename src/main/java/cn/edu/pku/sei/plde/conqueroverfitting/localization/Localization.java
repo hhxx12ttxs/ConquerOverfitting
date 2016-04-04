@@ -68,7 +68,7 @@ public class Localization  {
         List<StatementExt> statements = this.getSuspiciousList();
         List<StatementExt> result = new ArrayList<StatementExt>();
         for (StatementExt statement: statements){
-            if (statement.getSuspiciousness()>0 && (statement.getTests().size()- statement.getFailTests().size())< 15){
+            if (statement.getSuspiciousness()>0 && (statement.getTests().size()- statement.getFailTests().size())< 30){
                 result.add(statement);
             }
         }
@@ -165,7 +165,7 @@ public class Localization  {
     }
 
     private List<StatementExt> statementFilter(List<StatementExt> statements){
-        List<String> bannedMethodName = Arrays.asList("valueOf","toString","reflectionToString");
+        List<String> bannedMethodName = Arrays.asList("valueOf","toString","reflectionToString","getInstance");
         List<StatementExt> result = new ArrayList<>();
         Map<String, String> errorLineMap = new HashMap<>();
         String packageName = "";

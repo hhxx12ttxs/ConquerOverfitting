@@ -61,8 +61,8 @@ public class WGzoltar extends GZoltar {
             if(!testResult.wasSuccessful()) {
                 if (
                         testResult.getTrace().split("\n")[0].contains("java.lang.NoClassDefFoundError:") ||
-                        testResult.getTrace().split("\n")[0].contains("java.lang.ExceptionInInitializerError") ||
-                        testResult.getTrace().split("\n")[0].contains("junit.framework.ComparisonFailure")
+                        testResult.getTrace().split("\n")[0].contains("java.lang.ExceptionInInitializerError")// ||
+                        //testResult.getTrace().split("\n")[0].contains("junit.framework.ComparisonFailure")
                         ){
                     testResult.setSuccessful(true);
                 }

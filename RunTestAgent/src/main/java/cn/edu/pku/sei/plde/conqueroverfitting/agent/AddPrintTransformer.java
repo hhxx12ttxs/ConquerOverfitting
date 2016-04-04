@@ -36,7 +36,7 @@ public class AddPrintTransformer implements ClassFileTransformer {
         new File(_tempClassName).delete();
         new File(_tempClassName).delete();
         /* handing the anonymity class */
-        if (className.contains(_targetClassName.substring(_targetClassName.lastIndexOf("/"))) && className.contains("$") && _tempJavaName.length() > 1){
+        if (className.contains(_targetClassName.substring(_targetClassName.lastIndexOf("/"))+"$") && _tempJavaName.length() > 1){
             String tempAnonymityClassName = _tempJavaName.substring(0,_tempJavaName.lastIndexOf("/"))+className.substring(className.lastIndexOf("/"))+".class";
             if (!new File(tempAnonymityClassName).exists()){
                 buildPrintClass(className, classfileBuffer);
