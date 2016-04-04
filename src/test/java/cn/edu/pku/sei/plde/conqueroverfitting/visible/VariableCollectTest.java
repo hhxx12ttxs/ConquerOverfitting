@@ -40,8 +40,10 @@ public class VariableCollectTest {
 				TypeEnum.INT, true, null, true, false))));
 		assertTrue(fieldsInClass.contains((new VariableInfo("MIN_INTEGER",
 				TypeEnum.INT, true, null, true, false))));
-		assertFalse(fieldsInClass.contains((new VariableInfo("MAX_TIME",
+		assertTrue(fieldsInClass.contains((new VariableInfo("MAX_TIME",
 				TypeEnum.STRING, true, null, false, false))));
+		assertFalse(fieldsInClass.contains((new VariableInfo("variableInnerClass",
+				TypeEnum.INT, true, null, true, false))));
 		assertTrue(fieldsInClass.contains((new VariableInfo("fileForTestVariableCollect2",
 				null, false, "FileForTestVariableCollect2", true, true))));
 		
@@ -63,8 +65,8 @@ public class VariableCollectTest {
 				.getVisibleParametersInMethodList(suspiciousFilePath, suspiciousLineNum);
 		assertNotNull(parametersInMethodList);
 
-		assertTrue(parametersInMethodList.size() == 2);
-		assertFalse(parametersInMethodList.contains((new VariableInfo("a",
+		assertTrue(parametersInMethodList.size() == 3);
+		assertTrue(parametersInMethodList.contains((new VariableInfo("a",
 				TypeEnum.INT, true, null))));
 		assertTrue(parametersInMethodList.contains((new VariableInfo("b",
 				TypeEnum.STRING, true, null))));
@@ -91,7 +93,7 @@ public class VariableCollectTest {
 		assertNotNull(localsInMethodList);
 
 
-		assertFalse(localsInMethodList.contains((new VariableInfo("e", TypeEnum.INT, true, null))));
+		assertTrue(localsInMethodList.contains((new VariableInfo("e", TypeEnum.INT, true, null))));
 		assertTrue(localsInMethodList.contains((new VariableInfo("f", TypeEnum.STRING, true, null))));
 
 		ArrayList<VariableInfo> localsInConstructorList = variableCollect

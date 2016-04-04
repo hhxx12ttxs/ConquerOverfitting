@@ -29,4 +29,8 @@ public class FileForTestVariableCollect {
 		int q;
 		int w;
 	}
+
+	class InnerClass{
+		public int variableInnerClass;
+	}
 }
