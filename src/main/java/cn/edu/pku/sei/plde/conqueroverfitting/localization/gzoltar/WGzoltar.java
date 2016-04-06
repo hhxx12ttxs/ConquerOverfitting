@@ -5,6 +5,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.localizationInConstructor.model.Co
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.CodeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.FileUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.PathUtils;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.TestUtils;
 import com.gzoltar.core.GZoltar;
 import com.gzoltar.core.components.Clazz;
 import com.gzoltar.core.components.Component;
@@ -14,6 +15,7 @@ import com.gzoltar.core.instr.testing.TestResult;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.metric.Metric;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.metric.Ochiai;
 import javassist.NotFoundException;
+import junit.framework.Test;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -28,13 +30,15 @@ public class WGzoltar extends GZoltar {
     private Metric metric;
     private String testSrcPath;
     private String srcPath;
+    private List<String> libPath;
 
 
-    public WGzoltar(String wD, Metric metric, String testSrcPath, String srcPath) throws IOException {
+    public WGzoltar(String wD, Metric metric, String testSrcPath, String srcPath, List<String> libPath) throws IOException {
         super(wD);
         this.metric = metric;
         this.testSrcPath = testSrcPath;
         this.srcPath = srcPath;
+        this.libPath = libPath;
     }
 
     @Override

@@ -48,16 +48,16 @@ public final class GZoltarSuspiciousProgramStatements implements SuspiciousProgr
      * @param classpath
      * @return
      */
-    public static GZoltarSuspiciousProgramStatements create(URL[] classpath, Collection<String> packageNames, Metric metric, String testSrcPath, String srcPath) {
-        return new GZoltarSuspiciousProgramStatements(checkNotNull(classpath), checkNotNull(packageNames), metric, testSrcPath, srcPath);
+    public static GZoltarSuspiciousProgramStatements create(URL[] classpath, Collection<String> packageNames, Metric metric, String testSrcPath, String srcPath, List<String> libPath) {
+        return new GZoltarSuspiciousProgramStatements(checkNotNull(classpath), checkNotNull(packageNames), metric, testSrcPath, srcPath, libPath);
     }
 
     /**
      * @param classpath
      * @return
      */
-    public static GZoltarSuspiciousProgramStatements create(URL[] classpath, String[] tests, Metric metric, String testSrcPath, String srcPath) {
-        return new GZoltarSuspiciousProgramStatements(checkNotNull(classpath), checkNotNull(Arrays.asList("")), metric, testSrcPath, srcPath);//getRootPackage(tests))));
+    public static GZoltarSuspiciousProgramStatements create(URL[] classpath, String[] tests, Metric metric, String testSrcPath, String srcPath, List<String> libPath) {
+        return new GZoltarSuspiciousProgramStatements(checkNotNull(classpath), checkNotNull(Arrays.asList("")), metric, testSrcPath, srcPath, libPath);//getRootPackage(tests))));
     }
 
     private static String getRootPackage(String[] classes) {
@@ -80,10 +80,10 @@ public final class GZoltarSuspiciousProgramStatements implements SuspiciousProgr
     private final WGzoltar gzoltar;
 
 
-    protected GZoltarSuspiciousProgramStatements(final URL[] classpath, Collection<String> packageNames, Metric metric, String testSrcPath, String srcPath) {
+    protected GZoltarSuspiciousProgramStatements(final URL[] classpath, Collection<String> packageNames, Metric metric, String testSrcPath, String srcPath, List<String> libPath) {
         try {
             //gzoltar = new GZoltarJava7();
-            gzoltar = new WGzoltar(System.getProperty("user.dir"), metric, testSrcPath, srcPath);
+            gzoltar = new WGzoltar(System.getProperty("user.dir"), metric, testSrcPath, srcPath, libPath);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

@@ -197,6 +197,7 @@ public class Suspicious implements Serializable{
             param.isParameter = true;
             variableInfos.addAll(InfoUtils.getSubInfoOfComplexVariable(param,classSrc, classSrcPath));
         }
+        variableCollect = VariableCollect.GetInstance(getClassSrcIndex(classSrc));
         List<VariableInfo> locals = variableCollect.getVisibleLocalInMethodList(classSrcPath, line);
         if (locals.size() == 0){
             locals = variableCollect.getVisibleLocalInMethodList(classSrcPath, line-1);
@@ -207,6 +208,7 @@ public class Suspicious implements Serializable{
         variableInfos.addAll(locals);
 
         if (!_isConstructor){
+            variableCollect = VariableCollect.GetInstance(getClassSrcIndex(classSrc));
             LinkedHashMap<String, ArrayList<VariableInfo>> classvars = variableCollect.getVisibleFieldInAllClassMap(classSrcPath);
             if (classvars.containsKey(classSrcPath)){
                 List<VariableInfo> fields = classvars.get(classSrcPath);
@@ -299,19 +301,19 @@ public class Suspicious implements Serializable{
     public List<TraceResult> getTraceResult() throws IOException{
         VariableTracer tracer = new VariableTracer(_srcPath, _testSrcPath, this);
         List<TraceResult> traceResults = new ArrayList<TraceResult>();
-        if (_tests.size() > 10){
-            for (String testclass: _failTests){
-                traceResults.addAll(tracer.trace(classname(), functionname(), testclass.split("#")[0], testclass.split("#")[1], getDefaultErrorLine(), false));
-            }
-        }
-        else {
+        //if (_tests.size() > 10){
+        //    for (String testclass: _failTests){
+        //        traceResults.addAll(tracer.trace(classname(), functionname(), testclass.split("#")[0], testclass.split("#")[1], getDefaultErrorLine(), false));
+        //    }
+        //}
+        //else {
             for (String testclass: _tests){
                 if (!_failTests.contains(testclass) && !testFilter(_testSrcPath, testclass.split("#")[0], testclass.split("#")[1])){
                     continue;
                 }
                 traceResults.addAll(tracer.trace(classname(), functionname(), testclass.split("#")[0], testclass.split("#")[1], getDefaultErrorLine(), !_failTests.contains(testclass)));
             }
-        }
+        //}
         return traceResults;
     }
 

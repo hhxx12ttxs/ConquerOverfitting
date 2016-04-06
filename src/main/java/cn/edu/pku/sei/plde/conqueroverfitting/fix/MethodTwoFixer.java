@@ -54,9 +54,11 @@ public class MethodTwoFixer {
             int startLine = ifLines.get(0);
             int endLine = ifLines.get(1);
             for (String ifString: ifStrings){
-                boolean result = fixWithAddIf(startLine, endLine, getIfStatementFromString(ifString));
-                if (result) {
-                    return true;
+                while (startLine++ < endLine) {
+                    boolean result = fixWithAddIf(startLine, endLine, getIfStatementFromString(ifString));
+                    if (result){
+                        return true;
+                    }
                 }
             }
         }
@@ -64,7 +66,7 @@ public class MethodTwoFixer {
     }
 
     private String getIfStatementFromString(String ifString){
-        String statement =  ifString.replace("if (","if (!(");
+        String statement =  ifString.replace(" ","").replace("if(","if (!(");
         statement += "){";
         return statement;
     }

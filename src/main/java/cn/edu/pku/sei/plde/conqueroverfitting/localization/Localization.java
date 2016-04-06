@@ -4,6 +4,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.assertCollect.Asserts;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.gzoltar.StatementExt;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.CodeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.FileUtils;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.TestUtils;
 import com.gzoltar.core.components.Statement;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.common.SuspiciousField;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.metric.Metric;
@@ -126,9 +127,7 @@ public class Localization  {
             if (getClassAddressFromStatement(statement).equals(getClassAddressFromStatement(firstline)) && getTargetFunctionFromStatement(statement).equals(getTargetFunctionFromStatement(firstline))){
                 lineNumbers.add(String.valueOf(statement.getLineNumber()));
             }else {
-                if (firstline.getTests().size() < 30) {
-                    result.add(new Suspicious(classpath, testClassPath,srcPath,testSrcPath, getClassAddressFromStatement(firstline), getTargetFunctionFromStatement(firstline), firstline.getSuspiciousness(), firstline.getTests(),firstline.getFailTests(), new ArrayList<String>(lineNumbers),libPaths));
-                }
+                result.add(new Suspicious(classpath, testClassPath,srcPath,testSrcPath, getClassAddressFromStatement(firstline), getTargetFunctionFromStatement(firstline), firstline.getSuspiciousness(), firstline.getTests(),firstline.getFailTests(), new ArrayList<String>(lineNumbers),libPaths));
                 firstline = statement;
                 lineNumbers.clear();
                 if (!lineNumbers.contains(String.valueOf(statement.getLineNumber()))){
@@ -167,6 +166,7 @@ public class Localization  {
         List<String> bannedMethodName = Arrays.asList("valueOf","toString","reflectionToString","getInstance");
         List<StatementExt> result = new ArrayList<>();
         Map<String, String> errorLineMap = new HashMap<>();
+        Map<String, String> testTraceMap = new HashMap<>();
         String packageName = "";
         for (int i=0; i< 2; i++){
             String[] test = testClasses[0].split("\\.");
@@ -207,27 +207,41 @@ public class Localization  {
                         }
                     }
                 }
-                String errorAssertCode = "";
-                if (!errorLineMap.containsKey(test)){
-                    Asserts asserts = new Asserts(classpath, srcPath, testClassPath, testSrcPath, testClass, testMethod,libPaths);
-                    if (asserts._errorLines.size() == 0){
-                        continue;
+                if (statements.size() < 100) {
+                    String errorAssertCode = "";
+                    if (!errorLineMap.containsKey(test)) {
+                        Asserts asserts = new Asserts(classpath, srcPath, testClassPath, testSrcPath, testClass, testMethod, libPaths);
+                        if (asserts._errorLines.size() == 0) {
+                            continue;
+                        }
+                        for (int i : asserts._errorLines) {
+                            errorAssertCode += CodeUtils.getLineFromCode(code, i) + "\n";
+                        }
+                        errorLineMap.put(test, errorAssertCode);
+                    } else {
+                        errorAssertCode = errorLineMap.get(test);
                     }
-                    for (int i: asserts._errorLines){
-                        errorAssertCode += CodeUtils.getLineFromCode(code, i)+"\n";
+                    if (errorAssertCode.contains(getFunctionNameFromStatement(statement) + "(")) {
+                        statement.setSuspiciousWeight(5.0f);
+                        result.add(statement);
+                    } else if (methodCode.contains(getFunctionNameFromStatement(statement))) {
+                        result.add(statement);
                     }
-                    errorLineMap.put(test, errorAssertCode);
                 }
                 else {
-                    errorAssertCode = errorLineMap.get(test);
-                }
+                    String trace = "";
+                    if (!testTraceMap.containsKey(test)){
+                        trace = TestUtils.getTestTraceFromJunit(classpath, testClassPath, libPaths, testClass, testMethod);
+                        testTraceMap.put(test, trace);
+                    }
+                    else {
+                        trace = testTraceMap.get(test);
+                    }
+                    if (trace.trim().split("\n")[1].contains(getClassAddressFromStatement(statement)+"."+getFunctionNameFromStatement(statement)+"(")){
+                        statement.setSuspiciousWeight(2.0f);
+                        result.add(statement);
+                    }
 
-                if (errorAssertCode.contains(getFunctionNameFromStatement(statement)+"(")) {
-                    statement.setSuspiciousWeight(5.0f);
-                    result.add(statement);
-                }
-                else if (methodCode.contains(getFunctionNameFromStatement(statement))){
-                    result.add(statement);
                 }
                 for (String lineString: methodCode.split("\n")) {
                     if (lineString.contains("(") && lineString.contains(")") && !lineString.contains("=")) {
@@ -246,6 +260,7 @@ public class Localization  {
         }
         return result;
     }
+
 
     public List<HashMap<SuspiciousField, String>> getSuspiciousListLiteWithSpecificLine(){
         List<StatementExt> statements = this.getSuspiciousListWithSuspiciousnessBiggerThanZero();
@@ -289,7 +304,7 @@ public class Localization  {
                 classpaths = JavaLibrary.extendClasspathWith(path, classpaths);
             }
         }
-        GZoltarSuspiciousProgramStatements gZoltar = GZoltarSuspiciousProgramStatements.create(classpaths, testClasses, new Ochiai(),testSrcPath, srcPath);
+        GZoltarSuspiciousProgramStatements gZoltar = GZoltarSuspiciousProgramStatements.create(classpaths, testClasses, new Ochiai(),testSrcPath, srcPath, libPaths);
         return gZoltar.sortBySuspiciousness(testClasses);
     }
 

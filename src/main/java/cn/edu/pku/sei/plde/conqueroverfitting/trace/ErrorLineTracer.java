@@ -30,7 +30,6 @@ public class ErrorLineTracer {
         this.asserts = asserts;
         this.classname = classname;
         this.methodName = methodName;
-
     }
 
     public List<Integer> trace(int defaultErrorLine){
@@ -48,6 +47,20 @@ public class ErrorLineTracer {
             return result;
         }
         List<Integer> lines = getErrorLineFromAssert(asserts);
+        if (lines.size() == 0){
+            try {
+                String trace = TestUtils.getTestTrace(asserts._classpath, asserts._testClasspath, asserts._testClassname, asserts._testMethodName);
+                if (trace != null){
+                    for (String line: trace.split("\n")){
+                        if (line.contains(classname+"."+methodName)){
+                            String lineNumber = line.substring(line.indexOf("(")+1, line.indexOf(")")).split(":")[1];
+                            lines.add(Integer.valueOf(lineNumber));
+                            break;
+                        }
+                    }
+                }
+            } catch (NotFoundException e){}
+        }
         for (int line: lines){
             if (line>0 && !result.contains(line)){
                 result.add(line);

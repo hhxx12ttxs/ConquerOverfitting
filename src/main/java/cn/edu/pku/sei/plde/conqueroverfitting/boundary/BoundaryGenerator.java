@@ -82,7 +82,7 @@ public class BoundaryGenerator {
             }
             return "";
         }
-        if (entry.getValue().size() == 1 && entry.getKey().isAddon){
+        if (entry.getValue().size() == 1 && entry.getKey().isAddon && trueValues.containsKey(entry.getKey())){
             if (entry.getKey().variableName.endsWith(".Comparable")){
                 String variableName = entry.getKey().variableName.substring(0,entry.getKey().variableName.indexOf("."));
                 switch (entry.getValue().get(0)){
@@ -101,10 +101,10 @@ public class BoundaryGenerator {
                         return variableName+" != null";
                 }
             }
-            if (entry.getKey().variableName.equals("this")){
+            if (entry.getKey().variableName.equals("this") && trueValues.containsKey(entry.getKey())){
                 return "this.equals("+entry.getValue().get(0)+")";
             }
-            if (entry.getKey().variableName.equals("return")){
+            if (entry.getKey().variableName.equals("return") && trueValues.containsKey(entry.getKey())){
                 return entry.getValue().get(0);
             }
         }

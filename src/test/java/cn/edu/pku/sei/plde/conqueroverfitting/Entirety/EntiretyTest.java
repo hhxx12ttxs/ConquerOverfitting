@@ -8,12 +8,16 @@ import cn.edu.pku.sei.plde.conqueroverfitting.fix.MethodOneFixer;
 import cn.edu.pku.sei.plde.conqueroverfitting.fix.Patch;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Localization;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Suspicious;
+import cn.edu.pku.sei.plde.conqueroverfitting.sort.VariableSort;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.TraceResult;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.CodeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.FileUtils;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.ShellUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 import org.junit.Test;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.*;
 
 /**
@@ -26,10 +30,10 @@ public class EntiretyTest {
     private String testClasspath = System.getProperty("user.dir")+"/project/testClasspath";
     private String testClassSrc = System.getProperty("user.dir")+"/project/testClassSrc/";
     private List<String> libPath = new ArrayList<>();
-    @Test
 
+    @Test
     public void testEntirety() throws Exception{
-        setWorkDirectory("Closure", 1);
+        setWorkDirectory("Chart", 26);
         Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc,libPath);
         List<Suspicious> suspiciouses = localization.getSuspiciousLite();
 
@@ -47,10 +51,26 @@ public class EntiretyTest {
         if (boundarys.size() == 0){
             return false;
         }
-        BoundarySorter sorter = new BoundarySorter(suspicious, classSrc);
-        List<String> ifStrings = sorter.sort(boundarys);
-        //return fixMethodOne(suspicious, ifStrings);
-        return fixMethodTwo(suspicious, ifStrings);
+        String code = FileUtils.getCodeFromFile(suspicious._srcPath, suspicious.classname());
+        for (int errorLine: suspicious.errorLines()){
+            String statement = CodeUtils.getMethodBodyBeforeLine(code, suspicious.functionnameWithoutParam(), errorLine);
+            Set<String> variables = new HashSet<>();
+            for (Map.Entry<VariableInfo, String> entry: boundarys.entrySet()){
+                if (entry.getKey().variableName.contains(".")){
+                    variables.add(entry.getKey().variableName.substring(0, entry.getKey().variableName.indexOf(".")));
+                }
+                else {
+                    variables.add(entry.getKey().variableName);
+                }
+            }
+            VariableSort variableSort = new VariableSort(variables, statement);
+            List<List<String>> sortedVariable = variableSort.getSortVariable();
+            BoundarySorter sorter = new BoundarySorter(suspicious, classSrc);
+            List<String> ifStrings = sorter.sort(boundarys);
+            //return fixMethodOne(suspicious, ifStrings);
+            return fixMethodTwo(suspicious, ifStrings);
+        }
+        return true;
     }
 
     public boolean fixMethodTwo(Suspicious suspicious, List<String> ifStrings) throws Exception{
@@ -152,6 +172,12 @@ public class EntiretyTest {
             FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project+"/build-tests",testClasspath);
             FileUtils.copyDirectory(PATH_OF_DEFECTS4J + project+"/source", classSrc);
             FileUtils.copyDirectory(PATH_OF_DEFECTS4J + project +"/tests", testClassSrc);
+            File libPkg = new File(PATH_OF_DEFECTS4J+project+"/lib/");
+            for (String p: libPkg.list()){
+                if (p.endsWith(".jar")){
+                    libPath.add(libPkg.getAbsolutePath()+"/"+p);
+                }
+            }
             return;
         }
 
@@ -187,5 +213,16 @@ public class EntiretyTest {
         //String classSrc = PATH_OF_DEFECTS4J + "Chart-"+i+"/source";              //项目的源代码路径
         //String testClassSrc = PATH_OF_DEFECTS4J + "Chart-"+i+"/tests";///java";          //项目的test的源代码路径
 
+    }
+
+
+    @Test
+    public void testRunShell(){
+        String shell = "java -classpath \"/Users/yanrunfa/Documents/overfitting/project/classpath/:/Users/yanrunfa/Documents/overfitting/project/testClasspath:/Users/yanrunfa/Documents/overfitting/target/classes/:/Users/yanrunfa/Documents/overfitting/lib/com.gzoltar-0.1.1.jar:/Applications/IntelliJ IDEA 15.app/Contents/plugins/junit/lib/junit-rt.jar:/Applications/IntelliJ IDEA 15.app/Contents/lib/idea_rt.jar:/Users/yanrunfa/Documents/defects4j/tmp/Chart-26/lib/itext-2.0.2.jar:/Users/yanrunfa/Documents/defects4j/tmp/Chart-26/lib/junit.jar:/Users/yanrunfa/Documents/defects4j/tmp/Chart-26/lib/servlet.jar\" cn.edu.pku.sei.plde.conqueroverfitting.junit.JunitRunner org.jfree.chart.renderer.category.junit.LevelRendererTests#testDrawWithNullInfo\n";
+        try {
+            System.out.println(ShellUtils.shellRun(Arrays.asList(shell)));
+        } catch (IOException e){
+            e.printStackTrace();
+        }
     }
 }

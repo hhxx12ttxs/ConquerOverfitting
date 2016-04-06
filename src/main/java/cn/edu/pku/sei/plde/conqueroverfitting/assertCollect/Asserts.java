@@ -85,7 +85,7 @@ public class Asserts {
                 List<String> classpaths = new ArrayList<>(_libPath);
                 classpaths.add(_classpath);
                 String trace = TestUtils.getTestTrace(classpaths, _testClasspath, _testClassname, _testMethodName);
-                if (trace == null || trace.equals(oldTrace) || trace.contains("NoClassDefFoundError")){
+                if (trace == null || trace.equals(oldTrace) || trace.contains("NoClassDefFoundError") || trace.contains("NoSuchMethodError")){
                     break;
                 }
                 oldTrace = trace;

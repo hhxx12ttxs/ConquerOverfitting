@@ -355,6 +355,35 @@ public class CodeUtils {
         return methodString;
     }
 
+    public static String getMethodBodyBeforeLine(String code, String methodName, int line){
+        methodName = methodName.trim();
+        ASTParser parser = ASTParser.newParser(AST.JLS3);
+        parser.setSource(code.toCharArray());
+        CompilationUnit unit = (CompilationUnit) parser.createAST(null);
+        List<MethodDeclaration> declarations = getMethod(code, methodName);
+        for (MethodDeclaration method : declarations) {
+            String result = "";
+            int startLine = unit.getLineNumber(method.getStartPosition()) -1;
+            int endLine = unit.getLineNumber(method.getStartPosition()+method.getLength()) -1;
+            if (startLine <= line && endLine >= line){
+                List<Statement> statements = method.getBody().statements();
+                for (Statement statement: statements){
+                    if (unit.getLineNumber(statement.getStartPosition()) < line){
+                        result += statement.toString();
+                    }
+                }
+            }
+            if (!result.equals("")){
+                String lineString = getLineFromCode(code, line).replace(" = ","=");
+                if (result.contains(lineString)){
+                    result = result.substring(0, result.lastIndexOf(lineString));
+                }
+                return result;
+            }
+        }
+        return "";
+    }
+
     public static List<Integer> getReturnLine(String code, String methodName, int paramCount){
         List<Integer> result = new ArrayList<>();
         ASTParser parser = ASTParser.newParser(AST.JLS3);
@@ -585,4 +614,5 @@ public class CodeUtils {
         }
         return -1;
     }
+
 }

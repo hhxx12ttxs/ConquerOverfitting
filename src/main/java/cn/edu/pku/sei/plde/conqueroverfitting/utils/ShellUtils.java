@@ -18,12 +18,21 @@ public class ShellUtils {
         StringBuilder sb = new StringBuilder();
         BufferedInputStream in = null;
         BufferedReader br = null;
+        BufferedInputStream errIn = null;
+        BufferedReader errBr = null;
         try {
-            Thread t=new Thread(new ErrorStreamRunnable(p.getErrorStream(),"ErrorStream"));
-            t.start();
+            //Thread t=new Thread(new ErrorStreamRunnable(p.getErrorStream(),"ErrorStream"));
+            //t.start();
+            String s;
+            errIn = new BufferedInputStream(p.getErrorStream());
+            errBr = new BufferedReader(new InputStreamReader(errIn));
+            while ((s = errBr.readLine()) != null) {
+                sb.append(System.getProperty("line.separator"));
+                sb.append(s);
+            }
+
             in = new BufferedInputStream(p.getInputStream());
             br = new BufferedReader(new InputStreamReader(in));
-            String s;
             while ((s = br.readLine()) != null) {
                 sb.append(System.getProperty("line.separator"));
                 sb.append(s);
@@ -37,6 +46,12 @@ public class ShellUtils {
             }
             if (in != null){
                 in.close();
+            }
+            if (errBr != null){
+                errBr.close();
+            }
+            if (errIn !=null){
+                errIn.close();
             }
         }
         return sb.toString();
@@ -77,37 +92,3 @@ public class ShellUtils {
     };
 }
 
-
-class ErrorStreamRunnable implements Runnable
-{
-    BufferedReader bReader=null;
-    String type=null;
-    public ErrorStreamRunnable(InputStream is, String _type)
-    {
-        try
-        {
-            bReader=new BufferedReader(new InputStreamReader(new BufferedInputStream(is),"UTF-8"));
-            type=_type;
-        }
-        catch(Exception ex)
-        {
-            ex.printStackTrace();
-        }
-    }
-    public void run()
-    {
-        String line;
-        try
-        {
-            while((line=bReader.readLine())!=null)
-            {
-                System.out.println(line);
-            }
-            bReader.close();
-        }
-        catch(Exception ex)
-        {
-            ex.printStackTrace();
-        }
-    }
-}

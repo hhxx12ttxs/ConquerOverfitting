@@ -63,9 +63,14 @@ public class AddPrintTransformer implements ClassFileTransformer {
     }
 
     private byte[] buildPrintClass(String className, byte[] classfileBuffer){
+        String tempClassName = _tempClassName;
+        String tempJavaName = _tempJavaName;
+        System.out.println("TempJavaPath: "+ tempJavaName);
+        System.out.println("TempClassPath: "+ tempClassName);
         String trueClassName = className;
         if (className.contains("$")){
             trueClassName = className.substring(0, className.lastIndexOf("$")).replace("/",".");
+            System.out.println("CurrentClassName: "+trueClassName);
         }
         String printCode = "";
         for (String var: _targetVariables){
@@ -73,16 +78,38 @@ public class AddPrintTransformer implements ClassFileTransformer {
         }
         System.out.print(">>");
         try {
-            return Utils.AddCodeToSource(_tempJavaName,_tempClassName,_classPath,_srcPath,trueClassName,_targetLineNum,printCode);
+            byte[] complied = Utils.AddCodeToSource(tempJavaName, tempClassName,_classPath,_srcPath,trueClassName,_targetLineNum,printCode);
+            if (complied == null){
+                complied = Utils.AddCodeToSource(tempJavaName, tempClassName,_classPath,_srcPath,trueClassName,_targetLineNum,removeComparable(printCode));
+                if (complied != null){
+                    System.out.println("Compile success after remove comparable");
+                    System.out.print(">>");
+                }
+                else {
+                    System.out.println("Compile fail");
+                }
+            }
+            return complied;
+
         }catch (FileNotFoundException e){
             try {
-                return Utils.AddCodeToSource(_tempJavaName,_tempClassName,_classPath,_srcPath,className.replace("/","."),_targetLineNum,printCode);
+                return Utils.AddCodeToSource(tempJavaName, tempClassName,_classPath,_srcPath,className.replace("/","."),_targetLineNum,printCode);
             } catch (IOException ee){
                 return classfileBuffer;
             }
         }catch (IOException e){
             return classfileBuffer;
         }
+    }
+
+    private String removeComparable(String printCode){
+        String result = "";
+        for (String line: printCode.split("\n")){
+            if (!line.contains("instanceof Comparable<?>")){
+                result += line+"\n";
+            }
+        }
+        return result;
     }
 
 

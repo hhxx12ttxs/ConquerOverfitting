@@ -320,7 +320,7 @@ public class VariableTracer {
     }
 
     private String analysisShellResult(String shellResult){
-        String result = shellResult.substring(shellResult.indexOf(">>")+2,shellResult.indexOf("<<"));
+        String result = shellResult.substring(shellResult.lastIndexOf(">>")+2,shellResult.lastIndexOf("<<"));
         if (result.equals("") ){
             return result;
         }
