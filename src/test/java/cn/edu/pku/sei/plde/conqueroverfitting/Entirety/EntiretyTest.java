@@ -33,14 +33,24 @@ public class EntiretyTest {
 
     @Test
     public void testEntirety() throws Exception{
-        setWorkDirectory("Chart", 26);
+        setWorkDirectory("Math", 82);
         Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc,libPath);
         List<Suspicious> suspiciouses = localization.getSuspiciousLite();
-
+        List<Suspicious> failedSuspiciousList = new ArrayList<>();
         for (Suspicious suspicious: suspiciouses){
+            if (failedSuspiciousList.contains(suspicious)){
+                continue;
+            }
             suspicious._libPath = libPath;
             if (fixSuspicious(suspicious)){
                 break;
+            }
+            else {
+                for (Suspicious suspicious1: suspiciouses){
+                    if (suspicious._classname.equals(suspicious1._classname) && suspicious.functionname().equals(suspicious1.functionname())){
+                        failedSuspiciousList.add(suspicious1);
+                    }
+                }
             }
         }
     }
@@ -56,8 +66,8 @@ public class EntiretyTest {
             String statement = CodeUtils.getMethodBodyBeforeLine(code, suspicious.functionnameWithoutParam(), errorLine);
             Set<String> variables = new HashSet<>();
             for (Map.Entry<VariableInfo, String> entry: boundarys.entrySet()){
-                if (entry.getKey().variableName.contains(".")){
-                    variables.add(entry.getKey().variableName.substring(0, entry.getKey().variableName.indexOf(".")));
+                if (entry.getKey().variableName.endsWith(".null") || entry.getKey().variableName.endsWith(".Comparable")){
+                    variables.add(entry.getKey().variableName.substring(0, entry.getKey().variableName.lastIndexOf(".")));
                 }
                 else {
                     variables.add(entry.getKey().variableName);
@@ -66,7 +76,13 @@ public class EntiretyTest {
             VariableSort variableSort = new VariableSort(variables, statement);
             List<List<String>> sortedVariable = variableSort.getSortVariable();
             BoundarySorter sorter = new BoundarySorter(suspicious, classSrc);
-            List<String> ifStrings = sorter.sort(boundarys);
+            List<String> ifStrings = new ArrayList<>();
+            if (sortedVariable.size() == 1 && variables.size() > 2){
+                ifStrings = sorter.sort(boundarys);
+            }
+            else {
+                ifStrings = sorter.getIfStatementFromBoundary(sortedVariable);
+            }
             //return fixMethodOne(suspicious, ifStrings);
             return fixMethodTwo(suspicious, ifStrings);
         }
@@ -131,7 +147,7 @@ public class EntiretyTest {
         String project = projectName+"-"+number;
         /* 四个整个项目需要的参数 */
 
-        if ((projectName.equals("Math") && number>=86) || (projectName.equals("Lang") && number == 39)){
+        if ((projectName.equals("Math") && number>=85) || (projectName.equals("Lang") && number == 39)){
             FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project+"/target/classes",classpath);
             FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project+"/target/test-classes",testClasspath);
             FileUtils.copyDirectory(PATH_OF_DEFECTS4J + project+"/src/java", classSrc);
@@ -215,14 +231,4 @@ public class EntiretyTest {
 
     }
 
-
-    @Test
-    public void testRunShell(){
-        String shell = "java -classpath \"/Users/yanrunfa/Documents/overfitting/project/classpath/:/Users/yanrunfa/Documents/overfitting/project/testClasspath:/Users/yanrunfa/Documents/overfitting/target/classes/:/Users/yanrunfa/Documents/overfitting/lib/com.gzoltar-0.1.1.jar:/Applications/IntelliJ IDEA 15.app/Contents/plugins/junit/lib/junit-rt.jar:/Applications/IntelliJ IDEA 15.app/Contents/lib/idea_rt.jar:/Users/yanrunfa/Documents/defects4j/tmp/Chart-26/lib/itext-2.0.2.jar:/Users/yanrunfa/Documents/defects4j/tmp/Chart-26/lib/junit.jar:/Users/yanrunfa/Documents/defects4j/tmp/Chart-26/lib/servlet.jar\" cn.edu.pku.sei.plde.conqueroverfitting.junit.JunitRunner org.jfree.chart.renderer.category.junit.LevelRendererTests#testDrawWithNullInfo\n";
-        try {
-            System.out.println(ShellUtils.shellRun(Arrays.asList(shell)));
-        } catch (IOException e){
-            e.printStackTrace();
-        }
-    }
 }

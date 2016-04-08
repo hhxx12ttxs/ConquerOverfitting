@@ -1,6 +1,7 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.gatherer;
 
 import net.sf.json.JSONArray;
+import net.sf.json.JSONException;
 import net.sf.json.JSONObject;
 import org.apache.commons.httpclient.DefaultHttpMethodRetryHandler;
 import org.apache.commons.httpclient.HttpClient;
@@ -91,13 +92,16 @@ public class GathererJava {
     public ArrayList<String> getCodeUrlList(String url) {
         String html = getHtml(url);
         ArrayList<String> codeUrlList = new ArrayList<String>();
-        JSONObject jsonObj = JSONObject.fromObject(html);
-        JSONArray jsonArray = jsonObj.getJSONArray("results");
-        for (int i = 0; i < jsonArray.size(); i++) {
-            String id = jsonArray.getJSONObject(i).getString("id");
-            String codeUrl = API_SEARCH_CODE_BASE_URL + API_CODE_RESULT + "/" + id + "/";
-            System.out.println("result : " + codeUrl);
-            codeUrlList.add(codeUrl);
+        try {
+            JSONObject jsonObj = JSONObject.fromObject(html);
+            JSONArray jsonArray = jsonObj.getJSONArray("results");
+            for (int i = 0; i < jsonArray.size(); i++) {
+                String id = jsonArray.getJSONObject(i).getString("id");
+                String codeUrl = API_SEARCH_CODE_BASE_URL + API_CODE_RESULT + "/" + id + "/";
+                System.out.println("result : " + codeUrl);
+                codeUrlList.add(codeUrl);
+            }
+        } catch (JSONException e){
         }
         return codeUrlList;
     }

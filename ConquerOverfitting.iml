@@ -30,7 +30,5 @@
     <orderEntry type="library" name="Maven: org.eclipse.core:org.eclipse.core.filesystem:1.3.100" level="project" />
     <orderEntry type="library" name="Maven: org.eclipse.text:org.eclipse.text:3.5.101" level="project" />
     <orderEntry type="library" name="Maven: org.eclipse.core:org.eclipse.core.commands:3.6.0" level="project" />
-    <orderEntry type="library" name="junit-rt" level="project" />
-    <orderEntry type="library" name="idea_rt" level="project" />
   </component>
 </module>

@@ -82,9 +82,9 @@ public class BoundaryGenerator {
             }
             return "";
         }
-        if (entry.getValue().size() == 1 && entry.getKey().isAddon && trueValues.containsKey(entry.getKey())){
+        if (entry.getValue().size() == 1 && entry.getKey().isAddon && (trueValues.containsKey(entry.getKey()) || trueValues.size() == 0)){
             if (entry.getKey().variableName.endsWith(".Comparable")){
-                String variableName = entry.getKey().variableName.substring(0,entry.getKey().variableName.indexOf("."));
+                String variableName = entry.getKey().variableName.substring(0,entry.getKey().variableName.lastIndexOf("."));
                 switch (entry.getValue().get(0)){
                     case "true":
                         return variableName+" instanceof Comparable<?>";
@@ -93,7 +93,7 @@ public class BoundaryGenerator {
                 }
             }
             if (entry.getKey().variableName.endsWith(".null")){
-                String variableName = entry.getKey().variableName.substring(0,entry.getKey().variableName.indexOf("."));
+                String variableName = entry.getKey().variableName.substring(0,entry.getKey().variableName.lastIndexOf("."));
                 switch (entry.getValue().get(0)){
                     case "true":
                         return variableName+" == null";
@@ -113,6 +113,9 @@ public class BoundaryGenerator {
             if (entry.getValue().size() == 1){
                 if (entry.getValue().get(0).equals("NaN")){
                     return  MathUtils.getComplexOfNumberType(entry.getKey().getStringType()) +".isNaN("+entry.getKey().variableName+")";
+                }
+                else {
+                    return entry.getKey().variableName + "==" + entry.getValue().get(0);
                 }
             }
             double biggestBoundary = MathUtils.parseStringValue(entry.getValue().get(1));

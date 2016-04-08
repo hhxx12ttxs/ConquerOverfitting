@@ -26,6 +26,23 @@ public class LineUtils {
     }
 
 
+    public static boolean isLineInIf(String code, int lineNum){
+        int braceCount = 0;
+        for (int i=lineNum-1; i>0; i--){
+            String lineString = CodeUtils.getLineFromCode(code, i);
+            braceCount += CodeUtils.countChar(lineString, '{');
+            braceCount -= CodeUtils.countChar(lineString, '}');
+            if (isBoundaryLine(lineString) && braceCount == 1){
+                return isIfLine(lineString);
+            }
+        }
+        return false;
+    }
+
+    public static boolean isIfLine(String line){
+        return line.replace(" ","").startsWith("if(");
+    }
+
     public static boolean isBoundaryLine(String lineString){
         return  lineString.contains("if") ||
                 lineString.contains("for") ||
@@ -34,5 +51,17 @@ public class LineUtils {
                 lineString.contains("try") ||
                 lineString.contains("catch") ||
                 lineString.trim().equals("}");
+    }
+
+    public static boolean isIndependentLine(String line){
+        int bracketCount = CodeUtils.countChar(line,'(') - CodeUtils.countChar(line, ')');
+        if (!isBoundaryLine(line) && (!line.contains(";") || bracketCount != 0)){
+            return false;
+        }
+        return true;
+    }
+
+    public static boolean isCallMethod(String code, String method){
+        return code.contains(method+"(");
     }
 }

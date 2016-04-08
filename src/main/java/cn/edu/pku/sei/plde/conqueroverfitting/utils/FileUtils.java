@@ -140,6 +140,22 @@ public class FileUtils {
 		}
 		return "";
 	}
+	public static String getTestFunctionBodyFromCode(String code, String targetFunctionName, String testSrcPath) {
+		String methodString = getTestFunctionCodeFromCode(code, targetFunctionName, testSrcPath);
+		methodString = methodString.substring(methodString.indexOf("{")+1, methodString.lastIndexOf("}"));
+		while (methodString.startsWith("\n")){
+			methodString = methodString.substring(1);
+		}
+		while (methodString.endsWith("\n")){
+			methodString = methodString.substring(0, methodString.length()-1);
+		}
+		while (methodString.split("\n")[0].trim().equals("") || methodString.split("\n")[0].trim().startsWith("//")){
+			methodString = methodString.substring(methodString.indexOf("\n")+1);
+		}
+		return methodString;
+	}
+
+
 
 	public static String getTestFunctionBodyFromCode(String code, String targetFunctionName) {
 		String methodString = getTestFunctionCodeFromCode(code, targetFunctionName);

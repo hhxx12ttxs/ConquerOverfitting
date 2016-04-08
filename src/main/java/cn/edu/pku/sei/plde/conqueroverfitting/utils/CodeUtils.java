@@ -73,6 +73,7 @@ public class CodeUtils {
         return result;
     }
 
+
     public static List<String> getMethodParamsName(String line, String methodName){
         List<String> params = getMethodParams(line, methodName);
         List<String> result = new ArrayList<>();
@@ -95,9 +96,13 @@ public class CodeUtils {
 
     public static String getClassNameOfVariable(VariableInfo info, String filePath) {
         String code = FileUtils.getCodeFromFile(filePath);
+        String infoType = info.getStringType();
+        if (infoType.contains("<")){
+            infoType = infoType.substring(0, infoType.indexOf("<"));
+        }
         List<String> packages = FileUtils.getPackageImportFromCode(code);
         for (String packageName: packages){
-            if (getClassNameFromPackage(packageName).equals(info.getStringType())){
+            if (getClassNameFromPackage(packageName).equals(infoType)){
                 if (packageName.startsWith("package ") || packageName.startsWith("import ")){
                     packageName = packageName.split(" ")[1];
                     packageName = packageName.substring(0, packageName.length()-1);
@@ -257,7 +262,7 @@ public class CodeUtils {
                     startPoint = i + 1;
                 }
             }
-            else if (ch == '['){
+            else if (ch == '[' || ch == '<'){
                 if (++bracketCount <= level){
                     if (startPoint != i){
                         result.add(line.substring(startPoint,i));
@@ -265,7 +270,7 @@ public class CodeUtils {
                     startPoint = i + 1;
                 }
             }
-            else if (ch == ')' || ch == ']'){
+            else if (ch == ')' || ch == ']' || ch == '>'){
                 if (bracketCount-- <= level){
                     if (startPoint != i){
                         result.add(line.substring(startPoint,i));
@@ -281,22 +286,42 @@ public class CodeUtils {
                     startPoint = i + 1;
                 }
             }
+            else if (ch == '.'){
+                if (bracketCount < level){
+                    if (startPoint != i && !StringUtils.isNumeric(line.substring(startPoint, i))){
+                        result.add(line.substring(startPoint, i));
+                        startPoint = i + 1;
+                    }
+                }
+            }
         }
         return result;
     }
 
-    private static List<MethodDeclaration> getMethod(String code, String methodName) {
-        methodName = methodName.trim();
-        List<MethodDeclaration> result = new ArrayList<>();
+    private static List<MethodDeclaration> getAllMethod(String code){
         ASTParser parser = ASTParser.newParser(AST.JLS4);
         parser.setSource(code.toCharArray());
         CompilationUnit unit = (CompilationUnit) parser.createAST(null);
         TypeDeclaration declaration = (TypeDeclaration) unit.types().get(0);
         MethodDeclaration methodDec[] = declaration.getMethods();
-        for (MethodDeclaration method : methodDec) {
+        return Arrays.asList(methodDec);
+    }
+
+    private static List<MethodDeclaration> getMethod(String code, String methodName) {
+        methodName = methodName.trim();
+        List<MethodDeclaration> result = new ArrayList<>();
+        for (MethodDeclaration method : getAllMethod(code)) {
             if (method.getName().getIdentifier().equals(methodName)) {
                 result.add(method);
             }
+        }
+        return result;
+    }
+
+    public static List<String> getAllMethodName(String code){
+        List<String> result = new ArrayList<>();
+        for (MethodDeclaration method : getAllMethod(code)) {
+           result.add(method.getName().getIdentifier());
         }
         return result;
     }
@@ -323,6 +348,9 @@ public class CodeUtils {
      */
     public static String getMethodBody(String code, String methodName){
         String methodString = getMethodString(code, methodName);
+        if (!methodString.contains("{") || !methodString.contains("}")){
+            return "";
+        }
         methodString = methodString.substring(methodString.indexOf("{")+1, methodString.lastIndexOf("}"));
         return methodString.trim();
     }
@@ -373,12 +401,16 @@ public class CodeUtils {
                     }
                 }
             }
+            String returnString = "";
             if (!result.equals("")){
                 String lineString = getLineFromCode(code, line).replace(" = ","=");
-                if (result.contains(lineString)){
-                    result = result.substring(0, result.lastIndexOf(lineString));
+                for (String resultLine: result.split("\n")){
+                    if (resultLine.replace(" ","").equals(lineString.replace(" ",""))){
+                        break;
+                    }
+                    returnString += resultLine+"\n";
                 }
-                return result;
+                return returnString;
             }
         }
         return "";
@@ -613,6 +645,36 @@ public class CodeUtils {
             }
         }
         return -1;
+    }
+
+    public static String getMethodBodyFromMethod(String methodString){
+        methodString = methodString.substring(methodString.indexOf("{")+1, methodString.lastIndexOf("}"));
+        while (methodString.startsWith("\n")){
+            methodString = methodString.substring(1);
+        }
+        while (methodString.endsWith("\n")){
+            methodString = methodString.substring(0, methodString.length()-1);
+        }
+        while (methodString.split("\n")[0].trim().equals("") || methodString.split("\n")[0].trim().startsWith("//")){
+            methodString = methodString.substring(methodString.indexOf("\n")+1);
+        }
+        return methodString;
+    }
+
+    public static List<String> splitCodeLines(String code){
+        List<String> result = new ArrayList<>();
+        int bracketCount = 0;
+        String completeLine = "";
+        for (String line: code.split("\n")){
+            bracketCount += countChar(line, '(');
+            bracketCount -= countChar(line, ')');
+            completeLine += line;
+            if (bracketCount == 0 && line.contains(";")){
+                result.add(completeLine);
+                completeLine = "";
+            }
+        }
+        return result;
     }
 
 }

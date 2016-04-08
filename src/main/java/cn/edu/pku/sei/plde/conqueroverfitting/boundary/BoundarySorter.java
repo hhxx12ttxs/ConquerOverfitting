@@ -71,6 +71,15 @@ public class BoundarySorter {
         return getIfList();
     }
 
+    public List<String> getIfStatementFromBoundary(List<List<String>> boundarys){
+        List<String> ifStrings = new ArrayList<>();
+        for (List<String> boundary: boundarys){
+            String ifString = getIfStringFromBoundarys(boundary);
+            ifStrings.add(ifString);
+        }
+        return ifStrings;
+    }
+
     private List<String> getIfList(){
         List<String> ifStrings = new ArrayList<>();
         for (List<String> boundarys: _boundaryCombinations){

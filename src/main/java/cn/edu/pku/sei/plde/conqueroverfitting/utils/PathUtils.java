@@ -1,8 +1,6 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.utils;
 
 import cn.edu.pku.sei.plde.conqueroverfitting.agent.RunTestAgent;
-import com.intellij.rt.execution.application.AppMain;
-import com.intellij.rt.execution.junit.JUnitStarter;
 import org.junit.runner.JUnitCore;
 
 import java.io.IOException;
@@ -34,13 +32,6 @@ public class PathUtils {
         return agentPath;
     }
 
-    public static String getIntellijJunutPath(){
-        return JUnitStarter.class.getProtectionDomain().getCodeSource().getLocation().getFile().replace("%20"," ");
-    }
-
-    public static String getIntellijAppMainPath(){
-        return AppMain.class.getProtectionDomain().getCodeSource().getLocation().getFile().replace("%20"," ");
-    }
 
     public static String getJunitPath(){
         String junitPath = JUnitCore.class.getProtectionDomain().getCodeSource().getLocation().getFile();

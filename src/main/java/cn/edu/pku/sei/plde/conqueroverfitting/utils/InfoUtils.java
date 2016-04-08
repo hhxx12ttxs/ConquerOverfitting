@@ -90,8 +90,11 @@ public class InfoUtils {
             if (info.isFieldVariable && info.isSimpleType && info.variableSimpleType == TypeEnum.BOOLEAN && !info.variableName.startsWith("is") && !info.variableName.contains(".is")){
                 continue;
             }
-            if (info.variableName.contains("<") || info.variableName.contains(">") || info.getStringType().contains("<") || info.getStringType().contains(">")){
+            if (info.variableName.contains("<") || info.variableName.contains(">")){
                 continue;
+            }
+            if (info.getStringType().contains("<") || info.getStringType().contains(">")){
+                info.otherType = info.otherType.substring(0, info.otherType.indexOf("<"));
             }
             if (info.variableName.toUpperCase().equals(info.variableName)){
                 continue;
@@ -153,7 +156,6 @@ public class InfoUtils {
                 if (!newField.isPublic && !paramClassSrcPath.equals(parentInfoSrcPath) || (newField.isStatic && paramClassSrcPath.equals(parentInfoSrcPath))){
                     continue;
                 }
-                newField.isParameter = true;
                 newField.variableName = info.variableName+"."+newField.variableName;
                 variableInfos.add(newField);
             }
@@ -163,15 +165,52 @@ public class InfoUtils {
         if (methods.containsKey(paramClassSrcPath)){
             List<MethodInfo> methodInfos = InfoUtils.filterBannedMethod(methods.get(paramClassSrcPath));
             for (MethodInfo methodInfo: methodInfos){
-                if (methodInfo.isPublic && !methodInfo.isStatic && !TypeUtils.isComplexType(methodInfo.getStringType())){
+                if (methodInfo.isPublic && !methodInfo.isStatic){
                     VariableInfo newField = VariableInfo.copy(InfoUtils.changeMethodInfoToVariableInfo(methodInfo));
-                    newField.isParameter = true;
                     newField.variableName = info.variableName+"."+newField.variableName;
                     variableInfos.add(newField);
                 }
             }
         }
         return variableInfos;
+    }
+
+
+    public static VariableInfo getVariableInIfStatement(String ifString){
+        String ifStatement = ifString.substring(ifString.indexOf("(")+1,ifString.lastIndexOf(")"));
+        String var1 = "";
+        String var2 = "";
+        if (ifStatement.contains(">=")){
+            var1 = ifStatement.split(">=")[0];
+            var2 = ifStatement.split(">=")[1];
+        }
+        else if (ifStatement.contains(">")){
+            var1 = ifStatement.split(">")[0];
+            var2 = ifStatement.split(">")[1];
+        }
+        else if (ifStatement.contains("<=")){
+            var1 = ifStatement.split("<=")[0];
+            var2 = ifStatement.split("<=")[1];
+        }
+        else if (ifStatement.contains("<")){
+            var1 = ifStatement.split("<")[0];
+            var2 = ifStatement.split("<")[1];
+        }
+        try {
+            MathUtils.parseStringValue(var2);
+        } catch (NumberFormatException e1){
+            try {
+                MathUtils.parseStringValue(var1);
+                VariableInfo info = new VariableInfo(var2,TypeEnum.DOUBLE,true, null);
+                info.isAddon = true;
+                return info;
+            } catch (NumberFormatException e2){
+                return null;
+            }
+        }
+        VariableInfo info = new VariableInfo(var1,TypeEnum.DOUBLE,true, null);
+        info.isAddon = true;
+        return info;
     }
 
 

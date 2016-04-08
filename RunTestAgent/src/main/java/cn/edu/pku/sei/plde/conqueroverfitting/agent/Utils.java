@@ -52,8 +52,9 @@ public class Utils {
                 }
                 outputStream.write((lineString+"\n").getBytes());
                 if (lineString.startsWith("package")){
-                    outputStream.write("import java.util.Arrays;\n".getBytes());
+                    outputStream.write("import java.util.*;\n".getBytes());
                     outputStream.write("import java.lang.System;\n".getBytes());
+                    outputStream.write("import java.lang.Thread;\n".getBytes());
                 }
             }
             outputStream.close();
@@ -64,11 +65,10 @@ public class Utils {
             }
             System.out.println(result);
         } catch (FileNotFoundException e){
-            System.out.println("FileNotFound");
+            System.out.println("AddCodeToSource: TempJavaName: "+tempJavaName +" No Found");
             throw new FileNotFoundException();
         } catch (IOException e){
-            System.out.println("FileNotFound");
-            throw new FileNotFoundException();
+            e.printStackTrace();
         }
         return getBytesFromFile(tempClassName);
     }

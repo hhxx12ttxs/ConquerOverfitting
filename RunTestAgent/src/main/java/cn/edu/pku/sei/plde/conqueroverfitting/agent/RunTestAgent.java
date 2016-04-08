@@ -24,7 +24,7 @@ public class RunTestAgent {
         if (agentArgs.endsWith("\"")){
             agentArgs = agentArgs.substring(0,agentArgs.length()-2);
         }
-        String[] args = agentArgs.split(",");
+        String[] args = agentArgs.split(",,");
         if (args.length < 5 || args.length > 10){
             throw new IOException("Wrong Number Args");
         }

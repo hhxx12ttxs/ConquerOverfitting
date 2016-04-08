@@ -97,8 +97,8 @@ public class Asserts {
                 if (result.contains(lineNum)) {
                     break;
                 }
-                String lineString = CodeUtils.getLineFromCode(FileUtils.getCodeFromFile(tempJavaFile.getAbsolutePath()),lineNum).trim();
                 String code = FileUtils.getCodeFromFile(tempJavaFile);
+                String lineString = CodeUtils.getLineFromCode(code,lineNum).trim();
                 if (AssertUtils.isAssertLine(lineString, code)){
                     result.add(lineNum);
                 }
@@ -108,6 +108,9 @@ public class Asserts {
                         SourceUtils.commentCodeInSourceFile(tempJavaFile, num);
                         num--;
                     }
+                }
+                if (!AssertUtils.isAssertLine(lineString,code)){
+                    break;
                 }
                 SourceUtils.commentCodeInSourceFile(tempJavaFile,lineNum);
                 System.out.println(Utils.shellRun(Arrays.asList("javac -Xlint:unchecked -source 1.6 -target 1.6 -cp "+ buildClasspath(Arrays.asList(PathUtils.getJunitPath(),_testClasspath,_classpath)) +" -d "+_testClasspath+" "+ tempJavaFile.getAbsolutePath())));
@@ -128,9 +131,9 @@ public class Asserts {
     }
 
     public List<Integer> dependenceOfAssert(int assertLine){
-        List<Integer> dependences = new ArrayList<>();
+        Set<Integer> dependences = new HashSet<>();
         dependences.add(assertLine);
-        List<Integer> result = new ArrayList<>();
+        Set<Integer> result = new HashSet<>();
         String assertString = CodeUtils.getLineFromCode(_code, assertLine);
         if (assertString.startsWith("fail(")){
             boolean tryed = false;
@@ -164,11 +167,21 @@ public class Asserts {
             brackets += CodeUtils.countChar(assertString, '(');
             brackets -= CodeUtils.countChar(assertString, ')');
         }
-        for (int dependence: dependences){
-            result.addAll(lineStaticAnalysis(dependence));
+        while (dependences.size()!=0){
+            result.addAll(dependences);
+            Set<Integer> newDependences = new HashSet<>();
+            for (int dependence: dependences){
+                newDependences.addAll(lineStaticAnalysis(dependence));
+            }
+            dependences.clear();
+            dependences.addAll(newDependences);
+            if (result.containsAll(newDependences)){
+                break;
+            }
         }
+
         result.addAll(dependences);
-        return result;
+        return new ArrayList<>(result);
     }
 
     public List<Integer> lineStaticAnalysis(int analysisLine){
@@ -179,8 +192,9 @@ public class Asserts {
         }
         List<String> params = CodeUtils.divideParameter(lineString, 2);
         for (String param: params){
-            StaticSlice staticSlice = new StaticSlice(_methodCode, param);
+            StaticSlice staticSlice = new StaticSlice(CodeUtils.getMethodBodyFromMethod(_methodCode), param);
             String result = staticSlice.getSliceStatements();
+
             if (result.equals("")){
                 continue;
             }

@@ -195,7 +195,11 @@ public class Suspicious implements Serializable{
         variableInfos.addAll(parameters);
         for (VariableInfo param: parameters){
             param.isParameter = true;
-            variableInfos.addAll(InfoUtils.getSubInfoOfComplexVariable(param,classSrc, classSrcPath));
+            List<VariableInfo> subVariableInfo = InfoUtils.getSubInfoOfComplexVariable(param,classSrc, classSrcPath);
+            for (VariableInfo info: subVariableInfo){
+                info.isParameter = true;
+            }
+            variableInfos.addAll(subVariableInfo);
         }
         variableCollect = VariableCollect.GetInstance(getClassSrcIndex(classSrc));
         List<VariableInfo> locals = variableCollect.getVisibleLocalInMethodList(classSrcPath, line);
@@ -204,6 +208,12 @@ public class Suspicious implements Serializable{
         }
         for (VariableInfo local: locals){
             local.isLocalVariable = true;
+            List<VariableInfo> subVariableInfo = InfoUtils.getSubInfoOfComplexVariable(local,classSrc, classSrcPath);
+            for (VariableInfo info: subVariableInfo){
+                info.isLocalVariable = true;
+            }
+            variableInfos.addAll(subVariableInfo);
+
         }
         variableInfos.addAll(locals);
 
@@ -236,12 +246,15 @@ public class Suspicious implements Serializable{
 
     private List<VariableInfo> addonVariableInfos(int line, List<VariableInfo> parameters){
         List<VariableInfo> infos = new ArrayList<>();
+        //this变量
         VariableInfo thisInfo = new VariableInfo("this", null, false, classname().substring(classname().lastIndexOf(".")+1));
         thisInfo.isAddon = true;
         infos.add(thisInfo);
+        //返回的变量
         VariableInfo returnInfo = new VariableInfo("return", null, false, "returnType");
         returnInfo.isAddon = true;
         infos.add(returnInfo);
+        //for循环的变量
         String code = FileUtils.getCodeFromFile(_srcPath, _classname);
         String lineString = CodeUtils.getLineFromCode(code, line-1);
         List<String> parameterNames = new ArrayList<>();
@@ -266,6 +279,21 @@ public class Suspicious implements Serializable{
 
             }
         }
+        //if的变量
+        if (LineUtils.isLineInIf(code, line)){
+            for (int i=line; i>0; i--){
+                String lineIString = CodeUtils.getLineFromCode(code, i);
+                if (LineUtils.isIfLine(lineIString)){
+                    if ((lineIString.contains(">") || lineIString.contains("<"))){
+                        VariableInfo ifAddon = InfoUtils.getVariableInIfStatement(lineIString);
+                        if (ifAddon != null){
+                            infos.add(ifAddon);
+                        }
+                    }
+                    break;
+                }
+            }
+        }
         return infos;
     }
 
@@ -284,7 +312,7 @@ public class Suspicious implements Serializable{
         if (_methodInfo == null){
             _methodInfo = new ArrayList<>();
         }
-
+        //remove static methods when the suspicious method is not static
         List<MethodInfo> staticMethod = new ArrayList<>();
         if (MethodCollect.checkIsStaticMethod(getClassSrcPath(classSrc),_function.substring(0, _function.indexOf("(")))){
             for (MethodInfo info: _methodInfo){
@@ -293,7 +321,26 @@ public class Suspicious implements Serializable{
                 }
             }
         }
+
+        //remove inner class methods
+        List<MethodInfo> innerMethod = new ArrayList<>();
+        String code = FileUtils.getCodeFromFile(_srcPath, _classname);
+        for (MethodInfo info: _methodInfo){
+            if (MethodUtils.isInnerMethod(code, info.methodName)){
+                innerMethod.add(info);
+            }
+        }
+
+        //remove methods would call suspicious method in its statement.
+        List<MethodInfo> loopCallMethod = new ArrayList<>();
+        for (MethodInfo info: _methodInfo){
+            if (MethodUtils.isLoopCall(functionnameWithoutParam(),info.methodName,code)){
+                loopCallMethod.add(info);
+            }
+        }
         _methodInfo.removeAll(staticMethod);
+        _methodInfo.removeAll(innerMethod);
+        _methodInfo.removeAll(loopCallMethod);
         _methodInfo = InfoUtils.filterBannedMethod(_methodInfo);
         return _methodInfo;
     }
@@ -301,19 +348,12 @@ public class Suspicious implements Serializable{
     public List<TraceResult> getTraceResult() throws IOException{
         VariableTracer tracer = new VariableTracer(_srcPath, _testSrcPath, this);
         List<TraceResult> traceResults = new ArrayList<TraceResult>();
-        //if (_tests.size() > 10){
-        //    for (String testclass: _failTests){
-        //        traceResults.addAll(tracer.trace(classname(), functionname(), testclass.split("#")[0], testclass.split("#")[1], getDefaultErrorLine(), false));
-        //    }
-        //}
-        //else {
-            for (String testclass: _tests){
-                if (!_failTests.contains(testclass) && !testFilter(_testSrcPath, testclass.split("#")[0], testclass.split("#")[1])){
-                    continue;
-                }
-                traceResults.addAll(tracer.trace(classname(), functionname(), testclass.split("#")[0], testclass.split("#")[1], getDefaultErrorLine(), !_failTests.contains(testclass)));
+        for (String testclass: _tests){
+            if (!_failTests.contains(testclass) && !testFilter(_testSrcPath, testclass.split("#")[0], testclass.split("#")[1])){
+                continue;
             }
-        //}
+            traceResults.addAll(tracer.trace(classname(), functionname(), testclass.split("#")[0], testclass.split("#")[1], getDefaultErrorLine(), !_failTests.contains(testclass)));
+        }
         return traceResults;
     }
 

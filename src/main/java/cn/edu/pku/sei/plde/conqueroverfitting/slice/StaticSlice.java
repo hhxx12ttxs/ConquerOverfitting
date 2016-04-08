@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import cn.edu.pku.sei.plde.conqueroverfitting.jdtVisitor.IdentifierCollectVisitor;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.CodeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.JDTUtils;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTParser;
@@ -50,6 +51,22 @@ public class StaticSlice {
 	}
 
 	public String getSliceStatements(){
-		return sliceStatements.toString();
+		String addon = "";
+		if (statements.replace(" ","").contains(expression+"={")){
+			int bracketCount = 0;
+			boolean uncompleteLine = false;
+			for (String line: statements.split("\n")){
+				if (line.replace(" ","").contains(expression+"=")||uncompleteLine){
+					bracketCount += CodeUtils.countChar(line, '(');
+					bracketCount -= CodeUtils.countChar(line, ')');
+					addon += line+"\n";
+					uncompleteLine = true;
+					if (bracketCount == 0 && line.contains(";")){
+						break;
+					}
+				}
+			}
+		}
+		return addon + sliceStatements.toString();
 	}
 }

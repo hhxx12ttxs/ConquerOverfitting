@@ -24,17 +24,41 @@ public class ErrorLineTracer {
     public String classname;
     public String methodName;
     public int methodStartLine;
+    private String code;
     public Map<String,Integer> _commentedTestClass = new HashMap<>();
 
     public ErrorLineTracer(Asserts asserts, String classname, String methodName){
         this.asserts = asserts;
         this.classname = classname;
         this.methodName = methodName;
+        this.code = FileUtils.getCodeFromFile(asserts._srcPath, classname);
+
+
     }
 
     public List<Integer> trace(int defaultErrorLine){
+        List<Integer> result = getErrorLine(defaultErrorLine);
+        List<Integer> returnList = new ArrayList<>();
+        for (int line: result){
+            String lineString = CodeUtils.getLineFromCode(code, line);
+            if (!LineUtils.isIndependentLine(lineString)){
+                for (int i= line-1; i > 0; i--){
+                    String lineIString = CodeUtils.getLineFromCode(code, i);
+                    if (lineIString.contains(";") || LineUtils.isIndependentLine(lineIString)){
+                        returnList.add(i +1);
+                        break;
+                    }
+                }
+            }
+            else {
+                returnList.add(line);
+            }
+        }
+        return returnList;
+    }
+
+    private List<Integer> getErrorLine(int defaultErrorLine){
         List<Integer> result = new ArrayList<>();
-        String code = FileUtils.getCodeFromFile(asserts._srcPath, classname);
         methodStartLine = CodeUtils.getMethodStartLine(defaultErrorLine, code, methodName);
         result.addAll(errorLineInConstructor(code));
         result.addAll(errorLineInForLoop(code, methodName));
@@ -70,6 +94,7 @@ public class ErrorLineTracer {
             return result;
         }
         result.add(defaultErrorLine);
+
         return result;
     }
 

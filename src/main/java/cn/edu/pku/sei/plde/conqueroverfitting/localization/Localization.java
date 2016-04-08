@@ -207,7 +207,7 @@ public class Localization  {
                         }
                     }
                 }
-                if (statements.size() < 100) {
+                if (statements.size() < 50) {
                     String errorAssertCode = "";
                     if (!errorLineMap.containsKey(test)) {
                         Asserts asserts = new Asserts(classpath, srcPath, testClassPath, testSrcPath, testClass, testMethod, libPaths);
@@ -237,11 +237,22 @@ public class Localization  {
                     else {
                         trace = testTraceMap.get(test);
                     }
-                    if (trace.trim().split("\n")[1].contains(getClassAddressFromStatement(statement)+"."+getFunctionNameFromStatement(statement)+"(")){
-                        statement.setSuspiciousWeight(2.0f);
-                        result.add(statement);
+                    boolean firstLineFlag = true;
+                    for (String line: trace.split("\n")){
+                        if (line.trim().startsWith("at ")){
+                            if (line.contains(getClassAddressFromStatement(statement)+"."+getFunctionNameFromStatement(statement)+"(")){
+                                if (firstLineFlag){
+                                    statement.setSuspiciousWeight(3.0f);
+                                }
+                                else {
+                                    statement.setSuspiciousWeight(3.0f*1.1f);
+                                }
+                                result.add(statement);
+                                break;
+                            }
+                            firstLineFlag = false;
+                        }
                     }
-
                 }
                 for (String lineString: methodCode.split("\n")) {
                     if (lineString.contains("(") && lineString.contains(")") && !lineString.contains("=")) {

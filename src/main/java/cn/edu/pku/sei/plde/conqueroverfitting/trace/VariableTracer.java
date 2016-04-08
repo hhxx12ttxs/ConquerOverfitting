@@ -22,7 +22,6 @@ import java.util.*;
  */
 
 public class VariableTracer {
-
     private final String _classpath;
     private final String _testClasspath;
     private final String _srcPath;
@@ -80,7 +79,7 @@ public class VariableTracer {
                 commentedTestClasses.put(_asserts.getTrueTestFile(), -1);
             }
             for (Map.Entry<String, Integer> commentedTestClass: commentedTestClasses.entrySet()) {
-                String shellResult = traceShell(_testClassname, _classname, _functionname, commentedTestClass.getKey(), variableInfos, methodInfos, line);
+                String shellResult = traceShell(_testClassname, _classname, functionname(), commentedTestClass.getKey(), variableInfos, methodInfos, line);
                 if (shellResult.contains(">>") && shellResult.contains("<<")) {
                     String traceResult = analysisShellResult(shellResult);
                     results.addAll(traceAnalysis(traceResult, commentedTestClass.getValue()));
@@ -294,7 +293,7 @@ public class VariableTracer {
             }
             agentMethods += "/";
         }
-        return "\""+StringUtils.join(Arrays.asList(agentClass,agentFunc,agentLine,agentSrc,agentCp,agentVars,agentMethods, agentTest, agentTestSrc),",")+"\"";
+        return "\""+StringUtils.join(Arrays.asList(agentClass,agentFunc,agentLine,agentSrc,agentCp,agentVars,agentMethods, agentTest, agentTestSrc),",,")+"\"";
     }
 
     private String buildClasspath(List<String> additionalPath){

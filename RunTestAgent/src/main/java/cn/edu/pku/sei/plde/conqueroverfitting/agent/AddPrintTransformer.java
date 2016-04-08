@@ -18,6 +18,7 @@ public class AddPrintTransformer implements ClassFileTransformer {
     private String _tempJavaName="";
     private String _tempClassName="";
 
+
     public AddPrintTransformer(String targetClassName,String targetClassFunc, int targetLineNum, String[] targetVariables, String srcPath, String classPath){
         _targetClassName = targetClassName;
         _targetClassFunc = targetClassFunc;
@@ -67,6 +68,7 @@ public class AddPrintTransformer implements ClassFileTransformer {
         String tempJavaName = _tempJavaName;
         System.out.println("TempJavaPath: "+ tempJavaName);
         System.out.println("TempClassPath: "+ tempClassName);
+        System.out.println("TargetMethod: " + _targetClassFunc);
         String trueClassName = className;
         if (className.contains("$")){
             trueClassName = className.substring(0, className.lastIndexOf("$")).replace("/",".");
@@ -76,6 +78,11 @@ public class AddPrintTransformer implements ClassFileTransformer {
         for (String var: _targetVariables){
             printCode += generatePrintLine(var);
         }
+        printCode = "final StackTraceElement[] stack_trace = Thread.currentThread().getStackTrace();\n" +
+                "    Set<String> stack_trace_name = new HashSet<String>();\n" +
+                "    for(int stack_i=0; stack_i < stack_trace.length-1; stack_i++) {\n" +
+                "        stack_trace_name.add(stack_trace[stack_i].getMethodName());\n" +
+                "    }\n" + printCode;
         System.out.print(">>");
         try {
             byte[] complied = Utils.AddCodeToSource(tempJavaName, tempClassName,_classPath,_srcPath,trueClassName,_targetLineNum,printCode);
@@ -90,7 +97,6 @@ public class AddPrintTransformer implements ClassFileTransformer {
                 }
             }
             return complied;
-
         }catch (FileNotFoundException e){
             try {
                 return Utils.AddCodeToSource(tempJavaName, tempClassName,_classPath,_srcPath,className.replace("/","."),_targetLineNum,printCode);
@@ -114,6 +120,7 @@ public class AddPrintTransformer implements ClassFileTransformer {
 
 
     private String generatePrintLine(String var){
+        System.out.println(var);
         String printLine = "";
         String varName = var.contains("?")?var.substring(0, var.lastIndexOf("?")):var;
         String varType = var.contains("?")?var.substring(var.lastIndexOf("?")+1):null;
@@ -121,6 +128,13 @@ public class AddPrintTransformer implements ClassFileTransformer {
             return "";
         }
         printLine += "try {";
+        if (varType == null && varName.endsWith("()")){
+            printLine += "if (!stack_trace_name.contains(\""+varName.substring(0, varName.indexOf('('))+"\")){";
+            printLine += "System.out.print(\"|"+varName+"=\"+";
+            printLine += varName +"+\"|\""+");";
+            printLine += "}} catch (Exception e) {}\n";
+            return printLine;
+        }
         if (varType == null){
             printLine += "System.out.print(\"|"+varName+"=\"+";
             printLine += varName +"+\"|\""+");";
@@ -134,7 +148,7 @@ public class AddPrintTransformer implements ClassFileTransformer {
             varPrinter += "+\"|\""+");";
             printLine += "if ("+varName+".length < 100){"+varPrinter+"}";
         }
-        else if (!varType.endsWith("[]") && !varName.endsWith("()")){
+        else if (!varType.endsWith("[]")){
             printLine += "System.out.print(\"|"+varName+".null=\"+(";
             printLine += varName +"== null)+\"|\""+");";
             printLine += "} catch (Exception e) {}\n";

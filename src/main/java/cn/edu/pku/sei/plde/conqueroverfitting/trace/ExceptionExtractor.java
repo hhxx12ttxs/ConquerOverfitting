@@ -41,7 +41,7 @@ public class ExceptionExtractor {
             }
             List<BoundaryInfo> boundaryList = variableBoundary.get(entry.getKey());
             if (MathUtils.isNumberType(entry.getKey().getStringType())) {
-                if (entry.getValue().size() == 1 && entry.getValue().get(0).equals("NaN")){
+                if (entry.getValue().size() == 1 && (entry.getValue().get(0).equals("NaN") || boundaryList.size() == 0)){
                     result.put(entry.getKey(), entry.getValue());
                     continue;
                 }
@@ -62,7 +62,13 @@ public class ExceptionExtractor {
 
                 for (BoundaryInfo info : boundaryList) {
                     try {
-                        double doubleValue = MathUtils.parseStringValue(info.value);
+                        double doubleValue;
+                        try {
+                            doubleValue = MathUtils.parseStringValue(info.value);
+                        } catch (NumberFormatException e){
+                            System.out.println("ExceptionExtractor: Cannot parse numeric value "+info.value);
+                            continue;
+                        }
                         if (doubleValue >= biggestBoundary && doubleValue <= smallestValue) {
                             biggestBoundary = doubleValue;
                         }

@@ -66,15 +66,6 @@ public class TestUtils {
         }
     }
 
-    public static String getTestTraceFromIntellij(String classpath, String testPath, List<String> libPath, String className, String methodName){
-        String classpaths = buildClasspath(classpath, testPath, libPath, new ArrayList<String>(Arrays.asList(PathUtils.getJunitPath(), PathUtils.getIntellijJunutPath(), PathUtils.getIntellijAppMainPath())));
-        String[] arg = {"java","-Didea.launcher.port=7533","-cp",classpaths,"com.intellij.rt.execution.application.AppMain", "com.intellij.rt.execution.junit.JUnitStarter -ideVersion5 -junit3", className+","+methodName};
-        try {
-            return ShellUtils.shellRun(Arrays.asList(StringUtils.join(arg, " ")));
-        } catch (IOException e){
-            return null;
-        }
-    }
 
     public static String getTestTraceFromJunit(String classpath, String testPath,List<String> libPath,  String className, String methodName) {
 

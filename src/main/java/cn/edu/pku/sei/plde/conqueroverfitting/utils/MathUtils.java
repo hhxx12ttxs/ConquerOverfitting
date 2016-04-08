@@ -21,6 +21,12 @@ public class MathUtils {
         if (value.equals("Integer.MAX_VALUE")){
             return Integer.MAX_VALUE;
         }
+        if (value.equals("Long.MAX_VALUE")){
+            return Long.MAX_VALUE;
+        }
+        if (value.equals("Long.MIN_VALUE")){
+            return Long.MIN_VALUE;
+        }
         if (value.equals("Infinity")){
             return Double.POSITIVE_INFINITY;
         }
@@ -39,6 +45,7 @@ public class MathUtils {
                 throw new NumberFormatException();
             }
         }
+
         return Double.valueOf(value);
     }
 
