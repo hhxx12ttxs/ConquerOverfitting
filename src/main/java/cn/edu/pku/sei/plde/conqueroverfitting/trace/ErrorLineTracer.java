@@ -24,6 +24,7 @@ public class ErrorLineTracer {
     public String classname;
     public String methodName;
     public int methodStartLine;
+    public int methodEndLine;
     private String code;
     public Map<String,Integer> _commentedTestClass = new HashMap<>();
 
@@ -36,8 +37,17 @@ public class ErrorLineTracer {
 
     }
 
-    public List<Integer> trace(int defaultErrorLine){
-        List<Integer> result = getErrorLine(defaultErrorLine);
+    public List<Integer> trace(int defaultErrorLine, boolean isSuccess){
+        List<Integer> methodLine =  CodeUtils.getSingleMethodLine(code, methodName, defaultErrorLine);
+        methodStartLine = methodLine.get(0);
+        methodEndLine = methodLine.get(1);
+        List<Integer> result = new ArrayList<>();
+        if (!isSuccess){
+            result.addAll(getErrorLine(defaultErrorLine));
+        }
+        else {
+            result.add(defaultErrorLine);
+        }
         List<Integer> returnList = new ArrayList<>();
         for (int line: result){
             String lineString = CodeUtils.getLineFromCode(code, line);
@@ -54,12 +64,19 @@ public class ErrorLineTracer {
                 returnList.add(line);
             }
         }
+        if (returnList.size() == 1){
+            for (int i= methodStartLine+1; i< methodEndLine; i++){
+                String lineString = CodeUtils.getLineFromCode(code, i);
+                if (LineUtils.isIfLine(lineString) && InfoUtils.getVariableInIfStatement(lineString) != null){
+                    returnList.add(i+1);
+                }
+            }
+        }
         return returnList;
     }
 
     private List<Integer> getErrorLine(int defaultErrorLine){
         List<Integer> result = new ArrayList<>();
-        methodStartLine = CodeUtils.getMethodStartLine(defaultErrorLine, code, methodName);
         result.addAll(errorLineInConstructor(code));
         result.addAll(errorLineInForLoop(code, methodName));
 
@@ -94,7 +111,6 @@ public class ErrorLineTracer {
             return result;
         }
         result.add(defaultErrorLine);
-
         return result;
     }
 

@@ -62,7 +62,7 @@ public class VariableTracer {
         _asserts = new Asserts(_classpath,_srcPath,_testClasspath,_testSrcPath,testClassname,testMethodName, _suspicious._libPath);
         List<MethodInfo> methodInfos = _suspicious.getMethodInfo(_srcPath);
         ErrorLineTracer tracer = new ErrorLineTracer(_asserts, _classname, functionname());
-        List<Integer> errorLines = isSuccess?Arrays.asList(errorLine):tracer.trace(errorLine);
+        List<Integer> errorLines = tracer.trace(errorLine, isSuccess);
         List<TraceResult> results = new ArrayList<>();
 
         for (int line: errorLines){

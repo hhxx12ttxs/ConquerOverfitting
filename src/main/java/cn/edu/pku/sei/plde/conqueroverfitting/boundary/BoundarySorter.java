@@ -50,7 +50,7 @@ public class BoundarySorter {
                     TypeUtils.isArrayFromName(info2.variableName) &&
                     info1.getStringType().equals(info2.getStringType())){
                 if (info1.isParameter && info2.isParameter){
-                    return Arrays.asList(getIfStringFromBoundarys(new ArrayList<>(boundary.values())));
+                    return Arrays.asList(getIfStringFromBoundary(new ArrayList<>(boundary.values())));
                 }
             }
 
@@ -71,10 +71,10 @@ public class BoundarySorter {
         return getIfList();
     }
 
-    public List<String> getIfStatementFromBoundary(List<List<String>> boundarys){
+    public List<String> getIfStatementFromBoundarys(List<List<String>> boundarys){
         List<String> ifStrings = new ArrayList<>();
         for (List<String> boundary: boundarys){
-            String ifString = getIfStringFromBoundarys(boundary);
+            String ifString = getIfStringFromBoundary(boundary);
             ifStrings.add(ifString);
         }
         return ifStrings;
@@ -83,13 +83,17 @@ public class BoundarySorter {
     private List<String> getIfList(){
         List<String> ifStrings = new ArrayList<>();
         for (List<String> boundarys: _boundaryCombinations){
-            String ifString = getIfStringFromBoundarys(boundarys);
+            String ifString = getIfStringFromBoundary(boundarys);
             ifStrings.add(ifString);
         }
         return ifStrings;
     }
 
-    private String getIfStringFromBoundarys(List<String> boundarys){
+    public String getIfStringFromBoundary(List<String> boundarys){
+        return "if (("+ StringUtils.join(boundarys, ")||(") +"))";
+    }
+
+    public String getIfStringFromBoundary(Collection<String> boundarys){
         return "if (("+ StringUtils.join(boundarys, ")||(") +"))";
     }
 

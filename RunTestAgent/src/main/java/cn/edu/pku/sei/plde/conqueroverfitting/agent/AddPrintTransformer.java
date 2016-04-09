@@ -82,7 +82,7 @@ public class AddPrintTransformer implements ClassFileTransformer {
                 "    Set<String> stack_trace_name = new HashSet<String>();\n" +
                 "    for(int stack_i=0; stack_i < stack_trace.length-1; stack_i++) {\n" +
                 "        stack_trace_name.add(stack_trace[stack_i].getMethodName());\n" +
-                "    }\n" + printCode;
+                "    }\n" + printCode + "System.out.println();";
         System.out.print(">>");
         try {
             byte[] complied = Utils.AddCodeToSource(tempJavaName, tempClassName,_classPath,_srcPath,trueClassName,_targetLineNum,printCode);

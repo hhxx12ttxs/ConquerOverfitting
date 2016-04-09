@@ -177,6 +177,9 @@ public class InfoUtils {
 
 
     public static VariableInfo getVariableInIfStatement(String ifString){
+        if (!ifString.contains("if") || !ifString.contains("(") || !ifString.contains(")")){
+            return null;
+        }
         String ifStatement = ifString.substring(ifString.indexOf("(")+1,ifString.lastIndexOf(")"));
         String var1 = "";
         String var2 = "";
@@ -198,13 +201,13 @@ public class InfoUtils {
         }
         try {
             MathUtils.parseStringValue(var2);
-        } catch (NumberFormatException e1){
+        } catch (Exception e1){
             try {
                 MathUtils.parseStringValue(var1);
                 VariableInfo info = new VariableInfo(var2,TypeEnum.DOUBLE,true, null);
                 info.isAddon = true;
                 return info;
-            } catch (NumberFormatException e2){
+            } catch (Exception e2){
                 return null;
             }
         }

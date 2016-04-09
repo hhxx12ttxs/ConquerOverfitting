@@ -21,26 +21,28 @@ public class ShellUtils {
         BufferedInputStream errIn = null;
         BufferedReader errBr = null;
         try {
-            //Thread t=new Thread(new ErrorStreamRunnable(p.getErrorStream(),"ErrorStream"));
-            //t.start();
             String s;
-            errIn = new BufferedInputStream(p.getErrorStream());
-            errBr = new BufferedReader(new InputStreamReader(errIn));
-            while ((s = errBr.readLine()) != null) {
+            in = new BufferedInputStream(p.getInputStream());
+            br = new BufferedReader(new InputStreamReader(in));
+            while ((s = br.readLine()) != null && s.length()!=0) {
+                System.out.println(s);
                 sb.append(System.getProperty("line.separator"));
                 sb.append(s);
             }
 
-            in = new BufferedInputStream(p.getInputStream());
-            br = new BufferedReader(new InputStreamReader(in));
-            while ((s = br.readLine()) != null) {
+            errIn = new BufferedInputStream(p.getErrorStream());
+            errBr = new BufferedReader(new InputStreamReader(errIn));
+            while ((s = errBr.readLine()) != null) {
+                System.out.println(s);
                 sb.append(System.getProperty("line.separator"));
                 sb.append(s);
             }
         } catch (IOException e) {
             System.out.println(e.getMessage());
             throw e;
-        } finally {
+        }
+        finally
+         {
             if (br != null){
                 br.close();
             }

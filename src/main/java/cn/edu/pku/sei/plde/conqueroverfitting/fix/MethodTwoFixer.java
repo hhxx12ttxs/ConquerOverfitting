@@ -59,6 +59,7 @@ public class MethodTwoFixer {
                     if (result){
                         return true;
                     }
+                    return false;
                 }
             }
         }

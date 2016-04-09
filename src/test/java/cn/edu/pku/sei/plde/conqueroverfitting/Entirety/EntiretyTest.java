@@ -33,7 +33,7 @@ public class EntiretyTest {
 
     @Test
     public void testEntirety() throws Exception{
-        setWorkDirectory("Math", 82);
+        setWorkDirectory("Lang", 49);
         Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc,libPath);
         List<Suspicious> suspiciouses = localization.getSuspiciousLite();
         List<Suspicious> failedSuspiciousList = new ArrayList<>();
@@ -81,7 +81,7 @@ public class EntiretyTest {
                 ifStrings = sorter.sort(boundarys);
             }
             else {
-                ifStrings = sorter.getIfStatementFromBoundary(sortedVariable);
+                ifStrings = Arrays.asList(sorter.getIfStringFromBoundary(boundarys.values()));
             }
             //return fixMethodOne(suspicious, ifStrings);
             return fixMethodTwo(suspicious, ifStrings);
@@ -147,9 +147,17 @@ public class EntiretyTest {
         String project = projectName+"-"+number;
         /* 四个整个项目需要的参数 */
 
-        if ((projectName.equals("Math") && number>=85) || (projectName.equals("Lang") && number == 39)){
+        if ((projectName.equals("Math") && number>=85) || (projectName.equals("Lang") && (number == 39 || number == 49))){
             FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project+"/target/classes",classpath);
             FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project+"/target/test-classes",testClasspath);
+            FileUtils.copyDirectory(PATH_OF_DEFECTS4J + project+"/src/java", classSrc);
+            FileUtils.copyDirectory(PATH_OF_DEFECTS4J + project +"/src/test", testClassSrc);
+            return;
+        }
+
+        if ((projectName.equals("Lang") && number == 55)){
+            FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project+"/target/classes",classpath);
+            FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project+"/target/tests",testClasspath);
             FileUtils.copyDirectory(PATH_OF_DEFECTS4J + project+"/src/java", classSrc);
             FileUtils.copyDirectory(PATH_OF_DEFECTS4J + project +"/src/test", testClassSrc);
             return;
