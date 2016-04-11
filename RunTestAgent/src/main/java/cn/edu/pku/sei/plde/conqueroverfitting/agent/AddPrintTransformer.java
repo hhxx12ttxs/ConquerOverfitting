@@ -83,7 +83,11 @@ public class AddPrintTransformer implements ClassFileTransformer {
         try {
             byte[] complied = Utils.AddCodeToSource(tempJavaName, tempClassName,_classPath,_srcPath,trueClassName,_targetLineNum,printCode);
             if (complied == null){
+                System.out.print("|Compile fail... Removing Comparable|");
                 complied = Utils.AddCodeToSource(tempJavaName, tempClassName,_classPath,_srcPath,trueClassName,_targetLineNum,removeComparable(printCode));
+                if (complied != null){
+                    System.out.print("|Compile success after remove comparable|");
+                }
             }
             return complied;
         }catch (FileNotFoundException e){

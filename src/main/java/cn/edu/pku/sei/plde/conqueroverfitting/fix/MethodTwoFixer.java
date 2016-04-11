@@ -48,6 +48,9 @@ public class MethodTwoFixer {
     public boolean fix(List<String> ifStrings){
         for (int errorLine: _errorLines){
             List<Integer> ifLines = getIfLine(errorLine);
+            if (ifLines.size()!=2){
+                continue;
+            }
             for (String ifString: ifStrings){
                 int startLine = ifLines.get(0);
                 int endLine = ifLines.get(1);
@@ -124,7 +127,7 @@ public class MethodTwoFixer {
 
     private List<Integer> getIfLine(int errorLine){
         int braceCount = 0;
-        for (int i= errorLine-1; i>=_methodStartLine; i--){
+        for (int i= errorLine-1; i>_methodStartLine; i--){
             String lineString = CodeUtils.getLineFromCode(_code, i);
             braceCount += CodeUtils.countChar(lineString, '{');
             braceCount -= CodeUtils.countChar(lineString, '}');
@@ -133,7 +136,7 @@ public class MethodTwoFixer {
             return getBraceArea(errorLine);
         }
         else {
-            return Arrays.asList(errorLine-1, errorLine+1);
+            return Arrays.asList(errorLine-1, errorLine);
         }
     }
 

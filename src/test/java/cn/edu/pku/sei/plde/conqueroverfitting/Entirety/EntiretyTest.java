@@ -33,24 +33,13 @@ public class EntiretyTest {
 
     @Test
     public void testEntirety() throws Exception{
-        setWorkDirectory("Time", 19);
+        setWorkDirectory("Time", 3);
         Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc,libPath);
         List<Suspicious> suspiciouses = localization.getSuspiciousLite();
-        List<Suspicious> failedSuspiciousList = new ArrayList<>();
         for (Suspicious suspicious: suspiciouses){
-            if (failedSuspiciousList.contains(suspicious)){
-                continue;
-            }
             suspicious._libPath = libPath;
             if (fixSuspicious(suspicious)){
                 break;
-            }
-            else {
-                for (Suspicious suspicious1: suspiciouses){
-                    if (suspicious._classname.equals(suspicious1._classname) && suspicious.functionname().equals(suspicious1.functionname())){
-                        failedSuspiciousList.add(suspicious1);
-                    }
-                }
             }
         }
     }

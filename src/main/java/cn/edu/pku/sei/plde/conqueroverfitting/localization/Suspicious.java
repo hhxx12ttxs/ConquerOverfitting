@@ -195,17 +195,6 @@ public class Suspicious implements Serializable{
         List<VariableInfo> variableInfos = new ArrayList<VariableInfo>();
         String classSrcPath = getClassSrcPath(classSrc);
         VariableCollect variableCollect = VariableCollect.GetInstance(getClassSrcIndex(classSrc));
-        List<VariableInfo> parameters = variableCollect.getVisibleParametersInMethodList(classSrcPath, line);
-        variableInfos.addAll(parameters);
-        for (VariableInfo param: parameters){
-            param.isParameter = true;
-            List<VariableInfo> subVariableInfo = InfoUtils.getSubInfoOfComplexVariable(param,classSrc, classSrcPath);
-            for (VariableInfo info: subVariableInfo){
-                info.isParameter = true;
-            }
-            variableInfos.addAll(subVariableInfo);
-        }
-        variableCollect = VariableCollect.GetInstance(getClassSrcIndex(classSrc));
         List<VariableInfo> locals = variableCollect.getVisibleLocalInMethodList(classSrcPath, line);
         if (locals.size() == 0){
             locals = variableCollect.getVisibleLocalInMethodList(classSrcPath, line-1);
@@ -220,6 +209,20 @@ public class Suspicious implements Serializable{
 
         }
         variableInfos.addAll(locals);
+        variableCollect = VariableCollect.GetInstance(getClassSrcIndex(classSrc));
+        List<VariableInfo> parameters = variableCollect.getVisibleParametersInMethodList(classSrcPath, line);
+        for (VariableInfo param: parameters){
+            param.isParameter = true;
+            if (parameters.size() == 1 && locals.size() == 0 && param.isSimpleType){
+                param.priority = 2;
+            }
+            List<VariableInfo> subVariableInfo = InfoUtils.getSubInfoOfComplexVariable(param,classSrc, classSrcPath);
+            for (VariableInfo info: subVariableInfo){
+                info.isParameter = true;
+            }
+            variableInfos.addAll(subVariableInfo);
+        }
+        variableInfos.addAll(parameters);
 
         if (!_isConstructor){
             variableCollect = VariableCollect.GetInstance(getClassSrcIndex(classSrc));

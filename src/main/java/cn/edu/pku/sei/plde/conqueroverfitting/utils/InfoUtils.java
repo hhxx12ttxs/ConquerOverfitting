@@ -183,19 +183,19 @@ public class InfoUtils {
         String ifStatement = ifString.substring(ifString.indexOf("(")+1,ifString.lastIndexOf(")"));
         String var1 = "";
         String var2 = "";
-        if (ifStatement.contains(">=")){
+        if (ifStatement.contains(">=") && ifStatement.split(">=").length == 2){
             var1 = ifStatement.split(">=")[0];
             var2 = ifStatement.split(">=")[1];
         }
-        else if (ifStatement.contains(">")){
+        else if (ifStatement.contains(">") && ifStatement.split(">").length == 2){
             var1 = ifStatement.split(">")[0];
             var2 = ifStatement.split(">")[1];
         }
-        else if (ifStatement.contains("<=")){
+        else if (ifStatement.contains("<=") && ifStatement.split("<=").length == 2){
             var1 = ifStatement.split("<=")[0];
             var2 = ifStatement.split("<=")[1];
         }
-        else if (ifStatement.contains("<")){
+        else if (ifStatement.contains("<") && ifStatement.split("<").length == 2){
             var1 = ifStatement.split("<")[0];
             var2 = ifStatement.split("<")[1];
         }

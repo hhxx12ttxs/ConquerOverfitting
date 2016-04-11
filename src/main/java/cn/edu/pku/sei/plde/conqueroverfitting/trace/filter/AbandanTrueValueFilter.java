@@ -18,8 +18,8 @@ public class AbandanTrueValueFilter {
     public static Map<VariableInfo, List<String>> abandon(List<TraceResult> traceResults, List<VariableInfo> vars) {
         List<TraceResult> traceBackup = TraceResult.copy(traceResults);
         Map<VariableInfo, List<String>> exceptionValues = new HashMap<VariableInfo, List<String>>();
-        Map<VariableInfo, List<String>> trueVariable = AbandanTrueValueFilter.getTrueValue(traceResults, vars);
-        Map<VariableInfo, List<String>> falseVariable = AbandanTrueValueFilter.getFalseValue(traceResults, vars);
+        Map<VariableInfo, List<String>> trueVariable = AbandanTrueValueFilter.getTrueValue(traceBackup, vars);
+        Map<VariableInfo, List<String>> falseVariable = AbandanTrueValueFilter.getFalseValue(traceBackup, vars);
         for (Map.Entry<VariableInfo, List<String>> entry: falseVariable.entrySet()){
             if (!trueVariable.containsKey(entry.getKey())){
                 exceptionValues.put(entry.getKey(), entry.getValue());
@@ -46,7 +46,7 @@ public class AbandanTrueValueFilter {
                 }
             }
         }
-        falseVariable = AbandanTrueValueFilter.getFalseValue(traceBackup, vars);
+        falseVariable = AbandanTrueValueFilter.getFalseValue(traceResults, vars);
         exceptionValues = cleanVariables(exceptionValues);
         if (exceptionValues.size() == 0){
             for (Map.Entry<VariableInfo, List<String>> entry: falseVariable.entrySet()){
