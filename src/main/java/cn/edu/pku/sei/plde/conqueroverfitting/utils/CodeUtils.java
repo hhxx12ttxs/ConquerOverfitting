@@ -5,6 +5,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.localization.gzoltar.StatementExt;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.MethodInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 import javassist.NotFoundException;
+import org.apache.commons.collections.ArrayStack;
 import org.apache.commons.lang.StringUtils;
 import org.eclipse.jdt.core.dom.*;
 import org.eclipse.jdt.core.dom.Block;
@@ -499,6 +500,9 @@ public class CodeUtils {
         CompilationUnit unit = (CompilationUnit) parser.createAST(null);
         List<MethodDeclaration> methodDec = getMethod(code, methodName);
         for (MethodDeclaration method: methodDec){
+            if (method.getBody() == null || method.getBody().statements().size() == 0){
+                return new ArrayList<>();
+            }
             Statement firstStatement = (Statement) method.getBody().statements().get(0);
             int startLine = unit.getLineNumber(firstStatement.getStartPosition()) -1;
             int endLine = unit.getLineNumber(firstStatement.getStartPosition()+method.getBody().getLength()) -2;

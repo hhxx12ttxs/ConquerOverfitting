@@ -66,13 +66,9 @@ public class AddPrintTransformer implements ClassFileTransformer {
     private byte[] buildPrintClass(String className, byte[] classfileBuffer){
         String tempClassName = _tempClassName;
         String tempJavaName = _tempJavaName;
-        System.out.println("TempJavaPath: "+ tempJavaName);
-        System.out.println("TempClassPath: "+ tempClassName);
-        System.out.println("TargetMethod: " + _targetClassFunc);
         String trueClassName = className;
         if (className.contains("$")){
             trueClassName = className.substring(0, className.lastIndexOf("$")).replace("/",".");
-            System.out.println("CurrentClassName: "+trueClassName);
         }
         String printCode = "";
         for (String var: _targetVariables){
@@ -88,13 +84,6 @@ public class AddPrintTransformer implements ClassFileTransformer {
             byte[] complied = Utils.AddCodeToSource(tempJavaName, tempClassName,_classPath,_srcPath,trueClassName,_targetLineNum,printCode);
             if (complied == null){
                 complied = Utils.AddCodeToSource(tempJavaName, tempClassName,_classPath,_srcPath,trueClassName,_targetLineNum,removeComparable(printCode));
-                if (complied != null){
-                    System.out.println("Compile success after remove comparable");
-                    System.out.print(">>");
-                }
-                else {
-                    System.out.println("Compile fail");
-                }
             }
             return complied;
         }catch (FileNotFoundException e){
@@ -120,7 +109,6 @@ public class AddPrintTransformer implements ClassFileTransformer {
 
 
     private String generatePrintLine(String var){
-        System.out.println(var);
         String printLine = "";
         String varName = var.contains("?")?var.substring(0, var.lastIndexOf("?")):var;
         String varType = var.contains("?")?var.substring(var.lastIndexOf("?")+1):null;

@@ -8,6 +8,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.localization.Suspicious;
 import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.*;
 import javassist.NotFoundException;
+import org.apache.commons.collections.ArrayStack;
 import org.apache.commons.lang.StringUtils;
 
 import java.io.BufferedReader;
@@ -39,8 +40,12 @@ public class ErrorLineTracer {
 
     public List<Integer> trace(int defaultErrorLine, boolean isSuccess){
         List<Integer> methodLine =  CodeUtils.getSingleMethodLine(code, methodName, defaultErrorLine);
+        if (methodLine.size() != 2){
+            return Arrays.asList(defaultErrorLine);
+        }
         methodStartLine = methodLine.get(0);
         methodEndLine = methodLine.get(1);
+
         List<Integer> result = new ArrayList<>();
         if (!isSuccess){
             result.addAll(getErrorLine(defaultErrorLine));
@@ -50,6 +55,8 @@ public class ErrorLineTracer {
         }
         List<Integer> returnList = new ArrayList<>();
         for (int line: result){
+            line = errorLineOutOfSwitch(line, code);
+            line = errorLineOutOfElse(line, code);
             String lineString = CodeUtils.getLineFromCode(code, line);
             if (!LineUtils.isIndependentLine(lineString)){
                 for (int i= line-1; i > 0; i--){
@@ -67,7 +74,7 @@ public class ErrorLineTracer {
         if (returnList.size() == 1){
             for (int i= methodStartLine+1; i< methodEndLine; i++){
                 String lineString = CodeUtils.getLineFromCode(code, i);
-                if (LineUtils.isIfLine(lineString) && InfoUtils.getVariableInIfStatement(lineString) != null){
+                if (LineUtils.isIfAndElseIfLine(lineString) && InfoUtils.getVariableInIfStatement(lineString) != null){
                     returnList.add(i+1);
                 }
             }
@@ -80,13 +87,6 @@ public class ErrorLineTracer {
         result.addAll(errorLineInConstructor(code));
         result.addAll(errorLineInForLoop(code, methodName));
 
-        if (asserts._assertNums == 1){
-            defaultErrorLine = errorLineOutOfSwitch(defaultErrorLine, code);
-            if (!result.contains(defaultErrorLine)){
-                result.add(defaultErrorLine);
-            }
-            return result;
-        }
         List<Integer> lines = getErrorLineFromAssert(asserts);
         if (lines.size() == 0){
             try {
@@ -145,9 +145,28 @@ public class ErrorLineTracer {
         String errorLineString = CodeUtils.getLineFromCode(code, defaultErrorLine);
         String lastLineString = CodeUtils.getLineFromCode(code, defaultErrorLine-1);
         if (errorLineString.contains("return ") && lastLineString.contains("case ")){
-            for (int i = defaultErrorLine-2; i> asserts._methodStartLine; i++){
+            for (int i = defaultErrorLine-2; i> asserts._methodStartLine; i--){
                 if (CodeUtils.getLineFromCode(code, i).contains("switch ")){
                     defaultErrorLine = i;
+                    break;
+                }
+            }
+        }
+        return defaultErrorLine;
+    }
+
+
+    private int errorLineOutOfElse(int defaultErrorLine, String code){
+        String errorLineString = CodeUtils.getLineFromCode(code, defaultErrorLine);
+        int braceCount = CodeUtils.countChar(errorLineString, '}');
+        if (errorLineString.contains("else ")){
+            for (int i = defaultErrorLine-1; i> methodStartLine; i--){
+                String lineString = CodeUtils.getLineFromCode(code, i);
+                braceCount += CodeUtils.countChar(lineString, '}');
+                braceCount -= CodeUtils.countChar(lineString, '{');
+                if (LineUtils.isIfLine(lineString) && braceCount == 0){
+                    defaultErrorLine = i;
+                    break;
                 }
             }
         }

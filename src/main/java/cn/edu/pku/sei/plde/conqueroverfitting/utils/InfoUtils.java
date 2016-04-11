@@ -204,15 +204,17 @@ public class InfoUtils {
         } catch (Exception e1){
             try {
                 MathUtils.parseStringValue(var1);
-                VariableInfo info = new VariableInfo(var2,TypeEnum.DOUBLE,true, null);
+                VariableInfo info = new VariableInfo(var2.trim(),TypeEnum.DOUBLE,true, null);
                 info.isAddon = true;
+                info.priority = 2;
                 return info;
             } catch (Exception e2){
                 return null;
             }
         }
-        VariableInfo info = new VariableInfo(var1,TypeEnum.DOUBLE,true, null);
+        VariableInfo info = new VariableInfo(var1.trim(),TypeEnum.DOUBLE,true, null);
         info.isAddon = true;
+        info.priority = 2;
         return info;
     }
 

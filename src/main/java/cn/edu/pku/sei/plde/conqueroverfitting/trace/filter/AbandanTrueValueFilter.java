@@ -4,8 +4,10 @@ import cn.edu.pku.sei.plde.conqueroverfitting.trace.TraceResult;
 import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.CodeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.InfoUtils;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.MathUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 import org.eclipse.jdt.core.dom.PrimitiveType;
+import org.eclipse.jdt.core.dom.rewrite.ListRewrite;
 
 import java.util.*;
 
@@ -14,6 +16,7 @@ import java.util.*;
  */
 public class AbandanTrueValueFilter {
     public static Map<VariableInfo, List<String>> abandon(List<TraceResult> traceResults, List<VariableInfo> vars) {
+        List<TraceResult> traceBackup = TraceResult.copy(traceResults);
         Map<VariableInfo, List<String>> exceptionValues = new HashMap<VariableInfo, List<String>>();
         Map<VariableInfo, List<String>> trueVariable = AbandanTrueValueFilter.getTrueValue(traceResults, vars);
         Map<VariableInfo, List<String>> falseVariable = AbandanTrueValueFilter.getFalseValue(traceResults, vars);
@@ -40,6 +43,15 @@ public class AbandanTrueValueFilter {
                 }
                 if (falseValues.size() != 0){
                     exceptionValues.put(entry.getKey(), falseValues);
+                }
+            }
+        }
+        falseVariable = AbandanTrueValueFilter.getFalseValue(traceBackup, vars);
+        exceptionValues = cleanVariables(exceptionValues);
+        if (exceptionValues.size() == 0){
+            for (Map.Entry<VariableInfo, List<String>> entry: falseVariable.entrySet()){
+                if (entry.getKey().priority > 1){
+                    exceptionValues.put(entry.getKey(), entry.getValue());
                 }
             }
         }
@@ -104,6 +116,50 @@ public class AbandanTrueValueFilter {
         }
         return exceptionValues;
     }
+
+    private static Map<VariableInfo, List<String>> cleanVariables(Map<VariableInfo, List<String>> exceptionVariable){
+        Map<VariableInfo, List<String>> cleanedVariable = new HashMap<>();
+        for (Map.Entry<VariableInfo, List<String>> var: exceptionVariable.entrySet()){
+            List<String> unrepeatValue = new ArrayList(new HashSet(var.getValue()));
+            if (var.getKey() == null){
+                continue;
+            }
+            if (var.getKey().isSimpleType && var.getKey().variableSimpleType==null){
+                continue;
+            }
+            if (!var.getKey().isSimpleType && var.getKey().otherType == null){
+                continue;
+            }
+            if (var.getKey().getStringType().equals("BOOLEAB")){
+                if (var.getValue().contains("true") && var.getValue().contains("false")){
+                    continue;
+                }
+            }
+            List<String> bannedValue = new ArrayList<>();
+            for (String value: var.getValue()){
+                if (MathUtils.isNumberType(var.getKey().getStringType())&&value.length()>10){
+                    bannedValue.add(value);
+                }
+            }
+            var.getValue().removeAll(bannedValue);
+            //如果是for循环的计数的数据,取最大值.
+            //if (CodeUtils.isForLoopParam(unrepeatValue)!=-1){
+            //    unrepeatValue.clear();
+            //    unrepeatValue.add(String.valueOf(CodeUtils.isForLoopParam(unrepeatValue)));
+            //}
+            if (var.getValue().size()== 0){
+                continue;
+            }
+            if (var.getKey().variableName.equals("this") || var.getKey().variableName.equals("return")){
+                cleanedVariable.clear();
+                cleanedVariable.put(var.getKey(), unrepeatValue);
+                break;
+            }
+            cleanedVariable.put(var.getKey(), unrepeatValue);
+        }
+        return cleanedVariable;
+    }
+
 
     public static Map<VariableInfo, List<String>> filterTrueValue(List<TraceResult> traceResults, List<VariableInfo> vars){
         Map<VariableInfo, List<String>> trueValues = new HashMap<VariableInfo, List<String>>();
@@ -179,6 +235,12 @@ public class AbandanTrueValueFilter {
     }
 
     public static VariableInfo getVariableInfoWithName(List<VariableInfo> infos, String name){
+        Collections.sort(infos, new Comparator<VariableInfo>() {
+            @Override
+            public int compare(VariableInfo variableInfo, VariableInfo t1) {
+                return -Integer.valueOf(variableInfo.priority).compareTo(t1.priority);
+            }
+        });
         List<VariableInfo> addons = new ArrayList<>();
         for (VariableInfo info: infos){
             if (info.variableName.equals(name)){

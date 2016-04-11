@@ -103,6 +103,9 @@ public class VariableTracer {
         String firstAssert = _asserts._asserts.get(0);
         String classCode = FileUtils.getCodeFromFile(_srcPath, _classname);
         String methodCode = CodeUtils.getMethodBody(classCode, _suspicious.functionnameWithoutParam());
+        if (methodCode.equals("")){
+            return results;
+        }
         String firstStatement = methodCode.substring(1,methodCode.length()-1).split("\n")[0];
 
         if (_asserts._asserts.size() == 1 && firstAssert.contains("Equals")){
@@ -264,7 +267,7 @@ public class VariableTracer {
         String agentFunc = "func:" + functionname;
         String agentLine = "line:"+ errorLine;
         String agentSrc = "src:" + _srcPath;
-        String agentCp = "cp:" + "\""+_classpath+":"+StringUtils.join(_suspicious._libPath,":")+"/Users/yanrunfa/.m2/repository/org/joda/joda-convert/1.2/joda-convert-1.2.jar\"";
+        String agentCp = "cp:" + "\""+_classpath+":"+StringUtils.join(_suspicious._libPath,":")+"/home/yanrunfa/.m2/repository/org/joda/joda-convert/1.1/joda-convert-1.1.jar\"";
         String agentTestSrc = testClassPath.equals("")?"":"testsrc: "+testClassPath.trim();
         String agentTest = testClassPath.equals("")?"":"test:" + _testClassname;
 
@@ -319,7 +322,7 @@ public class VariableTracer {
     }
 
     private String analysisShellResult(String shellResult){
-        String result = shellResult.substring(shellResult.lastIndexOf(">>")+2,shellResult.lastIndexOf("<<"));
+        String result = shellResult.substring(shellResult.indexOf(">>")+2,shellResult.lastIndexOf("<<"));
         if (result.equals("") ){
             return result;
         }

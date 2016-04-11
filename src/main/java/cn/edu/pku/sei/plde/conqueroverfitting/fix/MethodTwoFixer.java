@@ -5,10 +5,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.assertCollect.Asserts;
 import cn.edu.pku.sei.plde.conqueroverfitting.junit.JunitRunner;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Suspicious;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.common.support.Factory;
-import cn.edu.pku.sei.plde.conqueroverfitting.utils.CodeUtils;
-import cn.edu.pku.sei.plde.conqueroverfitting.utils.FileUtils;
-import cn.edu.pku.sei.plde.conqueroverfitting.utils.PathUtils;
-import cn.edu.pku.sei.plde.conqueroverfitting.utils.SourceUtils;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.*;
 import org.apache.commons.lang.StringUtils;
 
 import java.io.File;
@@ -51,15 +48,29 @@ public class MethodTwoFixer {
     public boolean fix(List<String> ifStrings){
         for (int errorLine: _errorLines){
             List<Integer> ifLines = getIfLine(errorLine);
-            int startLine = ifLines.get(0);
-            int endLine = ifLines.get(1);
             for (String ifString: ifStrings){
+                int startLine = ifLines.get(0);
+                int endLine = ifLines.get(1);
                 while (startLine++ < endLine) {
-                    boolean result = fixWithAddIf(startLine, endLine, getIfStatementFromString(ifString));
+                    String lastLineString = CodeUtils.getLineFromCode(_code, startLine-1);
+                    boolean result = false;
+                    if (!LineUtils.isIfAndElseIfLine(lastLineString)) {
+                        result = fixWithAddIf(startLine, endLine, getIfStatementFromString(ifString), false);
+                    }
+                    else {
+                        String ifEnd = lastLineString.substring(lastLineString.lastIndexOf(')'));
+                        lastLineString = lastLineString.substring(0, lastLineString.lastIndexOf(')'));
+                        String ifStatement =lastLineString+ "&&" +getIfStringFromStatement(getIfStatementFromString(ifString)) + ifEnd;
+                        result = fixWithAddIf(startLine-1, endLine, ifStatement, true);
+                        if (!result){
+                            ifStatement =lastLineString+ "||" +getIfStringFromStatement(ifString) + ifEnd;
+                            result = fixWithAddIf(startLine-1, endLine, ifStatement, true);
+                        }
+                    }
                     if (result){
                         return true;
                     }
-                    return false;
+                    break;
                 }
             }
         }
@@ -72,26 +83,35 @@ public class MethodTwoFixer {
         return statement;
     }
 
-    private boolean fixWithAddIf(int ifStartLine, int ifEndLine, String ifStatement){
+    private String getIfStringFromStatement(String ifStatement){
+        return ifStatement.substring(ifStatement.indexOf('(')+1, ifStatement.lastIndexOf(')'));
+    }
+
+    private boolean fixWithAddIf(int ifStartLine, int ifEndLine, String ifStatement, boolean replace){
         File targetJavaFile = new File(FileUtils.getFileAddressOfJava(_classSrcPath, _className));
         File targetClassFile = new File(FileUtils.getFileAddressOfClass(_classpath, _className));
         File javaBackup = FileUtils.copyFile(targetJavaFile.getAbsolutePath(), FileUtils.tempJavaPath(_className,"MethodTwoFixer"));
         File classBackup = FileUtils.copyFile(targetClassFile.getAbsolutePath(), FileUtils.tempClassPath(_className,"MethodTwoFixer"));
-        SourceUtils.insertIfStatementToSourceFile(targetJavaFile, ifStatement, ifStartLine+1, ifEndLine);
+        SourceUtils.insertIfStatementToSourceFile(targetJavaFile, ifStatement, ifStartLine, ifEndLine, replace);
+
         try {
             targetClassFile.delete();
             System.out.println(Utils.shellRun(Arrays.asList("javac -Xlint:unchecked -source 1.6 -target 1.6 -cp "+ buildClasspath(Arrays.asList(PathUtils.getJunitPath())) +" -d "+_classpath+" "+ targetJavaFile.getAbsolutePath())));
         }
         catch (IOException e){
+            FileUtils.copyFile(classBackup, targetClassFile);
+            FileUtils.copyFile(javaBackup, targetJavaFile);
             return false;
         }
         if (!targetClassFile.exists()){ //编译不成功
+            FileUtils.copyFile(classBackup, targetClassFile);
+            FileUtils.copyFile(javaBackup, targetJavaFile);
             return false;
         }
         int errAssertAfterFix = 0;
         for (String test:_suspicious._failTests){
             Asserts asserts = new Asserts(_classpath,_classSrcPath, _testClassPath, _testSrcPath, test.split("#")[0], test.split("#")[1]);
-            errAssertAfterFix += asserts.errorAssertNum();
+            errAssertAfterFix += asserts.errorNum();
         }
         int errAssertBeforeFix = _suspicious.errorAssertNums();
         System.out.println(ifStatement);
@@ -135,31 +155,26 @@ public class MethodTwoFixer {
         for (int i = 0; i < _methodEndLine-_methodStartLine; i++){
             String lineString = CodeUtils.getLineFromCode(_code, errorLine-i);
             bracket += CodeUtils.countChar(lineString, '}');
+            bracket -= CodeUtils.countChar(lineString, '{');
             if (lineString.contains("{")){
                 if (bracket == 0){
                     result.add(errorLine-i);
                     break;
                 }
-                else {
-                    bracket -= CodeUtils.countChar(lineString, '}');
-                }
-
             }
         }
         bracket = 0;
         for (int i = 0; i<_methodEndLine-_methodStartLine; i++){
             String lineString = CodeUtils.getLineFromCode(_code, errorLine+i);
             if (result.size() != 0){
-                bracket += CodeUtils.countChar(lineString, '{');
                 if (lineString.contains("}")){
                     if (bracket == 0){
                         result.add(errorLine+i);
                         break;
                     }
-                    else {
-                        bracket -= CodeUtils.countChar(lineString, '}');
-                    }
                 }
+                bracket += CodeUtils.countChar(lineString, '{');
+                bracket -= CodeUtils.countChar(lineString, '}');
             }
         }
         return result;
@@ -174,7 +189,8 @@ public class MethodTwoFixer {
         path += JunitRunner.class.getProtectionDomain().getCodeSource().getLocation().getFile();
         path += System.getProperty("path.separator");
         path += StringUtils.join(additionalPath,System.getProperty("path.separator"));
-        path += "\"";
+        path += System.getProperty("path.separator");
+        path += "/home/yanrunfa/.m2/repository/org/joda/joda-convert/1.1/joda-convert-1.1.jar\"";
         return path;
     }
 

@@ -187,23 +187,29 @@ public class SearchBoundaryFilter {
 
 
     private static List<BoundaryInfo> getSearchBoundaryInfo(VariableInfo info){
-        String variableName = info.variableName.contains(".")?info.variableName.substring(info.variableName.lastIndexOf(".")+1):info.variableName;
+        String variableName = info.variableName;
         String valueType = info.getStringType();
         ArrayList<String> keywords = new ArrayList<String>();
         keywords.add("if");
         keywords.add(valueType);
         if (info.variableName.startsWith("is") && info.variableName.endsWith("()")){
-            keywords.add(info.variableName.substring(0, info.variableName.lastIndexOf("(")));
+            variableName = info.variableName.substring(0, info.variableName.lastIndexOf("("));
+            keywords.add(variableName);
+        }
+        else if (info.variableName.contains("(")) {
+            variableName = info.variableName.substring(0, info.variableName.indexOf("("));
+            keywords.add(variableName);
         }
         else if (info.variableName.contains("[")){
-            keywords.add(info.variableName.substring(0, info.variableName.indexOf("[")));
+            variableName = info.variableName.substring(0, info.variableName.indexOf("["));
+            keywords.add(variableName);
         }
         else {
             keywords.add(info.variableName);
         }
 
         File codePackage = new File("experiment/searchcode/" + StringUtils.join(keywords,"-"));
-        File simpleCodePackage = new File("experiment/searchcode/" + StringUtils.join(Arrays.asList("if",info.variableName),"-"));
+        File simpleCodePackage = new File("experiment/searchcode/" + StringUtils.join(Arrays.asList("if",variableName),"-"));
         File complexCodePackage = new File("experiment/searchcode/" + StringUtils.join(Arrays.asList("if",info.getStringType()),"-"));
 
         if (!simpleCodePackage.exists() && !complexCodePackage.exists()) {

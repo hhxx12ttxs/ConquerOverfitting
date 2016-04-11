@@ -19,6 +19,7 @@ public class VariableInfo implements Comparable<VariableInfo>,Serializable{
 	public boolean isLocalVariable = false;
 	public boolean isFieldVariable = false;
 	public boolean isAddon = false;
+	public int priority = 1;
 
 
 	/**

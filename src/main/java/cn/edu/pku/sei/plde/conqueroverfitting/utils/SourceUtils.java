@@ -47,7 +47,7 @@ public class SourceUtils {
         tempFile.delete();
     }
 
-    public static void insertIfStatementToSourceFile(File file, String ifStatement, int startLine, int endLine){
+    public static void insertIfStatementToSourceFile(File file, String ifStatement, int startLine, int endLine, boolean replace){
         int i=0;
         while (new File(System.getProperty("user.dir")+"/temp/source"+i+".temp").exists()){
             i++;
@@ -63,10 +63,12 @@ public class SourceUtils {
                 if (lineNum == startLine){
                     outputStream.write((ifStatement+"\n").getBytes());
                 }
-                if (lineNum == endLine){
+                if (lineNum == endLine && !replace){
                     outputStream.write("}\n".getBytes());
                 }
-                outputStream.write((lineString+"\n").getBytes());
+                if (lineNum != startLine || !replace){
+                    outputStream.write((lineString+"\n").getBytes());
+                }
             }
             outputStream.close();
             reader.close();

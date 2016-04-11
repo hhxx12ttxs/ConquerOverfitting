@@ -24,7 +24,7 @@ import java.util.*;
  * Created by yanrunfa on 16/2/21.
  */
 public class EntiretyTest {
-    private final  String PATH_OF_DEFECTS4J = "/Users/yanrunfa/Documents/defects4j/tmp/";
+    private final  String PATH_OF_DEFECTS4J = "/home/yanrunfa/Documents/defects4j/tmp/";
     private String classpath = System.getProperty("user.dir")+"/project/classpath/";
     private String classSrc = System.getProperty("user.dir")+"/project/classSrc/";
     private String testClasspath = System.getProperty("user.dir")+"/project/testClasspath";
@@ -33,7 +33,7 @@ public class EntiretyTest {
 
     @Test
     public void testEntirety() throws Exception{
-        setWorkDirectory("Lang", 49);
+        setWorkDirectory("Time", 19);
         Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc,libPath);
         List<Suspicious> suspiciouses = localization.getSuspiciousLite();
         List<Suspicious> failedSuspiciousList = new ArrayList<>();
@@ -57,7 +57,7 @@ public class EntiretyTest {
 
     public boolean fixSuspicious(Suspicious suspicious) throws Exception{
         List<TraceResult> traceResults = suspicious.getTraceResult();
-        Map<VariableInfo, String> boundarys = BoundaryGenerator.generate(suspicious, traceResults);
+        Map<VariableInfo, List<String>> boundarys = BoundaryGenerator.generate(suspicious, traceResults);
         if (boundarys.size() == 0){
             return false;
         }
@@ -65,7 +65,7 @@ public class EntiretyTest {
         for (int errorLine: suspicious.errorLines()){
             String statement = CodeUtils.getMethodBodyBeforeLine(code, suspicious.functionnameWithoutParam(), errorLine);
             Set<String> variables = new HashSet<>();
-            for (Map.Entry<VariableInfo, String> entry: boundarys.entrySet()){
+            for (Map.Entry<VariableInfo, List<String>> entry: boundarys.entrySet()){
                 if (entry.getKey().variableName.endsWith(".null") || entry.getKey().variableName.endsWith(".Comparable")){
                     variables.add(entry.getKey().variableName.substring(0, entry.getKey().variableName.lastIndexOf(".")));
                 }
@@ -76,17 +76,19 @@ public class EntiretyTest {
             VariableSort variableSort = new VariableSort(variables, statement);
             List<List<String>> sortedVariable = variableSort.getSortVariable();
             BoundarySorter sorter = new BoundarySorter(suspicious, classSrc);
-            List<String> ifStrings = new ArrayList<>();
+            List<String> ifStrings;
             if (sortedVariable.size() == 1 && variables.size() > 2){
-                ifStrings = sorter.sort(boundarys);
+                ifStrings = sorter.sortList(boundarys);
             }
             else {
-                ifStrings = Arrays.asList(sorter.getIfStringFromBoundary(boundarys.values()));
+                ifStrings = sorter.getIfStringFromBoundarys(boundarys.values());
             }
             //return fixMethodOne(suspicious, ifStrings);
-            return fixMethodTwo(suspicious, ifStrings);
+            if (fixMethodTwo(suspicious, ifStrings)){
+                return true;
+            }
         }
-        return true;
+        return false;
     }
 
     public boolean fixMethodTwo(Suspicious suspicious, List<String> ifStrings) throws Exception{
@@ -148,10 +150,10 @@ public class EntiretyTest {
         /* 四个整个项目需要的参数 */
 
         if ((projectName.equals("Math") && number>=85) || (projectName.equals("Lang") && (number == 39 || number == 49))){
-            FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project+"/target/classes",classpath);
-            FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project+"/target/test-classes",testClasspath);
-            FileUtils.copyDirectory(PATH_OF_DEFECTS4J + project+"/src/java", classSrc);
-            FileUtils.copyDirectory(PATH_OF_DEFECTS4J + project +"/src/test", testClassSrc);
+            FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project+"/target/classes/",classpath);
+            FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project+"/target/test-classes/",testClasspath);
+            FileUtils.copyDirectory(PATH_OF_DEFECTS4J + project+"/src/java/", classSrc);
+            FileUtils.copyDirectory(PATH_OF_DEFECTS4J + project +"/src/test/", testClassSrc);
             return;
         }
 
@@ -162,9 +164,28 @@ public class EntiretyTest {
             FileUtils.copyDirectory(PATH_OF_DEFECTS4J + project +"/src/test", testClassSrc);
             return;
         }
-
+        if (projectName.equals("Time") && number == 3){
+            FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project,projectDir.getAbsolutePath());
+            classpath = projectDir.getAbsolutePath()+"/"+project +"/target/classes/";
+            testClasspath = projectDir.getAbsolutePath()+"/"+project +"/target/test-classes/";
+            classSrc = projectDir.getAbsolutePath()+"/"+project +"/src/main/java/";
+            testClassSrc = projectDir.getAbsolutePath()+"/"+project +"/src/test/java/";
+            FileUtils.deleteDirNow(System.getProperty("user.dir")+"/src/test/resources");
+            FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project+"/src/test/resources/",System.getProperty("user.dir")+"/src/test");
+            return;
+        }
+        if (projectName.equals("Time")){
+            FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project,projectDir.getAbsolutePath());
+            classpath = projectDir.getAbsolutePath()+"/"+project +"/build/classes/";
+            testClasspath = projectDir.getAbsolutePath()+"/"+project +"/build/tests/";
+            classSrc = projectDir.getAbsolutePath()+"/"+project +"/src/main/java/";
+            testClassSrc = projectDir.getAbsolutePath()+"/"+project +"/src/test/java/";
+            FileUtils.deleteDirNow(System.getProperty("user.dir")+"/src/test/resources");
+            FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project+"/src/test/resources/",System.getProperty("user.dir")+"/src/test");
+            return;
+        }
         //Math,Time
-        if (projectName.equals("Math") || projectName.equals("Time") || projectName.equals("Lang")){
+        if (projectName.equals("Math") || projectName.equals("Lang")){
             FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project+"/target/classes",classpath);
             FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project+"/target/test-classes",testClasspath);
             FileUtils.copyDirectory(PATH_OF_DEFECTS4J + project+"/src/main/java", classSrc);

@@ -154,12 +154,12 @@ public class Utils {
         String fileName;
         String cmd;
         if (System.getProperty("os.name").toLowerCase().startsWith("win")){
-            fileName = System.getProperty("user.dir")+"/temp/"+"/args.bat";
-            cmd = System.getProperty("user.dir")+"/temp/"+"/args.bat";
+            fileName = System.getProperty("user.dir")+"/temp"+"/args.bat";
+            cmd = System.getProperty("user.dir")+"/temp"+"/args.bat";
         }
         else {
-            fileName = System.getProperty("user.dir")+"/temp/"+"/args.sh";
-            cmd = "bash " + System.getProperty("user.dir")+"/temp/"+"/args.sh";
+            fileName = System.getProperty("user.dir")+"/temp"+"/args.sh";
+            cmd = "bash " + System.getProperty("user.dir")+"/temp"+"/args.sh";
         }
         File batFile = new File(fileName);
         if (!batFile.exists()){

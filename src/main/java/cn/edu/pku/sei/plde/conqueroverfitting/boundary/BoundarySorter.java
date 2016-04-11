@@ -35,6 +35,18 @@ public class BoundarySorter {
         _methodCode = CodeUtils.getMethodString(_code, suspicious.functionnameWithoutParam(), suspicious.getDefaultErrorLine()).split("\n");
     }
 
+    public List<String> sortList(Map<VariableInfo, List<String>> boundary){
+        List<String> result = new ArrayList<>();
+        for (Map.Entry<VariableInfo, List<String>> entry: boundary.entrySet()){
+            Map<VariableInfo, String> map = new HashMap<>();
+            for (String value: entry.getValue()){
+                map.put(entry.getKey(), value);
+                result.addAll(sort(map));
+            }
+        }
+        return result;
+    }
+
     public List<String> sort(Map<VariableInfo, String> boundary){
         if (boundary.size() == 1){
             return Arrays.asList("if("+boundary.values().toArray()[0]+")");
@@ -87,6 +99,17 @@ public class BoundarySorter {
             ifStrings.add(ifString);
         }
         return ifStrings;
+    }
+
+    public List<String> getIfStringFromBoundarys(Collection<List<String>> boundarys){
+        List<String> result = new ArrayList<>();
+        for (List<String> list: boundarys){
+            for (String boundary: list){
+                result.add(getIfStringFromBoundary(Arrays.asList(boundary)));
+            }
+
+        }
+        return result;
     }
 
     public String getIfStringFromBoundary(List<String> boundarys){

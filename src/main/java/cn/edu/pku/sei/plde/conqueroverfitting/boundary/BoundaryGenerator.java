@@ -25,7 +25,7 @@ import java.util.regex.Matcher;
  */
 public class BoundaryGenerator {
 
-    public static Map<VariableInfo, String> generate(Suspicious suspicious, List<TraceResult> traceResults) throws IOException {
+    public static Map<VariableInfo, List<String>> generate(Suspicious suspicious, List<TraceResult> traceResults) throws IOException {
         Map<VariableInfo, List<String>> filteredVariable = ExceptionExtractor.extract(traceResults, suspicious.getAllInfo());
         Map<VariableInfo, List<String>> trueVariable = AbandanTrueValueFilter.getTrueValue(traceResults, suspicious.getAllInfo());
         Map<VariableInfo, List<String>> falseVariable = AbandanTrueValueFilter.getFalseValue(traceResults, suspicious.getAllInfo());
@@ -38,21 +38,40 @@ public class BoundaryGenerator {
 
 
 
-    private static Map<VariableInfo, String> generate(Map<VariableInfo, List<String>> entrys, Map<VariableInfo, List<String>> trueValues, Map<VariableInfo, List<String>> falseValues, List<VariableInfo> variableInfos) {
+    private static Map<VariableInfo, List<String>> generate(Map<VariableInfo, List<String>> entrys, Map<VariableInfo, List<String>> trueValues, Map<VariableInfo, List<String>> falseValues, List<VariableInfo> variableInfos) {
         if (entrys.size() < 1) {
             System.out.println("No Data in the Map");
             return new HashMap<>();
         }
         Iterator<Map.Entry<VariableInfo, List<String>>> iterator = entrys.entrySet().iterator();
         Map<VariableInfo, List<String>> arrayVariable = new HashMap<>();
-        Map<VariableInfo, String> result = new HashMap<>();
+        Map<VariableInfo, List<String>> result = new HashMap<>();
         while (iterator.hasNext()) {
             Map.Entry<VariableInfo, List<String>> entry = iterator.next();
             if (MathUtils.isNumberArray(entry.getKey().getStringType()) && entry.getValue().size() == 1 && entry.getValue().get(0).equals("null")) {
                 arrayVariable.put(entry.getKey(), entry.getValue());
                 continue;
             }
-            result.put(entry.getKey(), generateWithSingleWord(entry, trueValues, falseValues));
+            String ifString = generateWithSingleWord(entry, trueValues, falseValues);
+
+            if (entry.getKey().priority > 1 && ifString.equals("")){
+                List<String> values = new ArrayList<>(entry.getValue());
+                for (String value: values){
+                    List<String> entryValue = new ArrayList<>(entry.getValue());
+                    entryValue.clear();
+                    entryValue.add(value);
+                    if (result.containsKey(entry.getKey())){
+                        result.get(entry.getKey()).add(generateWithSingleWord(entry, trueValues, falseValues));
+                    }
+                    else {
+                        result.put(entry.getKey(), new ArrayList<>(Arrays.asList(generateWithSingleWord(entry, trueValues, falseValues))));
+                    }
+
+                }
+            }
+            else {
+                result.put(entry.getKey(), Arrays.asList(ifString));
+            }
             if (TypeUtils.isArrayFromName(entry.getKey().variableName) && entry.getKey().isParameter){
                 for (VariableInfo info: variableInfos){
                     if (TypeUtils.isArrayFromName(info.variableName) &&
@@ -60,7 +79,7 @@ public class BoundaryGenerator {
                             info.getStringType().equals(entry.getKey().getStringType()) && !entry.getKey().variableName.equals(info.variableName)){
                         Map<VariableInfo, List<String>> tempMap = new HashMap<>();
                         tempMap.put(info, entry.getValue());
-                        result.put(info, generateWithSingleWord(tempMap.entrySet().iterator().next(),trueValues,falseValues));
+                        result.put(info, Arrays.asList(generateWithSingleWord(tempMap.entrySet().iterator().next(),trueValues,falseValues)));
                     }
                 }
             }
@@ -127,13 +146,7 @@ public class BoundaryGenerator {
             }
             String varType = MathUtils.getSimpleOfNumberType(entry.getKey().getStringType());
             Map<String, String> intervals = new HashMap<>();
-            //if (smallestBoundary < MathUtils.getMaxValueOfNumberType(entry.getKey().getStringType())){
-            //    intervals.put("backwardInterval", entry.getKey().variableName + " > ("+ varType+")" + smallestBoundary);
-            //}
-            //intervals.put("innerInterval", "("+entry.getKey().variableName + " <= ("+varType+")" + smallestBoundary + " && " + entry.getKey().variableName + " >= ("+varType+")" + biggestBoundary+")");
-            //if (biggestBoundary> MathUtils.getMinValueOfNumberType(entry.getKey().getStringType())){
-            //    intervals.put("forwardInterval", entry.getKey().variableName + " < ("+varType+")" + biggestBoundary);
-            //}
+
             if (falseValues.containsKey(entry.getKey())){
                 List<String> falseValue = falseValues.get(entry.getKey());
                 for (String valueString : falseValue) {

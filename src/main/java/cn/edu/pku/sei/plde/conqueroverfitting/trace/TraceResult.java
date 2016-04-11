@@ -1,5 +1,7 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.trace;
 
+import com.gzoltar.core.instr.testing.TestResult;
+
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -47,6 +49,27 @@ public class TraceResult implements Serializable {
         }
     }
 
+    public static TraceResult copy(TraceResult traceResult){
+        TraceResult newTraceResult = new TraceResult(traceResult._testResult);
+        for (Map.Entry<String, List<String>> entry: traceResult.result.entrySet()){
+            for (String value: entry.getValue()){
+                newTraceResult.put(entry.getKey(), value);
+            }
+        }
+        newTraceResult._assertLine = traceResult._assertLine;
+        newTraceResult._testClass = traceResult._testClass;
+        newTraceResult._testMethod = traceResult._testMethod;
+        return newTraceResult;
+    }
+
+
+    public static List<TraceResult> copy(List<TraceResult> traceResults){
+        List<TraceResult> result = new ArrayList<>();
+        for (TraceResult traceResult: traceResults){
+            result.add(copy(traceResult));
+        }
+        return result;
+    }
     /**
      *
      * @param key get value from key

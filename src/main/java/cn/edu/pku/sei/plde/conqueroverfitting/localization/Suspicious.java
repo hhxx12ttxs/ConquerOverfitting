@@ -129,7 +129,11 @@ public class Suspicious implements Serializable{
     }
 
     public String classname(){
-        return _classname.trim().replace(";","");
+        String className =  _classname.trim().replace(";","");
+        if (className.contains("$")){
+            className = className.substring(0, className.indexOf("$"));
+        }
+        return className;
     }
 
     public String functionname(){
@@ -283,7 +287,7 @@ public class Suspicious implements Serializable{
         if (LineUtils.isLineInIf(code, line)){
             for (int i=line; i>0; i--){
                 String lineIString = CodeUtils.getLineFromCode(code, i);
-                if (LineUtils.isIfLine(lineIString)){
+                if (LineUtils.isIfAndElseIfLine(lineIString)){
                     if ((lineIString.contains(">") || lineIString.contains("<"))){
                         VariableInfo ifAddon = InfoUtils.getVariableInIfStatement(lineIString);
                         if (ifAddon != null){
@@ -324,7 +328,7 @@ public class Suspicious implements Serializable{
 
         //remove inner class methods
         List<MethodInfo> innerMethod = new ArrayList<>();
-        String code = FileUtils.getCodeFromFile(_srcPath, _classname);
+        String code = FileUtils.getCodeFromFile(_srcPath, classname());
         for (MethodInfo info: _methodInfo){
             if (MethodUtils.isInnerMethod(code, info.methodName)){
                 innerMethod.add(info);
@@ -348,11 +352,21 @@ public class Suspicious implements Serializable{
     public List<TraceResult> getTraceResult() throws IOException{
         VariableTracer tracer = new VariableTracer(_srcPath, _testSrcPath, this);
         List<TraceResult> traceResults = new ArrayList<TraceResult>();
-        for (String testclass: _tests){
+        List<String> trueTests = new ArrayList<>(_tests);
+        trueTests.removeAll(_failTests);
+        int tracedTestCount = 0;
+        for (String testclass: trueTests){
             if (!_failTests.contains(testclass) && !testFilter(_testSrcPath, testclass.split("#")[0], testclass.split("#")[1])){
                 continue;
             }
-            traceResults.addAll(tracer.trace(classname(), functionname(), testclass.split("#")[0], testclass.split("#")[1], getDefaultErrorLine(), !_failTests.contains(testclass)));
+            traceResults.addAll(tracer.trace(classname(), functionname(), testclass.split("#")[0], testclass.split("#")[1], getDefaultErrorLine(), true));
+            tracedTestCount ++;
+            if (traceResults.size()> 50 || tracedTestCount>50){
+                break;
+            }
+        }
+        for (String testclass: _failTests){
+            traceResults.addAll(tracer.trace(classname(), functionname(), testclass.split("#")[0], testclass.split("#")[1], getDefaultErrorLine(), false));
         }
         return traceResults;
     }

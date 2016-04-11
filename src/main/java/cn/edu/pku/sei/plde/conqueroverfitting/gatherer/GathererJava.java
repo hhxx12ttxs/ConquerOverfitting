@@ -14,6 +14,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 
 public class GathererJava {
@@ -51,6 +52,7 @@ public class GathererJava {
                     + question + "&p=" + i + "&per_page=" + API_PER_PAGE
                     + "&lan=" + API_CODE_LANGUAGE;
             System.out.println("search : " + url);
+
             codeUrlList.addAll(getCodeUrlList(url));
         }
 
@@ -84,7 +86,8 @@ public class GathererJava {
         } catch (IOException e) {
             e.printStackTrace();
             return null;
-        } finally {
+        }
+        finally {
             getMethod.releaseConnection();
         }
     }

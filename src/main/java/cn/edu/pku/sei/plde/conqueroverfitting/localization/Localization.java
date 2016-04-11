@@ -12,8 +12,6 @@ import cn.edu.pku.sei.plde.conqueroverfitting.localization.metric.Ochiai;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.common.synth.TestClassesFinder;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.gzoltar.GZoltarSuspiciousProgramStatements;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.common.library.JavaLibrary;
-import com.sun.glass.ui.EventLoop;
-import javassist.NotFoundException;
 import org.apache.commons.lang.StringUtils;
 
 import java.io.*;

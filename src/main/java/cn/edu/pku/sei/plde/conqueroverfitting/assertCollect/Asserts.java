@@ -36,6 +36,7 @@ public class Asserts {
     public int _assertNums;
     public List<String> _asserts;
     public Map<String, Integer> _assertLineMap;
+    public int _errors = 0;
 
     public Asserts(String classpath, String srcPath, String testClasspath, String testSrcPath, String testClassname, String testMethodName, List<String> libPath) {
         _libPath = libPath;
@@ -110,6 +111,7 @@ public class Asserts {
                     }
                 }
                 if (!AssertUtils.isAssertLine(lineString,code)){
+                    _errors ++;
                     break;
                 }
                 SourceUtils.commentCodeInSourceFile(tempJavaFile,lineNum);
@@ -213,6 +215,10 @@ public class Asserts {
 
     public int errorAssertNum(){
         return _errorLines.size();
+    }
+
+    public int errorNum(){
+        return _errorLines.size()+_errors;
     }
 
     public int trueAssertNum(){

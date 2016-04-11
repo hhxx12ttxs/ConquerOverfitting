@@ -43,6 +43,10 @@ public class LineUtils {
         return line.replace(" ","").startsWith("if(");
     }
 
+    public static boolean isIfAndElseIfLine(String line){
+        return isIfLine(line) || line.replace(" ", "").contains("elseif(");
+    }
+
     public static boolean isBoundaryLine(String lineString){
         return  lineString.contains("if") ||
                 lineString.contains("for") ||

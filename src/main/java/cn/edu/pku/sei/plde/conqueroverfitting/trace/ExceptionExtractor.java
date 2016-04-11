@@ -24,9 +24,8 @@ public class ExceptionExtractor {
 
     public static Map<VariableInfo, List<String>> extract(List<TraceResult> traceResults, List<VariableInfo> vars){
         Map<VariableInfo, List<String>> exceptionVariable = AbandanTrueValueFilter.abandon(traceResults, vars);
-        Map<VariableInfo, List<String>> cleanedVariable = cleanVariables(exceptionVariable);
-        Map<VariableInfo, List<BoundaryInfo>> variableBoundary = SearchBoundaryFilter.getBoundary(cleanedVariable);
-        return getBoundaryIntervals(cleanedVariable, variableBoundary);
+        Map<VariableInfo, List<BoundaryInfo>> variableBoundary = SearchBoundaryFilter.getBoundary(exceptionVariable);
+        return getBoundaryIntervals(exceptionVariable, variableBoundary);
     }
 
     private static Map<VariableInfo, List<String>> getBoundaryIntervals(Map<VariableInfo, List<String>> variableValue, Map<VariableInfo, List<BoundaryInfo>> variableBoundary){
@@ -42,6 +41,13 @@ public class ExceptionExtractor {
             List<BoundaryInfo> boundaryList = variableBoundary.get(entry.getKey());
             if (MathUtils.isNumberType(entry.getKey().getStringType())) {
                 if (entry.getValue().size() == 1 && (entry.getValue().get(0).equals("NaN") || boundaryList.size() == 0)){
+                    result.put(entry.getKey(), entry.getValue());
+                    continue;
+                }
+                if (entry.getValue().size() == 0){
+                    continue;
+                }
+                if (boundaryList.size() == 0 && entry.getKey().priority == 2){
                     result.put(entry.getKey(), entry.getValue());
                     continue;
                 }
@@ -132,48 +138,6 @@ public class ExceptionExtractor {
         return true;
     }
 
-    private static Map<VariableInfo, List<String>> cleanVariables(Map<VariableInfo, List<String>> exceptionVariable){
-        Map<VariableInfo, List<String>> cleanedVariable = new HashMap<>();
-        for (Map.Entry<VariableInfo, List<String>> var: exceptionVariable.entrySet()){
-            List<String> unrepeatValue = new ArrayList(new HashSet(var.getValue()));
-            if (var.getKey() == null){
-                continue;
-            }
-            if (var.getKey().isSimpleType && var.getKey().variableSimpleType==null){
-                continue;
-            }
-            if (!var.getKey().isSimpleType && var.getKey().otherType == null){
-                continue;
-            }
-            if (var.getKey().getStringType().equals("BOOLEAB")){
-                if (var.getValue().contains("true") && var.getValue().contains("false")){
-                    continue;
-                }
-            }
-            List<String> bannedValue = new ArrayList<>();
-            for (String value: var.getValue()){
-                if (MathUtils.isNumberType(var.getKey().getStringType())&&value.length()>10){
-                    bannedValue.add(value);
-                }
-            }
-            var.getValue().removeAll(bannedValue);
-            //如果是for循环的计数的数据,取最大值.
-            //if (CodeUtils.isForLoopParam(unrepeatValue)!=-1){
-            //    unrepeatValue.clear();
-            //    unrepeatValue.add(String.valueOf(CodeUtils.isForLoopParam(unrepeatValue)));
-            //}
-            if (var.getValue().size()== 0){
-                 continue;
-            }
-            if (var.getKey().variableName.equals("this") || var.getKey().variableName.equals("return")){
-                cleanedVariable.clear();
-                cleanedVariable.put(var.getKey(), unrepeatValue);
-                break;
-            }
-            cleanedVariable.put(var.getKey(), unrepeatValue);
-        }
-        return cleanedVariable;
-    }
 
 
 }
