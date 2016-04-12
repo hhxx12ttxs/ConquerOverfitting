@@ -78,6 +78,30 @@ public class TestUtils {
     }
 
 
+    public static String getDefects4jTestResult(String projectName){
+        try {
+            String result = ShellUtils.shellRun(Arrays.asList("cd project\n","cd "+projectName+"\n","defects4j test"));
+            return result;
+        } catch (IOException e){
+            return "";
+        }
+    }
+
+    public static int getFailTestNumInProject(String projectName){
+        String testResult = getDefects4jTestResult(projectName);
+        if (!testResult.contains("Failing tests:")){
+            return 0;
+        }
+        for (String lineString: testResult.split("\n")){
+            if (lineString.contains("Failing tests:")){
+                return Integer.valueOf(lineString.split(":")[1].trim());
+            }
+        }
+        return 0;
+    }
+
+
+
     private static String buildClasspath(String classpath, String testClasspath, List<String> libPaths, List<String> additionalPath){
         if (libPaths.size()!=0){
             additionalPath = new ArrayList<>(additionalPath);

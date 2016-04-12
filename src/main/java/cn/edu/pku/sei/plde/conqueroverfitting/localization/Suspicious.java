@@ -211,9 +211,15 @@ public class Suspicious implements Serializable{
         variableInfos.addAll(locals);
         variableCollect = VariableCollect.GetInstance(getClassSrcIndex(classSrc));
         List<VariableInfo> parameters = variableCollect.getVisibleParametersInMethodList(classSrcPath, line);
+        int simpleVariableCount = 0;
+        for (VariableInfo param: parameters){
+            if (param.isSimpleType){
+                simpleVariableCount ++;
+            }
+        }
         for (VariableInfo param: parameters){
             param.isParameter = true;
-            if (parameters.size() == 1 && locals.size() == 0 && param.isSimpleType){
+            if (simpleVariableCount == 1 && locals.size() == 0 && param.isSimpleType){
                 param.priority = 2;
             }
             List<VariableInfo> subVariableInfo = InfoUtils.getSubInfoOfComplexVariable(param,classSrc, classSrcPath);

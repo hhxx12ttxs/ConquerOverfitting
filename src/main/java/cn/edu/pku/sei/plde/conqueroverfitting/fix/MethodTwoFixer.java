@@ -54,7 +54,7 @@ public class MethodTwoFixer {
             for (String ifString: ifStrings){
                 int startLine = ifLines.get(0);
                 int endLine = ifLines.get(1);
-                while (startLine++ < endLine) {
+                while (startLine < endLine) {
                     String lastLineString = CodeUtils.getLineFromCode(_code, startLine-1);
                     boolean result = false;
                     if (!LineUtils.isIfAndElseIfLine(lastLineString)) {
@@ -73,7 +73,7 @@ public class MethodTwoFixer {
                     if (result){
                         return true;
                     }
-                    break;
+                    endLine --;
                 }
             }
         }

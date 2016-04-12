@@ -60,8 +60,14 @@ public class Asserts {
         }
         _methodCode = FileUtils.getTestFunctionCodeFromCode(_code,_testMethodName, _testSrcPath);
         List<Integer> methodLines = CodeUtils.getSingleMethodLine(_code,_testMethodName);
-        _methodStartLine =methodLines.get(0);
-        _methodEndLine = methodLines.get(1);
+        if (methodLines.size() == 2){
+            _methodStartLine =methodLines.get(0);
+            _methodEndLine = methodLines.get(1);
+        }
+        else {
+            _methodStartLine = 0;
+            _methodEndLine = 0;
+        }
         _assertLineMap = CodeUtils.getAssertInTest(_code, testMethodName, _methodStartLine);
         _asserts = new ArrayList<>(_assertLineMap.keySet());
         _assertNums = _asserts.size();

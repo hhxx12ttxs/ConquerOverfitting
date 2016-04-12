@@ -303,6 +303,9 @@ public class CodeUtils {
         ASTParser parser = ASTParser.newParser(AST.JLS4);
         parser.setSource(code.toCharArray());
         CompilationUnit unit = (CompilationUnit) parser.createAST(null);
+        if (unit.types().size() == 0){
+            return new ArrayList<>();
+        }
         TypeDeclaration declaration = (TypeDeclaration) unit.types().get(0);
         MethodDeclaration methodDec[] = declaration.getMethods();
         return Arrays.asList(methodDec);

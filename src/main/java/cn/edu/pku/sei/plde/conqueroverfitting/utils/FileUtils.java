@@ -35,6 +35,9 @@ public class FileUtils {
 		while (!fileList.isEmpty()) {
 			File firstFile = fileList.removeFirst();
 			File[] subFiles = firstFile.listFiles();
+			if (subFiles == null){
+				continue;
+			}
 			for (File subFile : subFiles) {
 				if (subFile.isDirectory()) {
 					fileList.add(subFile);

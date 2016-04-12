@@ -61,10 +61,10 @@ public class SourceUtils {
             while ((lineString = reader.readLine()) != null) {
                 lineNum++;
                 if (lineNum == startLine){
-                    outputStream.write((ifStatement+"\n").getBytes());
+                    outputStream.write((ifStatement).getBytes());
                 }
                 if (lineNum == endLine && !replace){
-                    outputStream.write("}\n".getBytes());
+                    outputStream.write("}".getBytes());
                 }
                 if (lineNum != startLine || !replace){
                     outputStream.write((lineString+"\n").getBytes());
