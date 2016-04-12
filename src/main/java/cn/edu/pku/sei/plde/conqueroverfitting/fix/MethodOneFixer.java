@@ -67,14 +67,15 @@ public class MethodOneFixer {
                     continue;
                 }
                 Asserts asserts = new Asserts(_classpath,_classSrcPath, _testClassPath, _testSrcPath, patch._testClassName, patch._testMethodName);
-                int errAssertNumAfterFix = asserts.errorAssertNum();
-                int errAssertBeforeFix = _suspicious._assertsMap.get(patch._testClassName+"#"+patch._testMethodName).errorAssertNum();
+                int errAssertNumAfterFix = asserts.errorNum();
+                int errAssertBeforeFix = _suspicious._assertsMap.get(patch._testClassName+"#"+patch._testMethodName).errorNum();
 
 
                 System.out.println(patchString);
                 if (errAssertNumAfterFix < errAssertBeforeFix){
                     truePatchLine = patchLine;
                     truePatchString = patchString;
+                    break;
                 }
             }
         }

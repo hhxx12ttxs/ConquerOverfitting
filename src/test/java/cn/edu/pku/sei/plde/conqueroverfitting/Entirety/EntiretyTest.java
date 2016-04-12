@@ -25,7 +25,7 @@ import java.util.*;
  * Created by yanrunfa on 16/2/21.
  */
 public class EntiretyTest {
-    private final  String PATH_OF_DEFECTS4J = "/home/yanrunfa/Documents/defects4j/tmp/";
+    private final  String PATH_OF_DEFECTS4J = "/Users/yanrunfa/Documents/defects4j/tmp/";
     private String classpath = System.getProperty("user.dir")+"/project/classpath/";
     private String classSrc = System.getProperty("user.dir")+"/project/classSrc/";
     private String testClasspath = System.getProperty("user.dir")+"/project/testClasspath";
@@ -34,7 +34,7 @@ public class EntiretyTest {
 
     @Test
     public void testEntirety() throws Exception{
-        String project = setWorkDirectory("Closure", 1);
+        String project = setWorkDirectory("Lang", 7);
         Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc,libPath);
         List<Suspicious> suspiciouses = localization.getSuspiciousLite();
         for (Suspicious suspicious: suspiciouses){
@@ -51,41 +51,59 @@ public class EntiretyTest {
         if (boundarys.size() == 0){
             return false;
         }
-        String code = FileUtils.getCodeFromFile(suspicious._srcPath, suspicious.classname());
-        for (int errorLine: suspicious.errorLines()){
-            String statement = CodeUtils.getMethodBodyBeforeLine(code, suspicious.functionnameWithoutParam(), errorLine);
-            Set<String> variables = new HashSet<>();
-            for (Map.Entry<VariableInfo, List<String>> entry: boundarys.entrySet()){
-                if (entry.getKey().variableName.endsWith(".null") || entry.getKey().variableName.endsWith(".Comparable")){
-                    variables.add(entry.getKey().variableName.substring(0, entry.getKey().variableName.lastIndexOf(".")));
-                }
-                else {
-                    variables.add(entry.getKey().variableName);
-                }
-            }
-            VariableSort variableSort = new VariableSort(variables, statement);
-            List<List<String>> sortedVariable = variableSort.getSortVariable();
-            BoundarySorter sorter = new BoundarySorter(suspicious, classSrc);
-            List<String> ifStrings;
-            if (sortedVariable.size() == 1 && variables.size() > 2){
-                ifStrings = sorter.sortList(boundarys);
+       List<String> ifStrings = getIfStrings(suspicious, boundarys, traceResults);
+        if (fixMethodOne(suspicious, ifStrings, project)){
+            System.out.println("Fix Success One Place");
+            if (TestUtils.getFailTestNumInProject(project) > 0){
+                return false;
             }
             else {
-                ifStrings = sorter.getIfStringFromBoundarys(boundarys.values());
+                System.out.println("Fix All Place Success");
+                return true;
             }
-            //return fixMethodOne(suspicious, ifStrings);
-            if (fixMethodTwo(suspicious, ifStrings, project)){
-                System.out.println("Fix Success One Place");
-                if (TestUtils.getFailTestNumInProject(project) > 0){
-                    return false;
-                }
-                else {
-                    System.out.println("Fix All Place Success");
-                    return true;
-                }
+        }
+        if (fixMethodTwo(suspicious, ifStrings, project)){
+            System.out.println("Fix Success One Place");
+            if (TestUtils.getFailTestNumInProject(project) > 0){
+                return false;
+            }
+            else {
+                System.out.println("Fix All Place Success");
+                return true;
             }
         }
         return false;
+    }
+
+    public List<String> getIfStrings(Suspicious suspicious, Map<VariableInfo, List<String>> boundarys, List<TraceResult> traceResults){
+        String code = FileUtils.getCodeFromFile(suspicious._srcPath, suspicious.classname());
+        int maxLine = 0;
+        for (int errorLine: suspicious.errorLines()) {
+            if (errorLine > maxLine) {
+                maxLine = errorLine;
+            }
+        }
+        String statement = CodeUtils.getMethodBodyBeforeLine(code, suspicious.functionnameWithoutParam(), maxLine);
+        Set<String> variables = new HashSet<>();
+        for (Map.Entry<VariableInfo, List<String>> entry: boundarys.entrySet()){
+            if (entry.getKey().variableName.endsWith(".null") || entry.getKey().variableName.endsWith(".Comparable")){
+                variables.add(entry.getKey().variableName.substring(0, entry.getKey().variableName.lastIndexOf(".")));
+            }
+            else {
+                variables.add(entry.getKey().variableName);
+            }
+        }
+        VariableSort variableSort = new VariableSort(variables, statement);
+        List<List<String>> sortedVariable = variableSort.getSortVariable();
+        BoundarySorter sorter = new BoundarySorter(suspicious, classSrc);
+
+        for (TraceResult traceResult: traceResults){
+            if (traceResult.getTestResult()){
+                return sorter.sortList(boundarys);
+
+            }
+        }
+        return sorter.getIfStringFromBoundarys(sortedVariable);
     }
 
     public boolean fixMethodTwo(Suspicious suspicious, List<String> ifStrings, String project) throws Exception{

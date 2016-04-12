@@ -53,6 +53,18 @@ public class AbandanTrueValueFilter {
                 if (entry.getKey().priority > 1){
                     exceptionValues.put(entry.getKey(), entry.getValue());
                 }
+                if (entry.getKey().getStringType().equals("BOOLEAN")){
+                    if (trueVariable.containsKey(entry.getKey()) && falseVariable.containsKey(entry.getKey())){
+                        if (trueVariable.get(entry.getKey()).size() == 1 && falseVariable.get(entry.getKey()).size() == 2){
+                            if (trueVariable.get(entry.getKey()).get(0).equals("true")){
+                                exceptionValues.put(entry.getKey(), Arrays.asList("false"));
+                            }
+                            else {
+                                exceptionValues.put(entry.getKey(), Arrays.asList("true"));
+                            }
+                        }
+                    }
+                }
             }
         }
         return exceptionValues;

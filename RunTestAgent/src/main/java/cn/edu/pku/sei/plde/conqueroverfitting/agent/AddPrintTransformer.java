@@ -128,8 +128,8 @@ public class AddPrintTransformer implements ClassFileTransformer {
             return printLine;
         }
         if (varType == null){
-            printLine += "System.out.print(\"|"+varName+"=\"+";
-            printLine += varName +"+\"|\""+");";
+            printLine += "System.out.print(\"|"+varName.replace("\"","\\\"")+"=\"+(";
+            printLine += varName +")+\"|\""+");";
             printLine += "} catch (Exception e) {}\n";
             return printLine;
         }

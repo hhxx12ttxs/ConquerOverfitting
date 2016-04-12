@@ -219,7 +219,7 @@ public class Suspicious implements Serializable{
         }
         for (VariableInfo param: parameters){
             param.isParameter = true;
-            if (simpleVariableCount == 1 && locals.size() == 0 && param.isSimpleType){
+            if (simpleVariableCount == 1 && locals.size() == 0 && MathUtils.isNumberType(param.getStringType())){
                 param.priority = 2;
             }
             List<VariableInfo> subVariableInfo = InfoUtils.getSubInfoOfComplexVariable(param,classSrc, classSrcPath);
@@ -297,11 +297,9 @@ public class Suspicious implements Serializable{
             for (int i=line; i>0; i--){
                 String lineIString = CodeUtils.getLineFromCode(code, i);
                 if (LineUtils.isIfAndElseIfLine(lineIString)){
-                    if ((lineIString.contains(">") || lineIString.contains("<"))){
-                        VariableInfo ifAddon = InfoUtils.getVariableInIfStatement(lineIString);
-                        if (ifAddon != null){
-                            infos.add(ifAddon);
-                        }
+                    VariableInfo ifAddon = InfoUtils.getVariableInIfStatement(lineIString);
+                    if (ifAddon != null){
+                        infos.add(ifAddon);
                     }
                     break;
                 }

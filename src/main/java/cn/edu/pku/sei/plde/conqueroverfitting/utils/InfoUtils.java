@@ -199,6 +199,11 @@ public class InfoUtils {
             var1 = ifStatement.split("<")[0];
             var2 = ifStatement.split("<")[1];
         }
+        else {
+            VariableInfo info = new VariableInfo(ifStatement.trim(),TypeEnum.BOOLEAN,true, null);
+            info.isAddon = true;
+            return info;
+        }
         try {
             MathUtils.parseStringValue(var2);
         } catch (Exception e1){

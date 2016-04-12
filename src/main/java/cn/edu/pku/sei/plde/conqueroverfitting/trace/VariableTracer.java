@@ -13,6 +13,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 
 import javassist.NotFoundException;
 import org.apache.commons.lang.StringUtils;
+import sun.misc.BASE64Encoder;
 
 import java.io.*;
 import java.util.*;
@@ -233,10 +234,10 @@ public class VariableTracer {
                 if (!pair.contains("=")){
                     continue;
                 }
-                if (pair.substring(pair.indexOf("=")+1).startsWith("\"+") && pair.substring(pair.indexOf("=")+1).endsWith("+\"")){
+                if (pair.substring(pair.lastIndexOf("=")+1).startsWith("\"+") && pair.substring(pair.lastIndexOf("=")+1).endsWith("+\"")){
                     continue;
                 }
-                result.put(pair.substring(0, pair.indexOf('=')),pair.substring(pair.indexOf('=')+1));
+                result.put(pair.substring(0, pair.lastIndexOf('=')),pair.substring(pair.lastIndexOf('=')+1));
             }
             if (result.getResultMap().size() != 0){
                 results.add(result);
@@ -251,9 +252,10 @@ public class VariableTracer {
         String junitPath = PathUtils.getJunitPath();
 
         String agentArg = buildAgentArg(classname, functionname, testClasspath, vars, methods, errorLine);
+        String encodedAgentArg = new BASE64Encoder().encode(agentArg.getBytes());
+        encodedAgentArg = "\""+encodedAgentArg/*.substring(0, encodedAgentArg.length()-1)*/+"\"";
         String classpath = buildClasspath(Arrays.asList(junitPath));
-        String[] arg = {"java","-javaagent:"+tracePath+"="+agentArg,"-cp",classpath,"cn.edu.pku.sei.plde.conqueroverfitting.junit.JunitRunner", testClassname+"#"+_testMethodName};
-        System.out.print(StringUtils.join(arg," "));
+        String[] arg = {"java","-javaagent:"+tracePath+"="+encodedAgentArg,"-cp",classpath,"cn.edu.pku.sei.plde.conqueroverfitting.junit.JunitRunner", testClassname+"#"+_testMethodName};
         String shellResult = ShellUtils.shellRun(Arrays.asList(StringUtils.join(arg, " ")));
         if (shellResult.length() <= 0){
             throw new IOException("Shell Run Error, Shell Args:"+ StringUtils.join(arg," "));
@@ -296,7 +298,7 @@ public class VariableTracer {
             }
             agentMethods += "/";
         }
-        return "\""+StringUtils.join(Arrays.asList(agentClass,agentFunc,agentLine,agentSrc,agentCp,agentVars,agentMethods, agentTest, agentTestSrc),",,")+"\"";
+        return StringUtils.join(Arrays.asList(agentClass,agentFunc,agentLine,agentSrc,agentCp,agentVars,agentMethods, agentTest, agentTestSrc),",,");
     }
 
     private String buildClasspath(List<String> additionalPath){

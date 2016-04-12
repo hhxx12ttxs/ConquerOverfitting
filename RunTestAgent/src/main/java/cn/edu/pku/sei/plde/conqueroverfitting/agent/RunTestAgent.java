@@ -24,7 +24,10 @@ public class RunTestAgent {
         if (agentArgs.endsWith("\"")){
             agentArgs = agentArgs.substring(0,agentArgs.length()-2);
         }
-        String[] args = agentArgs.split(",,");
+        BASE64Decoder decoder = new BASE64Decoder();
+        String decodedAgentArgs = new String(decoder.decodeBuffer(agentArgs), "utf-8");
+        System.out.println("Agent Args: "+decodedAgentArgs);
+        String[] args = decodedAgentArgs.split(",,");
         if (args.length < 5 || args.length > 10){
             throw new IOException("Wrong Number Args");
         }
@@ -92,7 +95,7 @@ public class RunTestAgent {
                 }
             }
             else if (key.equalsIgnoreCase("patch")) {
-                BASE64Decoder decoder = new BASE64Decoder();
+                decoder = new BASE64Decoder();
                 patch = new String(decoder.decodeBuffer(value), "utf-8");
             }
             else if (key.equalsIgnoreCase("assert")){
