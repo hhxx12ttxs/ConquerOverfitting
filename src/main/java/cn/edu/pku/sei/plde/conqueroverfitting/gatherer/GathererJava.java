@@ -18,13 +18,15 @@ import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 
 public class GathererJava {
-    private static final int API_PAGE_NUM = 2;
+    private static final int API_PAGE_NUM = 3;
     private static final int API_PER_PAGE = 100;
     private static final int API_CODE_LANGUAGE = 23;// java
 
     private static final String API_SEARCH_CODE_BASE_URL = "https://searchcode.com/api/";
     private static final String API_CODE_SEARCH = "codesearch_I";
     private static final String API_CODE_RESULT = "result";
+
+    private static final int MAX_URL_NUM = 200;
 
     private HttpClient httpClient;
 
@@ -55,7 +57,10 @@ public class GathererJava {
 
             codeUrlList.addAll(getCodeUrlList(url));
         }
-
+        int size = codeUrlList.size();
+        for(int i = MAX_URL_NUM; i < size; i ++){
+            codeUrlList.remove(codeUrlList.size() - 1);
+        }
         new ThreadPoolHttpClient().fetch(project, codeUrlList);
     }
 
