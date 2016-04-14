@@ -99,6 +99,11 @@ public class GathererJava {
             JSONObject jsonObj = JSONObject.fromObject(html);
             JSONArray jsonArray = jsonObj.getJSONArray("results");
             for (int i = 0; i < jsonArray.size(); i++) {
+                String repo = jsonArray.getJSONObject(i).getString("repo");
+                //System.out.println("repo " + repo);
+                if(repo.contains(project)){
+                    continue;
+                }
                 String id = jsonArray.getJSONObject(i).getString("id");
                 String codeUrl = API_SEARCH_CODE_BASE_URL + API_CODE_RESULT + "/" + id + "/";
                 System.out.println("result : " + codeUrl);
