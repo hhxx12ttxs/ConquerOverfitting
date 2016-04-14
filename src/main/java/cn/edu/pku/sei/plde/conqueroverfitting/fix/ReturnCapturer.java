@@ -13,10 +13,7 @@ import javassist.NotFoundException;
 import org.apache.commons.lang.StringUtils;
 import org.junit.runner.JUnitCore;
 import java.io.*;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
+import java.util.*;
 
 
 /**
@@ -228,10 +225,14 @@ public class ReturnCapturer {
 
     private String assertProcessing(String assertLine, String statements) throws Exception{
         String assertType = assertLine.substring(0, assertLine.indexOf('('));
-        List<String> parameters = CodeUtils.divideParameter(assertLine, 1);
+        List<String> parameters = CodeUtils.divideParameter(assertLine, 1, false);
         if (parameters.size() > 3 && parameters.size() <2){
+
             System.out.println(Arrays.toString(parameters.toArray()));
             throw new Exception("Function divideParameter Error!");
+        }
+        if (parameters.contains("Assert")){
+            parameters.remove("Assert");
         }
         if (parameters.size() == 4){
             parameters.remove(0);
@@ -244,19 +245,27 @@ public class ReturnCapturer {
             List<String> returnParam;
             String returnString;
 
-            if (parameters.get(0).contains("(") && parameters.get(0).contains(")") && parameters.get(0).contains(_methodName)){
-                callExpression = parameters.get(0);
-                returnExpression = parameters.get(1);
-            }
-            else {
+
+            if (parameters.get(1).contains("(") && parameters.get(1).contains(")") && parameters.get(1).contains(_methodName)){
                 callExpression = parameters.get(1);
                 returnExpression = parameters.get(0);
             }
-            callParam = CodeUtils.divideParameter(callExpression,1);
+            else {
+                callExpression = parameters.get(0);
+                returnExpression = parameters.get(1);
+                for (String line: statements.split("\n")){
+                    if (line.contains(returnExpression) && line.contains(_methodName) && line.contains("(") && line.contains(")")){
+                        callExpression = parameters.get(1);
+                        returnExpression = parameters.get(0);
+                    }
+                }
+
+            }
+            callParam = CodeUtils.divideParameter(callExpression,1, false);
             if (callParam.size() == 0){
                 callParam.add(callExpression);
             }
-            returnParam = CodeUtils.divideParameter(returnExpression, 1);
+            returnParam = CodeUtils.divideParameter(returnExpression, 1, false);
             if (returnParam.size() == 0){
                 returnParam.add(returnExpression);
             }
@@ -353,6 +362,9 @@ public class ReturnCapturer {
         }
         String result = "";
         for (String param: returnParam){
+            if (param.contains(".")){
+                param = param.substring(param.lastIndexOf(".")+1);
+            }
             StaticSlice staticSlice = new StaticSlice(statements, param);
             String sliceResult = staticSlice.getSliceStatements();
             List<String> trueResult = new ArrayList<>();

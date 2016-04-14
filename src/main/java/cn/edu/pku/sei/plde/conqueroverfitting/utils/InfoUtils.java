@@ -180,6 +180,9 @@ public class InfoUtils {
         if (!ifString.contains("if") || !ifString.contains("(") || !ifString.contains(")")){
             return null;
         }
+        if (ifString.contains("&&") || ifString.contains("||")){
+            return null;
+        }
         String ifStatement = ifString.substring(ifString.indexOf("(")+1,ifString.lastIndexOf(")"));
         String var1 = "";
         String var2 = "";

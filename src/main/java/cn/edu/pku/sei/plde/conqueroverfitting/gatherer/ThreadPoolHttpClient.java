@@ -85,7 +85,7 @@ public class ThreadPoolHttpClient {
                     // get the response body as an array of bytes
                     HttpEntity entity = response.getEntity();
                     if (entity != null) {
-                        JSONObject jsonObj = JSONObject.fromObject(EntityUtils.toString(entity));
+                          JSONObject jsonObj = JSONObject.fromObject(EntityUtils.toString(entity));
                         String code = jsonObj.get("code").toString();
                         FileUtils.writeFile("experiment//searchcode//" + project + "//" + id + ".java", code);
                     }

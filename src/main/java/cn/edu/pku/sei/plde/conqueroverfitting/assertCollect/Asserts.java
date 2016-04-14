@@ -32,11 +32,11 @@ public class Asserts {
     private String _methodCode;
     public int _methodStartLine;
     public int _methodEndLine;
-    public List<Integer> _errorLines = new ArrayList<>();
+    public List<Integer> _errorAssertLines = new ArrayList<>();
+    public List<Integer> _errorThrowLines = new ArrayList<>();
     public int _assertNums;
     public List<String> _asserts;
     public Map<String, Integer> _assertLineMap;
-    public int _errors = 0;
 
     public Asserts(String classpath, String srcPath, String testClasspath, String testSrcPath, String testClassname, String testMethodName, List<String> libPath) {
         _libPath = libPath;
@@ -71,7 +71,7 @@ public class Asserts {
         _assertLineMap = CodeUtils.getAssertInTest(_code, testMethodName, _methodStartLine);
         _asserts = new ArrayList<>(_assertLineMap.keySet());
         _assertNums = _asserts.size();
-        _errorLines = getErrorAssertLine();
+        _errorAssertLines = getErrorAssertLine();
     }
 
     public Asserts(String classpath, String srcPath,  String testClasspath, String testSrcPath, String testClassname, String testMethodName){
@@ -117,7 +117,7 @@ public class Asserts {
                     }
                 }
                 if (!AssertUtils.isAssertLine(lineString,code)){
-                    _errors ++;
+                    _errorThrowLines.add(lineNum);
                     break;
                 }
                 SourceUtils.commentCodeInSourceFile(tempJavaFile,lineNum);
@@ -220,15 +220,21 @@ public class Asserts {
     }
 
     public int errorAssertNum(){
-        return _errorLines.size();
+        return _errorAssertLines.size();
     }
 
     public int errorNum(){
-        return _errorLines.size()+_errors;
+        return _errorAssertLines.size()+_errorThrowLines.size();
+    }
+
+    public List<Integer> errorLines(){
+        List<Integer> result = new ArrayList<>(_errorAssertLines);
+        result.addAll(_errorThrowLines);
+        return result;
     }
 
     public int trueAssertNum(){
-        return _assertNums - _errorLines.size();
+        return _assertNums - _errorAssertLines.size();
     }
 
     private int count(String s,char c){
@@ -244,8 +250,8 @@ public class Asserts {
 
 
     public String getTrueTestFile(){
-        if (_errorLines.size()>0){
-            return getTrueTestFile(_errorLines);
+        if (_errorAssertLines.size()>0){
+            return getTrueTestFile(_errorAssertLines);
         }
         else {
             return "";

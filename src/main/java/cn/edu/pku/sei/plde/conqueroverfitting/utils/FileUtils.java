@@ -162,6 +162,9 @@ public class FileUtils {
 
 	public static String getTestFunctionBodyFromCode(String code, String targetFunctionName) {
 		String methodString = getTestFunctionCodeFromCode(code, targetFunctionName);
+		if (!methodString.contains("{") || !methodString.contains("}")){
+			return "";
+		}
 		methodString = methodString.substring(methodString.indexOf("{")+1, methodString.lastIndexOf("}"));
 		while (methodString.startsWith("\n")){
 			methodString = methodString.substring(1);

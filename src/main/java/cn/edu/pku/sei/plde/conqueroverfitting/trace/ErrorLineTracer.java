@@ -174,7 +174,7 @@ public class ErrorLineTracer {
     }
 
     private List<Integer> getErrorLineFromAssert(Asserts asserts){
-        List<Integer> assertLines = asserts._errorLines;
+        List<Integer> assertLines = asserts._errorAssertLines;
         List<Integer> result = new ArrayList<>();
         if (assertLines.size() < 1){
             return result;

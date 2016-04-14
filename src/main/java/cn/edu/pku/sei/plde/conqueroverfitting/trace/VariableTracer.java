@@ -5,6 +5,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.assertCollect.Asserts;
 import cn.edu.pku.sei.plde.conqueroverfitting.junit.JunitRunner;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Localization;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Suspicious;
+import cn.edu.pku.sei.plde.conqueroverfitting.slice.StaticSlice;
 import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.*;
 
@@ -81,6 +82,7 @@ public class VariableTracer {
             }
             for (Map.Entry<String, Integer> commentedTestClass: commentedTestClasses.entrySet()) {
                 String shellResult = traceShell(_testClassname, _classname, functionname(), commentedTestClass.getKey(), variableInfos, methodInfos, line);
+                _suspicious.methodCallNumFromTest += methodCallNum(shellResult);
                 if (shellResult.contains(">>") && shellResult.contains("<<")) {
                     String traceResult = analysisShellResult(shellResult);
                     results.addAll(traceAnalysis(traceResult, commentedTestClass.getValue()));
@@ -94,6 +96,10 @@ public class VariableTracer {
         results.addAll(getAddonResult());
         deleteTempFile();
         return results;
+    }
+
+    private int methodCallNum(String shellResult){
+        return shellResult.split("\\|into_method\\|").length-1;
     }
 
     private List<TraceResult> getAddonResult(){
@@ -117,7 +123,7 @@ public class VariableTracer {
                 String className = _classname.substring(_classname.lastIndexOf(".")+1);
                 if (param1.startsWith(className+".") && param2.startsWith(className+".") && param1.contains("()") && CodeUtils.countChar(param1,'.') >1){
                     TraceResult traceResult = new TraceResult(false);
-                    traceResult._assertLine = _asserts._errorLines.get(0);
+                    traceResult._assertLine = _asserts._errorAssertLines.get(0);
                     traceResult._testClass = _testClassname;
                     traceResult._testMethod = _testMethodName;
                     traceResult.put("this", param1.substring(param1.indexOf(".")+1,param1.lastIndexOf(".")));
@@ -132,7 +138,7 @@ public class VariableTracer {
                 String numParam = param.split(">=")[0].contains(_functionname)?param.split(">=")[1]:param.split(">=")[0];
                 if (numParam.matches("^(-?\\d+)(\\.\\d+)?$")){
                     TraceResult traceResult = new TraceResult(false);
-                    traceResult._assertLine = _asserts._errorLines.get(0);
+                    traceResult._assertLine = _asserts._errorAssertLines.get(0);
                     traceResult._testClass = _testClassname;
                     traceResult._testMethod = _testMethodName;
                     traceResult.put("return", "("+returnString+")" + "<" + numParam);
