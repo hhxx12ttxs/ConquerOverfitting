@@ -30,14 +30,16 @@ public class GathererJava {
 
     private ArrayList<String> keyWords;
     private String project;
+    private String packageName;
 
-    public GathererJava(ArrayList<String> keyWords, String project) {
+    public GathererJava(ArrayList<String> keyWords, String packageName, String project) {
         httpClient = new HttpClient();
         httpClient.getHttpConnectionManager().getParams()
                 .setConnectionTimeout(50000);
 
         this.keyWords = keyWords;
         this.project = project;
+        this.packageName = packageName;
     }
 
     public void searchCode() {
@@ -56,7 +58,7 @@ public class GathererJava {
             codeUrlList.addAll(getCodeUrlList(url));
         }
 
-        new ThreadPoolHttpClient().fetch(project, codeUrlList);
+        new ThreadPoolHttpClient().fetch(project, packageName,codeUrlList);
     }
 
     public String getHtml(String url) {
@@ -99,6 +101,11 @@ public class GathererJava {
             JSONObject jsonObj = JSONObject.fromObject(html);
             JSONArray jsonArray = jsonObj.getJSONArray("results");
             for (int i = 0; i < jsonArray.size(); i++) {
+                String repo = jsonArray.getJSONObject(i).getString("repo");
+                //System.out.println("repo " + repo);
+                if(repo.contains(project)){
+                    continue;
+                }
                 String id = jsonArray.getJSONObject(i).getString("id");
                 String codeUrl = API_SEARCH_CODE_BASE_URL + API_CODE_RESULT + "/" + id + "/";
                 System.out.println("result : " + codeUrl);

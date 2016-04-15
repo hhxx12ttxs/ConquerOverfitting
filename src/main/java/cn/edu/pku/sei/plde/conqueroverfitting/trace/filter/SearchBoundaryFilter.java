@@ -107,7 +107,7 @@ public class SearchBoundaryFilter {
 
         if (!simpleCodePackage.exists() && !complexCodePackage.exists()) {
             if (!codePackage.exists()){
-                GathererJava gathererJava = new GathererJava(keywords, StringUtils.join(keywords, "-"));
+                GathererJava gathererJava = new GathererJava(keywords, StringUtils.join(keywords, "-"),"joda-time");
                 gathererJava.searchCode();
             }
             if (!codePackage.exists()) {
@@ -131,7 +131,7 @@ public class SearchBoundaryFilter {
             keywords.remove(info.variableName);
             codePackage = new File("experiment/searchcode/" + StringUtils.join(keywords,"-"));
             if (!codePackage.exists()){
-                GathererJava gathererJava = new GathererJava(keywords, StringUtils.join(keywords,"-"));
+                GathererJava gathererJava = new GathererJava(keywords, StringUtils.join(keywords,"-"),"joda-time");
                 gathererJava.searchCode();
                 if (!codePackage.exists()) {
                     codePackage.mkdirs();
@@ -155,7 +155,7 @@ public class SearchBoundaryFilter {
         keywords.remove(valueType);
         codePackage = new File("experiment/searchcode/" + StringUtils.join(keywords,"-"));
         if (!codePackage.exists()){
-            GathererJava gathererJava = new GathererJava(keywords, StringUtils.join(keywords,"-"));
+            GathererJava gathererJava = new GathererJava(keywords, StringUtils.join(keywords,"-"),"joda-time");
             gathererJava.searchCode();
             if (!codePackage.exists()) {
                 codePackage.mkdirs();

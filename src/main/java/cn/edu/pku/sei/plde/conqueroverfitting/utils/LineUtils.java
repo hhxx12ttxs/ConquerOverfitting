@@ -48,12 +48,16 @@ public class LineUtils {
     }
 
     public static boolean isBoundaryLine(String lineString){
-        return  lineString.contains("if") ||
-                lineString.contains("for") ||
-                lineString.contains("while") ||
+        return  lineString.contains("if ") ||
+                lineString.contains("for ") ||
+                lineString.contains("while ") ||
+                lineString.contains("if(") ||
+                lineString.contains("for(") ||
+                lineString.contains("while(") ||
                 lineString.trim().equals("{") ||
-                lineString.contains("try") ||
-                lineString.contains("catch") ||
+                lineString.contains("try ") ||
+                lineString.contains("try{") ||
+                lineString.contains("catch ") ||
                 lineString.trim().equals("}");
     }
 

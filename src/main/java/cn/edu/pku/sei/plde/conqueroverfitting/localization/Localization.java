@@ -180,7 +180,7 @@ public class Localization  {
             if (statement.getName().contains("exception") || statement.getName().contains("Exception")){
                 continue;
             }
-            if (!statement.getLabel().startsWith(packageName)){
+            if (!statement.getLabel().trim().startsWith(packageName.trim())){
                 continue;
             }
 

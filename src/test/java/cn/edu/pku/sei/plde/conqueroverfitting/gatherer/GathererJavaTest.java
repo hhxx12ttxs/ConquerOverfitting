@@ -15,7 +15,7 @@ public class GathererJavaTest extends TestCase {
 		keyWords.add("if");
 		keyWords.add("Complex");
 		//keyWords.add("divide");
-		GathererJava gathererJava = new GathererJava(keyWords, "math-complex");
+		GathererJava gathererJava = new GathererJava(keyWords, "if-Complex","math-complex");
 		gathererJava.searchCode();
 		long timeEnd = System.currentTimeMillis();
 		//103s

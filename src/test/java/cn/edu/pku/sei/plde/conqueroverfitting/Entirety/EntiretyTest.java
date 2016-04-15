@@ -23,7 +23,7 @@ import java.util.*;
  * Created by yanrunfa on 16/2/21.
  */
 public class EntiretyTest {
-    private final  String PATH_OF_DEFECTS4J = "/home/yanrunfa/Documents/defects4j/tmp/";
+    private final  String PATH_OF_DEFECTS4J = "/Users/yanrunfa/Documents/defects4j/tmp/";
     private String classpath = System.getProperty("user.dir")+"/project/classpath/";
     private String classSrc = System.getProperty("user.dir")+"/project/classSrc/";
     private String testClasspath = System.getProperty("user.dir")+"/project/testClasspath";
@@ -33,7 +33,7 @@ public class EntiretyTest {
     @Test
     public void testEntirety() throws Exception{
 
-        String project = setWorkDirectory("Math", 5);
+        String project = setWorkDirectory("Time", 9);
         Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc,libPath);
         List<Suspicious> suspiciouses = localization.getSuspiciousLite();
         suspiciousLoop(suspiciouses, project);
@@ -205,14 +205,14 @@ public class EntiretyTest {
             testClassSrc = projectDir.getAbsolutePath()+"/"+project +"/src/test/java/";
             return project;
         }
-        if (projectName.equals("Time") && number == 3){
+        if (projectName.equals("Time") && (number == 3||number == 9)){
             FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project,projectDir.getAbsolutePath());
             classpath = projectDir.getAbsolutePath()+"/"+project +"/target/classes/";
             testClasspath = projectDir.getAbsolutePath()+"/"+project +"/target/test-classes/";
             classSrc = projectDir.getAbsolutePath()+"/"+project +"/src/main/java/";
             testClassSrc = projectDir.getAbsolutePath()+"/"+project +"/src/test/java/";
             FileUtils.deleteDirNow(System.getProperty("user.dir")+"/src/test/resources");
-            FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project+"/src/test/resources/",System.getProperty("user.dir")+"/src/test");
+            FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project+"/src/test/resources/",System.getProperty("user.dir")+"/src/test/resources/");
             return project;
         }
         if (projectName.equals("Time")){

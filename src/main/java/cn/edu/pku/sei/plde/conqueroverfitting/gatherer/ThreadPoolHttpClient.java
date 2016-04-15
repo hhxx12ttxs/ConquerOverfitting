@@ -24,7 +24,7 @@ public class ThreadPoolHttpClient {
     public ThreadPoolHttpClient() {
     }
 
-    public void fetch(String project, List<String> urlList) {
+    public void fetch(String project, String packageName, List<String> urlList) {
         PoolingHttpClientConnectionManager cm = new PoolingHttpClientConnectionManager();
         //设置线程数最大10
         cm.setMaxTotal(10);
@@ -35,7 +35,7 @@ public class ThreadPoolHttpClient {
             GetThread[] getThreads = new GetThread[urlList.size()];
             for (int i = 0; i < urlList.size(); i++) {
                 HttpGet get = new HttpGet(urlList.get(i));
-                getThreads[i] = new GetThread(httpclient, get, project, i + 1);
+                getThreads[i] = new GetThread(httpclient, get, project,packageName, i + 1);
             }
             //执行线程
             for (GetThread gt : getThreads) {
@@ -63,13 +63,15 @@ public class ThreadPoolHttpClient {
         private final HttpContext context;
         private final HttpGet httpget;
         private final String project;
+        private final String packageName;
         private final int id;
 
-        public GetThread(CloseableHttpClient httpClient, HttpGet httpget, String project, int id) {
+        public GetThread(CloseableHttpClient httpClient, HttpGet httpget, String project,String packageName, int id) {
             this.httpClient = httpClient;
             this.context = new BasicHttpContext();
             this.httpget = httpget;
             this.project = project;
+            this.packageName = packageName;
             this.id = id;
         }
 
@@ -87,7 +89,7 @@ public class ThreadPoolHttpClient {
                     if (entity != null) {
                           JSONObject jsonObj = JSONObject.fromObject(EntityUtils.toString(entity));
                         String code = jsonObj.get("code").toString();
-                        FileUtils.writeFile("experiment//searchcode//" + project + "//" + id + ".java", code);
+                        FileUtils.writeFile("experiment//searchcode//" + packageName + "//" + id + ".java", code);
                     }
                 } finally {
                     response.close();

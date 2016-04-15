@@ -208,6 +208,9 @@ public class CodeUtils {
                 bracket -= countChar(lineString,')');
                 line += lineString.trim();
                 if (bracket == 0){
+                    if (line.contains("fail();")){
+                        line = line+assertStartLine;
+                    }
                     result.put(line, assertStartLine);
                 }
                 continue;
@@ -217,6 +220,9 @@ public class CodeUtils {
                 bracket += countChar(lineString,'(');
                 bracket -= countChar(lineString,')');
                 if (bracket == 0){
+                    if (line.contains("fail();")){
+                        line = line + methodStartLine;
+                    }
                     result.put(line, methodStartLine);
                 }
                 else {

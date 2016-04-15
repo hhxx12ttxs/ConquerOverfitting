@@ -120,7 +120,7 @@ public class BoundaryGenerator {
                         return variableName+" != null";
                 }
             }
-            if (entry.getKey().variableName.equals("this") && trueValues.containsKey(entry.getKey())){
+            if (entry.getKey().variableName.equals("this")){
                 return "this.equals("+entry.getValue().get(0)+")";
             }
             if (entry.getKey().variableName.equals("return") && trueValues.containsKey(entry.getKey())){
