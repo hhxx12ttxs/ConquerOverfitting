@@ -180,7 +180,7 @@ public class Localization  {
             if (statement.getName().contains("exception") || statement.getName().contains("Exception")){
                 continue;
             }
-            if (!statement.getLabel().startsWith(packageName)){
+            if (!statement.getLabel().trim().startsWith(packageName.trim())){
                 continue;
             }
 
@@ -200,8 +200,6 @@ public class Localization  {
                         if (!extendsCode.equals("")){
                             code = extendsCode;
                             methodCode = FileUtils.getTestFunctionCodeFromCode(code, testMethod);
-                            statement.getFailTests().remove(test);
-                            statement.getFailTests().add(className.trim()+"#"+testMethod);
                         }
                     }
                 }

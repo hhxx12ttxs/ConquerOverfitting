@@ -29,6 +29,9 @@ public class JavaFixer {
             String testMethodName = test.split("#")[1];
             List<Integer> errorLine = suspicious._errorLineMap.get(test);
 
+            if (suspicious._assertsMap.get(test)._errorAssertLines.size() == 0){
+                suspicious._assertsMap.get(test)._errorAssertLines.add(-1);
+            }
             for (int assertLine: suspicious._assertsMap.get(test)._errorAssertLines){
                 String fixString = fixCapturer.getFixFrom(testClassName, testMethodName, assertLine, suspicious.classname(), suspicious.functionnameWithoutParam());
                 if (suspicious._isConstructor && fixString.contains("return")){

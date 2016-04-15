@@ -72,11 +72,11 @@ public class FileUtils {
 	}
 
 	public static String getFileAddressOfJava(String srcPath, String className){
-		return  srcPath + System.getProperty("file.separator") + className.replace('.',System.getProperty("file.separator").charAt(0))+".java";
+		return  srcPath.trim() + System.getProperty("file.separator") + className.trim().replace('.',System.getProperty("file.separator").charAt(0))+".java";
 	}
 
     public static String getFileAddressOfClass(String classPath, String className){
-        return  classPath + System.getProperty("file.separator") + className.replace('.',System.getProperty("file.separator").charAt(0))+".class";
+        return  classPath.trim() + System.getProperty("file.separator") + className.trim().replace('.',System.getProperty("file.separator").charAt(0))+".class";
     }
 
     public static String getCodeFromFile(String srcPath, String className){

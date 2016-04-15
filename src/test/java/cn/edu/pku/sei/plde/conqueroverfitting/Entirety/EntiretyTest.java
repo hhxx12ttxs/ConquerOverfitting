@@ -5,6 +5,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.boundary.BoundarySorter;
 import cn.edu.pku.sei.plde.conqueroverfitting.fix.*;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Localization;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Suspicious;
+import cn.edu.pku.sei.plde.conqueroverfitting.localization.common.library.StringLibrary;
 import cn.edu.pku.sei.plde.conqueroverfitting.sort.VariableSort;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.TraceResult;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.CodeUtils;
@@ -33,7 +34,7 @@ public class EntiretyTest {
     @Test
     public void testEntirety() throws Exception{
 
-        String project = setWorkDirectory("Math", 5);
+        String project = setWorkDirectory("Time", 9);
         Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc,libPath);
         List<Suspicious> suspiciouses = localization.getSuspiciousLite();
         suspiciousLoop(suspiciouses, project);
@@ -70,7 +71,8 @@ public class EntiretyTest {
         if (boundarys.size() == 0){
             return false;
         }
-       List<String> ifStrings = getIfStrings(suspicious, boundarys, traceResults);
+
+        List<String> ifStrings = getIfStrings(suspicious, boundarys, traceResults);
         if (JavaFixer.fixMethodOne(suspicious, ifStrings, project)){
             return isFixSuccess(suspicious, boundarys, project);
         }
@@ -108,6 +110,13 @@ public class EntiretyTest {
 
     public List<String> getIfStrings(Suspicious suspicious, Map<VariableInfo, List<String>> boundarys, List<TraceResult> traceResults){
         String code = FileUtils.getCodeFromFile(suspicious._srcPath, suspicious.classname());
+        Map<VariableInfo, List<String>> zeroPriority = new HashMap<>();
+        Map<VariableInfo, List<String>> unZeroPriority = new HashMap<>();
+        for (Map.Entry<VariableInfo, List<String>> entry: boundarys.entrySet()){
+            if (entry.getKey().priority == 0){
+                zeroPriority.put(entry.getKey(), entry.getValue());
+            }
+        }
         int maxLine = 0;
         for (int errorLine: suspicious.errorLines()) {
             if (errorLine > maxLine) {
@@ -128,10 +137,15 @@ public class EntiretyTest {
         List<List<String>> sortedVariable = variableSort.getSortVariable();
         BoundarySorter sorter = new BoundarySorter(suspicious, classSrc);
 
+
         for (TraceResult traceResult: traceResults){
             if (traceResult.getTestResult()){
                 return sorter.getIfStringFromBoundarys(changeVariableToIfStatement(sortedVariable, boundarys));
             }
+        }
+        if (zeroPriority.size() != 0){
+            return sorter.sortList(zeroPriority);
+
         }
         return sorter.sortList(boundarys);
     }
@@ -205,7 +219,7 @@ public class EntiretyTest {
             testClassSrc = projectDir.getAbsolutePath()+"/"+project +"/src/test/java/";
             return project;
         }
-        if (projectName.equals("Time") && number == 3){
+        if (projectName.equals("Time") && (number == 3 || number == 9)){
             FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project,projectDir.getAbsolutePath());
             classpath = projectDir.getAbsolutePath()+"/"+project +"/target/classes/";
             testClasspath = projectDir.getAbsolutePath()+"/"+project +"/target/test-classes/";

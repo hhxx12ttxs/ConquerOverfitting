@@ -33,13 +33,13 @@ public class Suspicious implements Serializable{
     public final double _suspiciousness;
     public final List<String> _tests;
     public final List<String> _failTests;
-    private final List<String> _lines;
+    public final List<String> _lines;
     private List<VariableInfo> _variableInfo;
     private List<MethodInfo> _methodInfo;
     public Map<String, Asserts> _assertsMap = new HashMap<>();
     public Map<String, List<Integer>> _errorLineMap = new HashMap<>();
     private int _defaultErrorLine = -1;
-    public int methodCallNumFromTest = 0;
+    public int trueMethodCallNumFromTest = 0;
     public Suspicious(String classpath,
                       String testClasspath,
                       String srcPath,
@@ -87,7 +87,7 @@ public class Suspicious implements Serializable{
     }
 
     public int trueAssertNums(){
-        return methodCallNumFromTest - errorAssertNums();
+        return trueMethodCallNumFromTest;
     }
 
     public int trueTestNums(){
@@ -383,7 +383,7 @@ public class Suspicious implements Serializable{
             }
             traceResults.addAll(tracer.trace(classname(), functionname(), testclass.split("#")[0], testclass.split("#")[1], getDefaultErrorLine(), true));
             tracedTestCount ++;
-            if (traceResults.size()> 50 || tracedTestCount>50){
+            if (traceResults.size()> 50 || tracedTestCount > 10){
                 break;
             }
         }

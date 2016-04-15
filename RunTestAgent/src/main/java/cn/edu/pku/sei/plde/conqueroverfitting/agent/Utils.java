@@ -96,12 +96,13 @@ public class Utils {
         String[] codeLines = code.split("\n");
         for (int i= errorLine; i > 0; i--){
             if (codeLines[i].contains(" "+methodName+"(")){
-                if (!codeLines[i+1].contains(" throws ")){
-                    return i+1;
+                while (!codeLines[i].contains("{")){
+                    i++;
                 }
-                else {
-                    return i+2;
+                while (!codeLines[i].contains("super(")){
+                    i++;
                 }
+                return i+1;
             }
         }
         return 0;
