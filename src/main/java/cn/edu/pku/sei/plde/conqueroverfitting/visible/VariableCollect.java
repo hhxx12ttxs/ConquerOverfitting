@@ -77,7 +77,7 @@ public class VariableCollect {
 			for (Iterator<VariableInfo> it = fieldsInClassList.iterator(); it
 					.hasNext();) {
 				VariableInfo variableInfo = it.next();
-				if (!variableInfo.isPublic) {
+				if (variableInfo.isPublic && variableInfo.isFinal) {
 					it.remove();
 				}
 			}

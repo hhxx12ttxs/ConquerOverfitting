@@ -15,6 +15,11 @@ public class GathererJavaTest extends TestCase {
 		keyWords.add("if");
 		keyWords.add("Complex");
 		//keyWords.add("divide");
+		//new GathererJava(keyWords, "commons-math");Math
+		//new GathererJava(keyWords, "commons-lang");Lang
+		//new GathererJava(keyWords, "closure-compiler");Closure
+		//new GathererJava(keyWords, "jfreechart");Chart
+		//new GathererJava(keyWords, "joda-time");Time
 		GathererJava gathererJava = new GathererJava(keyWords, "if-Complex","math-complex");
 		gathererJava.searchCode();
 		long timeEnd = System.currentTimeMillis();

@@ -26,6 +26,8 @@ public class GathererJava {
     private static final String API_CODE_SEARCH = "codesearch_I";
     private static final String API_CODE_RESULT = "result";
 
+    private static final int MAX_URL_NUM = 200;
+
     private HttpClient httpClient;
 
     private ArrayList<String> keyWords;
@@ -57,8 +59,11 @@ public class GathererJava {
 
             codeUrlList.addAll(getCodeUrlList(url));
         }
-
-        new ThreadPoolHttpClient().fetch(project, packageName,codeUrlList);
+        int size = codeUrlList.size();
+        for(int i = MAX_URL_NUM; i < size; i ++){
+            codeUrlList.remove(codeUrlList.size() - 1);
+        }
+        new ThreadPoolHttpClient().fetch(project, codeUrlList);
     }
 
     public String getHtml(String url) {

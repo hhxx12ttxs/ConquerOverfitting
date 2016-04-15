@@ -25,17 +25,21 @@ public class ShellUtils {
             in = new BufferedInputStream(p.getInputStream());
             br = new BufferedReader(new InputStreamReader(in));
             while ((s = br.readLine()) != null && s.length()!=0) {
-                System.out.println(s);
-                sb.append(System.getProperty("line.separator"));
-                sb.append(s);
+                if (sb.length() < 1000000){
+                    System.out.println(s);
+                    sb.append(System.getProperty("line.separator"));
+                    sb.append(s);
+                }
             }
 
             errIn = new BufferedInputStream(p.getErrorStream());
             errBr = new BufferedReader(new InputStreamReader(errIn));
             while ((s = errBr.readLine()) != null) {
-                System.out.println(s);
-                sb.append(System.getProperty("line.separator"));
-                sb.append(s);
+                if (sb.length() < 1000000){
+                    System.out.println(s);
+                    sb.append(System.getProperty("line.separator"));
+                    sb.append(s);
+                }
             }
         } catch (IOException e) {
             System.out.println(e.getMessage());
@@ -56,6 +60,7 @@ public class ShellUtils {
                 errIn.close();
             }
         }
+        System.out.println("Shell Result Length: "+sb.length());
         return sb.toString();
     }
 

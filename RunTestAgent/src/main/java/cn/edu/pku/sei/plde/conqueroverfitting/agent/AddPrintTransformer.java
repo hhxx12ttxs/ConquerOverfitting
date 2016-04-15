@@ -123,10 +123,17 @@ public class AddPrintTransformer implements ClassFileTransformer {
             return "";
         }
         printLine += "try {";
-        if (varType == null && varName.endsWith("()")){
+        if (varType == null && varName.contains("()")){
             printLine += "if (!stack_trace_name.contains(\""+varName.substring(0, varName.indexOf('('))+"\")){";
             printLine += "System.out.print(\"|"+varName+"=\"+(";
             printLine += varName +")+\"|\""+");";
+            printLine += "}} catch (Exception e) {}\n";
+            return printLine;
+        }
+        else if (varName.contains("()")){
+            printLine += "if (!stack_trace_name.contains(\""+varName.substring(0, varName.indexOf('('))+"\")){";
+            printLine += "System.out.print(\"|"+varName+".null=\"+(";
+            printLine += varName +"== null)+\"|\""+");";
             printLine += "}} catch (Exception e) {}\n";
             return printLine;
         }
@@ -143,7 +150,7 @@ public class AddPrintTransformer implements ClassFileTransformer {
             varPrinter += "+\"|\""+");";
             printLine += "if ("+varName+".length < 100){"+varPrinter+"}";
         }
-        else if (!varType.endsWith("[]")){
+        else if (!varType.endsWith("[]") && !varName.contains("()")){
             printLine += "System.out.print(\"|"+varName+".null=\"+(";
             printLine += varName +"== null)+\"|\""+");";
             printLine += "} catch (Exception e) {}\n";

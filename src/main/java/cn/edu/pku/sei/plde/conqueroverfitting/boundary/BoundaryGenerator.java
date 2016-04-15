@@ -31,7 +31,8 @@ public class BoundaryGenerator {
         Map<VariableInfo, List<String>> falseVariable = AbandanTrueValueFilter.getFalseValue(traceResults, suspicious.getAllInfo());
 
         if (filteredVariable.size() != 0) {
-            return generate(filteredVariable, trueVariable, falseVariable, suspicious.getAllInfo());
+            Map<VariableInfo, List<String>> result = generate(filteredVariable, trueVariable, falseVariable, suspicious.getAllInfo());
+            return result;
         }
         return new HashMap<>();
     }

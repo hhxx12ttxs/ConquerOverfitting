@@ -18,6 +18,7 @@ public class VariableInfo implements Comparable<VariableInfo>,Serializable{
 	public boolean isParameter = false;
 	public boolean isLocalVariable = false;
 	public boolean isFieldVariable = false;
+	public boolean isFinal = false;
 	public boolean isAddon = false;
 	public int priority = 1;
 
@@ -90,7 +91,17 @@ public class VariableInfo implements Comparable<VariableInfo>,Serializable{
 		this.isPublic = isPublic;
 		this.isStatic = isStatic;
 	}
-
+	public VariableInfo(String variableName,
+						TypeEnum variableSimpleType, boolean isSimpleType,
+						String otherType, boolean isPublic, boolean isStatic, boolean isFinal) {
+		this.variableName = variableName;
+		this.variableSimpleType = variableSimpleType;
+		this.isSimpleType = isSimpleType;
+		this.otherType = otherType;
+		this.isPublic = isPublic;
+		this.isStatic = isStatic;
+		this.isFinal = isFinal;
+	}
 	/**
 	 *
 	 * @param variableName

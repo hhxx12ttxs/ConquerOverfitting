@@ -200,8 +200,6 @@ public class Localization  {
                         if (!extendsCode.equals("")){
                             code = extendsCode;
                             methodCode = FileUtils.getTestFunctionCodeFromCode(code, testMethod);
-                            statement.getFailTests().remove(test);
-                            statement.getFailTests().add(className.trim()+"#"+testMethod);
                         }
                     }
                 }
