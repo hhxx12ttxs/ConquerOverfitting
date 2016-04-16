@@ -63,7 +63,7 @@ public class GathererJava {
         for(int i = MAX_URL_NUM; i < size; i ++){
             codeUrlList.remove(codeUrlList.size() - 1);
         }
-        new ThreadPoolHttpClient().fetch(project,packageName, codeUrlList);
+        new ThreadPoolHttpClient().fetch(project, packageName, codeUrlList);
     }
 
     public String getHtml(String url) {
@@ -107,7 +107,7 @@ public class GathererJava {
             JSONArray jsonArray = jsonObj.getJSONArray("results");
             for (int i = 0; i < jsonArray.size(); i++) {
                 String repo = jsonArray.getJSONObject(i).getString("repo");
-                //System.out.println("repo " + repo);
+                System.out.println("repo " + repo);
                 if(repo.contains(project)){
                     continue;
                 }
