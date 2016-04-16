@@ -63,7 +63,7 @@ public class GathererJava {
         for(int i = MAX_URL_NUM; i < size; i ++){
             codeUrlList.remove(codeUrlList.size() - 1);
         }
-        new ThreadPoolHttpClient().fetch(project, codeUrlList);
+        new ThreadPoolHttpClient().fetch(project,packageName, codeUrlList);
     }
 
     public String getHtml(String url) {

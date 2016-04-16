@@ -371,7 +371,7 @@ public class Suspicious implements Serializable{
         return _methodInfo;
     }
 
-    public List<TraceResult> getTraceResult() throws IOException{
+    public List<TraceResult> getTraceResult() {
         VariableTracer tracer = new VariableTracer(_srcPath, _testSrcPath, this);
         List<TraceResult> traceResults = new ArrayList<TraceResult>();
         List<String> trueTests = new ArrayList<>(_tests);
@@ -381,14 +381,22 @@ public class Suspicious implements Serializable{
             if (!_failTests.contains(testclass) && !testFilter(_testSrcPath, testclass.split("#")[0], testclass.split("#")[1])){
                 continue;
             }
-            traceResults.addAll(tracer.trace(classname(), functionname(), testclass.split("#")[0], testclass.split("#")[1], getDefaultErrorLine(), true));
+            try{
+                traceResults.addAll(tracer.trace(classname(), functionname(), testclass.split("#")[0], testclass.split("#")[1], getDefaultErrorLine(), true));
+            } catch (IOException e){
+                e.printStackTrace();
+            }
             tracedTestCount ++;
             if (traceResults.size()> 50 || tracedTestCount > 10){
                 break;
             }
         }
         for (String testclass: _failTests){
-            traceResults.addAll(tracer.trace(classname(), functionname(), testclass.split("#")[0], testclass.split("#")[1], getDefaultErrorLine(), false));
+            try{
+                traceResults.addAll(tracer.trace(classname(), functionname(), testclass.split("#")[0], testclass.split("#")[1], getDefaultErrorLine(), false));
+            } catch (IOException e){
+                e.printStackTrace();
+            }
         }
         return traceResults;
     }

@@ -211,5 +211,15 @@ public class MathUtils {
         return nums;
     }
 
+
+    public static <T> boolean hasInterSection(List<T> firstList, List<T> secondList){
+        for (T value: firstList){
+            if (secondList.contains(value)){
+                return true;
+            }
+        }
+        return false;
+    }
+
 }
 

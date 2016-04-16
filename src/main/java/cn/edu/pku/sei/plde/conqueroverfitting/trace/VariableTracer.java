@@ -86,7 +86,7 @@ public class VariableTracer {
 
                 if (_shellResult.contains(">>") && _shellResult.contains("<<")) {
                     String traceResult = analysisShellResult(_shellResult);
-                    results.addAll(traceAnalysis(traceResult, commentedTestClass.getValue(), _suspicious));
+                    results.addAll(traceAnalysis(traceResult, commentedTestClass.getValue(), line));
                 } else {
                     printErrorShell(_shellResult);
                 }
@@ -221,7 +221,7 @@ public class VariableTracer {
 
 
 
-    private List<TraceResult> traceAnalysis(String traceResult, int assertLine, Suspicious suspicious){
+    private List<TraceResult> traceAnalysis(String traceResult, int assertLine, int errorLine){
         if (traceResult.equals("")){
             return new ArrayList<>();
         }
@@ -252,6 +252,7 @@ public class VariableTracer {
                 _suspicious.trueMethodCallNumFromTest += methodCallNum(_shellResult);
             }
             result._assertLine = assertLine;
+            result._traceLine = errorLine;
             result._testClass = _testClassname;
             result._testMethod = _testMethodName;
             String[] pairs = trace.split("\\|");
@@ -294,7 +295,7 @@ public class VariableTracer {
         String agentFunc = "func:" + functionname;
         String agentLine = "line:"+ errorLine;
         String agentSrc = "src:" + _srcPath;
-        String agentCp = "cp:" + "\""+_classpath+":"+StringUtils.join(_suspicious._libPath,":")+"/Users/yanrunfa/.m2/repository/org/joda/joda-convert/1.1/joda-convert-1.1.jar\"";
+        String agentCp = "cp:" + "\""+_classpath+":"+StringUtils.join(_suspicious._libPath,":")+"/home/yanrunfa/.m2/repository/org/joda/joda-convert/1.1/joda-convert-1.1.jar\"";
         String agentTestSrc = testClassPath.equals("")?"":"testsrc: "+testClassPath.trim();
         String agentTest = testClassPath.equals("")?"":"test:" + _testClassname;
 
