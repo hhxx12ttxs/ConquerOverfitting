@@ -69,12 +69,12 @@ public class BoundaryCollectTest {
 
     @Test
     public void testTime9() {
-        String path = "experiment//searchcode//time-int-millisOffset";
+        String path = "experiment//searchcode//joda-time";
         BoundaryCollect boundaryCollect = new BoundaryCollect(path);
         ArrayList<BoundaryInfo> boundaryList = boundaryCollect.getBoundaryList();
 
         assertNotNull(boundaryList);
-        Log log = new Log("log//boundary-time-int-millisOffset.log");
+        Log log = new Log("log//boundary-joda-time");
         for(BoundaryInfo boundaryInfo : boundaryList){
             log.logSignLine("begin");
             log.logStr("name: " + boundaryInfo.info);
@@ -135,4 +135,5 @@ public class BoundaryCollectTest {
             log.logSignLine("end");
         }
     }
+
 }
