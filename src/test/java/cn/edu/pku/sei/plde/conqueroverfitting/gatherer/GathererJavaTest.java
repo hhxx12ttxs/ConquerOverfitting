@@ -15,12 +15,13 @@ public class GathererJavaTest extends TestCase {
 		keyWords.add("if");
 		keyWords.add("int");
 		keyWords.add("hours");
-		GathererJava gathererJava = new GathererJava(keyWords, "joda-time");
+		GathererJava gathererJava = new GathererJava(keyWords, "if hours", "joda-time");
 		//new GathererJava(keyWords, "commons-math");Math
 		//new GathererJava(keyWords, "commons-lang");Lang
 		//new GathererJava(keyWords, "closure-compiler");Closure
 		//new GathererJava(keyWords, "jfreechart");Chart
 		//new GathererJava(keyWords, "joda-time");Time
+		//GathererJava gathererJava = new GathererJava(keyWords, "if-Complex","math-complex");
 		gathererJava.searchCode();
 		long timeEnd = System.currentTimeMillis();
 		//103s

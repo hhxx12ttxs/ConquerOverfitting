@@ -180,7 +180,7 @@ public class Localization  {
             if (statement.getName().contains("exception") || statement.getName().contains("Exception")){
                 continue;
             }
-            if (!statement.getLabel().startsWith(packageName)){
+            if (!statement.getLabel().trim().startsWith(packageName.trim())){
                 continue;
             }
 
@@ -200,8 +200,6 @@ public class Localization  {
                         if (!extendsCode.equals("")){
                             code = extendsCode;
                             methodCode = FileUtils.getTestFunctionCodeFromCode(code, testMethod);
-                            statement.getFailTests().remove(test);
-                            statement.getFailTests().add(className.trim()+"#"+testMethod);
                         }
                     }
                 }
@@ -209,10 +207,10 @@ public class Localization  {
                     String errorAssertCode = "";
                     if (!errorLineMap.containsKey(test)) {
                         Asserts asserts = new Asserts(classpath, srcPath, testClassPath, testSrcPath, testClass, testMethod, libPaths);
-                        if (asserts._errorLines.size() == 0) {
+                        if (asserts.errorLines().size() == 0) {
                             continue;
                         }
-                        for (int i : asserts._errorLines) {
+                        for (int i : asserts.errorLines()) {
                             errorAssertCode += CodeUtils.getLineFromCode(code, i) + "\n";
                         }
                         errorLineMap.put(test, errorAssertCode);
@@ -263,6 +261,9 @@ public class Localization  {
                 }
                 if (!result.contains(statement)){
                     statement.setSuspiciousWeight(0.5f);
+                    if (statement.getLabel().contains("$")){
+                        statement.setSuspiciousWeight(0.4f);
+                    }
                     result.add(statement);
                 }
             }
@@ -323,7 +324,7 @@ public class Localization  {
      * @return class address of statement
      */
     public static String getClassAddressFromStatement(Statement statement){
-        return statement.getLabel().split("\\{")[0];
+        return statement.getLabel().split("\\{")[0].replace(".head.",".");
     }
 
     public static String getClassNameFromStatement(Statement statement){

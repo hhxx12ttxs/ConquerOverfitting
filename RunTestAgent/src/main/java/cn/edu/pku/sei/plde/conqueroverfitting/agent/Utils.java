@@ -1,6 +1,7 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.agent;
 
 import com.sun.org.apache.xpath.internal.operations.Bool;
+import org.eclipse.jdt.core.dom.*;
 
 import java.io.*;
 import java.util.*;
@@ -23,15 +24,25 @@ public class Utils {
      * @throws IOException
      */
 
-    public static byte[] AddCodeToSource(String tempJavaName, String tempClassName, String classPath, String srcPath, String className, int targetLine, String addingCode) throws IOException {
-        return AddCodeToSource(tempJavaName, tempClassName, classPath, srcPath, className, Arrays.asList(targetLine), addingCode);
+    public static byte[] AddCodeToSource(String tempJavaName, String tempClassName, String classPath, String srcPath, String className,String methodName, int targetLine, String addingCode) throws IOException {
+        return AddCodeToSource(tempJavaName, tempClassName, classPath, srcPath, className, methodName, Arrays.asList(targetLine), addingCode);
     }
 
-    public static byte[] AddCodeToSource(String tempJavaName, String tempClassName, String classPath, String srcPath, String className, List<Integer> targetLine, String addingCode) throws IOException{
+
+    public static byte[] AddCodeToSource(String tempJavaName, String tempClassName, String classPath, String srcPath, String className, List<Integer> targetLines, String addingCode) throws IOException {
+        return AddCodeToSource(tempJavaName, tempClassName, classPath, srcPath, className, "", targetLines, addingCode);
+    }
+
+    public static byte[] AddCodeToSource(String tempJavaName, String tempClassName, String classPath, String srcPath, String className, String methodName, List<Integer> targetLine, String addingCode) throws IOException{
         Map<Integer, Boolean> writedMap = new HashMap<>();
         for (int line: targetLine){
             writedMap.put(line, false);
         }
+        int methodStartLine = 0;
+        if (!methodName.equals("")){
+            methodStartLine = getMethodStartLine(getCodeFromFile(srcPath+"/"+className.replace(".","/")+".java"), targetLine.get(0), methodName);
+        }
+
         File tempJavaFile = new File(tempJavaName);
         try {
             FileOutputStream outputStream = new FileOutputStream(tempJavaFile);
@@ -45,6 +56,10 @@ public class Utils {
                         outputStream.write(addingCode.getBytes());
                         writedMap.put(line+1, true);
                     }
+                }
+
+                if (line == methodStartLine+1 && methodStartLine != 0){
+                    outputStream.write(("System.out.println(\"|into_method|\");").getBytes());
                 }
                 if (targetLine.contains(line) && !writedMap.get(line)){
                     outputStream.write(addingCode.getBytes());
@@ -63,16 +78,35 @@ public class Utils {
             if (result.contains("找不到文件") || result.contains("not found")){
                 throw new FileNotFoundException();
             }
-            System.out.println(result);
+            if (!result.trim().equals("")){
+                System.out.println(result);
+            }
         } catch (FileNotFoundException e){
             System.out.println("AddCodeToSource: TempJavaName: "+tempJavaName +" No Found");
             throw new FileNotFoundException();
         } catch (IOException e){
             e.printStackTrace();
         }
+
         return getBytesFromFile(tempClassName);
     }
 
+
+    private static int getMethodStartLine(String code, int errorLine, String methodName){
+        String[] codeLines = code.split("\n");
+        for (int i= errorLine; i > 0; i--){
+            if (codeLines[i].contains(" "+methodName+"(")){
+                while (!codeLines[i].contains("{")){
+                    i++;
+                }
+                while (!codeLines[i].contains("super(")){
+                    i++;
+                }
+                return i+1;
+            }
+        }
+        return 0;
+    }
 
     /**
      *
@@ -177,5 +211,22 @@ public class Utils {
         Process process= Runtime.getRuntime().exec(cmd);
         return Utils.getShellOut(process);
     };
+
+    public static String getCodeFromFile(String fileaddress){
+        try {
+            FileInputStream stream = new FileInputStream(new File(fileaddress));
+            byte[] b=new byte[stream.available()];
+            int len = stream.read(b);
+            if (len <= 0){
+                throw new IOException("Source code file "+fileaddress+" read fail!");
+            }
+            stream.close();
+            return new String(b);
+        } catch (Exception e){
+            System.out.println(e.getMessage());
+            return "";
+        }
+    }
+
 }
 

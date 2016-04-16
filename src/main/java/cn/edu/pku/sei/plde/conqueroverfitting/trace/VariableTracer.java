@@ -5,6 +5,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.assertCollect.Asserts;
 import cn.edu.pku.sei.plde.conqueroverfitting.junit.JunitRunner;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Localization;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Suspicious;
+import cn.edu.pku.sei.plde.conqueroverfitting.slice.StaticSlice;
 import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.*;
 
@@ -12,6 +13,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.MethodInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 
 import javassist.NotFoundException;
+import org.apache.commons.beanutils.converters.IntegerArrayConverter;
 import org.apache.commons.lang.StringUtils;
 import sun.misc.BASE64Encoder;
 
@@ -33,7 +35,7 @@ public class VariableTracer {
     private String _testMethodName;
     private String _testSrcPath;
     private Asserts _asserts;
-
+    private String _shellResult;
     /**
      *
      * @param srcPath the path of source file
@@ -62,7 +64,7 @@ public class VariableTracer {
         _functionname = functionname;
         _asserts = new Asserts(_classpath,_srcPath,_testClasspath,_testSrcPath,testClassname,testMethodName, _suspicious._libPath);
         List<MethodInfo> methodInfos = _suspicious.getMethodInfo(_srcPath);
-        ErrorLineTracer tracer = new ErrorLineTracer(_asserts, _classname, functionname());
+        ErrorLineTracer tracer = new ErrorLineTracer(_asserts, _classname, _functionname);
         List<Integer> errorLines = tracer.trace(errorLine, isSuccess);
         List<TraceResult> results = new ArrayList<>();
 
@@ -80,23 +82,28 @@ public class VariableTracer {
                 commentedTestClasses.put(_asserts.getTrueTestFile(), -1);
             }
             for (Map.Entry<String, Integer> commentedTestClass: commentedTestClasses.entrySet()) {
-                String shellResult = traceShell(_testClassname, _classname, functionname(), commentedTestClass.getKey(), variableInfos, methodInfos, line);
-                if (shellResult.contains(">>") && shellResult.contains("<<")) {
-                    String traceResult = analysisShellResult(shellResult);
-                    results.addAll(traceAnalysis(traceResult, commentedTestClass.getValue()));
+                _shellResult = traceShell(_testClassname, _classname, functionname(), commentedTestClass.getKey(), variableInfos, methodInfos, line);
+
+                if (_shellResult.contains(">>") && _shellResult.contains("<<")) {
+                    String traceResult = analysisShellResult(_shellResult);
+                    results.addAll(traceAnalysis(traceResult, commentedTestClass.getValue(), _suspicious));
                 } else {
-                    printErrorShell(shellResult);
+                    printErrorShell(_shellResult);
                 }
             }
         }
         _suspicious._assertsMap.put(_testClassname+"#"+_testMethodName, _asserts);
         _suspicious._errorLineMap.put(_testClassname+"#"+_testMethodName, errorLines);
-        results.addAll(getAddonResult());
+        results.addAll(getAddonResult(_suspicious.getAllInfo()));
         deleteTempFile();
         return results;
     }
 
-    private List<TraceResult> getAddonResult(){
+    private int methodCallNum(String shellResult){
+        return shellResult.split("\\|into_method\\|").length-1;
+    }
+
+    private List<TraceResult> getAddonResult(List<VariableInfo> variableInfos){
         List<TraceResult> results = new ArrayList<>();
         if (_asserts._asserts.size() == 0){
             return results;
@@ -107,20 +114,25 @@ public class VariableTracer {
         if (methodCode.equals("")){
             return results;
         }
-        String firstStatement = methodCode.substring(1,methodCode.length()-1).split("\n")[0];
+        String firstStatement = methodCode.substring(0,methodCode.length()).split("\n")[0];
 
         if (_asserts._asserts.size() == 1 && firstAssert.contains("Equals")){
-            List<String> params = CodeUtils.divideParameter(firstAssert, 1);
+            List<String> params = CodeUtils.divideParameter(firstAssert, 1, false);
             if (params.size() == 2){
                 String param1 = params.get(0).contains(_functionname)?params.get(0):params.get(1);
                 String param2 = params.get(0).contains(_functionname)?params.get(1):params.get(0);
                 String className = _classname.substring(_classname.lastIndexOf(".")+1);
                 if (param1.startsWith(className+".") && param2.startsWith(className+".") && param1.contains("()") && CodeUtils.countChar(param1,'.') >1){
                     TraceResult traceResult = new TraceResult(false);
-                    traceResult._assertLine = _asserts._errorLines.get(0);
+                    traceResult._assertLine = _asserts._errorAssertLines.get(0);
                     traceResult._testClass = _testClassname;
                     traceResult._testMethod = _testMethodName;
                     traceResult.put("this", param1.substring(param1.indexOf(".")+1,param1.lastIndexOf(".")));
+                    for (VariableInfo info: variableInfos){
+                        if (info.variableName.equals("this")){
+                            info.priority = 0;
+                        }
+                    }
                     results.add(traceResult);
                 }
             }
@@ -132,11 +144,16 @@ public class VariableTracer {
                 String numParam = param.split(">=")[0].contains(_functionname)?param.split(">=")[1]:param.split(">=")[0];
                 if (numParam.matches("^(-?\\d+)(\\.\\d+)?$")){
                     TraceResult traceResult = new TraceResult(false);
-                    traceResult._assertLine = _asserts._errorLines.get(0);
+                    traceResult._assertLine = _asserts._errorAssertLines.get(0);
                     traceResult._testClass = _testClassname;
                     traceResult._testMethod = _testMethodName;
                     traceResult.put("return", "("+returnString+")" + "<" + numParam);
                     results.add(traceResult);
+                    for (VariableInfo info: variableInfos){
+                        if (info.variableName.equals("return")){
+                            info.priority = 0;
+                        }
+                    }
                 }
             }
         }
@@ -147,6 +164,11 @@ public class VariableTracer {
             traceResult._testMethod = _testMethodName;
             traceResult.put("return", "true");
             results.add(traceResult);
+            for (VariableInfo info: variableInfos){
+                if (info.variableName.equals("return")){
+                    info.priority = 0;
+                }
+            }
         }
         return results;
     }
@@ -199,7 +221,7 @@ public class VariableTracer {
 
 
 
-    private List<TraceResult> traceAnalysis(String traceResult, int assertLine){
+    private List<TraceResult> traceAnalysis(String traceResult, int assertLine, Suspicious suspicious){
         if (traceResult.equals("")){
             return new ArrayList<>();
         }
@@ -226,6 +248,9 @@ public class VariableTracer {
         List<TraceResult> results = new ArrayList<TraceResult>();
         for (String trace: traces){
             TraceResult result = new TraceResult(!trace.endsWith("E"));
+            if (!trace.endsWith("E")){
+                _suspicious.trueMethodCallNumFromTest += methodCallNum(_shellResult);
+            }
             result._assertLine = assertLine;
             result._testClass = _testClassname;
             result._testMethod = _testMethodName;
@@ -269,7 +294,7 @@ public class VariableTracer {
         String agentFunc = "func:" + functionname;
         String agentLine = "line:"+ errorLine;
         String agentSrc = "src:" + _srcPath;
-        String agentCp = "cp:" + "\""+_classpath+":"+StringUtils.join(_suspicious._libPath,":")+"/home/yanrunfa/.m2/repository/org/joda/joda-convert/1.1/joda-convert-1.1.jar\"";
+        String agentCp = "cp:" + "\""+_classpath+":"+StringUtils.join(_suspicious._libPath,":")+"/Users/yanrunfa/.m2/repository/org/joda/joda-convert/1.1/joda-convert-1.1.jar\"";
         String agentTestSrc = testClassPath.equals("")?"":"testsrc: "+testClassPath.trim();
         String agentTest = testClassPath.equals("")?"":"test:" + _testClassname;
 

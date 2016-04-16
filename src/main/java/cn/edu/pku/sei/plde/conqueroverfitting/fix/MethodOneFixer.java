@@ -5,10 +5,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.agent.Utils;
 import cn.edu.pku.sei.plde.conqueroverfitting.assertCollect.Asserts;
 import cn.edu.pku.sei.plde.conqueroverfitting.junit.JunitRunner;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Suspicious;
-import cn.edu.pku.sei.plde.conqueroverfitting.utils.CodeUtils;
-import cn.edu.pku.sei.plde.conqueroverfitting.utils.FileUtils;
-import cn.edu.pku.sei.plde.conqueroverfitting.utils.PathUtils;
-import cn.edu.pku.sei.plde.conqueroverfitting.utils.ShellUtils;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.*;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.MethodInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 import org.apache.commons.lang.StringUtils;
@@ -30,14 +27,16 @@ public class MethodOneFixer {
     private final String _classSrcPath;
     private final String _testSrcPath;
     private Suspicious _suspicious;
+    private String _project;
     private List<Patch> _patches = new ArrayList<>();
 
-    public MethodOneFixer(Suspicious suspicious){
+    public MethodOneFixer(Suspicious suspicious, String project){
         _suspicious = suspicious;
         _classpath = suspicious._classpath;
         _testClassPath = suspicious._testClasspath;
         _classSrcPath = suspicious._srcPath;
         _testSrcPath = suspicious._testSrcPath;
+        _project = project;
     }
 
     public boolean addPatch(Patch patch){
@@ -46,8 +45,7 @@ public class MethodOneFixer {
         File javaBackup = FileUtils.copyFile(targetJavaFile.getAbsolutePath(), FileUtils.tempJavaPath(patch._className,"MethodOneFixer"));
         File classBackup = FileUtils.copyFile(targetClassFile.getAbsolutePath(), FileUtils.tempClassPath(patch._className,"MethodOneFixer"));
 
-        String truePatchString = "";
-        int truePatchLine = -1;
+        int errorTestBeforeFix = TestUtils.getFailTestNumInProject(_project);
         for (String patchString: patch._patchString){
             for (int patchLine: patch._patchLines){
                 FileUtils.copyFile(javaBackup, targetJavaFile);
@@ -70,22 +68,19 @@ public class MethodOneFixer {
                 int errAssertNumAfterFix = asserts.errorNum();
                 int errAssertBeforeFix = _suspicious._assertsMap.get(patch._testClassName+"#"+patch._testMethodName).errorNum();
 
-
-                System.out.println(patchString);
                 if (errAssertNumAfterFix < errAssertBeforeFix){
-                    truePatchLine = patchLine;
-                    truePatchString = patchString;
-                    break;
+                    if (TestUtils.getFailTestNumInProject(_project) < errorTestBeforeFix){
+                        System.out.println(patchString);
+                        patch._patchString.clear();
+                        patch._patchString.add(patchString);
+                        patch._patchLines.clear();
+                        patch._patchLines.add(patchLine);
+                        _patches.add(patch);
+                        return true;
+                    }
+                    FileUtils.copyFile(classBackup, targetClassFile);
                 }
             }
-        }
-        FileUtils.copyFile(classBackup, targetClassFile);
-        if (truePatchLine!=-1 && !truePatchString.equals("")){
-            patch._patchString.clear();
-            patch._patchString.add(truePatchString);
-            patch._patchLines.clear();
-            patch._patchLines.add(truePatchLine);
-            return true;
         }
         return false;
     }

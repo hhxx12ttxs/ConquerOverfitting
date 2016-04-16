@@ -6,9 +6,11 @@ import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.MethodInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 import javassist.NotFoundException;
 import org.apache.commons.collections.ArrayStack;
+import org.apache.commons.collections.map.HashedMap;
 import org.apache.commons.lang.StringUtils;
 import org.eclipse.jdt.core.dom.*;
 import org.eclipse.jdt.core.dom.Block;
+import org.eclipse.jdt.core.dom.FieldDeclaration;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.Statement;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
@@ -56,6 +58,11 @@ public class CodeUtils {
         return params;
     }
 
+    public static Map<String, String> getMethodParamsInCode(String code, String methodName, int innerLine){
+        String methodCode = getMethodString(code, methodName, innerLine);
+        return getMethodParamsFromDefine(methodCode, methodName);
+    }
+
     public static Map<String, String> getMethodParamsFromDefine(String methodCode, String methodName){
         Map<String, String> result = new HashMap<>();
         for (String line: methodCode.split("\n")){
@@ -79,8 +86,10 @@ public class CodeUtils {
         List<String> params = getMethodParams(line, methodName);
         List<String> result = new ArrayList<>();
         for (String param: params){
-            param = param.substring(param.lastIndexOf(" "));
-            result.add(param.trim());
+            if (param.contains(" ")){
+                param = param.substring(param.lastIndexOf(" "));
+                result.add(param.trim());
+            }
         }
         return result;
     }
@@ -199,6 +208,9 @@ public class CodeUtils {
                 bracket -= countChar(lineString,')');
                 line += lineString.trim();
                 if (bracket == 0){
+                    if (line.contains("fail();")){
+                        line = line+assertStartLine;
+                    }
                     result.put(line, assertStartLine);
                 }
                 continue;
@@ -208,6 +220,9 @@ public class CodeUtils {
                 bracket += countChar(lineString,'(');
                 bracket -= countChar(lineString,')');
                 if (bracket == 0){
+                    if (line.contains("fail();")){
+                        line = line + methodStartLine;
+                    }
                     result.put(line, methodStartLine);
                 }
                 else {
@@ -244,8 +259,12 @@ public class CodeUtils {
         return result;
     }
 
-
     public static List<String> divideParameter(String line, int level){
+        return divideParameter(line, level, true);
+    }
+
+
+    public static List<String> divideParameter(String line, int level, boolean dividePoint){
         line = line.replace("(double)", "").replace("(int)","").replace(" ","");
         List<String> result = new ArrayList<String>();
         int bracketCount = 0;
@@ -287,7 +306,7 @@ public class CodeUtils {
                     startPoint = i + 1;
                 }
             }
-            else if (ch == '.'){
+            else if (ch == '.' && dividePoint){
                 if (bracketCount < level){
                     if (startPoint != i && !StringUtils.isNumeric(line.substring(startPoint, i))){
                         result.add(line.substring(startPoint, i));
@@ -298,6 +317,8 @@ public class CodeUtils {
         }
         return result;
     }
+
+
 
     private static List<MethodDeclaration> getAllMethod(String code){
         ASTParser parser = ASTParser.newParser(AST.JLS4);
@@ -310,6 +331,60 @@ public class CodeUtils {
         MethodDeclaration methodDec[] = declaration.getMethods();
         return Arrays.asList(methodDec);
     }
+
+    private static List<FieldDeclaration> getAllField(String code){
+        ASTParser parser = ASTParser.newParser(AST.JLS4);
+        parser.setSource(code.toCharArray());
+        CompilationUnit unit = (CompilationUnit) parser.createAST(null);
+        if (unit.types().size() == 0){
+            return new ArrayList<>();
+        }
+        TypeDeclaration declaration = (TypeDeclaration) unit.types().get(0);
+        FieldDeclaration varDec[] = declaration.getFields();
+        return Arrays.asList(varDec);
+    }
+
+    public static Map<String, String> getAllFieldAndType(String code){
+        Map<String, String> result = new HashMap<>();
+        for (FieldDeclaration field: getAllField(code)){
+            String type = field.getType().toString();
+            String fieldDec = field.fragments().get(0).toString();
+            if (fieldDec.contains("=")){
+                String variableName = fieldDec.split("=")[0];
+                result.put(variableName, type);
+            }
+        }
+        return result;
+    }
+
+    public static List<String> getAllFieldName(String code){
+        List<String> result = new ArrayList<>();
+        for (FieldDeclaration field : getAllField(code)) {
+            String fieldDec = field.fragments().get(0).toString();
+            if (fieldDec.contains("=")){
+                result.add(fieldDec.split("=")[0]);
+            }
+        }
+        return result;
+    }
+
+    public static boolean hasField(String code, String field){
+        return getAllFieldName(code).contains(field);
+    }
+
+    public static boolean hasFieldWithType(String code, String field, String type){
+        if (type.contains(".")){
+            type = type.substring(type.lastIndexOf(".")+1);
+        }
+        for (Map.Entry<String, String> entry: getAllFieldAndType(code).entrySet()){
+            if (entry.getKey().equals(field) && entry.getValue().equals(type)){
+                return true;
+            }
+        }
+        return false;
+    }
+
+
 
     private static List<MethodDeclaration> getMethod(String code, String methodName) {
         methodName = methodName.trim();
@@ -328,6 +403,9 @@ public class CodeUtils {
            result.add(method.getName().getIdentifier());
         }
         return result;
+    }
+    public static boolean hasMethod(String code, String method){
+        return getAllMethodName(code).contains(method);
     }
 
     public static String getMethodString(String code, String methodName){
@@ -579,8 +657,7 @@ public class CodeUtils {
                 line++;
                 if (targetLine.contains(line + 1)) {
                     if ((!lineString.contains(";") && !lineString.contains(":") && !lineString.contains("{") && !lineString.contains("}")) ||
-                            lineString.contains("return ") ||
-                            lineString.contains("if (")) {
+                            lineString.contains("return ")) {
                         outputStream.write(addingCode.getBytes());
                         writedMap.put(line+1, true);
 

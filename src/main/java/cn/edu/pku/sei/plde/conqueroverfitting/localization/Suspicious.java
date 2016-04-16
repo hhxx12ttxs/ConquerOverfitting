@@ -33,12 +33,13 @@ public class Suspicious implements Serializable{
     public final double _suspiciousness;
     public final List<String> _tests;
     public final List<String> _failTests;
-    private final List<String> _lines;
+    public final List<String> _lines;
     private List<VariableInfo> _variableInfo;
     private List<MethodInfo> _methodInfo;
     public Map<String, Asserts> _assertsMap = new HashMap<>();
     public Map<String, List<Integer>> _errorLineMap = new HashMap<>();
     private int _defaultErrorLine = -1;
+    public int trueMethodCallNumFromTest = 0;
     public Suspicious(String classpath,
                       String testClasspath,
                       String srcPath,
@@ -83,6 +84,14 @@ public class Suspicious implements Serializable{
             errAssertNum += asserts.errorAssertNum();
         }
         return errAssertNum;
+    }
+
+    public int trueAssertNums(){
+        return trueMethodCallNumFromTest;
+    }
+
+    public int trueTestNums(){
+        return _tests.size() - _failTests.size();
     }
 
     public Set<Integer> errorLines(){
@@ -259,6 +268,7 @@ public class Suspicious implements Serializable{
 
     private List<VariableInfo> addonVariableInfos(int line, List<VariableInfo> parameters){
         List<VariableInfo> infos = new ArrayList<>();
+        String code = FileUtils.getCodeFromFile(_srcPath, _classname);
         //this变量
         VariableInfo thisInfo = new VariableInfo("this", null, false, classname().substring(classname().lastIndexOf(".")+1));
         thisInfo.isAddon = true;
@@ -267,8 +277,13 @@ public class Suspicious implements Serializable{
         VariableInfo returnInfo = new VariableInfo("return", null, false, "returnType");
         returnInfo.isAddon = true;
         infos.add(returnInfo);
+        //特殊的变量
+        if (CodeUtils.hasFieldWithType(code, "ZERO", classname()) && CodeUtils.hasMethod(code,"equals")){
+            VariableInfo info = new VariableInfo("this.equals(ZERO)",TypeEnum.BOOLEAN, true,null);
+            info.isAddon = true;
+            infos.add(info);
+        }
         //for循环的变量
-        String code = FileUtils.getCodeFromFile(_srcPath, _classname);
         String lineString = CodeUtils.getLineFromCode(code, line-1);
         List<String> parameterNames = new ArrayList<>();
         for (VariableInfo info: parameters){
@@ -368,7 +383,7 @@ public class Suspicious implements Serializable{
             }
             traceResults.addAll(tracer.trace(classname(), functionname(), testclass.split("#")[0], testclass.split("#")[1], getDefaultErrorLine(), true));
             tracedTestCount ++;
-            if (traceResults.size()> 50 || tracedTestCount>50){
+            if (traceResults.size()> 50 || tracedTestCount > 10){
                 break;
             }
         }

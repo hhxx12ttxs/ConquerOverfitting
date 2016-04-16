@@ -31,7 +31,8 @@ public class BoundaryGenerator {
         Map<VariableInfo, List<String>> falseVariable = AbandanTrueValueFilter.getFalseValue(traceResults, suspicious.getAllInfo());
 
         if (filteredVariable.size() != 0) {
-            return generate(filteredVariable, trueVariable, falseVariable, suspicious.getAllInfo());
+            Map<VariableInfo, List<String>> result = generate(filteredVariable, trueVariable, falseVariable, suspicious.getAllInfo());
+            return result;
         }
         return new HashMap<>();
     }
@@ -120,7 +121,7 @@ public class BoundaryGenerator {
                         return variableName+" != null";
                 }
             }
-            if (entry.getKey().variableName.equals("this") && trueValues.containsKey(entry.getKey())){
+            if (entry.getKey().variableName.equals("this")){
                 return "this.equals("+entry.getValue().get(0)+")";
             }
             if (entry.getKey().variableName.equals("return") && trueValues.containsKey(entry.getKey())){

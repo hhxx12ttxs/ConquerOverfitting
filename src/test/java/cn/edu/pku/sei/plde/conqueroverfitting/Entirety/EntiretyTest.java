@@ -2,10 +2,7 @@ package cn.edu.pku.sei.plde.conqueroverfitting.Entirety;
 
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.BoundaryGenerator;
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.BoundarySorter;
-import cn.edu.pku.sei.plde.conqueroverfitting.fix.MethodTwoFixer;
-import cn.edu.pku.sei.plde.conqueroverfitting.fix.ReturnCapturer;
-import cn.edu.pku.sei.plde.conqueroverfitting.fix.MethodOneFixer;
-import cn.edu.pku.sei.plde.conqueroverfitting.fix.Patch;
+import cn.edu.pku.sei.plde.conqueroverfitting.fix.*;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Localization;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Suspicious;
 import cn.edu.pku.sei.plde.conqueroverfitting.sort.VariableSort;
@@ -15,6 +12,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.utils.FileUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.ShellUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.TestUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
+import org.eclipse.jdt.core.dom.VariableDeclaration;
 import org.junit.Test;
 
 import java.io.File;
@@ -31,19 +29,40 @@ public class EntiretyTest {
     private String testClasspath = System.getProperty("user.dir")+"/project/testClasspath";
     private String testClassSrc = System.getProperty("user.dir")+"/project/testClassSrc/";
     private List<String> libPath = new ArrayList<>();
-
+    public long startMili=System.currentTimeMillis();
     @Test
     public void testEntirety() throws Exception{
-        String project = setWorkDirectory("Lang", 7);
+
+        String project = setWorkDirectory("Time", 9);
         Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc,libPath);
         List<Suspicious> suspiciouses = localization.getSuspiciousLite();
+        suspiciousLoop(suspiciouses, project);
+    }
+
+    public void suspiciousLoop(List<Suspicious> suspiciouses, String project) {
+        List<Suspicious> triedSuspicious = new ArrayList<>();
         for (Suspicious suspicious: suspiciouses){
             suspicious._libPath = libPath;
-            if (fixSuspicious(suspicious, project)){
-                break;
+            boolean tried = false;
+            for (Suspicious _suspicious: triedSuspicious){
+                if (_suspicious._function.equals(suspicious._function) && _suspicious._classname.equals(suspicious._classname)){
+                    tried = true;
+                }
             }
+            if (tried){
+                continue;
+            }
+            try {
+                if (fixSuspicious(suspicious, project)){
+                    break;
+                }
+            } catch (Exception e){
+                e.printStackTrace();
+            }
+            triedSuspicious.add(suspicious);
         }
     }
+
 
     public boolean fixSuspicious(Suspicious suspicious, String project) throws Exception{
         List<TraceResult> traceResults = suspicious.getTraceResult();
@@ -52,27 +71,39 @@ public class EntiretyTest {
             return false;
         }
        List<String> ifStrings = getIfStrings(suspicious, boundarys, traceResults);
-        if (fixMethodOne(suspicious, ifStrings, project)){
-            System.out.println("Fix Success One Place");
-            if (TestUtils.getFailTestNumInProject(project) > 0){
-                return false;
-            }
-            else {
-                System.out.println("Fix All Place Success");
-                return true;
-            }
+        if (JavaFixer.fixMethodOne(suspicious, ifStrings, project)){
+            return isFixSuccess(suspicious, boundarys, project);
         }
-        if (fixMethodTwo(suspicious, ifStrings, project)){
-            System.out.println("Fix Success One Place");
-            if (TestUtils.getFailTestNumInProject(project) > 0){
-                return false;
-            }
-            else {
-                System.out.println("Fix All Place Success");
-                return true;
-            }
+        if (JavaFixer.fixMethodTwo(suspicious, ifStrings, project)){
+            return isFixSuccess(suspicious, boundarys, project);
         }
         return false;
+    }
+
+    public boolean isFixSuccess(Suspicious suspicious, Map<VariableInfo,List<String>> boundarys, String project){
+        System.out.println("Fix Success One Place");
+        if (TestUtils.getFailTestNumInProject(project) > 0){
+            Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc,libPath);
+            List<Suspicious> suspiciouses = localization.getSuspiciousLite(false);
+            suspiciousLoop(suspiciouses, project);
+            return true;
+        }
+        else {
+            System.out.println("Fix All Place Success");
+            printCollectingMessage(suspicious, boundarys);
+            return true;
+        }
+    }
+
+    public void printCollectingMessage(Suspicious suspicious, Map<VariableInfo, List<String>> boundarys){
+        System.out.println("True Test Num: "+suspicious.trueTestNums());
+        System.out.println("True Assert Num: "+suspicious.trueAssertNums());
+        List<String> sv = new ArrayList<>();
+        for (Map.Entry<VariableInfo, List<String>> entry: boundarys.entrySet()){
+            sv.addAll(entry.getValue());
+        }
+        System.out.println("Suspicious Variable: "+ sv);
+        System.out.println("Cost Time: "+(System.currentTimeMillis()-startMili)/1000);
     }
 
     public List<String> getIfStrings(Suspicious suspicious, Map<VariableInfo, List<String>> boundarys, List<TraceResult> traceResults){
@@ -99,58 +130,44 @@ public class EntiretyTest {
 
         for (TraceResult traceResult: traceResults){
             if (traceResult.getTestResult()){
-                return sorter.sortList(boundarys);
-
+                return sorter.getIfStringFromBoundarys(changeVariableToIfStatement(sortedVariable, boundarys));
             }
         }
-        return sorter.getIfStringFromBoundarys(sortedVariable);
+        return sorter.sortList(boundarys);
     }
 
-    public boolean fixMethodTwo(Suspicious suspicious, List<String> ifStrings, String project) throws Exception{
-        MethodTwoFixer fixer = new MethodTwoFixer(suspicious);
-        if (fixer.fix(ifStrings)){
-            return true;
-        }
-        else {
-            System.out.println("Fix fail, Try next suspicious...");
-            return false;
-        }
-    }
-
-    public boolean fixMethodOne(Suspicious suspicious, List<String> ifStrings, String project) throws Exception{
-        ReturnCapturer fixCapturer = new ReturnCapturer(classpath,classSrc, testClasspath, testClassSrc);
-        MethodOneFixer methodOneFixer = new MethodOneFixer(suspicious);
-        for (String test: suspicious.getFailedTest()){
-            String testClassName = test.split("#")[0];
-            String testMethodName = test.split("#")[1];
-            List<Integer> errorLine = suspicious._errorLineMap.get(test);
-
-            for (int assertLine: suspicious._assertsMap.get(test)._errorLines){
-                String fixString = fixCapturer.getFixFrom(testClassName, testMethodName, assertLine, suspicious.classname(), suspicious.functionnameWithoutParam());
-                if (suspicious._isConstructor && fixString.contains("return")){
-                    continue;
-                }
-                if (fixString.equals("")){
-                    continue;
-                }
-                Patch patch = new Patch(testClassName, testMethodName, suspicious.classname(), errorLine, ifStrings, fixString);
-                boolean result = methodOneFixer.addPatch(patch);
-                if (result){
-                    break;
+    private List<List<String>> changeVariableToIfStatement(List<List<String>> variablesList, Map<VariableInfo, List<String>> boundarys){
+        List<List<String>> results = new ArrayList<>();
+        for (List<String> variables: variablesList){
+            results.add(new ArrayList<String>());
+            for (String variable: variables){
+                for (Map.Entry<VariableInfo, List<String>> entry: boundarys.entrySet()){
+                    if (entry.getKey().variableName.equals(variable) || entry.getKey().variableName.contains(variable+".")){
+                        if (entry.getValue().size() == 1){
+                            for (List<String> result: results){
+                                result.addAll(entry.getValue());
+                            }
+                        }
+                        else {
+                            List<List<String>> oldResult = new ArrayList<>(results);
+                            for (List<String> result: results){
+                                for (String value: entry.getValue()){
+                                    List<String> newResult = new ArrayList<>(result);
+                                    newResult.add(value);
+                                    results.add(newResult);
+                                }
+                            }
+                            results.removeAll(oldResult);
+                        }
+                    }
                 }
             }
+
         }
-        int finalErrorNums = methodOneFixer.fix();
-        if (finalErrorNums == -1){
-            System.out.println("Fix fail, Try next suspicious...");
-            return false;
-        }
-        if (finalErrorNums == 0){
-            System.out.println("Fix success");
-            return true;
-        }
-        return fixSuspicious(suspicious, project);
+        return results;
     }
+
+
 
 
 
@@ -180,7 +197,7 @@ public class EntiretyTest {
             testClassSrc = projectDir.getAbsolutePath()+"/"+project +"/src/test/";
             return project;
         }
-        if ((projectName.equals("Lang") && number == 7)){
+        if ((projectName.equals("Lang") && (number == 7 || number ==13))){
             FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project,projectDir.getAbsolutePath());
             classpath = projectDir.getAbsolutePath()+"/"+project +"/target/classes/";
             testClasspath = projectDir.getAbsolutePath()+"/"+project +"/target/tests/";
@@ -188,14 +205,14 @@ public class EntiretyTest {
             testClassSrc = projectDir.getAbsolutePath()+"/"+project +"/src/test/java/";
             return project;
         }
-        if (projectName.equals("Time") && number == 3){
+        if (projectName.equals("Time") && (number == 3||number == 9)){
             FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project,projectDir.getAbsolutePath());
             classpath = projectDir.getAbsolutePath()+"/"+project +"/target/classes/";
             testClasspath = projectDir.getAbsolutePath()+"/"+project +"/target/test-classes/";
             classSrc = projectDir.getAbsolutePath()+"/"+project +"/src/main/java/";
             testClassSrc = projectDir.getAbsolutePath()+"/"+project +"/src/test/java/";
             FileUtils.deleteDirNow(System.getProperty("user.dir")+"/src/test/resources");
-            FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project+"/src/test/resources/",System.getProperty("user.dir")+"/src/test");
+            FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project+"/src/test/resources/",System.getProperty("user.dir")+"/src/test/resources/");
             return project;
         }
         if (projectName.equals("Time")){

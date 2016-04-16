@@ -24,6 +24,7 @@ public class ErrorLineTracer {
     public Asserts asserts;
     public String classname;
     public String methodName;
+    private String methodNameWithParam;
     public int methodStartLine;
     public int methodEndLine;
     private String code;
@@ -32,9 +33,9 @@ public class ErrorLineTracer {
     public ErrorLineTracer(Asserts asserts, String classname, String methodName){
         this.asserts = asserts;
         this.classname = classname;
-        this.methodName = methodName;
+        this.methodName = methodName.substring(0, methodName.indexOf('('));
         this.code = FileUtils.getCodeFromFile(asserts._srcPath, classname);
-
+        this.methodNameWithParam = methodName;
 
     }
 
@@ -68,6 +69,11 @@ public class ErrorLineTracer {
                 }
             }
             else {
+                if (LineUtils.isLineInIf(code, line)){
+                    int i = line-1;
+                    while (LineUtils.isLineInIf(code, i--));
+                    returnList.add(i);
+                }
                 returnList.add(line);
             }
         }
@@ -107,9 +113,6 @@ public class ErrorLineTracer {
                 result.add(line);
             }
         }
-        if (lines.size()> 0){
-            return result;
-        }
         result.add(defaultErrorLine);
         return result;
     }
@@ -136,7 +139,7 @@ public class ErrorLineTracer {
 
     private List<Integer> errorLineInConstructor(String code){
         if (CodeUtils.isConstructor(classname, methodName)) {
-            return CodeUtils.getReturnLine(code, methodName, CodeUtils.getConstructorParamsCount(methodName));
+            return CodeUtils.getReturnLine(code, methodName, CodeUtils.getConstructorParamsCount(methodNameWithParam));
         }
         return new ArrayList<>();
     }
@@ -174,7 +177,7 @@ public class ErrorLineTracer {
     }
 
     private List<Integer> getErrorLineFromAssert(Asserts asserts){
-        List<Integer> assertLines = asserts._errorLines;
+        List<Integer> assertLines = asserts._errorAssertLines;
         List<Integer> result = new ArrayList<>();
         if (assertLines.size() < 1){
             return result;

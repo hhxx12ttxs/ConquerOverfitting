@@ -18,7 +18,8 @@ import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 
 public class GathererJava {
-    private static final int API_PAGE_NUM = 5;
+
+    private static final int API_PAGE_NUM = 2;
     private static final int API_PER_PAGE = 100;
     private static final int API_CODE_LANGUAGE = 23;// java
 
@@ -32,14 +33,16 @@ public class GathererJava {
 
     private ArrayList<String> keyWords;
     private String project;
+    private String packageName;
 
-    public GathererJava(ArrayList<String> keyWords, String project) {
+    public GathererJava(ArrayList<String> keyWords, String packageName, String project) {
         httpClient = new HttpClient();
         httpClient.getHttpConnectionManager().getParams()
                 .setConnectionTimeout(50000);
 
         this.keyWords = keyWords;
         this.project = project;
+        this.packageName = packageName;
     }
 
     public void searchCode() {
@@ -61,7 +64,7 @@ public class GathererJava {
         for(int i = MAX_URL_NUM; i < size; i ++){
             codeUrlList.remove(codeUrlList.size() - 1);
         }
-        new ThreadPoolHttpClient().fetch(project, codeUrlList);
+        new ThreadPoolHttpClient().fetch(project, packageName, codeUrlList);
     }
 
     public String getHtml(String url) {

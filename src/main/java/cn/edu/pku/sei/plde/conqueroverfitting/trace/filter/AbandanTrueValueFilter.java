@@ -63,6 +63,14 @@ public class AbandanTrueValueFilter {
                                 exceptionValues.put(entry.getKey(), Arrays.asList("true"));
                             }
                         }
+                        if (trueVariable.get(entry.getKey()).size() == 2 && falseVariable.get(entry.getKey()).size() == 1){
+                            if (falseVariable.get(entry.getKey()).get(0).equals("true")){
+                                exceptionValues.put(entry.getKey(), Arrays.asList("true"));
+                            }
+                            else {
+                                exceptionValues.put(entry.getKey(), Arrays.asList("false"));
+                            }
+                        }
                     }
                 }
             }
@@ -152,6 +160,9 @@ public class AbandanTrueValueFilter {
                 if (MathUtils.isNumberType(var.getKey().getStringType())&&value.length()>10){
                     bannedValue.add(value);
                 }
+            }
+            if (bannedValue.size()== 1){
+                continue;
             }
             var.getValue().removeAll(bannedValue);
             //如果是for循环的计数的数据,取最大值.

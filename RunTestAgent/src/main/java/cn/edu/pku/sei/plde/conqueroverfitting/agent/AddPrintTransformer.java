@@ -81,10 +81,10 @@ public class AddPrintTransformer implements ClassFileTransformer {
                 "    }\n" + printCode + "System.out.println();";
         System.out.print(">>");
         try {
-            byte[] complied = Utils.AddCodeToSource(tempJavaName, tempClassName,_classPath,_srcPath,trueClassName,_targetLineNum,printCode);
+            byte[] complied = Utils.AddCodeToSource(tempJavaName, tempClassName,_classPath,_srcPath,trueClassName,_targetClassFunc,_targetLineNum,printCode);
             if (complied == null){
                 System.out.print("|Compile fail... Removing Comparable|");
-                complied = Utils.AddCodeToSource(tempJavaName, tempClassName,_classPath,_srcPath,trueClassName,_targetLineNum,removeComparable(printCode));
+                complied = Utils.AddCodeToSource(tempJavaName, tempClassName,_classPath,_srcPath,trueClassName,_targetClassFunc,_targetLineNum,removeComparable(printCode));
                 if (complied != null){
                     System.out.print("|Compile success after remove comparable|");
                 }
@@ -92,11 +92,14 @@ public class AddPrintTransformer implements ClassFileTransformer {
             return complied;
         }catch (FileNotFoundException e){
             try {
-                return Utils.AddCodeToSource(tempJavaName, tempClassName,_classPath,_srcPath,className.replace("/","."),_targetLineNum,printCode);
+                System.out.println("|Catch FileNotFoundException|");
+                return Utils.AddCodeToSource(tempJavaName, tempClassName,_classPath,_srcPath,className.replace("/","."),_targetClassFunc,_targetLineNum,printCode);
             } catch (IOException ee){
+
                 return classfileBuffer;
             }
         }catch (IOException e){
+            System.out.println("|Catch IOException|");
             return classfileBuffer;
         }
     }
@@ -120,10 +123,17 @@ public class AddPrintTransformer implements ClassFileTransformer {
             return "";
         }
         printLine += "try {";
-        if (varType == null && varName.endsWith("()")){
+        if (varType == null && varName.contains("()")){
             printLine += "if (!stack_trace_name.contains(\""+varName.substring(0, varName.indexOf('('))+"\")){";
-            printLine += "System.out.print(\"|"+varName+"=\"+";
-            printLine += varName +"+\"|\""+");";
+            printLine += "System.out.print(\"|"+varName+"=\"+(";
+            printLine += varName +")+\"|\""+");";
+            printLine += "}} catch (Exception e) {}\n";
+            return printLine;
+        }
+        else if (varName.contains("()")){
+            printLine += "if (!stack_trace_name.contains(\""+varName.substring(0, varName.indexOf('('))+"\")){";
+            printLine += "System.out.print(\"|"+varName+".null=\"+(";
+            printLine += varName +"== null)+\"|\""+");";
             printLine += "}} catch (Exception e) {}\n";
             return printLine;
         }
@@ -140,7 +150,7 @@ public class AddPrintTransformer implements ClassFileTransformer {
             varPrinter += "+\"|\""+");";
             printLine += "if ("+varName+".length < 100){"+varPrinter+"}";
         }
-        else if (!varType.endsWith("[]")){
+        else if (!varType.endsWith("[]") && !varName.contains("()")){
             printLine += "System.out.print(\"|"+varName+".null=\"+(";
             printLine += varName +"== null)+\"|\""+");";
             printLine += "} catch (Exception e) {}\n";
