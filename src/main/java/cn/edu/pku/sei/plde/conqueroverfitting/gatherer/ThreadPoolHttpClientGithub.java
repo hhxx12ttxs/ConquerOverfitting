@@ -28,7 +28,7 @@ public class ThreadPoolHttpClientGithub {
 
     public void fetch(String project, String packageName, List<String> urlList) {
         PoolingHttpClientConnectionManager cm = new PoolingHttpClientConnectionManager();
-        //ÉèÖÃÏß³ÌÊý×îŽó10
+
         cm.setMaxTotal(10);
         CloseableHttpClient httpclient = HttpClients.custom()
                 .setConnectionManager(cm)
@@ -39,11 +39,11 @@ public class ThreadPoolHttpClientGithub {
                 HttpGet get = new HttpGet(urlList.get(i));
                 getThreads[i] = new GetThread(httpclient, get, project,packageName, i + 1);
             }
-            //ÖŽÐÐÏß³Ì
+
             for (GetThread gt : getThreads) {
                 gt.start();
             }
-            //ÉèÖÃËùÓÐÏß³ÌÖŽÐÐÍê±ÏÖ®ºóÔÙÖŽÐÐºóÐøŽúÂë
+
             for (GetThread gt : getThreads) {
                 gt.join();
             }
@@ -83,7 +83,7 @@ public class ThreadPoolHttpClientGithub {
         @Override
         public void run() {
             try {
-                System.out.println(id + " - about to get something from " + httpget.getURI());
+                //System.out.println(id + " - about to get something from " + httpget.getURI());
                 CloseableHttpResponse response = httpClient.execute(httpget, context);
                 try {
                     // get the response body as an array of bytes

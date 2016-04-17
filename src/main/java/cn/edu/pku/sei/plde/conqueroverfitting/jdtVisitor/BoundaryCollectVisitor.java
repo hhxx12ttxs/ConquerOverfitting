@@ -3,12 +3,16 @@ package cn.edu.pku.sei.plde.conqueroverfitting.jdtVisitor;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+import org.apache.commons.lang.StringUtils;
 import org.eclipse.jdt.core.dom.*;
 
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.BoundaryInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeInference;
 import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeEnum;
+import org.eclipse.osgi.framework.internal.core.SystemBundleActivator;
 
 /**
  * ASTVisit that helps to generate a tree
@@ -52,6 +56,7 @@ public class BoundaryCollectVisitor extends ASTVisitor {
 	
 	@Override
 	public boolean visit(InfixExpression node) {
+		System.out.println("node.toString = " + node.toString());
 		if (node.getOperator().equals(InfixExpression.Operator.EQUALS)
 				|| node.getOperator().equals(InfixExpression.Operator.GREATER)
 				|| node.getOperator().equals(
@@ -61,7 +66,8 @@ public class BoundaryCollectVisitor extends ASTVisitor {
 						InfixExpression.Operator.LESS_EQUALS)
 				|| node.getOperator().equals(
 						InfixExpression.Operator.NOT_EQUALS)) {
-			collectBoundary(node.getLeftOperand(), node.getRightOperand());
+
+            collectBoundary(node.getLeftOperand(), node.getRightOperand());
 		}
 		return true;
 	}
@@ -76,8 +82,10 @@ public class BoundaryCollectVisitor extends ASTVisitor {
 		String rightOperStr = rightOper.toString();
 
 		Set<String> info = new HashSet<String>();
-
-		if (rightOper instanceof NumberLiteral) {
+		System.out.println("rightOperand1 = " + rightOperStr + " " + isNumeric(rightOperStr));
+		if (isNumeric(rightOperStr)) {
+			System.out.println("leftOperand2 = " + leftOperStr);
+			System.out.println("rightOperand2 = " + rightOperStr);
 			boundaryInfo = new BoundaryInfo(TypeEnum.INT, true, null,
 					leftOperStr, rightOperStr, info);
 		} else if (rightOper instanceof StringLiteral) {
@@ -98,6 +106,18 @@ public class BoundaryCollectVisitor extends ASTVisitor {
 		}
 
 		boundaryInfoList.add(boundaryInfo);
+	}
+
+	public boolean isNumeric(String str){
+		if(str.charAt(0) == '-' || str.charAt(0) == '+'){
+			str = str.substring(1);
+		}
+		for (int i = str.length();--i>=0;){
+			if (!Character.isDigit(str.charAt(i))){
+				return false;
+			}
+		}
+		return true;
 	}
 
 	private void collectConstOfSimpleType(String leftOperStr,

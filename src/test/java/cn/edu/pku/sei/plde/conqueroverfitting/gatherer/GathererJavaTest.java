@@ -9,20 +9,20 @@ import org.junit.Test;
 public class GathererJavaTest extends TestCase {
 
     @Test
-	public void testGathererJava(){
+	public void testGathererJavaGithub(){
 		long timeStart = System.currentTimeMillis();
 		ArrayList<String> keyWords = new ArrayList<String>();
 		keyWords.add("if");
-		keyWords.add("int");
-		keyWords.add("hours");
-		GathererJava gathererJava = new GathererJava(keyWords, "if hours", "joda-time");
-		//new GathererJava(keyWords, "commons-math");Math
-		//new GathererJava(keyWords, "commons-lang");Lang
-		//new GathererJava(keyWords, "closure-compiler");Closure
-		//new GathererJava(keyWords, "jfreechart");Chart
-		//new GathererJava(keyWords, "joda-time");Time
-		//GathererJava gathererJava = new GathererJava(keyWords, "if-Complex","math-complex");
-		gathererJava.searchCode();
+		//keyWords.add("int");
+		keyWords.add("numDecimals");
+		GathererJavaGithub gathererJavaGithub = new GathererJavaGithub(keyWords, "if-numDecimals", "commons-lang");
+		//new GathererJavaGithub(keyWords, "commons-math");Math
+		//new GathererJavaGithub(keyWords, "commons-lang");Lang
+		//new GathererJavaGithub(keyWords, "closure-compiler");Closure
+		//new GathererJavaGithub(keyWords, "jfreechart");Chart
+		//new GathererJavaGithub(keyWords, "joda-time");Time
+		//GathererJavaGithub gathererJavaGithub = new GathererJavaGithub(keyWords, "if-Complex","math-complex");
+		gathererJavaGithub.searchCode();
 		long timeEnd = System.currentTimeMillis();
 		//103s
 		System.out.println("time = " + (timeEnd - timeStart)/1000 );

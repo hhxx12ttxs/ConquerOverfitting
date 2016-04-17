@@ -25,7 +25,7 @@ public class BoundaryCollectTest {
 		Log log = new Log("log//boundary.log");
 		for(BoundaryInfo boundaryInfo : boundaryList){
 			log.logSignLine("begin");
-			log.logStr("name: " + boundaryInfo.info);
+			log.logStr("name: " + boundaryInfo.name);
 			log.logStr("value: " + boundaryInfo.value);
 			log.logStr("type: " + boundaryInfo.variableSimpleType);
 			log.logSignLine("end");
@@ -43,7 +43,7 @@ public class BoundaryCollectTest {
 		Log log = new Log("log//boundary-math-long-a0.log");
 		for(BoundaryInfo boundaryInfo : boundaryList){
 			log.logSignLine("begin");
-			log.logStr("name: " + boundaryInfo.info);
+			log.logStr("name: " + boundaryInfo.name);
 			log.logStr("value: " + boundaryInfo.value);
 			log.logStr("type: " + boundaryInfo.variableSimpleType);
 			log.logSignLine("end");
@@ -60,7 +60,7 @@ public class BoundaryCollectTest {
         Log log = new Log("log//boundary-math-int-u.log");
         for(BoundaryInfo boundaryInfo : boundaryList){
             log.logSignLine("begin");
-            log.logStr("name: " + boundaryInfo.info);
+            log.logStr("name: " + boundaryInfo.name);
             log.logStr("value: " + boundaryInfo.value);
             log.logStr("type: " + boundaryInfo.variableSimpleType);
             log.logSignLine("end");
@@ -69,15 +69,15 @@ public class BoundaryCollectTest {
 
     @Test
     public void testTime9() {
-        String path = "experiment//searchcode//joda-time";
+        String path = "experiment//searchcode//if-numDecimals";
         BoundaryCollect boundaryCollect = new BoundaryCollect(path);
         ArrayList<BoundaryInfo> boundaryList = boundaryCollect.getBoundaryList();
 
         assertNotNull(boundaryList);
-        Log log = new Log("log//boundary-joda-time");
+        Log log = new Log("log//if-numDecimals");
         for(BoundaryInfo boundaryInfo : boundaryList){
             log.logSignLine("begin");
-            log.logStr("name: " + boundaryInfo.info);
+            log.logStr("name: " + boundaryInfo.name);
             log.logStr("value: " + boundaryInfo.value);
             log.logStr("type: " + boundaryInfo.variableSimpleType);
             log.logSignLine("end");
@@ -94,7 +94,7 @@ public class BoundaryCollectTest {
         Log log = new Log("log//boundary-math-double-pow.log");
         for(BoundaryInfo boundaryInfo : boundaryList){
             log.logSignLine("begin");
-            log.logStr("name: " + boundaryInfo.info);
+            log.logStr("name: " + boundaryInfo.name);
             log.logStr("value: " + boundaryInfo.value);
             log.logStr("type: " + boundaryInfo.variableSimpleType);
             log.logSignLine("end");
@@ -111,7 +111,7 @@ public class BoundaryCollectTest {
         Log log = new Log("log//boundary-math-double-real.log");
         for(BoundaryInfo boundaryInfo : boundaryList){
             log.logSignLine("begin");
-            log.logStr("name: " + boundaryInfo.info);
+            log.logStr("name: " + boundaryInfo.name);
             log.logStr("value: " + boundaryInfo.value);
             log.logStr("type: " + boundaryInfo.variableSimpleType);
             log.logSignLine("end");
@@ -129,7 +129,7 @@ public class BoundaryCollectTest {
         Log log = new Log("log//boundary-math-complex.log");
         for(BoundaryInfo boundaryInfo : boundaryList){
             log.logSignLine("begin");
-            log.logStr("name: " + boundaryInfo.info);
+            log.logStr("name: " + boundaryInfo.name);
             log.logStr("value: " + boundaryInfo.value);
             log.logStr("type: " + boundaryInfo.variableSimpleType);
             log.logSignLine("end");
