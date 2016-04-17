@@ -1,5 +1,6 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.trace.filter;
 
+import cn.edu.pku.sei.plde.conqueroverfitting.trace.ExceptionVariable;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.TraceResult;
 import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.CodeUtils;
@@ -15,63 +16,84 @@ import java.util.*;
  * Created by yanrunfa on 16/3/4.
  */
 public class AbandanTrueValueFilter {
-    public static Map<VariableInfo, List<String>> abandon(List<TraceResult> traceResults, List<VariableInfo> vars) {
-        List<TraceResult> traceBackup = TraceResult.copy(traceResults);
-        Map<VariableInfo, List<String>> exceptionValues = new HashMap<VariableInfo, List<String>>();
-        Map<VariableInfo, List<String>> trueVariable = AbandanTrueValueFilter.getTrueValue(traceBackup, vars);
-        Map<VariableInfo, List<String>> falseVariable = AbandanTrueValueFilter.getFalseValue(traceBackup, vars);
-        for (Map.Entry<VariableInfo, List<String>> entry: falseVariable.entrySet()){
-            if (!trueVariable.containsKey(entry.getKey())){
-                exceptionValues.put(entry.getKey(), entry.getValue());
+    public static List<ExceptionVariable> abandon(List<TraceResult> traceResults, List<VariableInfo> vars) {
+        List<ExceptionVariable> exceptionValues = new ArrayList<>();
+        Map<VariableInfo, List<String>> trueVariable = AbandanTrueValueFilter.getTrueValue(traceResults, vars);
+        Map<VariableInfo, List<String>> falseVariable = AbandanTrueValueFilter.getFalseValue(traceResults, vars);
+
+        List<ExceptionVariable> levelTwoCandidate = new ArrayList<>();
+        for (TraceResult traceResult: traceResults){
+            //跳过正确的traceResult
+            if (traceResult.getTestResult()){
                 continue;
             }
-            List<String> values = entry.getValue();
-            int before = values.size();
-            values.removeAll(trueVariable.get(entry.getKey()));
-            int after = values.size();
-            if (before == after){
-                exceptionValues.put(entry.getKey(), entry.getValue());
-            }
 
-            if (TypeUtils.isArrayFromName(entry.getKey().variableName)){
-                List<String> falseValues = new ArrayList<>();
-                List<String> trueValues = trueVariable.get(entry.getKey());
-                for (String value: entry.getValue()){
-                    if (!trueValues.contains(value)){
-                        falseValues.add(value);
+            for (Map.Entry<String, List<String>> entry: traceResult.getResultMap().entrySet()){
+                VariableInfo variableInfo = getVariableInfoWithName(vars, entry.getKey());
+                //可能没有找到
+                if (variableInfo == null){
+                    System.out.println("WARNING: AbandonTrueValueFilter#abandon: Connot Find VariableInfo With Variable Name "+entry.getKey());
+                    continue;
+                }
+                //跳过与正确值有交集的variable,加入第二等级怀疑变量候选列表
+                if (trueVariable.containsKey(variableInfo)){
+                    List<String> trueValues = trueVariable.get(variableInfo);
+                    if (MathUtils.hasInterSection(trueValues, entry.getValue())){
+                        ExceptionVariable variable = new ExceptionVariable(variableInfo, traceResult);
+                        levelTwoCandidate.add(variable);
+                        continue;
                     }
                 }
-                if (falseValues.size() != 0){
-                    exceptionValues.put(entry.getKey(), falseValues);
+                //对于数组，把没在正确值中出现的元素加入怀疑值列表
+                if (TypeUtils.isArrayFromName(variableInfo.variableName)){
+                    List<String> falseValues = new ArrayList<>();
+                    List<String> trueValues = trueVariable.get(variableInfo);
+                    for (String value: entry.getValue()){
+                        if (!trueValues.contains(value)){
+                            falseValues.add(value);
+                        }
+                    }
+
+                    if (falseValues.size() != 0){
+                        ExceptionVariable variable = new ExceptionVariable(variableInfo, traceResult, falseValues);
+                        exceptionValues.add(variable);
+                        continue;
+                    }
                 }
+                ExceptionVariable variable = new ExceptionVariable(variableInfo, traceResult);
+                exceptionValues.add(variable);
             }
         }
-        falseVariable = AbandanTrueValueFilter.getFalseValue(traceResults, vars);
+
         exceptionValues = cleanVariables(exceptionValues);
-        if (exceptionValues.size() == 0){
-            for (Map.Entry<VariableInfo, List<String>> entry: falseVariable.entrySet()){
-                if (entry.getKey().priority > 1){
-                    exceptionValues.put(entry.getKey(), entry.getValue());
-                }
-                if (entry.getKey().getStringType().equals("BOOLEAN")){
-                    if (trueVariable.containsKey(entry.getKey()) && falseVariable.containsKey(entry.getKey())){
-                        if (trueVariable.get(entry.getKey()).size() == 1 && falseVariable.get(entry.getKey()).size() == 2){
-                            if (trueVariable.get(entry.getKey()).get(0).equals("true")){
-                                exceptionValues.put(entry.getKey(), Arrays.asList("false"));
-                            }
-                            else {
-                                exceptionValues.put(entry.getKey(), Arrays.asList("true"));
-                            }
-                        }
-                        if (trueVariable.get(entry.getKey()).size() == 2 && falseVariable.get(entry.getKey()).size() == 1){
-                            if (falseVariable.get(entry.getKey()).get(0).equals("true")){
-                                exceptionValues.put(entry.getKey(), Arrays.asList("true"));
-                            }
-                            else {
-                                exceptionValues.put(entry.getKey(), Arrays.asList("false"));
-                            }
-                        }
+        if (exceptionValues.size() != 0){
+            return exceptionValues;
+        }
+        //如果没有第一等级怀疑变量，寻找第二等级怀疑变量
+        for (ExceptionVariable variable: levelTwoCandidate){
+            //优先级大于1的第二等级怀疑变量
+            if (variable.variable.priority > 1){
+                exceptionValues.add(variable);
+            }
+            if (variable.variable.getStringType().equals("BOOLEAN")
+                    && trueVariable.containsKey(variable.variable)
+                    && falseVariable.containsKey(variable.variable)){
+                //对于bool变量，如过正确值只有一个而错误值有两个，将与正确值相反的那个作为第二等级怀疑变量。
+                if (trueVariable.get(variable.variable).size() == 1 && variable.values.size() == 2){
+                    variable.values.clear();
+                    if (trueVariable.get(variable.variable).get(0).equals("true")){
+                        variable.values.add("false");
                     }
+                    else {
+                        variable.values.add("true");
+                    }
+                    variable.level = 2;
+                    exceptionValues.add(variable);
+                }
+                //对于bool变量，如过正确值只有两个而错误值有一个，将该错误值作为第二等级怀疑变量。
+                if (trueVariable.get(variable.variable).size() == 2 && variable.values.size() == 1){
+                    variable.level = 2;
+                    exceptionValues.add(variable);
                 }
             }
         }
@@ -137,48 +159,37 @@ public class AbandanTrueValueFilter {
         return exceptionValues;
     }
 
-    private static Map<VariableInfo, List<String>> cleanVariables(Map<VariableInfo, List<String>> exceptionVariable){
-        Map<VariableInfo, List<String>> cleanedVariable = new HashMap<>();
-        for (Map.Entry<VariableInfo, List<String>> var: exceptionVariable.entrySet()){
-            List<String> unrepeatValue = new ArrayList(new HashSet(var.getValue()));
-            if (var.getKey() == null){
+    private static List<ExceptionVariable> cleanVariables(List<ExceptionVariable> exceptionVariable){
+        List<ExceptionVariable> cleanedVariable = new ArrayList<>();
+        for (ExceptionVariable var: exceptionVariable){
+            //去掉不符合规则的Variable
+            if (var.variable.isSimpleType && var.variable.variableSimpleType==null){
                 continue;
             }
-            if (var.getKey().isSimpleType && var.getKey().variableSimpleType==null){
+            if (!var.variable.isSimpleType && var.variable.otherType == null){
                 continue;
             }
-            if (!var.getKey().isSimpleType && var.getKey().otherType == null){
+            if (var.values.size() == 0){
                 continue;
             }
-            if (var.getKey().getStringType().equals("BOOLEAB")){
-                if (var.getValue().contains("true") && var.getValue().contains("false")){
-                    continue;
-                }
-            }
+
+            //当值中出现非常不规则的数据时(作为数字变量值的长度大于10)，过滤该variable
             List<String> bannedValue = new ArrayList<>();
-            for (String value: var.getValue()){
-                if (MathUtils.isNumberType(var.getKey().getStringType())&&value.length()>10){
+            for (String value: var.values){
+                if (MathUtils.isNumberType(var.variable.getStringType())&&value.length()>10){
                     bannedValue.add(value);
                 }
             }
             if (bannedValue.size()== 1){
                 continue;
             }
-            var.getValue().removeAll(bannedValue);
-            //如果是for循环的计数的数据,取最大值.
-            //if (CodeUtils.isForLoopParam(unrepeatValue)!=-1){
-            //    unrepeatValue.clear();
-            //    unrepeatValue.add(String.valueOf(CodeUtils.isForLoopParam(unrepeatValue)));
-            //}
-            if (var.getValue().size()== 0){
-                continue;
-            }
-            if (var.getKey().variableName.equals("this") || var.getKey().variableName.equals("return")){
+            //vip通道，出现这两个变量的时候，通常时显而易见的修复，只保留此怀疑变量即可，清除其他所有怀疑变量
+            if (var.variable.variableName.equals("this") || var.variable.variableName.equals("return")){
                 cleanedVariable.clear();
-                cleanedVariable.put(var.getKey(), unrepeatValue);
+                cleanedVariable.add(var);
                 break;
             }
-            cleanedVariable.put(var.getKey(), unrepeatValue);
+            cleanedVariable.add(var);
         }
         return cleanedVariable;
     }

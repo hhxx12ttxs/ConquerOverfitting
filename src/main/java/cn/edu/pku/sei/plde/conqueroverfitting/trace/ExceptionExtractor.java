@@ -4,15 +4,20 @@ import cn.edu.pku.sei.plde.conqueroverfitting.boundary.BoundaryCollect;
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.BoundaryFilter;
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.BoundaryInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.gatherer.GathererJava;
+import cn.edu.pku.sei.plde.conqueroverfitting.localization.Suspicious;
+import cn.edu.pku.sei.plde.conqueroverfitting.localization.common.container.various.Table;
 import cn.edu.pku.sei.plde.conqueroverfitting.main.Config;
+import cn.edu.pku.sei.plde.conqueroverfitting.sort.VariableSort;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.filter.AbandanTrueValueFilter;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.filter.SearchBoundaryFilter;
 import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.CodeUtils;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.FileUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.InfoUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.MathUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 import org.apache.commons.lang.StringUtils;
+import org.apache.http.auth.KerberosCredentials;
 
 import java.io.File;
 import java.util.*;
@@ -21,123 +26,101 @@ import java.util.*;
  * Created by yanrunfa on 16/2/21.
  */
 public class ExceptionExtractor {
-
-    public static Map<VariableInfo, List<String>> extract(List<TraceResult> traceResults, List<VariableInfo> vars){
-        Map<VariableInfo, List<String>> exceptionVariable = AbandanTrueValueFilter.abandon(traceResults, vars);
-        Map<VariableInfo, List<BoundaryInfo>> variableBoundary = SearchBoundaryFilter.getBoundary(exceptionVariable, vars);
-        return getBoundaryIntervals(exceptionVariable, variableBoundary);
+    private Suspicious suspicious;
+    private List<TraceResult> traceResults;
+    private List<ExceptionVariable> exceptionVariables;
+    public ExceptionExtractor(Suspicious suspicious){
+        this.suspicious = suspicious;
     }
 
-    private static Map<VariableInfo, List<String>> getBoundaryIntervals(Map<VariableInfo, List<String>> variableValue, Map<VariableInfo, List<BoundaryInfo>> variableBoundary){
-        Map<VariableInfo, List<String>> result = new HashMap<>();
-        for (Map.Entry<VariableInfo, List<String>> entry: variableValue.entrySet()){
-            if (CodeUtils.isForLoopParam(entry.getValue())!=-1){
-                result.put(entry.getKey(), entry.getValue());
-                continue;
-            }
-            if ((!variableBoundary.containsKey(entry.getKey()) || variableBoundary.get(entry.getKey()).size() == 0) && !entry.getKey().isAddon){
-                continue;
-            }
-            List<BoundaryInfo> boundaryList = variableBoundary.get(entry.getKey());
-            if (MathUtils.isNumberType(entry.getKey().getStringType())) {
-                if (entry.getValue().size() == 1 && (entry.getValue().get(0).equals("NaN") || boundaryList.size() == 0)){
-                    result.put(entry.getKey(), entry.getValue());
-                    continue;
-                }
-                if (entry.getValue().size() == 0){
-                    continue;
-                }
-                if (boundaryList.size() == 0 && entry.getKey().priority == 2){
-                    result.put(entry.getKey(), entry.getValue());
-                    continue;
-                }
-                double smallestValue = MathUtils.parseStringValue(entry.getValue().get(0));
-                double biggestValue = MathUtils.parseStringValue(entry.getValue().get(0));
-                for (String value : entry.getValue()) {
-                    double doubleValue = Double.valueOf(value);
-                    if (Double.compare(doubleValue, smallestValue) < 0) {
-                        smallestValue = doubleValue;
-                    }
-                    if (Double.compare(doubleValue, biggestValue) > 0) {
-                        biggestValue = doubleValue;
-                    }
-                }
+    public List<ExceptionVariable> extract(List<TraceResult> traceResults){
+        this.traceResults = traceResults;
+        if (exceptionVariables == null){
+            exceptionVariables = AbandanTrueValueFilter.abandon(traceResults, suspicious.getAllInfo());
+        }
+        return exceptionVariables;
+    }
 
-                double biggestBoundary = -Double.MAX_VALUE;
-                double smallestBoundary = Double.MAX_VALUE;
+    public List<List<ExceptionVariable>> sort(){
+        if (hasTrueTraceResult(traceResults)){
+            return sortWithMethodTwo(exceptionVariables, traceResults, suspicious);
+        }
+        else {
+            return sortWithMethodOne(exceptionVariables, traceResults, suspicious);
+        }
+    }
 
-                for (BoundaryInfo info : boundaryList) {
-                    try {
-                        double doubleValue;
-                        try {
-                            doubleValue = MathUtils.parseStringValue(info.value);
-                        } catch (NumberFormatException e){
-                            System.out.println("ExceptionExtractor: Cannot parse numeric value "+info.value);
-                            continue;
-                        }
-                        if (doubleValue >= biggestBoundary && doubleValue <= smallestValue) {
-                            biggestBoundary = doubleValue;
-                        }
-                        if (doubleValue <= smallestBoundary && doubleValue >= biggestValue) {
-                            smallestBoundary = doubleValue;
-                        }
-                    } catch (NumberFormatException e){
-                        e.printStackTrace();
-                    }
-                }
-                if (biggestBoundary == -Double.MAX_VALUE && smallestBoundary == Double.MAX_VALUE){
-                    for (BoundaryInfo info : boundaryList) {
-                        try {
-                            double doubleValue = MathUtils.parseStringValue(info.value);
-                            if (doubleValue <= smallestBoundary && doubleValue >= smallestValue) {
-                                smallestBoundary = doubleValue;
-                            }
-                            if (doubleValue >= biggestBoundary && doubleValue <= biggestValue) {
-                                biggestBoundary = doubleValue;
-                            }
-                        } catch (NumberFormatException e){
-                            e.printStackTrace();
-                        }
-                    }
-                    if (biggestBoundary == -Double.MAX_VALUE || smallestBoundary == Double.MAX_VALUE){
-                        continue;
-                    }
-                }
-                if (isSymmetricalList(entry.getValue())){
-                    if (Math.abs(biggestBoundary)>Math.abs(smallestBoundary)){
-                        result.put(entry.getKey(),Arrays.asList(String.valueOf(-biggestBoundary), String.valueOf(biggestBoundary)));
-                    }
-                    else {
-                        result.put(entry.getKey(),Arrays.asList(String.valueOf(smallestBoundary), String.valueOf(-smallestBoundary)));
-                    }
-                }
-                else {
-                    result.put(entry.getKey(),Arrays.asList(String.valueOf(smallestBoundary), String.valueOf(biggestBoundary)));
-                }
+    private static boolean hasTrueTraceResult(List<TraceResult> traceResults){
+        for (TraceResult traceResult: traceResults){
+            if (traceResult.getTestResult()){
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static List<List<ExceptionVariable>> sortWithMethodTwo(List<ExceptionVariable> exceptionVariables, List<TraceResult> traceResults, Suspicious suspicious){
+        ExceptionSorter sorter = new ExceptionSorter(suspicious);
+        return sorter.sort(exceptionVariables);
+    }
+
+
+
+    private static List<List<ExceptionVariable>> sortWithMethodOne(List<ExceptionVariable> exceptionVariables,List<TraceResult> traceResults, Suspicious suspicious){
+        String code = FileUtils.getCodeFromFile(suspicious._srcPath, suspicious.classname());
+        String statement = CodeUtils.getMethodBodyBeforeLine(code, suspicious.functionnameWithoutParam(), lastLineOfTraceResults(traceResults));
+        Set<String> variables = new HashSet<>();
+        for (ExceptionVariable variable: exceptionVariables){
+            if (variable.name.endsWith(".null") || variable.name.endsWith(".Comparable")){
+                variables.add(variable.name.substring(0, variable.name.lastIndexOf(".")));
             }
             else {
-                result.put(entry.getKey(), entry.getValue());
+                variables.add(variable.name);
+            }
+        }
+        VariableSort variableSort = new VariableSort(variables, statement);
+        List<List<String>> sortedVariable = variableSort.getSortVariable();
+        return variableConverse(sortedVariable, exceptionVariables);
+    }
+
+    private static List<List<ExceptionVariable>> variableConverse(List<List<String>> sortedVariable, List<ExceptionVariable> exceptionVariables){
+        List<List<ExceptionVariable>> result = new ArrayList<>();
+        for (List<String> echelon: sortedVariable){
+            List<ExceptionVariable> variableEchelon = getExceptionVariableWithName(echelon, exceptionVariables);
+            if (variableEchelon.size() != 0){
+                result.add(variableEchelon);
+            }
+        }
+        return result;
+    }
+    private static List<ExceptionVariable> getExceptionVariableWithName(List<String> variableNames, List<ExceptionVariable> exceptionVariables){
+        List<ExceptionVariable> result = new ArrayList<>();
+        for (String variableName: variableNames){
+            ExceptionVariable exceptionVariable = getExceptionVariableWithName(variableName, exceptionVariables);
+            if (exceptionVariable!= null){
+                result.add(exceptionVariable);
             }
         }
         return result;
     }
 
-    private static boolean isSymmetricalList(List<String> list){
-        List<Double> values = new ArrayList<>();
-        for (String value: list){
-            try {
-                values.add(MathUtils.parseStringValue(value));
-            } catch (Exception e){}
-        }
-
-        for (double value: values){
-            if (!values.contains(-value)){
-                return false;
+    private static ExceptionVariable getExceptionVariableWithName(String variableName, List<ExceptionVariable> exceptionVariables){
+        for (ExceptionVariable exceptionVariable: exceptionVariables){
+            if (exceptionVariable.name.equals(variableName)){
+                return exceptionVariable;
             }
         }
-        return true;
+        return null;
     }
 
-
+    private static int lastLineOfTraceResults(List<TraceResult> traceResults){
+        int lastLine = 0;
+        for (TraceResult traceResult: traceResults){
+            if (traceResult._traceLine > lastLine){
+                lastLine = traceResult._traceLine;
+            }
+        }
+        return lastLine;
+    }
 
 }

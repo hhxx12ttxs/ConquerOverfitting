@@ -5,6 +5,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.boundary.BoundaryFilter;
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.BoundaryInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.gatherer.GathererJava;
 import cn.edu.pku.sei.plde.conqueroverfitting.main.Config;
+import cn.edu.pku.sei.plde.conqueroverfitting.trace.ExceptionVariable;
 import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeEnum;
 import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.FileUtils;
@@ -25,59 +26,15 @@ public class SearchBoundaryFilter {
      * @param exceptionVariable the  key-value map to be filtered
      * @return the filtered key-value map
      */
-    public static Map<VariableInfo, List<BoundaryInfo>> getBoundary(Map<VariableInfo, List<String>> exceptionVariable, List<VariableInfo> variableInfos){
-        Map<VariableInfo, List<BoundaryInfo>> result = new HashMap<VariableInfo, List<BoundaryInfo>>();
-        for (Map.Entry<VariableInfo, List<String>> entry: exceptionVariable.entrySet()){
-            if (entry.getKey().variableName.equals("this") || entry.getKey().variableName.equals("return")){
-                continue;
-            }
-            //String variableName = variableName(entry);
-            List<BoundaryInfo> boundaryList = getSearchBoundaryInfo(entry.getKey());
-            if (boundaryList != null && boundaryList.size()> 0){
-                result.put(entry.getKey(),boundaryList);
-            }
-            if (entry.getKey().isAddon){
-                result.put(entry.getKey(),boundaryList);
-            }
-        }
-        //for (VariableInfo info: variableInfos){
-        //    if (info.variableName.equals("this") && TypeUtils.isComplexType(info.getStringType())){
-        //        List<BoundaryInfo> boundaryList = getSearchBoundaryInfo(info);
-        //        result.put(info, boundaryList);
-        //    }
-        //}
-        return result;
-    }
-
-    private static List<Double> generateTrueValueInterval(List<BoundaryInfo> trueValues){
-        List<Double> values = new ArrayList<>();
-        for (BoundaryInfo info: trueValues) {
-            String value = info.value;
-            try {
-                values.add(MathUtils.parseStringValue(value));
-            } catch (NumberFormatException e) {
-                continue;
-            }
-        }
-        Collections.sort(values);
-        if (values.size() == 0){
+    public static List<BoundaryInfo> getBoundary(ExceptionVariable exceptionVariable, String project){
+        //对于名字为这两个的怀疑变量，一般是钦定的显而易见修复，不需要search boundary。
+        if (exceptionVariable.name.equals("this") || exceptionVariable.name.equals("return")){
             return new ArrayList<>();
         }
-        Double maxValue = Double.MIN_VALUE;
-        Double minValue = Double.MAX_VALUE;
-        for (double value: values){
-            if (value > maxValue){
-                maxValue = value;
-            }
-            if (value < minValue){
-                minValue = value;
-            }
-        }
-        return Arrays.asList(minValue,maxValue);
+        return getSearchBoundaryInfo(exceptionVariable.variable, project);
     }
 
-
-    private static List<BoundaryInfo> getSearchBoundaryInfo(VariableInfo info){
+    private static List<BoundaryInfo> getSearchBoundaryInfo(VariableInfo info,String project){
         String variableName = info.variableName;
         String valueType = info.getStringType();
         ArrayList<String> keywords = new ArrayList<String>();
@@ -107,7 +64,7 @@ public class SearchBoundaryFilter {
 
         if (!simpleCodePackage.exists() && !complexCodePackage.exists()) {
             if (!codePackage.exists()){
-                GathererJava gathererJava = new GathererJava(keywords, StringUtils.join(keywords, "-"),"joda-time");
+                GathererJava gathererJava = new GathererJava(keywords, StringUtils.join(keywords, "-"),project);
                 gathererJava.searchCode();
             }
             if (!codePackage.exists()) {

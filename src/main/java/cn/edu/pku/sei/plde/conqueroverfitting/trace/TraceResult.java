@@ -15,6 +15,7 @@ public class TraceResult implements Serializable {
     private Map<String, List<String>> result = new HashMap<String, List<String>>();
     private final boolean _testResult;
     public int _assertLine;
+    public int _traceLine;
     public String _testClass;
     public String _testMethod;
     /**

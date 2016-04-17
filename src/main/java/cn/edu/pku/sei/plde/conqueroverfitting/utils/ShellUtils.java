@@ -60,7 +60,9 @@ public class ShellUtils {
                 errIn.close();
             }
         }
-        System.out.println("Shell Result Length: "+sb.length());
+        if (sb.length()>0){
+            System.out.println("Shell Result Length: "+sb.length());
+        }
         return sb.toString();
     }
 

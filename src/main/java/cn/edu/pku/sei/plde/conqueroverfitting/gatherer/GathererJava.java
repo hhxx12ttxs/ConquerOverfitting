@@ -18,7 +18,6 @@ import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 
 public class GathererJava {
-
     private static final int API_PAGE_NUM = 2;
     private static final int API_PER_PAGE = 100;
     private static final int API_CODE_LANGUAGE = 23;// java
