@@ -22,6 +22,7 @@ public class ExceptionSorter {
     private List<ExceptionVariable> _paramVariables = new ArrayList<>();
     private List<ExceptionVariable> _fieldVariables = new ArrayList<>();
     private List<ExceptionVariable> _localVariables = new ArrayList<>();
+    private List<ExceptionVariable> _addonVariable = new ArrayList<>();
     private List<ExceptionVariable> _sortedVariable = new ArrayList<>();
     private List<List<ExceptionVariable>> _variableCombinations = new ArrayList<>();
 
@@ -65,6 +66,9 @@ public class ExceptionSorter {
             }
             if (exceptionVariable.variable.isFieldVariable){
                 _fieldVariables.add(exceptionVariable);
+            }
+            if (exceptionVariable.variable.isAddon){
+                _addonVariable.add(exceptionVariable);
             }
         }
         sortBoundary();
@@ -130,6 +134,10 @@ public class ExceptionSorter {
         }
         //没有经过赋值的类变量优先度最低，放在list的最胡
         for (ExceptionVariable exceptionVariable: _fieldVariables){
+            _sortedVariable.add(exceptionVariable);
+        }
+        //addon 优先度最低
+        for (ExceptionVariable exceptionVariable: _addonVariable){
             _sortedVariable.add(exceptionVariable);
         }
     }

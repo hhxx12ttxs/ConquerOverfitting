@@ -1,5 +1,7 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.utils;
 
+import org.apache.commons.httpclient.protocol.SSLProtocolSocketFactory;
+import org.apache.commons.lang.LocaleUtils;
 import org.apache.commons.lang.StringUtils;
 
 import java.util.ArrayList;
@@ -219,6 +221,18 @@ public class MathUtils {
             }
         }
         return false;
+    }
+
+
+    public static boolean isMaxMinValue(String value){
+        return value.equals(String.valueOf(Integer.MAX_VALUE)) ||
+                value.equals(String.valueOf(Integer.MIN_VALUE)) ||
+                value.equals(String.valueOf(Double.MAX_VALUE)) ||
+                value.equals(String.valueOf(Double.MIN_VALUE)) ||
+                value.equals(String.valueOf(Long.MAX_VALUE)) ||
+                value.equals(String.valueOf(Long.MIN_VALUE)) ||
+                value.equals(String.valueOf(Short.MAX_VALUE)) ||
+                value.equals(String.valueOf(Short.MIN_VALUE));
     }
 
 }

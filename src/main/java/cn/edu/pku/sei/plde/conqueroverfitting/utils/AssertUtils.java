@@ -6,6 +6,10 @@ package cn.edu.pku.sei.plde.conqueroverfitting.utils;
 public class AssertUtils {
     public static boolean isAssertLine(String lineString, String code){
         lineString = lineString.trim();
+        //注释
+        if (lineString.startsWith("//")){
+            return false;
+        }
         if (lineString.startsWith("Assert")|| lineString.startsWith("assert")  || lineString.contains(".assert") || lineString.startsWith("fail")){
             return true;
         }

@@ -157,14 +157,14 @@ public class MethodTwoFixer {
         int bracket = 0;
         for (int i = 0; i < _methodEndLine-_methodStartLine; i++){
             String lineString = CodeUtils.getLineFromCode(_code, errorLine-i);
-            bracket += CodeUtils.countChar(lineString, '}');
-            bracket -= CodeUtils.countChar(lineString, '{');
             if (lineString.contains("{")){
                 if (bracket == 0){
                     result.add(errorLine-i);
                     break;
                 }
             }
+            bracket += CodeUtils.countChar(lineString, '}');
+            bracket -= CodeUtils.countChar(lineString, '{');
         }
         bracket = 0;
         for (int i = 0; i<_methodEndLine-_methodStartLine; i++){

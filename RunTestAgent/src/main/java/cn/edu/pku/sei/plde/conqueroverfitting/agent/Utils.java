@@ -92,14 +92,15 @@ public class Utils {
     }
 
 
+
     private static int getMethodStartLine(String code, int errorLine, String methodName){
         String[] codeLines = code.split("\n");
         for (int i= errorLine; i > 0; i--){
-            if (codeLines[i].contains(" "+methodName+"(")){
+            if (codeLines[i].contains(" "+methodName+"(") &&(codeLines[i].contains("public ")||codeLines[i].contains("private ")||codeLines[i].contains("protected "))){
                 while (!codeLines[i].contains("{")){
                     i++;
                 }
-                while (!codeLines[i].contains("super(")){
+                if (codeLines[i+1].contains("super(")){
                     i++;
                 }
                 return i+1;

@@ -19,6 +19,9 @@ public class ExceptionVariable {
     private TraceResult traceResult;
 
 
+    public String getAssertMessage(){
+        return traceResult._testClass+"#"+traceResult._testMethod+"#"+traceResult._assertLine;
+    }
 
     public ExceptionVariable(VariableInfo variable,TraceResult traceResult){
         this.traceResult = traceResult;
@@ -37,6 +40,21 @@ public class ExceptionVariable {
     public String toString(){
         return variable.getStringType()+" "+variable.variableName+" = "+values.toString();
     }
+
+
+    public boolean equals(Object obj){
+        if (!(obj instanceof ExceptionVariable)){
+            return false;
+        }
+        ExceptionVariable exceptionVariable = (ExceptionVariable) obj;
+        for (String value: exceptionVariable.values){
+            if (!values.contains(value)){
+                return false;
+            }
+        }
+        return this.variable.equals(exceptionVariable.variable) && values.size() == exceptionVariable.values.size();
+    }
+
 
 
     public List<String> getBoundaryIntervals(List<BoundaryInfo> boundaryInfos){

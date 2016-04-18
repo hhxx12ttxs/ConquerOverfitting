@@ -35,15 +35,6 @@ public class AbandanTrueValueFilter {
                     System.out.println("WARNING: AbandonTrueValueFilter#abandon: Connot Find VariableInfo With Variable Name "+entry.getKey());
                     continue;
                 }
-                //跳过与正确值有交集的variable,加入第二等级怀疑变量候选列表
-                if (trueVariable.containsKey(variableInfo)){
-                    List<String> trueValues = trueVariable.get(variableInfo);
-                    if (MathUtils.hasInterSection(trueValues, entry.getValue())){
-                        ExceptionVariable variable = new ExceptionVariable(variableInfo, traceResult);
-                        levelTwoCandidate.add(variable);
-                        continue;
-                    }
-                }
                 //对于数组，把没在正确值中出现的元素加入怀疑值列表
                 if (TypeUtils.isArrayFromName(variableInfo.variableName)){
                     List<String> falseValues = new ArrayList<>();
@@ -56,12 +47,28 @@ public class AbandanTrueValueFilter {
 
                     if (falseValues.size() != 0){
                         ExceptionVariable variable = new ExceptionVariable(variableInfo, traceResult, falseValues);
-                        exceptionValues.add(variable);
+                        if (!exceptionValues.contains(variable)){
+                            exceptionValues.add(variable);
+                        }
+                        continue;
+                    }
+                }
+                //跳过与正确值有交集的variable,加入第二等级怀疑变量候选列表
+                if (trueVariable.containsKey(variableInfo)){
+                    List<String> trueValues = trueVariable.get(variableInfo);
+                    if (MathUtils.hasInterSection(trueValues, entry.getValue())){
+                        ExceptionVariable variable = new ExceptionVariable(variableInfo, traceResult);
+                        if (!levelTwoCandidate.contains(variable)){
+                            levelTwoCandidate.add(variable);
+                        }
                         continue;
                     }
                 }
                 ExceptionVariable variable = new ExceptionVariable(variableInfo, traceResult);
-                exceptionValues.add(variable);
+                if (!exceptionValues.contains(variable)){
+                    exceptionValues.add(variable);
+                }
+
             }
         }
 
@@ -73,8 +80,9 @@ public class AbandanTrueValueFilter {
         for (ExceptionVariable variable: levelTwoCandidate){
             //优先级大于1的第二等级怀疑变量
             if (variable.variable.priority > 1){
-                exceptionValues.add(variable);
-            }
+                if (!exceptionValues.contains(variable)){
+                    exceptionValues.add(variable);
+                }            }
             if (variable.variable.getStringType().equals("BOOLEAN")
                     && trueVariable.containsKey(variable.variable)
                     && falseVariable.containsKey(variable.variable)){
@@ -88,12 +96,27 @@ public class AbandanTrueValueFilter {
                         variable.values.add("true");
                     }
                     variable.level = 2;
-                    exceptionValues.add(variable);
-                }
+                    if (!exceptionValues.contains(variable)){
+                        exceptionValues.add(variable);
+                    }                }
                 //对于bool变量，如过正确值只有两个而错误值有一个，将该错误值作为第二等级怀疑变量。
                 if (trueVariable.get(variable.variable).size() == 2 && variable.values.size() == 1){
                     variable.level = 2;
-                    exceptionValues.add(variable);
+                    if (!exceptionValues.contains(variable)){
+                        exceptionValues.add(variable);
+                    }
+                }
+                //如果值中有max，min之类的值，将该错误值作为第二等级变量
+                for (String value: variable.values){
+                    if (MathUtils.isMaxMinValue(value)){
+                        variable.values.clear();
+                        variable.values.add(value);
+                        variable.level = 2;
+                        if (!exceptionValues.contains(variable)){
+                            exceptionValues.add(variable);
+                        }
+                        break;
+                    }
                 }
             }
         }
@@ -176,7 +199,7 @@ public class AbandanTrueValueFilter {
             //当值中出现非常不规则的数据时(作为数字变量值的长度大于10)，过滤该variable
             List<String> bannedValue = new ArrayList<>();
             for (String value: var.values){
-                if (MathUtils.isNumberType(var.variable.getStringType())&&value.length()>10){
+                if (MathUtils.isNumberType(var.variable.getStringType())&& (value.length()>10 && !MathUtils.isMaxMinValue(value))){
                     bannedValue.add(value);
                 }
             }

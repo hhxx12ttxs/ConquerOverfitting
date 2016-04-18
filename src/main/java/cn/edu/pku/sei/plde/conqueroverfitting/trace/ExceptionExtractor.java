@@ -43,10 +43,10 @@ public class ExceptionExtractor {
 
     public List<List<ExceptionVariable>> sort(){
         if (hasTrueTraceResult(traceResults)){
-            return sortWithMethodTwo(exceptionVariables, traceResults, suspicious);
+            return sortWithMethodOne(exceptionVariables, traceResults, suspicious);
         }
         else {
-            return sortWithMethodOne(exceptionVariables, traceResults, suspicious);
+            return sortWithMethodTwo(exceptionVariables, traceResults, suspicious);
         }
     }
 
@@ -96,21 +96,19 @@ public class ExceptionExtractor {
     private static List<ExceptionVariable> getExceptionVariableWithName(List<String> variableNames, List<ExceptionVariable> exceptionVariables){
         List<ExceptionVariable> result = new ArrayList<>();
         for (String variableName: variableNames){
-            ExceptionVariable exceptionVariable = getExceptionVariableWithName(variableName, exceptionVariables);
-            if (exceptionVariable!= null){
-                result.add(exceptionVariable);
-            }
+            result.addAll(getExceptionVariableWithName(variableName, exceptionVariables));
         }
         return result;
     }
 
-    private static ExceptionVariable getExceptionVariableWithName(String variableName, List<ExceptionVariable> exceptionVariables){
+    private static List<ExceptionVariable> getExceptionVariableWithName(String variableName, List<ExceptionVariable> exceptionVariables){
+        List<ExceptionVariable> result = new ArrayList<>();
         for (ExceptionVariable exceptionVariable: exceptionVariables){
-            if (exceptionVariable.name.equals(variableName)){
-                return exceptionVariable;
+            if (exceptionVariable.name.equals(variableName) || exceptionVariable.name.contains(variableName+".")){
+                result.add(exceptionVariable);
             }
         }
-        return null;
+        return result;
     }
 
     private static int lastLineOfTraceResults(List<TraceResult> traceResults){

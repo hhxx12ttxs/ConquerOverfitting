@@ -129,10 +129,10 @@ public class BoundaryGenerator {
                 if (interval.size() == 0){
                     return "";
                 }
-                if (intervals.size() == 1) {
+                if (interval.size() == 1) {
                     return generateWithOneInterval(interval);
                 }
-                if (intervals.size() == 2) {
+                if (interval.size() == 2) {
                     return generateWithTwoInterval(interval, trueValues.get(variable.variable), smallestBoundary, biggestBoundary);
                 }
             }
