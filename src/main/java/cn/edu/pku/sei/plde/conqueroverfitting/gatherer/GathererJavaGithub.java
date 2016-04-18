@@ -7,6 +7,7 @@ import java.io.InputStreamReader;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Random;
 
 import org.apache.commons.httpclient.DefaultHttpMethodRetryHandler;
 import org.apache.commons.httpclient.HttpClient;
@@ -27,7 +28,7 @@ import org.htmlparser.util.NodeIterator;
 import org.htmlparser.util.NodeList;
 
 public class GathererJavaGithub {
-	private static final int API_PAGE_NUM = 2;
+	private static final int API_PAGE_NUM = 100;
 
 	private static final String API_SEARCH_CODE_BASE_URL = "https://github.com/search?l=java&";
 	private static final String API_SEARCH_CODE_POST_URL = "&ref=searchresults&type=Code&utf8=✓";
@@ -60,21 +61,34 @@ public class GathererJavaGithub {
 		}
 
 		ArrayList<String> codeUrlList = new ArrayList<String>();
+		boolean flag = false;
+		Random ra =new Random();
+		ArrayList<String> pageUrlList = new ArrayList<String>();
 		for (int i = 1; i <= API_PAGE_NUM; i++) {
 			String url = API_SEARCH_CODE_BASE_URL + "p=" + i + "&q=" + question
 					+ API_SEARCH_CODE_POST_URL;
+			pageUrlList.add(url);
 			System.out.println("search : " + url);
             ArrayList<String> urls = getCodeUrlList(url);
             if(urls.size() == 0){
-            	break;
+				break;
             }
+
+			try {
+				int sleep = ra.nextInt(1000) + 8000;
+				Thread.sleep(sleep);
+				System.out.println("i = " + i + " sleep" + sleep);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
 			codeUrlList.addAll(urls);
 		}
 		int size = codeUrlList.size();
-		for (int i = MAX_URL_NUM; i < size; i++) {
-			codeUrlList.remove(codeUrlList.size() - 1);
-		}
-		new ThreadPoolHttpClient().fetch(project, packageName, codeUrlList);
+//		for (int i = MAX_URL_NUM; i < size; i++) {
+//			codeUrlList.remove(codeUrlList.size() - 1);
+//		}
+		//new ThreadPoolHttpClientGithubUrlList().fetch(pageUrlList);
+		new ThreadPoolHttpClientGithub().fetch(project, packageName, codeUrlList);
 	}
 
 	public String getHtml(String url) {
@@ -137,6 +151,9 @@ public class GathererJavaGithub {
 					if (node instanceof LinkTag) {
 						String link = ((LinkTag) node).getLink();
 					    link = link.replace("blob/", "");
+						if(link.contains(project)){
+							continue;
+						}
 						if (link != null && link.contains(".java")) {
 							codeUrlList.add(CODE_BASE_URL + link.toString());
 						}

@@ -12,15 +12,19 @@ public class BoundaryInfo {
 	public String name;
 	public String value;
 	public Set<String> info;
+	public int leftClose;
+	public int rightClose;
 
 	public BoundaryInfo(TypeEnum variableSimpleType, boolean isSimpleType,
-			String otherType, String name, String value, Set<String> info) {
+			String otherType, String name, String value, Set<String> info, int leftClose, int rightClose) {
 		this.variableSimpleType = variableSimpleType;
 		this.isSimpleType = isSimpleType;
 		this.otherType = otherType;
 		this.name = name;
 		this.value = value;
 		this.info = info;
+		this.leftClose = leftClose;//[k
+		this.rightClose = rightClose;//k]
 	}
 
 	@Override
