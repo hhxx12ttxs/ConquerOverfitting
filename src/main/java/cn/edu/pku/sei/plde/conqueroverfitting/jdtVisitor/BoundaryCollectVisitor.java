@@ -40,7 +40,7 @@ public class BoundaryCollectVisitor extends ASTVisitor {
 			if (v.getInitializer() != null) {
 				BoundaryInfo boundaryInfo = new BoundaryInfo(typeInference.type,
 						true, null, varName, v.getInitializer().toString(),
-						info);
+						info, 1, 1);
 				boundaryInfoList.add(boundaryInfo);
 			}
 		}
@@ -56,25 +56,28 @@ public class BoundaryCollectVisitor extends ASTVisitor {
 	
 	@Override
 	public boolean visit(InfixExpression node) {
-		System.out.println("node.toString = " + node.toString());
-		if (node.getOperator().equals(InfixExpression.Operator.EQUALS)
-				|| node.getOperator().equals(InfixExpression.Operator.GREATER)
-				|| node.getOperator().equals(
-						InfixExpression.Operator.GREATER_EQUALS)
-				|| node.getOperator().equals(InfixExpression.Operator.LESS)
-				|| node.getOperator().equals(
-						InfixExpression.Operator.LESS_EQUALS)
-				|| node.getOperator().equals(
-						InfixExpression.Operator.NOT_EQUALS)) {
+		//System.out.println("node.toString = " + node.toString());
+		//System.out.println("operator = " + node.getOperator() + " " + node.getOperator().equals(InfixExpression.Operator.EQUALS));
 
-            collectBoundary(node.getLeftOperand(), node.getRightOperand());
+		if (node.getOperator().equals(InfixExpression.Operator.EQUALS) || node.getOperator().equals(
+				InfixExpression.Operator.NOT_EQUALS)){
+			collectBoundary(node.getLeftOperand(), node.getRightOperand(), 1, 1);
+		}
+		else if(node.getOperator().equals(InfixExpression.Operator.GREATER) || node.getOperator().equals(
+				InfixExpression.Operator.LESS_EQUALS)){
+			collectBoundary(node.getLeftOperand(), node.getRightOperand(), 0, 1);
+		}
+		else if(node.getOperator().equals(
+						InfixExpression.Operator.GREATER_EQUALS)
+				|| node.getOperator().equals(InfixExpression.Operator.LESS)) {
+            collectBoundary(node.getLeftOperand(), node.getRightOperand(), 1, 0);
 		}
 		return true;
 	}
 
-	private void collectBoundary(Expression leftOper, Expression rightOper) {
+	private void collectBoundary(Expression leftOper, Expression rightOper, int leftClose, int rightClose) {
 		BoundaryInfo boundaryInfo = null;
-		if (!(leftOper instanceof Name))
+		if (!(leftOper instanceof Name) && !leftOper.toString().contains("."))
 			return;
 		if (leftOper == null || rightOper == null)
 			return;
@@ -82,26 +85,24 @@ public class BoundaryCollectVisitor extends ASTVisitor {
 		String rightOperStr = rightOper.toString();
 
 		Set<String> info = new HashSet<String>();
-		System.out.println("rightOperand1 = " + rightOperStr + " " + isNumeric(rightOperStr));
 		if (isNumeric(rightOperStr)) {
-			System.out.println("leftOperand2 = " + leftOperStr);
-			System.out.println("rightOperand2 = " + rightOperStr);
+			//System.out.println("leftClose = " + leftClose + " rightClose = " + rightClose);
 			boundaryInfo = new BoundaryInfo(TypeEnum.INT, true, null,
-					leftOperStr, rightOperStr, info);
+					leftOperStr, rightOperStr, info, leftClose, rightClose);
 		} else if (rightOper instanceof StringLiteral) {
 			boundaryInfo = new BoundaryInfo(TypeEnum.STRING, true,
-					null, leftOperStr, rightOperStr, info);
+					null, leftOperStr, rightOperStr, info, leftClose, rightClose);
 		} else if (rightOper instanceof NullLiteral) {
 			boundaryInfo = new BoundaryInfo(TypeEnum.NULL, true,
-					null, leftOperStr, rightOperStr, info);
+					null, leftOperStr, rightOperStr, info, leftClose, rightClose);
 		} else if (rightOper instanceof CharacterLiteral) {
 			boundaryInfo = new BoundaryInfo(TypeEnum.CHARACTER, true,
-					null, leftOperStr, rightOperStr, info);
+					null, leftOperStr, rightOperStr, info, leftClose, rightClose);
 		} else if (rightOper instanceof BooleanLiteral) {
 			boundaryInfo = new BoundaryInfo(TypeEnum.BOOLEAN, true,
-					null, leftOperStr, rightOperStr, info);
+					null, leftOperStr, rightOperStr, info, leftClose, rightClose);
 		} else {
-			collectConstOfSimpleType(leftOperStr, rightOperStr);
+			collectConstOfSimpleType(leftOperStr, rightOperStr, leftClose, rightClose);
 			return;
 		}
 
@@ -121,7 +122,7 @@ public class BoundaryCollectVisitor extends ASTVisitor {
 	}
 
 	private void collectConstOfSimpleType(String leftOperStr,
-			String rightOperStr) {
+			String rightOperStr, int leftClose, int rightClose) {
 		int index = rightOperStr.lastIndexOf(".");
 		if (index != -1) {
 
@@ -132,11 +133,11 @@ public class BoundaryCollectVisitor extends ASTVisitor {
 			String prefix = rightOperStr.substring(0, index);
 			if (prefix.equals("Integer")) {
 				boundaryInfo = new BoundaryInfo(TypeEnum.INT, true,
-						null, leftOperStr, rightOperStr, info);
+						null, leftOperStr, rightOperStr, info, leftClose, rightClose);
 				boundaryInfoList.add(boundaryInfo);
 			} else if (prefix.endsWith("Long")) {
 				boundaryInfo = new BoundaryInfo(TypeEnum.LONG, true,
-						null, leftOperStr, rightOperStr, info);
+						null, leftOperStr, rightOperStr, info, leftClose, rightClose);
 				boundaryInfoList.add(boundaryInfo);
 			}
 		}

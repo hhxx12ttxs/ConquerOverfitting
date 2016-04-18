@@ -21,7 +21,7 @@ public class BoundaryCollectTest {
         //assertNotNull(boundaryList);
         //assertTrue(boundaryList.contains(new BoundaryInfo(TypeEnum.INT, true, null, "a", "1", null)));
         //assertTrue(boundaryList.contains(new BoundaryInfo(TypeEnum.STRING, true, null, "f", "\"ww\"", null)));
-        assertTrue(boundaryList.contains(new BoundaryInfo(TypeEnum.NULL, true, null, "fileForTestBoundaryCollect2", "null", null)));
+        //assertTrue(boundaryList.contains(new BoundaryInfo(TypeEnum.NULL, true, null, "fileForTestBoundaryCollect2", "null", null)));
 		Log log = new Log("log//boundary.log");
 		for(BoundaryInfo boundaryInfo : boundaryList){
 			log.logSignLine("begin");
