@@ -80,6 +80,7 @@ public class ThreadPoolHttpClient {
          */
         @Override
         public void run() {
+            String html = "";
             try {
                 System.out.println(id + " - about to get something from " + httpget.getURI());
                 CloseableHttpResponse response = httpClient.execute(httpget, context);
@@ -87,7 +88,11 @@ public class ThreadPoolHttpClient {
                     // get the response body as an array of bytes
                     HttpEntity entity = response.getEntity();
                     if (entity != null) {
-                          JSONObject jsonObj = JSONObject.fromObject(EntityUtils.toString(entity));
+                        html = EntityUtils.toString(entity);
+                        if(html.equals("<h1>Server Error (500)</h1>")){
+                            return;
+                        }
+                          JSONObject jsonObj = JSONObject.fromObject(html);
                         String code = jsonObj.get("code").toString();
                         FileUtils.writeFile("experiment//searchcode//" + packageName + "//" + id + ".java", code);
                     }
@@ -95,6 +100,7 @@ public class ThreadPoolHttpClient {
                     response.close();
                 }
             } catch (Exception e) {
+                System.out.println("html = " + html);
                 e.printStackTrace();
             }
         }
