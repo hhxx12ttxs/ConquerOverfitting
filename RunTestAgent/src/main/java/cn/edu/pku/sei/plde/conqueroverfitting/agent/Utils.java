@@ -102,6 +102,9 @@ public class Utils {
                 }
                 if (codeLines[i+1].contains("super(")){
                     i++;
+                    while (!codeLines[i].contains(";")){
+                        i++;
+                    }
                 }
                 return i+1;
             }

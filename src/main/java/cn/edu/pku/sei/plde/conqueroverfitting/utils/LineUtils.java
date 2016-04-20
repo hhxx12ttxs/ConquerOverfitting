@@ -1,5 +1,6 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.utils;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
@@ -55,6 +56,23 @@ public class LineUtils {
         return false;
     }
 
+    public static boolean isLineInCatchBlock(String code, String line){
+        if (code.contains(line)){
+            String lineBefore = code.split(line)[0];
+            if (lineBefore.contains("catch (")){
+                String catchAfter = lineBefore.split("catch \\(")[1];
+                if (CodeUtils.countChar(catchAfter,'{') == 1){
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public static boolean isCatchLine(String line){
+        return line.contains("catch (") && line.contains(")") && line.contains("Exception");
+    }
+
     public static boolean isIfLine(String line){
         return line.replace(" ","").startsWith("if(");
     }
@@ -80,6 +98,9 @@ public class LineUtils {
 
     public static boolean isDeclarationLineWithoutAssign(String lineString){
         if (!lineString.contains("=") && !lineString.contains("(") && !lineString.contains(")") && !isBoundaryLine(lineString)){
+            return true;
+        }
+        if (lineString.contains("=") && lineString.contains("new ") &&lineString.trim().endsWith("();")){
             return true;
         }
         return false;

@@ -7,6 +7,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.localization.Localization;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Suspicious;
 import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.*;
+import com.google.common.collect.Sets;
 import javassist.NotFoundException;
 import org.apache.commons.collections.ArrayStack;
 import org.apache.commons.lang.StringUtils;
@@ -39,10 +40,10 @@ public class ErrorLineTracer {
 
     }
 
-    public List<Integer> trace(int defaultErrorLine, boolean isSuccess){
+    public Set<Integer> trace(int defaultErrorLine, boolean isSuccess){
         List<Integer> methodLine =  CodeUtils.getSingleMethodLine(code, methodName, defaultErrorLine);
         if (methodLine.size() != 2){
-            return Arrays.asList(defaultErrorLine);
+            return Sets.newHashSet(defaultErrorLine);
         }
         methodStartLine = methodLine.get(0);
         methodEndLine = methodLine.get(1);
@@ -54,7 +55,7 @@ public class ErrorLineTracer {
         else {
             result.add(defaultErrorLine);
         }
-        List<Integer> returnList = new ArrayList<>();
+        Set<Integer> returnList = new HashSet<>();
         for (int line: result){
             line = errorLineOutOfSwitch(line, code);
             line = errorLineOutOfElse(line, code);
@@ -80,7 +81,8 @@ public class ErrorLineTracer {
         }
         if (returnList.size() == 1){
             //将错误行之前的简单if语句的行加入错误行的列表
-            for (int i= returnList.get(0); i> methodStartLine; i--){
+            int errorLine = returnList.iterator().next();
+            for (int i= errorLine; i> methodStartLine; i--){
                 String lineString = CodeUtils.getLineFromCode(code, i);
                 if (LineUtils.isIfAndElseIfLine(lineString) && InfoUtils.getVariableInIfStatement(lineString) != null){
                     returnList.add(i+1);

@@ -2,12 +2,15 @@ package cn.edu.pku.sei.plde.conqueroverfitting.Entirety;
 
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.BoundaryGenerator;
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.BoundarySorter;
+import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.BoundaryInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.fix.*;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Localization;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Suspicious;
 import cn.edu.pku.sei.plde.conqueroverfitting.sort.VariableSort;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.ExceptionVariable;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.TraceResult;
+import cn.edu.pku.sei.plde.conqueroverfitting.trace.filter.SearchBoundaryFilter;
+import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeEnum;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.CodeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.FileUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.TestUtils;
@@ -28,16 +31,16 @@ public class EntiretyTest {
     private String testClassSrc = System.getProperty("user.dir")+"/project/testClassSrc/";
     private List<String> libPath = new ArrayList<>();
     public long startMili=System.currentTimeMillis();
+    public List<Suspicious> triedSuspicious = new ArrayList<>();
     @Test
     public void testEntirety() throws Exception{
-        String project = setWorkDirectory("Lang",39);
+        String project = setWorkDirectory("Lang",35);
         Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc,libPath);
         List<Suspicious> suspiciouses = localization.getSuspiciousLite();
         suspiciousLoop(suspiciouses, project);
     }
 
     public void suspiciousLoop(List<Suspicious> suspiciouses, String project) {
-        List<Suspicious> triedSuspicious = new ArrayList<>();
         for (Suspicious suspicious: suspiciouses){
             suspicious._libPath = libPath;
             boolean tried = false;
@@ -71,6 +74,7 @@ public class EntiretyTest {
 
     public boolean isFixSuccess(Suspicious suspicious, Map<ExceptionVariable,List<String>> boundarys, String project){
         System.out.println("Fix Success One Place");
+        printCollectingMessage(suspicious, boundarys);
         if (TestUtils.getFailTestNumInProject(project) > 0){
             Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc,libPath);
             List<Suspicious> suspiciouses = localization.getSuspiciousLite(false);
@@ -79,7 +83,6 @@ public class EntiretyTest {
         }
         else {
             System.out.println("Fix All Place Success");
-            printCollectingMessage(suspicious, boundarys);
             return true;
         }
     }
@@ -196,6 +199,19 @@ public class EntiretyTest {
             return project;
         }
         return project;
+    }
+
+
+    @Test
+    public void testGetBoundary(){
+        VariableInfo variableInfo = new VariableInfo("n", TypeEnum.INT,true, null);
+        TraceResult result = new TraceResult(false);
+        result.put("n","1");
+        ExceptionVariable variable = new ExceptionVariable(variableInfo, result);
+        List<BoundaryInfo> boundaryInfos = SearchBoundaryFilter.getBoundary(variable,"a", Arrays.asList("factorial"));
+        for (BoundaryInfo boundaryInfo: boundaryInfos){
+            System.out.println(boundaryInfo.value);
+        }
     }
 
 }

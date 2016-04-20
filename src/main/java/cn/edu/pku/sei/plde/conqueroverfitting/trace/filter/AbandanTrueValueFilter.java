@@ -195,7 +195,10 @@ public class AbandanTrueValueFilter {
             if (var.values.size() == 0){
                 continue;
             }
-
+            //对string类型暂时不处理
+            if (var.type.equals("STRING")){
+                continue;
+            }
             //当值中出现非常不规则的数据时(作为数字变量值的长度大于10)，过滤该variable
             List<String> bannedValue = new ArrayList<>();
             for (String value: var.values){

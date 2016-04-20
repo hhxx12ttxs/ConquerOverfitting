@@ -119,7 +119,6 @@ public class ReturnCapturer {
                 }
             }
         }
-        String statements= ""; //for static slicing
         for (int i=errorLineIndex; i<functionLines.length; i++){
             String detectingLine = functionLines[i].replace("\n","").trim();
             //clean the annotation
@@ -142,9 +141,8 @@ public class ReturnCapturer {
                 return exceptionProcessing(detectingLine);
             }
             if (detectingLine.contains("assert")){
-                return assertProcessing(detectingLine, statements);
+                return assertProcessing(detectingLine, functionBody);
             }
-            statements += detectingLine+"\n";
         }
         //No Assert And Throw Exception Found
         if (_functionCode.startsWith("(expected")){
@@ -295,8 +293,22 @@ public class ReturnCapturer {
         else if (assertType.contains("assertTrue")){
             if (parameters.get(0).contains(">=")){
                 String numParam = parameters.get(0).split(">=")[0].contains(_methodName)?parameters.get(0).split(">=")[1]:parameters.get(0).split(">=")[0];
-                if (numParam.matches("^(-?\\d+)(\\.\\d+)?$")){
+                if (numParam.trim().matches("^(-?\\d+)(\\.\\d+)?$")){
                     return "return "+numParam+";";
+                }
+            }
+            String attachLines = staticSlicingProcess(parameters, new ArrayList<String>(), statements);
+            for (String line: attachLines.split("\n")){
+                if (LineUtils.isLineInCatchBlock(statements, line)){
+                    String lineBefore = statements.split(line)[0];
+                    if (lineBefore.contains("\n")){
+                        String[] lines = lineBefore.split("\n");
+                        for (int i = lines.length-1; i>=0; i--){
+                            if (LineUtils.isCatchLine(lines[i])){
+                                return "throw new "+ lines[i].substring(lines[i].indexOf('(')+1,lines[i].lastIndexOf(')')).split(" ")[0]+"();";
+                            }
+                        }
+                    }
                 }
             }
             return "return true;";

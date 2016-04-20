@@ -11,6 +11,8 @@ import cn.edu.pku.sei.plde.conqueroverfitting.utils.CodeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.FileUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.TestUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
+import com.google.common.collect.Sets;
+import org.apache.commons.collections.map.LinkedMap;
 import org.apache.commons.lang.StringUtils;
 
 
@@ -37,23 +39,48 @@ public class SuspiciousFixer {
 
     public boolean mainFixProcess(){
         ExceptionExtractor extractor = new ExceptionExtractor(suspicious);
-        exceptionVariables = extractor.extract(traceResults);
-
-        List<List<ExceptionVariable>> echelons = extractor.sort();
-        for (List<ExceptionVariable> echelon: echelons){
-            Map<String, String> boundarys = new HashMap<>();
-            for (Map.Entry<String,List<ExceptionVariable>> assertEchelon: classifyWithAssert(echelon).entrySet()){
-                boundarys.put(assertEchelon.getKey(), getIfStrings(assertEchelon.getValue()));
-            }
-            if (fixMethodTwo(suspicious, boundarys.values(), project)){
-                return true;
-            }
-            if (fixMethodOne(suspicious, boundarys, project)){
-                return true;
+        for (Map.Entry<Integer, List<TraceResult>> entry: traceResultClassify(traceResults).entrySet()){
+            trueValues = AbandanTrueValueFilter.getTrueValue(entry.getValue(), suspicious.getAllInfo());
+            falseValues = AbandanTrueValueFilter.getFalseValue(entry.getValue(), suspicious.getAllInfo());
+            exceptionVariables = extractor.extract(entry.getValue());
+            List<List<ExceptionVariable>> echelons = extractor.sort();
+            for (List<ExceptionVariable> echelon: echelons){
+                Map<String, List<String>> boundarys = new HashMap<>();
+                for (Map.Entry<String,List<ExceptionVariable>> assertEchelon: classifyWithAssert(echelon).entrySet()){
+                    boundarys.put(assertEchelon.getKey(), getIfStrings(assertEchelon.getValue()));
+                }
+                if (fixMethodTwo(suspicious, boundarys, project, entry.getKey())){
+                    return true;
+                }
+                if (fixMethodOne(suspicious, boundarys, project, entry.getKey())){
+                    return true;
+                }
             }
         }
         return false;
     }
+
+
+    private Map<Integer, List<TraceResult>> traceResultClassify(List<TraceResult> traceResults){
+        Map<Integer, List<TraceResult>> result = new TreeMap<Integer, List<TraceResult>>(new Comparator<Integer>() {
+            @Override
+            public int compare(Integer integer, Integer t1) {
+                return -integer.compareTo(t1);
+            }
+        });
+        for (TraceResult traceResult: traceResults){
+            if (!result.containsKey(traceResult._traceLine)){
+                List<TraceResult> results = new ArrayList<>();
+                results.add(traceResult);
+                result.put(traceResult._traceLine, results);
+            }
+            else {
+                result.get(traceResult._traceLine).add(traceResult);
+            }
+        }
+        return result;
+    }
+
 
     private Map<String, List<ExceptionVariable>> classifyWithAssert(List<ExceptionVariable> exceptionVariables){
         Map<String, List<ExceptionVariable>> result = new HashMap<>();
@@ -71,12 +98,20 @@ public class SuspiciousFixer {
     }
 
 
-    private String getIfStrings(List<ExceptionVariable> exceptionVariables){
+    private List<String> getIfStrings(List<ExceptionVariable> exceptionVariables){
+        List<String> returnList = new ArrayList<>();
         List<String> result = new ArrayList<>();
         for (ExceptionVariable exceptionVariable: exceptionVariables){
-            result.addAll(getBoundary(exceptionVariable));
+            List<String> boundarys = getBoundary(exceptionVariable);
+            if (boundarys.size() > 1 && exceptionVariables.size() == 1){
+                for (String boundary: boundarys){
+                    returnList.add(getIfStatementFromBoundary(Arrays.asList(boundary)));
+                }
+                return returnList;
+            }
+            result.addAll(boundarys);
         }
-        return getIfStatementFromBoundary(result);
+        return Arrays.asList(getIfStatementFromBoundary(result));
     }
 
     private String getIfStatementFromBoundary(List<String> boundary){
@@ -85,33 +120,27 @@ public class SuspiciousFixer {
 
     private List<String> getBoundary(ExceptionVariable exceptionVariable){
         if (!boundarysMap.containsKey(exceptionVariable)){
-            List<String> boundarys = BoundaryGenerator.generate(exceptionVariable, trueValues, falseValues, project);
+            List<String> boundarys = BoundaryGenerator.generate(suspicious,exceptionVariable, trueValues, falseValues, project);
             boundarysMap.put(exceptionVariable, boundarys);
         }
         return boundarysMap.get(exceptionVariable);
     }
 
-    public static boolean fixMethodTwo(Suspicious suspicious, Collection<String> ifStrings, String project){
-        List<String> list = new ArrayList<>(ifStrings);
-        return fixMethodTwo(suspicious, list, project);
-    }
 
-    public static boolean fixMethodTwo(Suspicious suspicious, List<String> ifStrings, String project){
+    public static boolean fixMethodTwo(Suspicious suspicious, Map<String, List<String>> ifStrings, String project, int errorLine){
         MethodTwoFixer fixer = new MethodTwoFixer(suspicious);
-        return fixer.fix(ifStrings);
+        return fixer.fix(ifStrings, Sets.newHashSet(errorLine));
     }
 
 
-    public static boolean fixMethodOne(Suspicious suspicious,Map<String, String> ifStrings, String project) {
+    public static boolean fixMethodOne(Suspicious suspicious,Map<String, List<String>> ifStrings, String project, int errorLine) {
         ReturnCapturer fixCapturer = new ReturnCapturer(suspicious._classpath,suspicious._srcPath, suspicious._testClasspath, suspicious._testSrcPath);
         MethodOneFixer methodOneFixer = new MethodOneFixer(suspicious, project);
-        String code = FileUtils.getCodeFromFile(suspicious._srcPath, suspicious.classname());
-        for (Map.Entry<String, String> ifString: ifStrings.entrySet()){
+        for (Map.Entry<String, List<String>> ifString: ifStrings.entrySet()){
             String testClassName = ifString.getKey().split("#")[0];
             String testMethodName = ifString.getKey().split("#")[1];
-            List<Integer> errorLine = suspicious._errorLineMap.get(testClassName+"#"+testMethodName);
             int assertLine = Integer.valueOf(ifString.getKey().split("#")[2]);
-            if (!CodeUtils.getLineFromCode(code,assertLine).contains("assert")){
+            if (!CodeUtils.getLineFromCode(FileUtils.getCodeFromFile(suspicious._testSrcPath, testClassName),assertLine).contains("assert")){
                 assertLine = -1;
             }
             String fixString = fixCapturer.getFixFrom(testClassName, testMethodName, assertLine, suspicious.classname(), suspicious.functionnameWithoutParam());
@@ -121,7 +150,14 @@ public class SuspiciousFixer {
             if (fixString.equals("")){
                 continue;
             }
-            Patch patch = new Patch(testClassName, testMethodName, suspicious.classname(), errorLine, Arrays.asList(ifString.getValue()), fixString);
+            Patch patch;
+            if (errorLine == 0){
+                patch = new Patch(testClassName, testMethodName, suspicious.classname(), suspicious._errorLineMap.get(testClassName+"#"+testMethodName), ifString.getValue(), fixString);
+            }
+            else {
+                patch = new Patch(testClassName, testMethodName, suspicious.classname(), Arrays.asList(errorLine), ifString.getValue(), fixString);
+
+            }
             boolean result = methodOneFixer.addPatch(patch);
             if (result){
                 break;

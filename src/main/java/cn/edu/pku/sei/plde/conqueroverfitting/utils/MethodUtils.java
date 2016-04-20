@@ -8,11 +8,7 @@ import java.util.List;
 public class MethodUtils {
 
     public static boolean isInnerMethod(String code, String methodName){
-        List<Integer> lines = CodeUtils.getSingleMethodLine(code, methodName);
-        if (lines.size() !=2){
-            return true;
-        }
-        return false;
+        return !CodeUtils.hasMethod(code, methodName);
     }
 
     public static boolean isLoopCall(String mainMethodName, String testMethodName, String code){

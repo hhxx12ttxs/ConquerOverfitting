@@ -73,6 +73,9 @@ public class ExceptionSorter {
         }
         sortBoundary();
         boundaryCombination();
+        if (_variableCombinations.size()> 10){
+            return _variableCombinations.subList(0,10);
+        }
         return _variableCombinations;
     }
 
@@ -128,18 +131,27 @@ public class ExceptionSorter {
             _sortedVariable.add(exceptionVariable);
         }
 
-        //没有经过赋值的参数变量最优先,插入list最前端
+
         for (ExceptionVariable exceptionVariable: _paramVariables){
-            _sortedVariable.add(0,exceptionVariable);
+            if (_sortedVariable.size() < 15){
+                _sortedVariable.add(exceptionVariable);
+            }
+
         }
         //没有经过赋值的类变量优先度最低，放在list的最胡
         for (ExceptionVariable exceptionVariable: _fieldVariables){
-            _sortedVariable.add(exceptionVariable);
-        }
+            if (_sortedVariable.size() < 15){
+                _sortedVariable.add(exceptionVariable);
+            }        }
         //addon 优先度最低
         for (ExceptionVariable exceptionVariable: _addonVariable){
-            _sortedVariable.add(exceptionVariable);
+            if (!_sortedVariable.contains(exceptionVariable)){
+                if (_sortedVariable.size() < 15){
+                    _sortedVariable.add(exceptionVariable);
+                }
+            }
         }
+
     }
 
     private int getLastAssignLine(VariableInfo info){

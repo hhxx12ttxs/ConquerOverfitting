@@ -35,9 +35,7 @@ public class ExceptionExtractor {
 
     public List<ExceptionVariable> extract(List<TraceResult> traceResults){
         this.traceResults = traceResults;
-        if (exceptionVariables == null){
-            exceptionVariables = AbandanTrueValueFilter.abandon(traceResults, suspicious.getAllInfo());
-        }
+        exceptionVariables = AbandanTrueValueFilter.abandon(traceResults, suspicious.getAllInfo());
         return exceptionVariables;
     }
 
@@ -61,6 +59,8 @@ public class ExceptionExtractor {
 
     private static List<List<ExceptionVariable>> sortWithMethodTwo(List<ExceptionVariable> exceptionVariables, List<TraceResult> traceResults, Suspicious suspicious){
         ExceptionSorter sorter = new ExceptionSorter(suspicious);
+
+
         return sorter.sort(exceptionVariables);
     }
 
@@ -104,7 +104,7 @@ public class ExceptionExtractor {
     private static List<ExceptionVariable> getExceptionVariableWithName(String variableName, List<ExceptionVariable> exceptionVariables){
         List<ExceptionVariable> result = new ArrayList<>();
         for (ExceptionVariable exceptionVariable: exceptionVariables){
-            if (exceptionVariable.name.equals(variableName) || exceptionVariable.name.contains(variableName+".")){
+            if (exceptionVariable.name.equals(variableName) || exceptionVariable.name.contains(variableName+".null") || exceptionVariable.name.contains(variableName+".Comparable")){
                 result.add(exceptionVariable);
             }
         }

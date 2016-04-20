@@ -65,10 +65,10 @@ public class VariableTracer {
         _asserts = new Asserts(_classpath,_srcPath,_testClasspath,_testSrcPath,testClassname,testMethodName, _suspicious._libPath);
         List<MethodInfo> methodInfos = _suspicious.getMethodInfo(_srcPath);
         ErrorLineTracer tracer = new ErrorLineTracer(_asserts, _classname, _functionname);
-        List<Integer> errorLines = tracer.trace(errorLine, isSuccess);
+        Set<Integer> errorLines = tracer.trace(errorLine, isSuccess);
         List<TraceResult> results = new ArrayList<>();
 
-        for (int line: new HashSet<>(errorLines)){
+        for (int line: errorLines){
             List<VariableInfo> variableInfos = _suspicious.getVariableInfo(_srcPath, line);
             variableInfos.removeAll(getBannedVariables(line));
             if (variableInfos.size() == 0 &&  methodInfos.size() == 0){
@@ -93,7 +93,7 @@ public class VariableTracer {
             }
         }
         _suspicious._assertsMap.put(_testClassname+"#"+_testMethodName, _asserts);
-        _suspicious._errorLineMap.put(_testClassname+"#"+_testMethodName, errorLines);
+        _suspicious._errorLineMap.put(_testClassname+"#"+_testMethodName, new ArrayList<>(errorLines));
         results.addAll(getAddonResult(_suspicious.getAllInfo()));
         deleteTempFile();
         return results;
@@ -140,14 +140,14 @@ public class VariableTracer {
         if (_asserts._asserts.size() == 1 && firstAssert.contains("True") && firstAssert.contains(">=")){
             if (firstStatement.startsWith("return")){
                 String returnString = methodCode.substring(firstStatement.indexOf(" ")+1, firstStatement.length()-1);
-                String param = CodeUtils.divideParameter(firstAssert, 1).get(0);
+                String param = firstAssert.substring(firstAssert.indexOf('(')+1, firstAssert.lastIndexOf(')'));
                 String numParam = param.split(">=")[0].contains(_functionname)?param.split(">=")[1]:param.split(">=")[0];
-                if (numParam.matches("^(-?\\d+)(\\.\\d+)?$")){
+                if (numParam.trim().matches("^(-?\\d+)(\\.\\d+)?$")){
                     TraceResult traceResult = new TraceResult(false);
                     traceResult._assertLine = _asserts._errorAssertLines.get(0);
                     traceResult._testClass = _testClassname;
                     traceResult._testMethod = _testMethodName;
-                    traceResult.put("return", "("+returnString+")" + "<" + numParam);
+                    traceResult.put("return", "("+returnString+")" + "<" + numParam.trim());
                     results.add(traceResult);
                     for (VariableInfo info: variableInfos){
                         if (info.variableName.equals("return")){
@@ -260,7 +260,10 @@ public class VariableTracer {
                 if (!pair.contains("=")){
                     continue;
                 }
-                if (pair.substring(pair.lastIndexOf("=")+1).startsWith("\"+") && pair.substring(pair.lastIndexOf("=")+1).endsWith("+\"")){
+                if (pair.substring(pair.indexOf("=")+1).startsWith("\"+") && pair.substring(pair.indexOf("=")+1).endsWith("+\"")){
+                    continue;
+                }
+                if (pair.length()>1000){
                     continue;
                 }
                 result.put(pair.substring(0, pair.lastIndexOf('=')),pair.substring(pair.lastIndexOf('=')+1));

@@ -12,6 +12,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.utils.CodeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.InfoUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.MathUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
+import com.sun.corba.se.impl.util.SUNVMCID;
 import com.sun.org.apache.bcel.internal.generic.LUSHR;
 import com.sun.org.apache.bcel.internal.generic.Type;
 import org.apache.commons.lang.StringUtils;
@@ -27,20 +28,24 @@ import java.util.regex.Matcher;
  */
 public class BoundaryGenerator {
 
-    public static List<String> generate(ExceptionVariable exceptionVariable, Map<VariableInfo, List<String>> trueValues, Map<VariableInfo, List<String>> falseValues, String project) {
-        List<BoundaryInfo> variableBoundary = SearchBoundaryFilter.getBoundary(exceptionVariable, project);
+    public static List<String> generate(Suspicious suspicious, ExceptionVariable exceptionVariable, Map<VariableInfo, List<String>> trueValues, Map<VariableInfo, List<String>> falseValues, String project) {
+        List<String> keywords = new ArrayList<>();
+        if (exceptionVariable.name.length() == 1){
+            keywords.add(suspicious.functionnameWithoutParam());
+        }
+        List<BoundaryInfo> variableBoundary = SearchBoundaryFilter.getBoundary(exceptionVariable, project, keywords);
         List<String> intervals = exceptionVariable.getBoundaryIntervals(variableBoundary);
         if (intervals == null) {
             return null;
         }
         String ifString = generateWithSingleWord(exceptionVariable,intervals,trueValues,falseValues);
         //如果怀疑变量的等级大于1,并且没有与之区间匹配的if生成方法，则分别对区间中的每个值生成if进行枚举。
-        if (exceptionVariable.variable.priority > 1 && ifString.equals("")){
+        if ((exceptionVariable.variable.priority > 1 || trueValues.size() ==0) && ifString.equals("") && CodeUtils.isForLoopParam(intervals)==-1){
             List<String> result = new ArrayList<>();
             for (String value: intervals){
                 String _ifString = generateWithSingleWord(exceptionVariable, Arrays.asList(value), trueValues, falseValues);
-                if (!ifString.equals("")){
-                    result.add(ifString);
+                if (!_ifString.equals("")){
+                    result.add(_ifString);
                 }
             }
             return result;
@@ -66,6 +71,12 @@ public class BoundaryGenerator {
             }
             return "";
         }
+        if (variable.variable.variableName.equals("this")){
+            return "this.equals("+intervals.get(0)+")";
+        }
+        if (variable.variable.variableName.equals("return")){
+            return intervals.get(0);
+        }
         if (intervals.size() == 1 && variable.variable.isAddon && (trueValues.containsKey(variable.variable) || trueValues.size() == 0)){
             if (variable.variable.variableName.endsWith(".Comparable")){
                 String variableName = variable.variable.variableName.substring(0,variable.variable.variableName.lastIndexOf("."));
@@ -85,14 +96,8 @@ public class BoundaryGenerator {
                         return variableName+" != null";
                 }
             }
-            if (variable.variable.variableName.equals("this")){
-                return "this.equals("+intervals.get(0)+")";
-            }
-            if (variable.variable.variableName.equals("return") && trueValues.containsKey(variable.variable)){
-                return intervals.get(0);
-            }
-        }
 
+        }
         if (MathUtils.isNumberType(variable.variable.getStringType())) {
             if (intervals.size() == 1){
                 if (intervals.get(0).equals("NaN")){
@@ -101,6 +106,9 @@ public class BoundaryGenerator {
                 else {
                     return variable.variable.variableName + "==" + intervals.get(0);
                 }
+            }
+            if (intervals.size()!=2){
+                return "";
             }
             double biggestBoundary = MathUtils.parseStringValue(intervals.get(1));
             double smallestBoundary = MathUtils.parseStringValue(intervals.get(0));

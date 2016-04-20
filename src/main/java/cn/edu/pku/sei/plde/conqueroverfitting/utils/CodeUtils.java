@@ -265,8 +265,8 @@ public class CodeUtils {
     }
 
 
-    public static List<String> divideParameter(String line, int level, boolean dividePoint){
-        line = line.replace("(double)", "").replace("(int)","").replace(" ","");
+    public static List<String> divideParameter(String line, int level, boolean dividePoint ){
+        line = line.replace("(double)", "").replace("(int)","");
         List<String> result = new ArrayList<String>();
         int bracketCount = 0;
         int startPoint = 0;
@@ -278,12 +278,15 @@ public class CodeUtils {
                 }
                 startPoint = i+1;
             }
-            else if (ch == '(' && line.charAt(i+1) != ')'){
+            else if (ch == '('){
+                if (bracketCount != 0 && level > 1){
+                    result.add(line.substring(startPoint,i));
+                }
                 if (++bracketCount <= level){
                     startPoint = i + 1;
                 }
             }
-            else if (ch == '[' || ch == '<'){
+            else if (ch == '[' ){
                 if (++bracketCount <= level){
                     if (startPoint != i){
                         result.add(line.substring(startPoint,i));
@@ -291,7 +294,7 @@ public class CodeUtils {
                     startPoint = i + 1;
                 }
             }
-            else if (ch == ')' && line.charAt(i-1) != '('|| ch == ']' || ch == '>'){
+            else if (ch == ')' || ch == ']'){
                 if (bracketCount-- <= level){
                     if (startPoint != i){
                         result.add(line.substring(startPoint,i));
@@ -316,7 +319,11 @@ public class CodeUtils {
                 }
             }
         }
-        return result;
+        List<String> returnList = new ArrayList<>();
+        for (String param: result){
+            returnList.add(param.trim());
+        }
+        return returnList;
     }
 
 
@@ -499,15 +506,20 @@ public class CodeUtils {
             String returnString = "";
             if (!result.equals("")){
                 String lineString = getLineFromCode(code, line).replace(" = ","=");
+                String lastString = getLineFromCode(code, line-1).replace(" = ","=");
                 while (LineUtils.isBoundaryLine(lineString)){
                     lineString = getLineFromCode(code,--line);
+                    lastString = getLineFromCode(code, line-1);
                 }
+                String lastLine = "";
                 for (String resultLine: result.split("\n")){
-                    if (resultLine.replace(" ","").equals(lineString.replace(" ",""))){
+                    if (resultLine.replace(" ","").equals(lineString.replace(" ","")) && lastLine.replace(" ","").equals(lastString.replace(" ",""))){
                         break;
                     }
+                    lastLine = resultLine;
                     returnString += resultLine+"\n";
                 }
+
                 return returnString;
             }
         }

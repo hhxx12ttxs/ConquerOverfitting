@@ -244,6 +244,7 @@ public class Suspicious implements Serializable{
             LinkedHashMap<String, ArrayList<VariableInfo>> classvars = variableCollect.getVisibleFieldInAllClassMap(classSrcPath);
             if (classvars.containsKey(classSrcPath)){
                 List<VariableInfo> fields = classvars.get(classSrcPath);
+                //不能在静态函数中追踪非静态变量
                 List<VariableInfo> staticVars = new ArrayList<>();
                 if (MethodCollect.checkIsStaticMethod(getClassSrcPath(classSrc),_function.substring(0, _function.indexOf("(")))){
                     for (VariableInfo info: fields){
@@ -252,7 +253,17 @@ public class Suspicious implements Serializable{
                         }
                     }
                 }
+                String code = FileUtils.getCodeFromFile(_srcPath, _classname);
+                List<VariableInfo> innerVars = new ArrayList<>();
+                if (!MethodUtils.isInnerMethod(code,functionnameWithoutParam())){
+                    for (VariableInfo info: fields){
+                        if (!CodeUtils.hasField(code, info.variableName)){
+                            innerVars.add(info);
+                        }
+                    }
+                }
                 fields.removeAll(staticVars);
+                fields.removeAll(innerVars);
                 for (VariableInfo field: fields){
                     field.isFieldVariable = true;
                 }

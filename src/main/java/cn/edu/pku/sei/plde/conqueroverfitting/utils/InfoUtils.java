@@ -73,7 +73,19 @@ public class InfoUtils {
             return Arrays.asList(info);
         }
         VariableInfo info1 = new VariableInfo(info.variableName+".null",TypeEnum.BOOLEAN,true,null);
+        info1.isLocalVariable = info.isLocalVariable;
+        info1.isFieldVariable = info.isFieldVariable;
+        info1.isParameter = info.isParameter;
+        info1.isPublic = info.isPublic;
+        info1.isFinal = info.isFinal;
+        info1.isStatic = info.isStatic;
         VariableInfo info2 = new VariableInfo(info.variableName+".Comparable",TypeEnum.BOOLEAN,true,null);
+        info2.isLocalVariable = info.isLocalVariable;
+        info2.isFieldVariable = info.isFieldVariable;
+        info2.isParameter = info.isParameter;
+        info2.isPublic = info.isPublic;
+        info2.isFinal = info.isFinal;
+        info2.isStatic = info.isStatic;
         return Arrays.asList(info1, info2);
     }
 

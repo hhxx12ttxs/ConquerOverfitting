@@ -26,19 +26,24 @@ public class SearchBoundaryFilter {
      * @param exceptionVariable the  key-value map to be filtered
      * @return the filtered key-value map
      */
-    public static List<BoundaryInfo> getBoundary(ExceptionVariable exceptionVariable, String project){
+    public static List<BoundaryInfo> getBoundary(ExceptionVariable exceptionVariable, String project, List<String> keywords){
         //对于名字为这两个的怀疑变量，一般是钦定的显而易见修复，不需要search boundary。
         if (exceptionVariable.name.equals("this") || exceptionVariable.name.equals("return")){
             return new ArrayList<>();
         }
-        return getSearchBoundaryInfo(exceptionVariable.variable, project);
+        return getSearchBoundaryInfo(exceptionVariable.variable, project, keywords);
     }
 
-    private static List<BoundaryInfo> getSearchBoundaryInfo(VariableInfo info,String project){
+    public static List<BoundaryInfo> getBoundary(ExceptionVariable exceptionVariable, String project) {
+        return getBoundary(exceptionVariable, project, new ArrayList<String>());
+    }
+
+    private static List<BoundaryInfo> getSearchBoundaryInfo(VariableInfo info,String project, List<String> addonKeywords){
         String variableName = info.variableName;
         String valueType = info.getStringType();
         ArrayList<String> keywords = new ArrayList<String>();
         keywords.add("if");
+        keywords.addAll(addonKeywords);
         keywords.add(valueType);
         if (info.variableName.startsWith("is") && info.variableName.endsWith("()")){
             variableName = info.variableName.substring(0, info.variableName.lastIndexOf("("));
@@ -109,7 +114,7 @@ public class SearchBoundaryFilter {
         if (!keywords.contains(info.variableName)){
             keywords.add(info.variableName);
         }
-        keywords.remove(valueType);
+        //keywords.remove(valueType);
         codePackage = new File("experiment/searchcode/" + StringUtils.join(keywords,"-"));
         if (!codePackage.exists()){
             GathererJava gathererJava = new GathererJava(keywords, StringUtils.join(keywords,"-"),"joda-time");

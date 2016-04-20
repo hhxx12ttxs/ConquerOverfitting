@@ -60,9 +60,9 @@ public class ExceptionVariable {
     public List<String> getBoundaryIntervals(List<BoundaryInfo> boundaryInfos){
         List<String> valueList = new ArrayList<>(values);
         //如果是for循环的参数，原封不动放回去
-        if (CodeUtils.isForLoopParam(new ArrayList<>(values))!=-1){
-            return valueList;
-        }
+        //if (CodeUtils.isForLoopParam(new ArrayList<>(values))!=-1){
+        //    return valueList;
+        //}
         if (MathUtils.isNumberType(type)) {
             if (valueList.size() == 1 && (valueList.get(0).equals("NaN") || boundaryInfos.size() == 0)){
                 return valueList;

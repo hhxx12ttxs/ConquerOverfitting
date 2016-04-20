@@ -79,9 +79,12 @@ public class MethodOneFixer {
                         return true;
                     }
                     FileUtils.copyFile(classBackup, targetClassFile);
+                    FileUtils.copyFile(javaBackup, targetJavaFile);
                 }
             }
         }
+        FileUtils.copyFile(classBackup, targetClassFile);
+        FileUtils.copyFile(javaBackup, targetJavaFile);
         return false;
     }
 
