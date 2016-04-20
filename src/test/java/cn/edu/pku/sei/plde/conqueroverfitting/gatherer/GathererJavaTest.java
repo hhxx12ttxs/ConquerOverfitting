@@ -14,15 +14,15 @@ public class GathererJavaTest extends TestCase {
 		ArrayList<String> keyWords = new ArrayList<String>();
 		keyWords.add("if");
 		//keyWords.add("int");
-		keyWords.add("numDecimals");
-		GathererJavaGithub gathererJavaGithub = new GathererJavaGithub(keyWords, "if-numDecimals", "commons-lang");
+		keyWords.add("hours");
+		GathererJava gathererJava = new GathererJava(keyWords, "if-hours", "joda-time");
 		//new GathererJavaGithub(keyWords, "commons-math");Math
 		//new GathererJavaGithub(keyWords, "commons-lang");Lang
 		//new GathererJavaGithub(keyWords, "closure-compiler");Closure
 		//new GathererJavaGithub(keyWords, "jfreechart");Chart
 		//new GathererJavaGithub(keyWords, "joda-time");Time
 		//GathererJavaGithub gathererJavaGithub = new GathererJavaGithub(keyWords, "if-Complex","math-complex");
-		gathererJavaGithub.searchCode();
+		gathererJava.searchCode();
 		long timeEnd = System.currentTimeMillis();
 		//103s
 		System.out.println("time = " + (timeEnd - timeStart)/1000 );

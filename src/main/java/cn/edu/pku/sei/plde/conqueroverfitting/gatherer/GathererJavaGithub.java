@@ -74,15 +74,16 @@ public class GathererJavaGithub {
 				break;
             }
 
-			try {
-				int sleep = ra.nextInt(1000) + 8000;
-				Thread.sleep(sleep);
-				System.out.println("i = " + i + " sleep" + sleep);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
 			codeUrlList.addAll(urls);
 		}
+
+		try {
+			int sleep = 40000;
+			Thread.sleep(sleep);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+
 		int size = codeUrlList.size();
 //		for (int i = MAX_URL_NUM; i < size; i++) {
 //			codeUrlList.remove(codeUrlList.size() - 1);

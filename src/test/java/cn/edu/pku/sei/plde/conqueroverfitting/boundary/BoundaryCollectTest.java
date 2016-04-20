@@ -74,7 +74,7 @@ public class BoundaryCollectTest {
         ArrayList<BoundaryInfo> boundaryList = boundaryCollect.getBoundaryList();
 
         assertNotNull(boundaryList);
-        Log log = new Log("log//if-numDecimals");
+        Log log = new Log("log//if-numDecimal");
         for(BoundaryInfo boundaryInfo : boundaryList){
             log.logSignLine("begin");
             log.logStr("name: " + boundaryInfo.name);
