@@ -46,9 +46,9 @@ public class VariableCollectVisitor extends ASTVisitor {
         if(node.getParent() == null){
             return true;
         }
-        if(!node.getParent().toString().contains(" class " + className + " {")){
-            return true;
-        }
+        //if(!node.getParent().toString().contains(" class " + className + " {")){
+        //    return true;
+        //}
 
         TypeInference typeInference = new TypeInference(node.getType()
                 .toString());

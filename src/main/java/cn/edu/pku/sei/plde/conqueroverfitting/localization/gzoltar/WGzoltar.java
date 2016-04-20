@@ -159,18 +159,10 @@ public class WGzoltar extends GZoltar {
                 paramCount = -1;
             }
             ArrayList<ConstructorDeclarationInfo> constructors = constructMap.get(key);
-            ConstructorDeclarationInfo info;
-            if (paramCount == -1){
-                info = constructors.get(0);
+            if (constructors.size() == 0){
+                continue;
             }
-            else {
-                info = constructors.get(0);
-                //for (ConstructorDeclarationInfo info1: constructors){
-                //    if (info1.parameterNum == paramCount){
-                //        info = info1;
-                //    }
-                //}
-            }
+            ConstructorDeclarationInfo info = constructors.get(0);
             Clazz clazz = new Clazz(packageName);
             clazz.setSource(key.substring(key.lastIndexOf(PathUtils.getFileSeparator())+1));
             Method method = new Method(clazz, info.methodName+"("+info.parameterNum+")");

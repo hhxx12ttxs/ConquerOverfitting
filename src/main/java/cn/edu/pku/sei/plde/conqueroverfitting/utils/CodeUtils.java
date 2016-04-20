@@ -4,6 +4,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.file.ReadFile;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.gzoltar.StatementExt;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.MethodInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
+import com.sun.xml.internal.ws.api.model.MEP;
 import javassist.NotFoundException;
 import org.apache.commons.collections.ArrayStack;
 import org.apache.commons.collections.map.HashedMap;
@@ -277,7 +278,7 @@ public class CodeUtils {
                 }
                 startPoint = i+1;
             }
-            else if (ch == '('){
+            else if (ch == '(' && line.charAt(i+1) != ')'){
                 if (++bracketCount <= level){
                     startPoint = i + 1;
                 }
@@ -290,7 +291,7 @@ public class CodeUtils {
                     startPoint = i + 1;
                 }
             }
-            else if (ch == ')' || ch == ']' || ch == '>'){
+            else if (ch == ')' && line.charAt(i-1) != '('|| ch == ']' || ch == '>'){
                 if (bracketCount-- <= level){
                     if (startPoint != i){
                         result.add(line.substring(startPoint,i));
@@ -319,8 +320,11 @@ public class CodeUtils {
     }
 
 
-
     private static List<MethodDeclaration> getAllMethod(String code){
+        return getAllMethod(code, false);
+    }
+
+    private static List<MethodDeclaration> getAllMethod(String code, boolean getInnerClassMethod){
         ASTParser parser = ASTParser.newParser(AST.JLS4);
         parser.setSource(code.toCharArray());
         CompilationUnit unit = (CompilationUnit) parser.createAST(null);
@@ -328,8 +332,14 @@ public class CodeUtils {
             return new ArrayList<>();
         }
         TypeDeclaration declaration = (TypeDeclaration) unit.types().get(0);
-        MethodDeclaration methodDec[] = declaration.getMethods();
-        return Arrays.asList(methodDec);
+        List<MethodDeclaration> methodDeclarations = new ArrayList<>();
+        methodDeclarations.addAll(Arrays.asList(declaration.getMethods()));
+        if (getInnerClassMethod){
+            for (TypeDeclaration typeDeclaration: declaration.getTypes()){
+                methodDeclarations.addAll(Arrays.asList(typeDeclaration.getMethods()));
+            }
+        }
+        return methodDeclarations;
     }
 
     private static List<FieldDeclaration> getAllField(String code){
@@ -389,7 +399,7 @@ public class CodeUtils {
     private static List<MethodDeclaration> getMethod(String code, String methodName) {
         methodName = methodName.trim();
         List<MethodDeclaration> result = new ArrayList<>();
-        for (MethodDeclaration method : getAllMethod(code)) {
+        for (MethodDeclaration method : getAllMethod(code, true)) {
             if (method.getName().getIdentifier().equals(methodName)) {
                 result.add(method);
             }
@@ -397,15 +407,18 @@ public class CodeUtils {
         return result;
     }
 
-    public static List<String> getAllMethodName(String code){
+
+
+    public static List<String> getAllMethodName(String code, boolean getInnerClassMethod){
         List<String> result = new ArrayList<>();
-        for (MethodDeclaration method : getAllMethod(code)) {
+        for (MethodDeclaration method : getAllMethod(code, getInnerClassMethod)) {
            result.add(method.getName().getIdentifier());
         }
         return result;
     }
+
     public static boolean hasMethod(String code, String method){
-        return getAllMethodName(code).contains(method);
+        return getAllMethodName(code, false).contains(method);
     }
 
     public static String getMethodString(String code, String methodName){
@@ -473,8 +486,8 @@ public class CodeUtils {
         List<MethodDeclaration> declarations = getMethod(code, methodName);
         for (MethodDeclaration method : declarations) {
             String result = "";
-            int startLine = unit.getLineNumber(method.getStartPosition()) -1;
-            int endLine = unit.getLineNumber(method.getStartPosition()+method.getLength()) -1;
+            int startLine = unit.getLineNumber(method.getStartPosition());
+            int endLine = unit.getLineNumber(method.getStartPosition()+method.getLength());
             if (startLine <= line && endLine >= line){
                 List<Statement> statements = method.getBody().statements();
                 for (Statement statement: statements){
@@ -486,6 +499,9 @@ public class CodeUtils {
             String returnString = "";
             if (!result.equals("")){
                 String lineString = getLineFromCode(code, line).replace(" = ","=");
+                while (LineUtils.isBoundaryLine(lineString)){
+                    lineString = getLineFromCode(code,--line);
+                }
                 for (String resultLine: result.split("\n")){
                     if (resultLine.replace(" ","").equals(lineString.replace(" ",""))){
                         break;
@@ -582,7 +598,7 @@ public class CodeUtils {
         List<MethodDeclaration> methodDec = getMethod(code, methodName);
         for (MethodDeclaration method: methodDec){
             if (method.getBody() == null || method.getBody().statements().size() == 0){
-                return new ArrayList<>();
+                continue;
             }
             Statement firstStatement = (Statement) method.getBody().statements().get(0);
             int startLine = unit.getLineNumber(firstStatement.getStartPosition()) -1;

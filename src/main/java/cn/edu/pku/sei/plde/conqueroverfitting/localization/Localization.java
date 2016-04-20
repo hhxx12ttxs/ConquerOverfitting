@@ -146,10 +146,7 @@ public class Localization  {
             return result;
         }
         try {
-            boolean createResult = suspicousFile.createNewFile();
-            if (!createResult){
-                System.out.println("File Create Error");
-            }
+            suspicousFile.createNewFile();
             ObjectOutputStream objectOutputStream = new ObjectOutputStream(new FileOutputStream(suspicousFile));
             objectOutputStream.writeObject(result);
             objectOutputStream.close();

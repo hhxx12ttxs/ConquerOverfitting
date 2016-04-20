@@ -39,6 +39,22 @@ public class LineUtils {
         return false;
     }
 
+    public static boolean isLineInFailBlock(String code, int lineNum){
+        int braceCount = 0;
+        for (int i= lineNum; i< code.split("\n").length; i++){
+            String lineString = CodeUtils.getLineFromCode(code, i);
+            braceCount += CodeUtils.countChar(lineString, '{');
+            braceCount -= CodeUtils.countChar(lineString, '}');
+            if (braceCount < 0){
+                return false;
+            }
+            if (lineString.contains("fail(") && braceCount == 0){
+                return true;
+            }
+        }
+        return false;
+    }
+
     public static boolean isIfLine(String line){
         return line.replace(" ","").startsWith("if(");
     }
@@ -57,8 +73,20 @@ public class LineUtils {
                 lineString.trim().equals("{") ||
                 lineString.contains("try ") ||
                 lineString.contains("try{") ||
-                lineString.contains("catch ") ||
+                lineString.contains("catch (") ||
+                lineString.contains("catch(") ||
                 lineString.trim().equals("}");
+    }
+
+    public static boolean isDeclarationLineWithoutAssign(String lineString){
+        if (!lineString.contains("=") && !lineString.contains("(") && !lineString.contains(")") && !isBoundaryLine(lineString)){
+            return true;
+        }
+        return false;
+    }
+
+    public static boolean isCommentable(String lineString){
+        return !isBoundaryLine(lineString) && !isDeclarationLineWithoutAssign(lineString);
     }
 
     public static boolean isIndependentLine(String line){

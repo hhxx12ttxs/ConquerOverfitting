@@ -109,14 +109,28 @@ public class Asserts {
                 if (AssertUtils.isAssertLine(lineString, code)){
                     result.add(lineNum);
                 }
-                if (lineString.startsWith("fail")){
+                if (lineString.startsWith("fail(")){
                     int num = lineNum -1;
                     while (!CodeUtils.getLineFromCode(FileUtils.getCodeFromFile(tempJavaFile),num).trim().startsWith("try")){
                         SourceUtils.commentCodeInSourceFile(tempJavaFile, num);
                         num--;
                     }
                 }
-                if (!AssertUtils.isAssertLine(lineString,code)){
+                else if (LineUtils.isLineInFailBlock(code, lineNum)){//如果在fail的语句内抛出异常
+                    for (int i=lineNum; i< _methodEndLine; i++){
+                        if (CodeUtils.getLineFromCode(code, i).trim().startsWith("fail(")){
+                            int num = i-1;
+                            while (!CodeUtils.getLineFromCode(FileUtils.getCodeFromFile(tempJavaFile),num).trim().startsWith("try")){
+                                SourceUtils.commentCodeInSourceFile(tempJavaFile, num);
+                                num--;
+                            }
+                            result.add(i);
+                            _errorThrowLines.add(lineNum);
+                            break;
+                        }
+                    }
+                }
+                else if (!AssertUtils.isAssertLine(lineString,code)){
                     _errorThrowLines.add(lineNum);
                     break;
                 }
@@ -280,13 +294,14 @@ public class Asserts {
             int line = _assertLineMap.get(assrtString);
             lineSet.add(line);
             lineSet.addAll(dependenceOfAssert(line));
+            lineSet.removeAll(_errorThrowLines);
         }
         try {
             int beginLine = _methodStartLine + 1;
             int endLine = _methodEndLine;
             for (int i=beginLine; i<= endLine; i++){
                 String lineString = CodeUtils.getLineFromCode(_code, i);
-                if (!lineSet.contains(i) && !LineUtils.isBoundaryLine(lineString)){
+                if (!lineSet.contains(i) && LineUtils.isCommentable(lineString)){
                     SourceUtils.commentCodeInSourceFile(tempJavaFile, i);
                 }
             }

@@ -30,7 +30,7 @@ public class EntiretyTest {
     public long startMili=System.currentTimeMillis();
     @Test
     public void testEntirety() throws Exception{
-        String project = setWorkDirectory("Time", 9);
+        String project = setWorkDirectory("Lang",39);
         Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc,libPath);
         List<Suspicious> suspiciouses = localization.getSuspiciousLite();
         suspiciousLoop(suspiciouses, project);
@@ -186,9 +186,11 @@ public class EntiretyTest {
             classSrc = projectDir.getAbsolutePath()+"/"+project +"/source/";
             testClassSrc = projectDir.getAbsolutePath()+"/"+project +"/tests/";
             File libPkg = new File(PATH_OF_DEFECTS4J+project+"/lib/");
-            for (String p: libPkg.list()){
-                if (p.endsWith(".jar")){
-                    libPath.add(libPkg.getAbsolutePath()+"/"+p);
+            if (libPkg.list() != null){
+                for (String p: libPkg.list()){
+                    if (p.endsWith(".jar")){
+                        libPath.add(libPkg.getAbsolutePath()+"/"+p);
+                    }
                 }
             }
             return project;

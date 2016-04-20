@@ -69,16 +69,18 @@ public class ErrorLineTracer {
                 }
             }
             else {
-                if (LineUtils.isLineInIf(code, line)){
-                    int i = line-1;
-                    while (LineUtils.isLineInIf(code, i--));
-                    returnList.add(i);
-                }
+                // math46 错误行太多，采集到不必要的数据
+                //if (LineUtils.isLineInIf(code, line)){
+                //    int i = line-1;
+                //    while (LineUtils.isLineInIf(code, i--));
+                //    returnList.add(i);
+                //}
                 returnList.add(line);
             }
         }
         if (returnList.size() == 1){
-            for (int i= methodStartLine+1; i< methodEndLine; i++){
+            //将错误行之前的简单if语句的行加入错误行的列表
+            for (int i= returnList.get(0); i> methodStartLine; i--){
                 String lineString = CodeUtils.getLineFromCode(code, i);
                 if (LineUtils.isIfAndElseIfLine(lineString) && InfoUtils.getVariableInIfStatement(lineString) != null){
                     returnList.add(i+1);
@@ -208,7 +210,7 @@ public class ErrorLineTracer {
                     if (lineString.trim().contains("catch")){
                         tryLine = -1;
                     }
-                    if (line >= beginLine && line <= endLine && !assertDependences.contains(line) && !LineUtils.isBoundaryLine(lineString)){
+                    if (line >= beginLine && line <= endLine && !assertDependences.contains(line) && LineUtils.isCommentable(lineString)){
                         if (lineString.trim().startsWith("fail(") && tryLine != -1){
                             for (int i= tryLine; i< line; i++){
                                 commitedAfter.add(i);

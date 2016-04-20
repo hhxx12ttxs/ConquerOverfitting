@@ -21,7 +21,7 @@ public class MethodUtils {
             return true;
         }
 
-        List<String> methods = CodeUtils.getAllMethodName(code);
+        List<String> methods = CodeUtils.getAllMethodName(code, true);
         for (String method: methods){
             String methodCode = CodeUtils.getMethodBody(code, method);
             if (LineUtils.isCallMethod(methodCode, mainMethodName) && LineUtils.isCallMethod(testMethodCode, method)){
