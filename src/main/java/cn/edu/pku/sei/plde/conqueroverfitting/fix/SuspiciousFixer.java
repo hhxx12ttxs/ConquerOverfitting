@@ -47,7 +47,7 @@ public class SuspiciousFixer {
             for (List<ExceptionVariable> echelon: echelons){
                 Map<String, List<String>> boundarys = new HashMap<>();
                 for (Map.Entry<String,List<ExceptionVariable>> assertEchelon: classifyWithAssert(echelon).entrySet()){
-                    boundarys.put(assertEchelon.getKey(), getIfStrings(assertEchelon.getValue()));
+                    boundarys.put(assertEchelon.getKey(), getIfStrings(echelon));
                 }
                 if (fixMethodTwo(suspicious, boundarys, project, entry.getKey())){
                     return true;
@@ -59,6 +59,7 @@ public class SuspiciousFixer {
         }
         return false;
     }
+
 
 
     private Map<Integer, List<TraceResult>> traceResultClassify(List<TraceResult> traceResults){
@@ -114,6 +115,7 @@ public class SuspiciousFixer {
         return Arrays.asList(getIfStatementFromBoundary(result));
     }
 
+
     private String getIfStatementFromBoundary(List<String> boundary){
         return "if ("+ StringUtils.join(boundary,"||")+")";
     }
@@ -156,24 +158,14 @@ public class SuspiciousFixer {
             }
             else {
                 patch = new Patch(testClassName, testMethodName, suspicious.classname(), Arrays.asList(errorLine), ifString.getValue(), fixString);
-
             }
             boolean result = methodOneFixer.addPatch(patch);
             if (result){
                 break;
             }
         }
-
         int finalErrorNums = methodOneFixer.fix();
-        if (finalErrorNums == -1){
-            System.out.println("Fix fail, Try next suspicious...");
-            return false;
-        }
-        if (finalErrorNums == 0){
-            System.out.println("Fix success");
-            return true;
-        }
-        return false;
+        return finalErrorNums != -1;
     }
 
 }

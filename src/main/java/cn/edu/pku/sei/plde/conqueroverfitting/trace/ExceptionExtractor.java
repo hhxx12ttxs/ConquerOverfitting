@@ -59,8 +59,6 @@ public class ExceptionExtractor {
 
     private static List<List<ExceptionVariable>> sortWithMethodTwo(List<ExceptionVariable> exceptionVariables, List<TraceResult> traceResults, Suspicious suspicious){
         ExceptionSorter sorter = new ExceptionSorter(suspicious);
-
-
         return sorter.sort(exceptionVariables);
     }
 

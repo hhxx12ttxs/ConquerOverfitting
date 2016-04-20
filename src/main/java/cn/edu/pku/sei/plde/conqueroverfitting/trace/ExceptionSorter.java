@@ -73,10 +73,22 @@ public class ExceptionSorter {
         }
         sortBoundary();
         boundaryCombination();
-        if (_variableCombinations.size()> 10){
-            return _variableCombinations.subList(0,10);
+        List<List<ExceptionVariable>> returnList= new ArrayList<>(_variableCombinations);
+        if (returnList.size()> 10){
+            returnList = returnList.subList(0,10);
         }
-        return _variableCombinations;
+        for (List<ExceptionVariable> variables: returnList){
+            if (variables.size() == 1){
+                String variableName = variables.get(0).name;
+                Set<String> variableValue = variables.get(0).values;
+                for (ExceptionVariable variable: exceptionVariables){
+                    if (variable.name.equals(variableName) && !variableValue.equals(variable.values)){
+                        variables.add(variable);
+                    }
+                }
+            }
+        }
+        return returnList;
     }
 
     private void boundaryCombination(){

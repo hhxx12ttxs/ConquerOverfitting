@@ -45,12 +45,11 @@ public class MethodOneFixer {
         File javaBackup = FileUtils.copyFile(targetJavaFile.getAbsolutePath(), FileUtils.tempJavaPath(patch._className,"MethodOneFixer"));
         File classBackup = FileUtils.copyFile(targetClassFile.getAbsolutePath(), FileUtils.tempClassPath(patch._className,"MethodOneFixer"));
 
-        int errorTestBeforeFix = TestUtils.getFailTestNumInProject(_project);
         for (String patchString: patch._patchString){
             for (int patchLine: patch._patchLines){
                 FileUtils.copyFile(javaBackup, targetJavaFile);
                 CodeUtils.addCodeToFile(targetJavaFile, patchString, patchLine);
-
+                System.out.print("Method 1 try patch: "+patchString);
                 if (!patch._addonFunction.equals("")){
                     CodeUtils.addMethodToFile(targetJavaFile, patch._addonFunction, patch._className.substring(patch._className.lastIndexOf(".")+1));
                 }
@@ -59,9 +58,11 @@ public class MethodOneFixer {
                     System.out.println(Utils.shellRun(Arrays.asList("javac -Xlint:unchecked -source 1.6 -target 1.6 -cp "+ buildClasspath(Arrays.asList(PathUtils.getJunitPath())) +" -d "+_classpath+" "+ targetJavaFile.getAbsolutePath())));
                 }
                 catch (IOException e){
+                    System.out.println(" fix fail");
                     continue;
                 }
                 if (!targetClassFile.exists()){ //编译不成功
+                    System.out.println(" fix fail");
                     continue;
                 }
                 Asserts asserts = new Asserts(_classpath,_classSrcPath, _testClassPath, _testSrcPath, patch._testClassName, patch._testMethodName);
@@ -69,24 +70,24 @@ public class MethodOneFixer {
                 int errAssertBeforeFix = _suspicious._assertsMap.get(patch._testClassName+"#"+patch._testMethodName).errorNum();
 
                 if (errAssertNumAfterFix < errAssertBeforeFix){
-                    if (TestUtils.getFailTestNumInProject(_project) < errorTestBeforeFix){
-                        System.out.println(patchString);
-                        patch._patchString.clear();
-                        patch._patchString.add(patchString);
-                        patch._patchLines.clear();
-                        patch._patchLines.add(patchLine);
-                        _patches.add(patch);
-                        return true;
-                    }
+                    patch._patchString.clear();
+                    patch._patchString.add(patchString);
+                    patch._patchLines.clear();
+                    patch._patchLines.add(patchLine);
+                    _patches.add(patch);
                     FileUtils.copyFile(classBackup, targetClassFile);
                     FileUtils.copyFile(javaBackup, targetJavaFile);
+                    System.out.println(" fix success");
+                    return true;
                 }
+                System.out.println(" fix fail");
             }
         }
         FileUtils.copyFile(classBackup, targetClassFile);
         FileUtils.copyFile(javaBackup, targetJavaFile);
         return false;
     }
+
 
 
     public int fix(){
@@ -118,13 +119,13 @@ public class MethodOneFixer {
             }
         }
         int errAssertNumAfterFix = 0;
+        int errAssertNumBeforeFix = 0;
         for (Map.Entry<String, String> test: getTestsOfPatch().entrySet()){
             Asserts asserts = new Asserts(_classpath,_classSrcPath, _testClassPath, _testSrcPath, test.getValue(), test.getKey());
-            errAssertNumAfterFix += asserts.errorAssertNum();
-
+            errAssertNumAfterFix += asserts.errorNum();
+            errAssertNumBeforeFix += _suspicious._assertsMap.get(test.getValue()+"#"+test.getKey()).errorNum();
         }
-        int errAssertNumBeforeFix = _suspicious.errorAssertNums();
-        if (errAssertNumAfterFix < errAssertNumBeforeFix){
+        if (errAssertNumAfterFix < errAssertNumBeforeFix || errAssertNumAfterFix == 0 ){
             return errAssertNumAfterFix;
         }
         for (Map.Entry<File, File> backup: backups.entrySet()){

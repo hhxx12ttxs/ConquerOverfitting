@@ -65,11 +65,35 @@ public class ReturnCapturer {
             if (!simpleMethodFix().equals("")){
                 return simpleMethodFix();
             }
-            return run();
+            String retrunString = run();
+            if (retrunString.contains("throw")){
+                return parseThrowException(retrunString);
+            }
+            return retrunString;
         } catch (Exception e){
             e.printStackTrace();
         }
         return "";
+    }
+
+    private String parseThrowException(String throwString){
+        String code = FileUtils.getCodeFromFile(_classSrcPath, _classname);
+        String exception = throwString.substring(throwString.lastIndexOf(" ")+1, throwString.lastIndexOf("()"));
+        String exceptionClass = CodeUtils.getClassNameOfImportClass(code, exception);
+        if (exceptionClass.equals("")){
+            return throwString;
+        }
+        String exceptionCode = FileUtils.getCodeFromFile(_classSrcPath, exceptionClass);
+        List<Integer> paramCount = CodeUtils.getMethodParamsCountInCode(exceptionCode, exception);
+        int minParamCount = Collections.min(paramCount);
+        if (minParamCount < 1){
+            return throwString;
+        }
+        String param = "null";
+        for (int i=1; i< minParamCount; i++){
+            param += ",null";
+        }
+        return throwString.replace("()","("+param+")");
     }
 
 

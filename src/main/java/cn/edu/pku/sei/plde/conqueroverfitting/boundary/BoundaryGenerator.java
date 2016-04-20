@@ -121,16 +121,15 @@ public class BoundaryGenerator {
             Map<String, String> interval = new HashMap<>();
 
             if (falseValues.containsKey(variable.variable)){
-                List<String> falseValue = falseValues.get(variable.variable);
-                for (String valueString : falseValue) {
+                for (String valueString : variable.values) {
                     double value = MathUtils.parseStringValue(valueString);
                     if (value < biggestBoundary) {
                         interval.put("forwardInterval", variable.variable.variableName + " < ("+varType+")" + biggestBoundary);
                     }
-                    if (value > smallestBoundary) {
+                    else if (value > smallestBoundary) {
                         interval.put("backwardInterval", variable.variable.variableName + " > ("+ varType+")" + smallestBoundary);
                     }
-                    if (value <= smallestBoundary && value >= biggestBoundary) {
+                    else if (value <= smallestBoundary && value >= biggestBoundary) {
                         interval.put("innerInterval", "("+variable.variable.variableName + " <= ("+varType+")" + smallestBoundary + " && " + variable.variable.variableName + " >= ("+varType+")" + biggestBoundary+")");
                     }
                 }

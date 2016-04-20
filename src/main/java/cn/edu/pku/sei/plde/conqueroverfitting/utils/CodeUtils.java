@@ -41,6 +41,7 @@ public class CodeUtils {
         return -1;
     }
 
+
     public static int countParamsOfConstructorInAssert(String assertLine){
         return getConstructorParams(assertLine).size();
     }
@@ -62,6 +63,15 @@ public class CodeUtils {
     public static Map<String, String> getMethodParamsInCode(String code, String methodName, int innerLine){
         String methodCode = getMethodString(code, methodName, innerLine);
         return getMethodParamsFromDefine(methodCode, methodName);
+    }
+
+    public static List<Integer> getMethodParamsCountInCode(String code, String methodName) {
+        List<Integer> result = new ArrayList<>();
+        List<String> methodCodes = getMethodStrings(code, methodName);
+        for (String methodCode: methodCodes){
+            result.add(getMethodParamsFromDefine(methodCode, methodName).size());
+        }
+        return result;
     }
 
     public static Map<String, String> getMethodParamsFromDefine(String methodCode, String methodName){
@@ -457,9 +467,18 @@ public class CodeUtils {
         return methodString.trim();
     }
 
+    public static List<String> getMethodStrings(String code, String methodName){
+        List<String> result = new ArrayList<>();
+        List<MethodDeclaration> declarations = getMethod(code, methodName);
+        for (MethodDeclaration method : declarations) {
+            result.add(method.toString());
+        }
+        return result;
+    }
+
     public static String getMethodString(String code, String methodName, int methodStartLine){
         methodName = methodName.trim();
-        ASTParser parser = ASTParser.newParser(AST.JLS3);
+        ASTParser parser = ASTParser.newParser(AST.JLS4);
         parser.setSource(code.toCharArray());
         CompilationUnit unit = (CompilationUnit) parser.createAST(null);
         List<MethodDeclaration> declarations = getMethod(code, methodName);
@@ -487,7 +506,7 @@ public class CodeUtils {
 
     public static String getMethodBodyBeforeLine(String code, String methodName, int line){
         methodName = methodName.trim();
-        ASTParser parser = ASTParser.newParser(AST.JLS3);
+        ASTParser parser = ASTParser.newParser(AST.JLS4);
         parser.setSource(code.toCharArray());
         CompilationUnit unit = (CompilationUnit) parser.createAST(null);
         List<MethodDeclaration> declarations = getMethod(code, methodName);
@@ -506,17 +525,30 @@ public class CodeUtils {
             String returnString = "";
             if (!result.equals("")){
                 String lineString = getLineFromCode(code, line).replace(" = ","=");
-                String lastString = getLineFromCode(code, line-1).replace(" = ","=");
                 while (LineUtils.isBoundaryLine(lineString)){
                     lineString = getLineFromCode(code,--line);
-                    lastString = getLineFromCode(code, line-1);
                 }
-                String lastLine = "";
-                for (String resultLine: result.split("\n")){
-                    if (resultLine.replace(" ","").equals(lineString.replace(" ","")) && lastLine.replace(" ","").equals(lastString.replace(" ",""))){
-                        break;
+                String lastString = getLineFromCode(code, line-1).replace(" = ","=");
+                int lineBackup = line;
+                while (lastString.startsWith("//")){
+                    lastString = getLineFromCode(code, --lineBackup-1).replace(" = ","=");
+                }
+                lineBackup = line;
+                String nextString = getLineFromCode(code, lineBackup+1).replace(" = ","=");
+                while (nextString.startsWith("//")){
+                    nextString = getLineFromCode(code, ++lineBackup+1).replace(" = ","=");
+                }
+                String[] resultString = result.split("\n");
+                for (int i=0; i< resultString.length; i++){
+                    String resultLine = resultString[i];
+                    if (resultLine.replace(" ","").contains(lineString.replace(" ",""))){
+                        if (resultString[i-1].replace(" ","").contains(lastString.replace(" ",""))){
+                            if (resultString[i+1].replace(" ","").contains(nextString.replace(" ",""))){
+                                break;
+                            }
+                        }
+
                     }
-                    lastLine = resultLine;
                     returnString += resultLine+"\n";
                 }
 
@@ -528,7 +560,7 @@ public class CodeUtils {
 
     public static List<Integer> getReturnLine(String code, String methodName, int paramCount){
         List<Integer> result = new ArrayList<>();
-        ASTParser parser = ASTParser.newParser(AST.JLS3);
+        ASTParser parser = ASTParser.newParser(AST.JLS4);
         parser.setSource(code.toCharArray());
         CompilationUnit unit = (CompilationUnit) parser.createAST(null);
         List<MethodDeclaration> methodDec = getMethod(code, methodName);
@@ -580,7 +612,7 @@ public class CodeUtils {
      */
     public static Map<List<String>, List<Integer>> getMethodLine(String code, String methodName){
         Map<List<String>, List<Integer>> result = new HashMap<>();
-        ASTParser parser = ASTParser.newParser(AST.JLS3);
+        ASTParser parser = ASTParser.newParser(AST.JLS4);
         parser.setSource(code.toCharArray());
         CompilationUnit unit = (CompilationUnit) parser.createAST(null);
         List<MethodDeclaration> methodDec = getMethod(code, methodName);
@@ -592,6 +624,10 @@ public class CodeUtils {
             Statement firstStatement = (Statement) method.getBody().statements().get(0);
             int startLine = unit.getLineNumber(firstStatement.getStartPosition()) -1;
             int endLine = unit.getLineNumber(firstStatement.getStartPosition()+method.getBody().getLength()) -2;
+            int position = firstStatement.getStartPosition()+method.getBody().getLength();
+            while (endLine == -3){
+                endLine = unit.getLineNumber(--position)-2;
+            }
             List<String> parameters = new ArrayList<>();
             List<SingleVariableDeclaration> vars = method.parameters();
             for (SingleVariableDeclaration var: vars){
@@ -604,7 +640,7 @@ public class CodeUtils {
 
 
     public static List<Integer> getSingleMethodLine(String code, String methodName, int errorLine){
-        ASTParser parser = ASTParser.newParser(AST.JLS3);
+        ASTParser parser = ASTParser.newParser(AST.JLS4);
         parser.setSource(code.toCharArray());
         CompilationUnit unit = (CompilationUnit) parser.createAST(null);
         List<MethodDeclaration> methodDec = getMethod(code, methodName);
@@ -615,6 +651,10 @@ public class CodeUtils {
             Statement firstStatement = (Statement) method.getBody().statements().get(0);
             int startLine = unit.getLineNumber(firstStatement.getStartPosition()) -1;
             int endLine = unit.getLineNumber(firstStatement.getStartPosition()+method.getBody().getLength()) -2;
+            int position = firstStatement.getStartPosition()+method.getBody().getLength();
+            while (endLine == -3){
+                endLine = unit.getLineNumber(--position) -2;
+            }
             if ((startLine <= errorLine && endLine >= errorLine)|| errorLine == -1){
                 return Arrays.asList(startLine, endLine);
             }
