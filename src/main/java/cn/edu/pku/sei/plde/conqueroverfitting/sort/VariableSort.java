@@ -2,6 +2,7 @@ package cn.edu.pku.sei.plde.conqueroverfitting.sort;
 
 import cn.edu.pku.sei.plde.conqueroverfitting.jdtVisitor.IdentifierCollectVisitor;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.JDTUtils;
+
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTParser;
 
@@ -34,6 +35,7 @@ public class VariableSort {
         preProcess();
         getDependency();
         topologicalSort();
+        removeControlDependency();
     }
 
     public List<List<String>> getSortVariable() {
@@ -72,6 +74,12 @@ public class VariableSort {
         return right;
     }
 
+    private String getIfExpression(String statement){
+        int beginIndex = statement.indexOf("(");
+        int endIndex = statement.lastIndexOf(")");
+        return statement.substring(beginIndex + 1, endIndex);
+    }
+
     private String getOper(String statement){
         if(statement.contains("+=")){
             return "+=";
@@ -90,6 +98,66 @@ public class VariableSort {
         }
         return null;
     }
+
+    private void removeControlDependency(){
+        Stack<Character> stack = new Stack<Character>();
+
+        Stack<Set<String>> ifVariableStack = new Stack<Set<String>>();
+        for(int i = statementList.size() - 1; i >= 0; i --){
+            String statement = statementList.get(i);
+            if (statement == null) {
+                continue;
+            }
+
+            if(statement.contains("{") && statement.contains("(") && statement.contains(")")){
+                stack.push('{');
+                String rightHandExpression = getIfExpression(statement);
+
+                Set<String> rightHandSet = new HashSet<String>();
+                List<String> identifierInRightHand = getIdentifierList(rightHandExpression, ASTParser.K_EXPRESSION);
+                for (String identifier : identifierInRightHand) {
+                    rightHandSet.add(identifier);
+                }
+                ifVariableStack.push(rightHandSet);
+            }
+
+            if(statement.contains("}") && !stack.isEmpty()){
+                stack.pop();
+                ifVariableStack.pop();
+                if(stack.empty()){
+                    ifVariableStack.clear();
+                }
+                continue;
+            }
+
+            if(stack.empty()){
+                continue;
+            }
+
+            if (!statement.contains("=") || statement.contains(">=") || statement.contains("<=") || statement.contains("==") || statement.contains("!=")) {
+                continue;
+            }
+
+
+            String oper = getOper(statement);
+            int index = statement.indexOf(oper);
+            String leftHand = getLeftHand(statement, index);
+
+            if(sortVariable.size() >= 1 && sortVariable.get(0).contains(leftHand)){
+                for(Set<String> set : ifVariableStack){
+                    Iterator<String> iter = sortVariable.get(0).iterator();
+                    while(iter.hasNext()){
+                        String var = iter.next();
+                        if(set.contains(var)){
+                            iter.remove();
+                        }
+                    }
+                }
+            }
+
+        }
+    }
+
     private void getDependency() {
         Set<String> leftHands = new HashSet<String>();
         for (String statement : statementList) {
