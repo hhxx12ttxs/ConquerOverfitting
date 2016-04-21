@@ -158,4 +158,105 @@ public class VariableSortTest {
         assertTrue(sortVariable.get(0).size() == 1);
         assertTrue(sortVariable.get(0).contains("lcm"));
     }
+
+    @Test
+    public void testVariableSortLang24(){
+        Set<String> suspiciousVariableSet = new HashSet<String>();
+        suspiciousVariableSet.add("hasDecPoint");
+        suspiciousVariableSet.add("i");
+        suspiciousVariableSet.add("sz");
+        String statements ="        if (StringUtils.isEmpty(str)) {\n" +
+                "            return false;\n" +
+                "        }\n" +
+                "        char[] chars = str.toCharArray();\n" +
+                "        int sz = chars.length;\n" +
+                "        boolean hasExp = false;\n" +
+                "        boolean hasDecPoint = false;\n" +
+                "        boolean allowSigns = false;\n" +
+                "        boolean foundDigit = false;\n" +
+                "        // deal with any possible sign up front\n" +
+                "        int start = (chars[0] == '-') ? 1 : 0;\n" +
+                "        if (sz > start + 1) {\n" +
+                "            if (chars[start] == '0' && chars[start + 1] == 'x') {\n" +
+                "                int i = start + 2;\n" +
+                "                if (i == sz) {\n" +
+                "                    return false; // str == \"0x\"\n" +
+                "                }\n" +
+                "                // checking hex (it can't be anything else)\n" +
+                "                for (; i < chars.length; i++) {\n" +
+                "                    if ((chars[i] < '0' || chars[i] > '9') && (chars[i] < 'a' || chars[i] > 'f') && (chars[i] < 'A' || chars[i] > 'F')) {\n" +
+                "                        return false;\n" +
+                "                    }\n" +
+                "                }\n" +
+                "                return true;\n" +
+                "            }\n" +
+                "        }\n" +
+                "        sz--; // don't want to loop to the last char, check it afterwords\n" +
+                "              // for type qualifiers\n" +
+                "        int i = start;" +
+                "        while (i < sz || (i < sz + 1 && allowSigns && !foundDigit)) {\n" +
+                "            if (chars[i] >= '0' && chars[i] <= '9') {\n" +
+                "                foundDigit = true;\n" +
+                "                allowSigns = false;\n" +
+                "\n" +
+                "            } else if (chars[i] == '.') {\n" +
+                "                if (hasDecPoint || hasExp) {\n" +
+                "                    // two decimal points or dec in exponent   \n" +
+                "                    return false;\n" +
+                "                }\n" +
+                "                hasDecPoint = true;\n" +
+                "            } else if (chars[i] == 'e' || chars[i] == 'E') {\n" +
+                "                // we've already taken care of hex.\n" +
+                "                if (hasExp) {\n" +
+                "                    // two E's\n" +
+                "                    return false;\n" +
+                "                }\n" +
+                "                if (!foundDigit) {\n" +
+                "                    return false;\n" +
+                "                }\n" +
+                "                hasExp = true;\n" +
+                "                allowSigns = true;\n" +
+                "            } else if (chars[i] == '+' || chars[i] == '-') {\n" +
+                "                if (!allowSigns) {\n" +
+                "                    return false;\n" +
+                "                }\n" +
+                "                allowSigns = false;\n" +
+                "                foundDigit = false; // we need a digit after the E\n" +
+                "            } else {\n" +
+                "                return false;\n" +
+                "            }\n" +
+                "            i++;\n" +
+                "        }\n" +
+                "        if (i < chars.length) {\n" +
+                "            if (chars[i] >= '0' && chars[i] <= '9') {\n" +
+                "                // no type qualifier, OK\n" +
+                "                return true;\n" +
+                "            }\n" +
+                "            if (chars[i] == 'e' || chars[i] == 'E') {\n" +
+                "                // can't have an E at the last byte\n" +
+                "                return false;\n" +
+                "            }\n" +
+                "            if (chars[i] == '.') {\n" +
+                "                if (hasDecPoint || hasExp) {\n" +
+                "                    // two decimal points or dec in exponent\n" +
+                "                    return false;\n" +
+                "                }\n" +
+                "                // single trailing decimal point after non-exponent is ok\n" +
+                "                return foundDigit;\n" +
+                "            }\n" +
+                "            if (!allowSigns && (chars[i] == 'd' || chars[i] == 'D'|| chars[i] == 'f'|| chars[i] == 'F')) {\n" +
+                "                return foundDigit;\n" +
+                "            }\n" +
+                "            if (chars[i] == 'l' || chars[i] == 'L') {\n" +
+                "                // not allowing L with an exponent or decimal point";
+
+
+
+        VariableSort variableSort = new VariableSort(suspiciousVariableSet, statements);
+        List<List<String>> sortVariable = variableSort.getSortVariable();
+        assertTrue(sortVariable.size() == 1);
+        assertTrue(sortVariable.get(0).size() == 1);
+        assertTrue(sortVariable.get(0).contains("hasDecPoint"));
+    }
+
 }
