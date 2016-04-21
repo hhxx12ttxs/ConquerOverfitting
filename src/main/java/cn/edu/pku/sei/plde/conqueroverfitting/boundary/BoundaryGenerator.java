@@ -39,6 +39,7 @@ public class BoundaryGenerator {
             return null;
         }
         String ifString = generateWithSingleWord(exceptionVariable,intervals,trueValues,falseValues);
+        ifString = replaceSpecialNumber(ifString);
         //如果怀疑变量的等级大于1,并且没有与之区间匹配的if生成方法，则分别对区间中的每个值生成if进行枚举。
         if ((exceptionVariable.variable.priority > 1 || trueValues.size() ==0) && ifString.equals("") && CodeUtils.isForLoopParam(intervals)==-1){
             List<String> result = new ArrayList<>();
@@ -54,6 +55,18 @@ public class BoundaryGenerator {
             return Arrays.asList(ifString);
         }
         return new ArrayList<>();
+    }
+
+    private static String replaceSpecialNumber(String ifString){
+        ifString = ifString.replace(String.valueOf(Integer.MIN_VALUE),"Integer.MIN_VALUE");
+        ifString = ifString.replace(String.valueOf(Integer.MAX_VALUE),"Integer.MAX_VALUE");
+        ifString = ifString.replace(String.valueOf(Long.MIN_VALUE),"Long.MIN_VALUE");
+        ifString = ifString.replace(String.valueOf(Long.MAX_VALUE),"Long.MAX_VALUE");
+        ifString = ifString.replace(String.valueOf(Double.MIN_VALUE),"Double.MIN_VALUE");
+        ifString = ifString.replace(String.valueOf(Double.MAX_VALUE),"Double.MAX_VALUE");
+        ifString = ifString.replace(String.valueOf(Short.MIN_VALUE),"Short.MIN_VALUE");
+        ifString = ifString.replace(String.valueOf(Short.MAX_VALUE),"Short.MAX_VALUE");
+        return ifString;
     }
 
 
@@ -110,8 +123,20 @@ public class BoundaryGenerator {
             if (intervals.size()!=2){
                 return "";
             }
-            double biggestBoundary = MathUtils.parseStringValue(intervals.get(1));
-            double smallestBoundary = MathUtils.parseStringValue(intervals.get(0));
+            boolean biggestClose = false;
+            boolean smallestClose = false;
+            String biggest = intervals.get(1);
+            String smallest = intervals.get(0);
+            if (intervals.get(1).endsWith("]")){
+                biggestClose = true;
+                biggest = biggest.substring(0, biggest.length()-1);
+            }
+            if (intervals.get(0).startsWith("[")){
+                smallestClose = true;
+                smallest = smallest.substring(1);
+            }
+            double biggestBoundary = MathUtils.parseStringValue(biggest);
+            double smallestBoundary = MathUtils.parseStringValue(smallest);
             if (biggestBoundary > smallestBoundary){
                 double temp = biggestBoundary;
                 biggestBoundary = smallestBoundary;
@@ -124,13 +149,13 @@ public class BoundaryGenerator {
                 for (String valueString : variable.values) {
                     double value = MathUtils.parseStringValue(valueString);
                     if (value < biggestBoundary) {
-                        interval.put("forwardInterval", variable.variable.variableName + " < ("+varType+")" + biggestBoundary);
+                        interval.put("forwardInterval", variable.variable.variableName + lessSymbol(biggestClose)+"("+varType+")" + biggestBoundary);
                     }
                     else if (value > smallestBoundary) {
-                        interval.put("backwardInterval", variable.variable.variableName + " > ("+ varType+")" + smallestBoundary);
+                        interval.put("backwardInterval", variable.variable.variableName + greaterSymbol(smallestClose)+"("+ varType+")" + smallestBoundary);
                     }
                     else if (value <= smallestBoundary && value >= biggestBoundary) {
-                        interval.put("innerInterval", "("+variable.variable.variableName + " <= ("+varType+")" + smallestBoundary + " && " + variable.variable.variableName + " >= ("+varType+")" + biggestBoundary+")");
+                        interval.put("innerInterval", "("+variable.variable.variableName + lessSymbol(smallestClose)+"("+varType+")" + smallestBoundary + " && " + variable.variable.variableName + greaterSymbol(biggestClose)+"("+varType+")" + biggestBoundary+")");
                     }
                 }
                 if (interval.size() == 0){
@@ -143,19 +168,16 @@ public class BoundaryGenerator {
                     return generateWithTwoInterval(interval, trueValues.get(variable.variable), smallestBoundary, biggestBoundary);
                 }
             }
-
-            //如果值相差过大:
-            if (Math.abs(biggestBoundary) / Math.abs(smallestBoundary) > 1000 || Math.abs(smallestBoundary) / Math.abs(biggestBoundary) > 1000) {
-                if (Math.abs(biggestBoundary) < Math.abs(smallestBoundary)) {
-                    return variable.variable.variableName + " <= ("+varType+")" + smallestBoundary;
-                } else {
-                    return variable.variable.variableName + " >= ("+varType+")" + biggestBoundary;
-                }
-            } else {
-                return variable.variable.variableName + " <= ("+varType+")" + smallestBoundary + " && " + variable.variable.variableName + " >= ("+varType+")" + biggestBoundary;
-            }
         }
         if (intervals.size() == 1){
+            if (variable.variable.variableName.contains("==")){
+                if (intervals.get(0).equals("true")){
+                    return variable.variable.variableName;
+                }
+                if (intervals.get(0).equals("false")){
+                    return "!("+variable.variable.variableName+")";
+                }
+            }
             return variable.variable.variableName + "==" + intervals.get(0);
         }
         System.out.println("Nonsupport Condition for Create IF Expression");
@@ -169,36 +191,13 @@ public class BoundaryGenerator {
     private static String generateWithTwoInterval(Map<String, String> intervals, List<String> values, double smallestBoundry, double biggestBoundry) {
         return (String) intervals.values().toArray()[0] + "||" + (String) intervals.values().toArray()[1];
     }
-    /*
-    private static List<String> generate(Map<VariableInfo, List<String>> entrys, Map<VariableInfo, List<String>> trueValues, Map<VariableInfo, List<String>> falseValues, List<VariableInfo> variableInfos) {
-        if (entrys.size() < 1) {
-            System.out.println("No Data in the Map");
-            return new HashMap<>();
-        }
-        Iterator<Map.Entry<VariableInfo, List<String>>> iterator = entrys.entrySet().iterator();
-        Map<VariableInfo, List<String>> arrayVariable = new HashMap<>();
-        Map<VariableInfo, List<String>> result = new HashMap<>();
-        while (iterator.hasNext()) {
-            Map.Entry<VariableInfo, List<String>> entry = iterator.next();
-            if (MathUtils.isNumberArray(variable.variable.getStringType()) && intervals.size() == 1 && intervals.get(0).equals("null")) {
-                arrayVariable.put(variable.variable, intervals);
-                continue;
-            }
 
+    private static String lessSymbol(boolean close){
+        return close?"<=":"<";
+    }
 
+    private static String greaterSymbol(boolean close){
+        return close?">=":">";
+    }
 
-            if (TypeUtils.isArrayFromName(variable.variable.variableName) && variable.variable.isParameter){
-                for (VariableInfo info: variableInfos){
-                    if (TypeUtils.isArrayFromName(info.variableName) &&
-                            info.isParameter &&
-                            info.getStringType().equals(variable.variable.getStringType()) && !variable.variable.variableName.equals(info.variableName)){
-                        Map<VariableInfo, List<String>> tempMap = new HashMap<>();
-                        tempMap.put(info, intervals);
-                        result.put(info, Arrays.asList(generateWithSingleWord(tempMap.entrySet().iterator().next(),trueValues,falseValues)));
-                    }
-                }
-            }
-        }
-        return result;
-    }*/
 }

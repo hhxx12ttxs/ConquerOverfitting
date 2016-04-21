@@ -4,9 +4,11 @@ import cn.edu.pku.sei.plde.conqueroverfitting.localization.Suspicious;
 import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.CodeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.FileUtils;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.LineUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 import org.apache.commons.lang.StringUtils;
 
+import javax.sound.sampled.Line;
 import java.util.*;
 
 /**
@@ -26,12 +28,17 @@ public class ExceptionSorter {
     private List<ExceptionVariable> _sortedVariable = new ArrayList<>();
     private List<List<ExceptionVariable>> _variableCombinations = new ArrayList<>();
 
-    public ExceptionSorter(Suspicious suspicious){
+    public ExceptionSorter(Suspicious suspicious, String statement) {
         _suspicious = suspicious;
         _classSrc = suspicious._srcPath;
         _className = suspicious.classname();
-        _code = FileUtils.getCodeFromFile(_classSrc,_className);
-        _methodCode = CodeUtils.getMethodString(_code, suspicious.functionnameWithoutParam(), suspicious.getDefaultErrorLine()).split("\n");
+        _code = FileUtils.getCodeFromFile(_classSrc, _className);
+        if (statement.contains("\n")){
+            _methodCode = statement.split("\n");
+        }
+        else {
+            _methodCode = new String[]{statement};
+        }
     }
 
 
@@ -124,14 +131,14 @@ public class ExceptionSorter {
         TreeMap<Integer,ExceptionVariable> boundaryLevel = new TreeMap<>(new Comparator<Integer>() {
             @Override
             public int compare(Integer o1, Integer o2) {
-                return o1.compareTo(o2);
+                return -o1.compareTo(o2);
             }
         });
 
         //根据最后赋值的行确定优先度
         for (ExceptionVariable exceptionVariable: _variables){
             int lastAssignLine = getLastAssignLine(exceptionVariable.variable);
-            if (lastAssignLine == 0 && !exceptionVariable.variable.isLocalVariable){
+            if (lastAssignLine == -1){
                 continue;
             }
             while (boundaryLevel.containsKey(lastAssignLine)){
@@ -143,16 +150,22 @@ public class ExceptionSorter {
             _sortedVariable.add(exceptionVariable);
         }
 
+        for (ExceptionVariable exceptionVariable: _localVariables){
+            if (_sortedVariable.size() < 15 && !_sortedVariable.contains(exceptionVariable)){
+                _sortedVariable.add(exceptionVariable);
+            }
+
+        }
 
         for (ExceptionVariable exceptionVariable: _paramVariables){
-            if (_sortedVariable.size() < 15){
+            if (_sortedVariable.size() < 15 && !_sortedVariable.contains(exceptionVariable)){
                 _sortedVariable.add(exceptionVariable);
             }
 
         }
         //没有经过赋值的类变量优先度最低，放在list的最胡
         for (ExceptionVariable exceptionVariable: _fieldVariables){
-            if (_sortedVariable.size() < 15){
+            if (_sortedVariable.size() < 15 && !_sortedVariable.contains(exceptionVariable)){
                 _sortedVariable.add(exceptionVariable);
             }        }
         //addon 优先度最低
@@ -167,11 +180,15 @@ public class ExceptionSorter {
     }
 
     private int getLastAssignLine(VariableInfo info){
+        int returnLine =-1;
         for (int i = 0; i < _methodCode.length; i++){
-            if (_methodCode[i].trim().matches(info.variableName+"\\s*=.*")){
-                return i;
+            if (_methodCode[i].trim().matches(".*"+info.variableName+"\\s*=.*") && !LineUtils.isBoundaryLine(_methodCode[i])){
+                returnLine = i;
+            }
+            else if (_methodCode[i].trim().contains('('+info.variableName+')') && info.isAddon){
+                returnLine = i;
             }
         }
-        return 0;
+        return returnLine;
     }
 }

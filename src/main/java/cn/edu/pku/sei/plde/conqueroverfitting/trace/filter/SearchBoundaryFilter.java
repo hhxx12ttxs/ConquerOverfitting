@@ -4,6 +4,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.boundary.BoundaryCollect;
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.BoundaryFilter;
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.BoundaryInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.gatherer.GathererJava;
+import cn.edu.pku.sei.plde.conqueroverfitting.gatherer.GathererJavaGithub;
 import cn.edu.pku.sei.plde.conqueroverfitting.main.Config;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.ExceptionVariable;
 import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeEnum;
@@ -29,6 +30,9 @@ public class SearchBoundaryFilter {
     public static List<BoundaryInfo> getBoundary(ExceptionVariable exceptionVariable, String project, List<String> keywords){
         //对于名字为这两个的怀疑变量，一般是钦定的显而易见修复，不需要search boundary。
         if (exceptionVariable.name.equals("this") || exceptionVariable.name.equals("return")){
+            return new ArrayList<>();
+        }
+        if (!MathUtils.isNumberType(exceptionVariable.type)){
             return new ArrayList<>();
         }
         return getSearchBoundaryInfo(exceptionVariable.variable, project, keywords);
@@ -59,7 +63,7 @@ public class SearchBoundaryFilter {
         }
         else {
             if (!info.variableName.equals("this")){
-                keywords.add(info.variableName);
+                keywords.add(info.variableName.replace(" ",""));
             }
         }
 
@@ -69,7 +73,7 @@ public class SearchBoundaryFilter {
 
         if (!simpleCodePackage.exists() && !complexCodePackage.exists()) {
             if (!codePackage.exists()){
-                GathererJava gathererJava = new GathererJava(keywords, StringUtils.join(keywords, "-"),project);
+                GathererJavaGithub gathererJava = new GathererJavaGithub(keywords, StringUtils.join(keywords, "-"),project);
                 gathererJava.searchCode();
             }
             if (!codePackage.exists()) {
@@ -93,7 +97,8 @@ public class SearchBoundaryFilter {
             keywords.remove(info.variableName);
             codePackage = new File("experiment/searchcode/" + StringUtils.join(keywords,"-"));
             if (!codePackage.exists()){
-                GathererJava gathererJava = new GathererJava(keywords, StringUtils.join(keywords,"-"),"joda-time");
+
+                GathererJavaGithub gathererJava = new GathererJavaGithub(keywords, StringUtils.join(keywords,"-"),getProjectFullName(project));
                 gathererJava.searchCode();
                 if (!codePackage.exists()) {
                     codePackage.mkdirs();
@@ -117,7 +122,7 @@ public class SearchBoundaryFilter {
         //keywords.remove(valueType);
         codePackage = new File("experiment/searchcode/" + StringUtils.join(keywords,"-"));
         if (!codePackage.exists()){
-            GathererJava gathererJava = new GathererJava(keywords, StringUtils.join(keywords,"-"),"joda-time");
+            GathererJavaGithub gathererJava = new GathererJavaGithub(keywords, StringUtils.join(keywords,"-"),"joda-time");
             gathererJava.searchCode();
             if (!codePackage.exists()) {
                 codePackage.mkdirs();
@@ -130,6 +135,24 @@ public class SearchBoundaryFilter {
         //    filteredList = BoundaryFilter.getBoundaryWithType(boundaryList, info.getStringType());
         //}
         return filteredList;
+    }
+    private static String getProjectFullName(String project){
+        if (project.startsWith("Math")){
+            return "commons-math";
+        }
+        if (project.startsWith("Lang")){
+            return "commons-lang";
+        }
+        if (project.startsWith("Closure")){
+            return "closure-compiler";
+        }
+        if (project.startsWith("Chart")){
+            return "jfreechart";
+        }
+        if (project.startsWith("Time")){
+            return "joda-time";
+        }
+        return "";
     }
 
     private static String variableName(Map.Entry<VariableInfo, List<String>> entry){
