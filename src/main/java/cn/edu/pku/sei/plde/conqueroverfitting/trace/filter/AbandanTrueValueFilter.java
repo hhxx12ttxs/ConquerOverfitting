@@ -119,19 +119,6 @@ public class AbandanTrueValueFilter {
                     break;
                 }
             }
-
-            //如果值中有null，将null作为第二等级变量
-            for (String value: variable.values){
-                if (value.equals("null")){
-                    variable.values.clear();
-                    variable.values.add("null");
-                    variable.level = 2;
-                    if (!exceptionValues.contains(variable)){
-                        exceptionValues.add(variable);
-                    }
-                    break;
-                }
-            }
         }
         return exceptionValues;
     }

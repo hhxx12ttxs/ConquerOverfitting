@@ -70,12 +70,6 @@ public class ErrorLineTracer {
                 }
             }
             else {
-                // math46 错误行太多，采集到不必要的数据
-                //if (LineUtils.isLineInIf(code, line)){
-                //    int i = line-1;
-                //    while (LineUtils.isLineInIf(code, i--));
-                //    returnList.add(i);
-                //}
                 returnList.add(line);
             }
         }

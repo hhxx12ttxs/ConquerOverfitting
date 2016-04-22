@@ -44,7 +44,7 @@ public class SearchBoundaryFilter {
 
     private static List<BoundaryInfo> getSearchBoundaryInfo(VariableInfo info,String project, List<String> addonKeywords){
         String variableName = info.variableName;
-        String valueType = info.getStringType();
+        String valueType = info.isSimpleType?info.getStringType().toLowerCase():info.getStringType();
         ArrayList<String> keywords = new ArrayList<String>();
         keywords.add("if");
         keywords.addAll(addonKeywords);
@@ -62,7 +62,7 @@ public class SearchBoundaryFilter {
             keywords.add(variableName);
         }
         else {
-            if (!info.variableName.equals("this")){
+            if (!info.variableName.equals("this") && info.variableName.length()>1){
                 keywords.add(info.variableName.replace(" ",""));
             }
         }
@@ -172,10 +172,5 @@ public class SearchBoundaryFilter {
         }
     }
 
-    private static void addValueToResult(Map.Entry<VariableInfo, List<String>> entry, Map<VariableInfo, List<String>> result,List<String> value){
-        for (String v: value){
-            addValueToResult(entry, result,v);
-        }
-    }
 
 }

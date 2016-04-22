@@ -12,10 +12,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.utils.CodeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.InfoUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.MathUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
-import com.sun.corba.se.impl.util.SUNVMCID;
-import com.sun.org.apache.bcel.internal.generic.LUSHR;
-import com.sun.org.apache.bcel.internal.generic.Type;
-import org.apache.commons.lang.StringUtils;
+
 
 import java.io.File;
 import java.io.IOException;
@@ -31,9 +28,9 @@ public class BoundaryGenerator {
     public static List<String> generate(Suspicious suspicious, ExceptionVariable exceptionVariable, Map<VariableInfo, List<String>> trueValues, Map<VariableInfo, List<String>> falseValues, String project) {
         List<String> keywords = new ArrayList<>();
         if (exceptionVariable.name.length() == 1){
-            //keywords.add(suspicious.functionnameWithoutParam());
             keywords.add("factorial");
-            keywords.add(exceptionVariable.values.iterator().next());
+            //keywords.add(suspicious.functionnameWithoutParam());
+            //keywords.add(exceptionVariable.values.iterator().next());
         }
         List<BoundaryInfo> variableBoundary = SearchBoundaryFilter.getBoundary(exceptionVariable, project, keywords);
         List<String> intervals = exceptionVariable.getBoundaryIntervals(variableBoundary);
