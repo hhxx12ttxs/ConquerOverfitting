@@ -1,7 +1,11 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.utils;
 
 import cn.edu.pku.sei.plde.conqueroverfitting.file.ReadFile;
+import cn.edu.pku.sei.plde.conqueroverfitting.jdtVisitor.ConstructorDeclarationCollectVisitor;
+import cn.edu.pku.sei.plde.conqueroverfitting.jdtVisitor.EqualFieldCollectVisitor;
+import cn.edu.pku.sei.plde.conqueroverfitting.jdtVisitor.EqualFieldCollectVisitor;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.gzoltar.StatementExt;
+import cn.edu.pku.sei.plde.conqueroverfitting.localizationInConstructor.model.ConstructorDeclarationInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.MethodInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 import com.sun.xml.internal.ws.api.model.MEP;
@@ -9,7 +13,9 @@ import javassist.NotFoundException;
 import org.apache.commons.collections.ArrayStack;
 import org.apache.commons.collections.map.HashedMap;
 import org.apache.commons.lang.StringUtils;
+import org.eclipse.core.internal.utils.FileUtil;
 import org.eclipse.jdt.core.dom.*;
+import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.Block;
 import org.eclipse.jdt.core.dom.FieldDeclaration;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
@@ -28,6 +34,16 @@ import java.util.*;
  * Created by yanrunfa on 16/3/2.
  */
 public class CodeUtils {
+
+    public static Set<String> getEqualVariableInSource(String path){
+        Set<String> equalVariable = new HashSet<String>();
+        String source = new ReadFile(path).getSource();
+        ASTNode root = JDTUtils.createASTForSource(source, ASTParser.K_COMPILATION_UNIT);
+        EqualFieldCollectVisitor equalFieldCollectVisitor = new EqualFieldCollectVisitor();
+        root.accept(equalFieldCollectVisitor);
+        return equalFieldCollectVisitor.getEqualVariable();
+    }
+
     public static int countParamsOfConstructorInTest(String filePath, String methodName, String newClass) throws Exception{
         String code = FileUtils.getCodeFromFile(filePath);
         String method = FileUtils.getTestFunctionCodeFromCode(code,methodName);
