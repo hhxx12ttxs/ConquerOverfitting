@@ -232,7 +232,9 @@ public class MathUtils {
                 value.equals(String.valueOf(Long.MAX_VALUE)) ||
                 value.equals(String.valueOf(Long.MIN_VALUE)) ||
                 value.equals(String.valueOf(Short.MAX_VALUE)) ||
-                value.equals(String.valueOf(Short.MIN_VALUE));
+                value.equals(String.valueOf(Short.MIN_VALUE)) ||
+                value.equals("-9223372036854775808") ||
+                value.equals("9223372036854775807");
     }
 
 }
