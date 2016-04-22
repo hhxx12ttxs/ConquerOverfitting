@@ -102,9 +102,6 @@ public class InfoUtils {
             if (info.isFieldVariable && info.isSimpleType && info.variableSimpleType == TypeEnum.BOOLEAN && !info.variableName.startsWith("is") && !info.variableName.contains(".is")){
                 continue;
             }
-            if (info.variableName.contains("<") || info.variableName.contains(">")){
-                continue;
-            }
             if (info.getStringType().contains("<") || info.getStringType().contains(">")){
                 info.otherType = info.otherType.substring(0, info.otherType.indexOf("<"));
             }
@@ -188,7 +185,8 @@ public class InfoUtils {
     }
 
 
-    public static VariableInfo getVariableInIfStatement(String ifString){
+    public static List<VariableInfo> getVariableInIfStatement(String ifString){
+        List<VariableInfo> result = new ArrayList<>();
         if (!ifString.contains("if") || !ifString.contains("(") || !ifString.contains(")")){
             return null;
         }
@@ -214,28 +212,27 @@ public class InfoUtils {
             var1 = ifStatement.split("<")[0];
             var2 = ifStatement.split("<")[1];
         }
-        else {
-            VariableInfo info = new VariableInfo(ifStatement.trim(),TypeEnum.BOOLEAN,true, null);
-            info.isAddon = true;
-            return info;
-        }
+        VariableInfo info = new VariableInfo(ifStatement.trim(),TypeEnum.BOOLEAN,true, null);
+        info.isAddon = true;
+        result.add(info);
         try {
             MathUtils.parseStringValue(var2);
         } catch (Exception e1){
             try {
                 MathUtils.parseStringValue(var1);
-                VariableInfo info = new VariableInfo(var2.trim(),TypeEnum.DOUBLE,true, null);
+                VariableInfo info2 = new VariableInfo(var2.trim(),TypeEnum.DOUBLE,true, null);
                 info.isAddon = true;
                 info.priority = 2;
-                return info;
+                result.add(info2);
             } catch (Exception e2){
-                return null;
+                return result;
             }
         }
-        VariableInfo info = new VariableInfo(var1.trim(),TypeEnum.DOUBLE,true, null);
+        VariableInfo info2 = new VariableInfo(var1.trim(),TypeEnum.DOUBLE,true, null);
         info.isAddon = true;
         info.priority = 2;
-        return info;
+        result.add(info2);
+        return result;
     }
 
 
