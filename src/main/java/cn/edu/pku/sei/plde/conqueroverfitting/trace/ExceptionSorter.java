@@ -5,6 +5,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.CodeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.FileUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.LineUtils;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.VariableUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 import org.apache.commons.lang.StringUtils;
 
@@ -182,10 +183,10 @@ public class ExceptionSorter {
     private int getLastAssignLine(VariableInfo info){
         int returnLine =-1;
         for (int i = 0; i < _methodCode.length; i++){
-            if (_methodCode[i].trim().matches(".*"+info.variableName+"\\s*=.*") && !LineUtils.isBoundaryLine(_methodCode[i])){
+            if (_methodCode[i].matches(".*"+info.variableName+"\\s*=.*") && !_methodCode[i].matches(".*\".*"+info.variableName+"\\s*=.*")){
                 returnLine = i;
             }
-            else if (_methodCode[i].trim().contains('('+info.variableName+')') && info.isAddon){
+            else if (_methodCode[i].trim().contains(info.variableName) && VariableUtils.isExpression(info) && LineUtils.isBoundaryLine(_methodCode[i])){
                 returnLine = i;
             }
         }

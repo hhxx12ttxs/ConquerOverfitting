@@ -96,6 +96,7 @@ public class LineUtils {
                 lineString.trim().equals("}");
     }
 
+
     public static boolean isDeclarationLineWithoutAssign(String lineString){
         if (!lineString.contains("=") && !lineString.contains("(") && !lineString.contains(")") && !isBoundaryLine(lineString)){
             return true;

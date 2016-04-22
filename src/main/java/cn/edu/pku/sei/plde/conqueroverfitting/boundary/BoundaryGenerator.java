@@ -31,7 +31,9 @@ public class BoundaryGenerator {
     public static List<String> generate(Suspicious suspicious, ExceptionVariable exceptionVariable, Map<VariableInfo, List<String>> trueValues, Map<VariableInfo, List<String>> falseValues, String project) {
         List<String> keywords = new ArrayList<>();
         if (exceptionVariable.name.length() == 1){
-            keywords.add(suspicious.functionnameWithoutParam());
+            //keywords.add(suspicious.functionnameWithoutParam());
+            keywords.add("factorial");
+            keywords.add(exceptionVariable.values.iterator().next());
         }
         List<BoundaryInfo> variableBoundary = SearchBoundaryFilter.getBoundary(exceptionVariable, project, keywords);
         List<String> intervals = exceptionVariable.getBoundaryIntervals(variableBoundary);
@@ -170,7 +172,7 @@ public class BoundaryGenerator {
             }
         }
         if (intervals.size() == 1){
-            if (variable.variable.variableName.contains("==")){
+            if (variable.variable.variableName.contains("==") || variable.variable.variableName.contains(">") || variable.variable.variableName.contains("<")){
                 if (intervals.get(0).equals("true")){
                     return variable.variable.variableName;
                 }

@@ -133,7 +133,7 @@ public class EntiretyTest {
             testClassSrc = projectDir.getAbsolutePath()+"/"+project +"/src/test/java/";
             return project;
         }
-        if (projectName.equals("Time") && (number == 3||number == 9)){
+        if (projectName.equals("Time") && (number == 3||number == 9|| number ==15)){
             FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project,projectDir.getAbsolutePath());
             classpath = projectDir.getAbsolutePath()+"/"+project +"/target/classes/";
             testClasspath = projectDir.getAbsolutePath()+"/"+project +"/target/test-classes/";
@@ -208,7 +208,7 @@ public class EntiretyTest {
         TraceResult result = new TraceResult(false);
         result.put("n","1");
         ExceptionVariable variable = new ExceptionVariable(variableInfo, result);
-        List<BoundaryInfo> boundaryInfos = SearchBoundaryFilter.getBoundary(variable,"a", Arrays.asList("factorial"));
+        List<BoundaryInfo> boundaryInfos = SearchBoundaryFilter.getBoundary(variable,"Math",Arrays.asList("factorial","17"));
         for (BoundaryInfo boundaryInfo: boundaryInfos){
             System.out.println(boundaryInfo.value);
         }
