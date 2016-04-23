@@ -28,11 +28,10 @@ public class SearchBoundaryFilter {
      * @return the filtered key-value map
      */
     public static List<BoundaryInfo> getBoundary(ExceptionVariable exceptionVariable, String project, List<String> keywords){
-        //对于名字为这两个的怀疑变量，一般是钦定的显而易见修复，不需要search boundary。
-        if (exceptionVariable.name.equals("this") || exceptionVariable.name.equals("return")){
+        if (exceptionVariable.name.equals("return")){
             return new ArrayList<>();
         }
-        if (!MathUtils.isNumberType(exceptionVariable.type)){
+        if (!MathUtils.isNumberType(exceptionVariable.type) && !exceptionVariable.name.equals("this")){
             return new ArrayList<>();
         }
         return getSearchBoundaryInfo(exceptionVariable.variable, project, keywords);

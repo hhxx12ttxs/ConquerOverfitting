@@ -77,6 +77,9 @@ public class TraceResult implements Serializable {
      * @return the value
      */
     public List<String> get(String key){
-        return result.get(key);
+        if (result.containsKey(key)){
+            return result.get(key);
+        }
+        return null;
     }
 }

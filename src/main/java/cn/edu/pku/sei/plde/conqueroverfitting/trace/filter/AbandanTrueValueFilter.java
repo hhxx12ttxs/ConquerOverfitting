@@ -1,14 +1,18 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.trace.filter;
 
+import cn.edu.pku.sei.plde.conqueroverfitting.localization.Suspicious;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.ExceptionVariable;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.TraceResult;
 import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.CodeUtils;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.FileUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.InfoUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.MathUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
+import com.sun.org.apache.bcel.internal.generic.LUSHR;
 import org.eclipse.jdt.core.dom.PrimitiveType;
 import org.eclipse.jdt.core.dom.rewrite.ListRewrite;
+import org.omg.CORBA.PUBLIC_MEMBER;
 
 import java.util.*;
 
@@ -16,7 +20,7 @@ import java.util.*;
  * Created by yanrunfa on 16/3/4.
  */
 public class AbandanTrueValueFilter {
-    public static List<ExceptionVariable> abandon(List<TraceResult> traceResults, List<VariableInfo> vars) {
+    public static List<ExceptionVariable> abandon(Suspicious suspicious, List<TraceResult> traceResults, List<VariableInfo> vars) {
         List<ExceptionVariable> exceptionValues = new ArrayList<>();
         Map<VariableInfo, List<String>> trueVariable = AbandanTrueValueFilter.getTrueValue(traceResults, vars);
         Map<VariableInfo, List<String>> falseVariable = AbandanTrueValueFilter.getFalseValue(traceResults, vars);
@@ -74,6 +78,7 @@ public class AbandanTrueValueFilter {
 
         exceptionValues = cleanVariables(exceptionValues);
         if (exceptionValues.size() != 0){
+            exceptionValues.addAll(getThis(suspicious, vars, traceResults));
             return exceptionValues;
         }
         //如果没有第一等级怀疑变量，寻找第二等级怀疑变量
@@ -120,9 +125,40 @@ public class AbandanTrueValueFilter {
                 }
             }
         }
+        exceptionValues.addAll(getThis(suspicious, vars, traceResults));
         return exceptionValues;
     }
 
+    public static List<ExceptionVariable> getThis(Suspicious suspicious, List<VariableInfo> vars, List<TraceResult> traceResults){
+        List<ExceptionVariable> result = new ArrayList<>();
+        String code = FileUtils.getCodeFromFile(suspicious._srcPath, suspicious.classname());
+        if (CodeUtils.hasMethod(code,"equals")){
+            Set<String> equalVariable = CodeUtils.getEqualVariableInSource(FileUtils.getFileAddressOfJava(suspicious._srcPath, suspicious.classname()));
+            for (TraceResult traceResult: traceResults){
+                if (traceResult.getTestResult()){
+                    continue;
+                }
+                String valueName = suspicious.classname().substring(suspicious.classname().lastIndexOf(".")+1);
+                valueName+="(";
+                for (String variable: equalVariable){
+                    List<String> value = traceResult.get(variable);
+                    if (value == null){
+                        value = traceResult.get("get"+variable.substring(0,1).toUpperCase()+variable.substring(1)+"()");
+                    }
+                    valueName += value.get(0);
+                    valueName +=",";
+                }
+                if (valueName.endsWith(",")){
+                    valueName = valueName.substring(0, valueName.length()-1);
+                }
+                valueName+=")";
+                VariableInfo thisInfo = getVariableInfoWithName(vars, "this");
+                ExceptionVariable exceptionVariable = new ExceptionVariable(thisInfo, traceResult, Arrays.asList(valueName));
+                result.add(exceptionVariable);
+            }
+        }
+        return result;
+    }
 
 
     public static Map<VariableInfo, List<String>> filter(List<TraceResult> traceResults, List<VariableInfo> vars){

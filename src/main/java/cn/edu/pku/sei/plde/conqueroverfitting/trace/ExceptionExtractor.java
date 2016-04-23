@@ -33,19 +33,26 @@ public class ExceptionExtractor {
         this.suspicious = suspicious;
     }
 
-    public List<ExceptionVariable> extract(List<TraceResult> traceResults){
+    public List<ExceptionVariable> extract(Suspicious suspicious, List<TraceResult> traceResults){
         this.traceResults = traceResults;
-        exceptionVariables = AbandanTrueValueFilter.abandon(traceResults, suspicious.getAllInfo());
+        exceptionVariables = AbandanTrueValueFilter.abandon(suspicious, traceResults, suspicious.getAllInfo());
         return exceptionVariables;
     }
 
     public List<List<ExceptionVariable>> sort(){
+        List<List<ExceptionVariable>> result = new ArrayList<>();
+        for (ExceptionVariable exceptionVariable: exceptionVariables){
+            if (exceptionVariable.name.equals("this")){
+                result.add(Arrays.asList(exceptionVariable));
+            }
+        }
         if (hasTrueTraceResult(traceResults)){
-            return sortWithMethodOne(exceptionVariables, traceResults, suspicious);
+            result.addAll(sortWithMethodOne(exceptionVariables, traceResults, suspicious));
         }
         else {
-            return sortWithMethodTwo(exceptionVariables, traceResults, suspicious);
+            result.addAll(sortWithMethodTwo(exceptionVariables, traceResults, suspicious));
         }
+        return result;
     }
 
     private static boolean hasTrueTraceResult(List<TraceResult> traceResults){

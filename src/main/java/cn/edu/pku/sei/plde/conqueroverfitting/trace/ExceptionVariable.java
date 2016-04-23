@@ -6,6 +6,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.utils.CodeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.MathUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 
+import java.lang.reflect.Array;
 import java.util.*;
 
 /**
@@ -30,7 +31,9 @@ public class ExceptionVariable {
         this.level = variable.priority;
         this.name = variable.variableName;
         this.type = variable.getStringType();
-        this.values = new HashSet<>(traceResult.get(variable.variableName));
+        if (traceResult.get(variable.variableName)!=null){
+            this.values = new HashSet<>(traceResult.get(variable.variableName));
+        }
     }
 
     public ExceptionVariable(VariableInfo variable, TraceResult traceResult, List<String> values){
@@ -56,6 +59,9 @@ public class ExceptionVariable {
         return this.variable.equals(exceptionVariable.variable) && values.size() == exceptionVariable.values.size();
     }
 
+    public boolean judgeTheSame(String[] newValues, String[] thisValues){
+        return false;
+    }
 
 
     public List<String> getBoundaryIntervals(List<BoundaryInfo> boundaryInfos){
@@ -64,6 +70,22 @@ public class ExceptionVariable {
         //if (CodeUtils.isForLoopParam(new ArrayList<>(values))!=-1){
         //    return valueList;
         //}
+        if (name.equals("this")){
+            for (BoundaryInfo info: boundaryInfos){
+                if (info.value.contains("new ") && info.value.contains(type) && info.value.contains("(") && info.value.contains(")")){
+                    String newValue = info.value.substring(info.value.indexOf('('+1, info.value.lastIndexOf(')')));
+                    String[] newValues = newValue.contains(",")?newValue.split(","):new String[]{newValue};
+                    String thisValue = values.iterator().next();
+                    thisValue = thisValue.substring(info.value.indexOf('('+1, info.value.lastIndexOf(')')));
+                    String[] thisValues = thisValue.contains(",")?thisValue.split(","):new String[]{thisValue};
+                    if (judgeTheSame(newValues, thisValues)){
+                        return Arrays.asList("this.equals("+newValue+")");
+                    }else {
+                        return Arrays.asList("!this.equals("+newValue+")");
+                    }
+                }
+            }
+        }
         if (MathUtils.isNumberType(type)) {
             if (valueList.size() == 1 && (valueList.get(0).equals("NaN") || boundaryInfos.size() == 0)){
                 return valueList;
