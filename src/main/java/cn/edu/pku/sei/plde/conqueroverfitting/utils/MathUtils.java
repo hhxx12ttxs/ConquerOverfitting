@@ -1,12 +1,11 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.utils;
 
+import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.Interval;
 import org.apache.commons.httpclient.protocol.SSLProtocolSocketFactory;
 import org.apache.commons.lang.LocaleUtils;
 import org.apache.commons.lang.StringUtils;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
 /**
  * Created by yanrunfa on 16/3/3.
@@ -235,6 +234,47 @@ public class MathUtils {
                 value.equals(String.valueOf(Short.MIN_VALUE)) ||
                 value.equals("-9223372036854775808") ||
                 value.equals("9223372036854775807");
+    }
+
+    public static List<Interval> mergetInterval(ArrayList<Interval> intervals){
+        Collections.sort(intervals, new Comparator<Interval>() {
+            @Override
+            public int compare(Interval i1, Interval i2) {
+                if(i1.leftBoundary == i2.leftBoundary){
+                    if(i1.leftClose){
+                        return -1;
+                    }else{
+                        return 1;
+                    }
+                }
+                return Double.compare(i1.leftBoundary, i2.leftBoundary);
+            }
+        });
+
+        List<Interval> result = new ArrayList<Interval>();
+        Interval intervalTemp = new Interval(intervals.get(0));
+
+        for (Interval interval : intervals) {
+            if (interval.leftBoundary < intervalTemp.rightBoundary) {
+                if(interval.rightBoundary > intervalTemp.rightBoundary){
+                    intervalTemp.rightBoundary = interval.rightBoundary;
+                    intervalTemp.rightClose = interval.rightClose;
+                }else if(interval.rightBoundary == intervalTemp.rightBoundary){
+                    if(interval.leftClose || intervalTemp.rightClose){
+                        intervalTemp.rightClose = true;
+                    }
+                }
+            }else if(interval.leftBoundary == intervalTemp.rightBoundary && (interval.leftClose || intervalTemp.rightClose)){
+                intervalTemp.rightBoundary = interval.rightBoundary;
+                intervalTemp.rightClose = interval.rightClose;
+            }
+            else {
+                result.add(new Interval(intervalTemp));
+                intervalTemp = new Interval(interval);
+            }
+        }
+        result.add(new Interval(intervalTemp));
+        return result;
     }
 
 }
