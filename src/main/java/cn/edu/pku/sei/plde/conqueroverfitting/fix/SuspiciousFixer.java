@@ -42,7 +42,7 @@ public class SuspiciousFixer {
         for (Map.Entry<Integer, List<TraceResult>> entry: traceResultClassify(traceResults).entrySet()){
             trueValues = AbandanTrueValueFilter.getTrueValue(entry.getValue(), suspicious.getAllInfo());
             falseValues = AbandanTrueValueFilter.getFalseValue(entry.getValue(), suspicious.getAllInfo());
-            exceptionVariables = extractor.extract(entry.getValue());
+            exceptionVariables = extractor.extract(suspicious,entry.getValue());
             List<List<ExceptionVariable>> echelons = extractor.sort();
             for (List<ExceptionVariable> echelon: echelons){
                 Map<String, List<String>> boundarys = new HashMap<>();
