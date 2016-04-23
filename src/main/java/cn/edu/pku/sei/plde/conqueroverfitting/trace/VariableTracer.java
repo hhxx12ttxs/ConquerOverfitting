@@ -162,19 +162,6 @@ public class VariableTracer {
                 }
             }
         }
-        if (firstStatement.equals("return true;") || firstStatement.equals("return false;")){
-            TraceResult traceResult = new TraceResult(false);
-            traceResult._assertLine = -1;
-            traceResult._testClass = _testClassname;
-            traceResult._testMethod = _testMethodName;
-            traceResult.put("return", "true");
-            results.add(traceResult);
-            for (VariableInfo info: variableInfos){
-                if (info.variableName.equals("return")){
-                    info.priority = 0;
-                }
-            }
-        }
         return results;
     }
 
@@ -303,7 +290,7 @@ public class VariableTracer {
         String agentFunc = "func:" + functionname;
         String agentLine = "line:"+ errorLine;
         String agentSrc = "src:" + _srcPath;
-        String agentCp = "cp:" + "\""+_classpath+":"+StringUtils.join(_suspicious._libPath,":");
+        String agentCp = "cp:" + "\""+_classpath+":"+StringUtils.join(_suspicious._libPath,":")+"\"";
         String agentTestSrc = testClassPath.equals("")?"":"testsrc: "+testClassPath.trim();
         String agentTest = testClassPath.equals("")?"":"test:" + _testClassname;
 

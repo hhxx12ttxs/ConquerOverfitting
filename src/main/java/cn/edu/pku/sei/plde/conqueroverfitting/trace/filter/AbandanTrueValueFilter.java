@@ -147,6 +147,9 @@ public class AbandanTrueValueFilter {
                     List<String> value = traceResult.get(variable);
                     if (value == null){
                         value = traceResult.get("get"+variable.substring(0,1).toUpperCase()+variable.substring(1)+"()");
+                        if (value == null){
+                            continue;
+                        }
                     }
                     valueName += value.get(0);
                     valueName +=",";
