@@ -1,23 +1,16 @@
-package practice;
+package recursion;
 
-public class IterativeFactorial {
-
-	/**
-	 * @param args
-	 */
-	public static void main(String[] args) {
-		// TODO Auto-generated method stub
-		System.out.println(factorial(3));
-	}
-
-	static int factorial( int n )
-	{
-		if ( n == 0 ) return 1 ;
-		int factorial = 1 ;
-		while ( n > 0 ) {
-			factorial *= n-- ;
+public class Factorial {
+	public static int factorial(int n){
+		//int factorial =1;
+		if(n==0){
+			return 1;
 		}
-		return factorial ;
+		return n * factorial(n-1);
 	}
+	public static void main(String[] args){
+		System.out.println(factorial(20));
+	}
+
 }
 

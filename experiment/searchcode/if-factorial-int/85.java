@@ -1,25 +1,16 @@
-import java.util.Scanner;
+package com.factorial;
 
-public class _12_CalculateFactorial {
-    public static void main(String[] args) {
-        Scanner scanner = new Scanner(System.in);
+public class Factorial {
+	
+	public static void main(String[] args) {
+		System.out.println("Factorial is : "+ factorial(6));
+	}
 
-        Integer factorialNumber = scanner.nextInt();
-
-        int factorialResult = FindFactorial(factorialNumber);
-
-        System.out.println(factorialResult);
-    }
-
-    private static int FindFactorial(Integer factorialNumber) {
-        int result = 1;
-        if (factorialNumber == 0){
-            return result;
-        }
-
-        result = factorialNumber * FindFactorial(factorialNumber - 1);
-
-        return result;
-    }
+	private static int factorial(int n) {
+		if(n == 1){
+			return 1;
+		}
+		return n * factorial(n-1);
+	}
 }
 

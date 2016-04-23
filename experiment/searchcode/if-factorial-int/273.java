@@ -1,16 +1,26 @@
-class Factorial {
-	public static void main(String[] args) {
-		
-		System.out.print(factorial(5));
-	}
-	
-	public static int factorial(int n){
-		
-		if(n==0)
-		 return 1; 
-		
-		return n*factorial(n-1);
-	}
-	
-	
+
+public class factorialIterative {
+public static void main(String[] args) {
+	System.out.println(factorial(0));
 }
+
+static int factorial(int input)
+{
+	if(input < 0)
+	{
+		System.out.println("error");
+		return 0;
+	
+	}
+	
+	if(input == 0)
+		return 1;
+	
+	int x, factorial =1;
+	for(x=input;x>1;x--)
+		factorial*=x;
+	
+	return factorial;
+}
+}
+

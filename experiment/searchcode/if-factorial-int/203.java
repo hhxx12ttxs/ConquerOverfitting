@@ -1,22 +1,12 @@
-public class RecursiveFactorial{
+public class FactorialPrac {
 
-	
-	public static void main(String[] args){
-	
-		Factorial  f = new Factorial();
-	System.out.println(	f.factorial(4));
-	
-	
-	
-	}
-
-	public int factorial(int number){
-		if (number>=1){
-		return number*factorial(number-1);
-		}
-		else
-			return 1;
+	public static void main(String... a) {
+		System.out.println("factorial" + factorial(7));
 	}
 	
+	public static int factorial(int n) {
+		if(n==1) return 1;
+		else return n*factorial(n-1);
 	}
+}
 

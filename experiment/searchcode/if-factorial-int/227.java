@@ -1,45 +1,22 @@
-import java.util.Scanner;
 
-public class factorial
-{
+public class Factorial {
 
-  public static void main(String[] args)
-  {
-    Scanner scan = new Scanner(System.in);
-    double factorial = -1;
-    double factor = 1;
-    System.out.println("input a non negative integer for a factorial");
-    factorial = scan.nextInt();
-   
-    if (factorial <= 0)
-    while (factorial <= -1)
-    {
+	// factorial
+	public static void main(String[] args) {
+		Factorial f = new Factorial();
+		int number = f.factorial(5);
+		System.out.println(number);
+	}
+	
+	public int factorial(int number) {
+		
+		if( number <= 1 ) {
+			return 1;
+		}
+		else {
+			return number * factorial(number-1);
+		}
+	}
+}
 
-      if (factorial >= 0)
-        {for (int i = 1; i <= factorial; i++)
-      {
-        factor = factor * i;
-      }}
-        else
-        System.out.println("you are dumb input a non negative number ");
-      factorial = scan.nextInt();
-      for (int i = 1; i <= factorial; i++)
-      {
-        factor = factor * i;
-      }
-      } 
-    else
-    {
-      for (int i = 1; i <= factorial; i++)
-      {
-        factor = factor * i;
-      }
-    }
-    
-    System.out.print(factorial + "!" + "=" + factor);  
-
-  }
-  
-
-    }
 

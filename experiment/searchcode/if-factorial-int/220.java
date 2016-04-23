@@ -1,45 +1,28 @@
-package com.interview.algorithms;
+package sudas.study.example.zero;
 
-public class Factorial {
-
-	public void generateFactorial(int kth) {
-		System.out.println("Factoial for " + kth + "  no is : "
-				+ recFactorial(kth));
-		System.out.println("Factoial for " + kth + "  no is : "
-				+ itertaiveFactorial(kth));
-
-	}
-
-	private int recFactorial(int n) {
-		if (n <= 0) {
-			return 1;
-
-		} else {
-			return n * recFactorial(n - 1);
-			// System.out.print(fac + ",");
-			// return fac;
-		}
-
-	}
-
-	private long itertaiveFactorial(int num) {
-		long result = 1;
-		if (num == 0) {
-			return 1;
-		} else {
-			for (int i = 2; i <= num; i++) {
-				result *= i;
-			}
-			return result;
-		}
-
-	}
-
-
+public class CalculateFactorial {
 
 	public static void main(String[] args) {
-		Factorial factorial = new Factorial();
-		factorial.generateFactorial(5);		
+		System.out.println(new Facto().factorial(4));
+
+	}
+
+}
+
+/*
+ * calculate the factorial of a number factorial theory factorial of 4 --
+ * 4*3*2*1 i.e. if n=4 Formulae is n!=n*(n-1)! therefore 4!=4*(4-1)(3-1)(2-1)
+ * [in mathematics factorial of 0 is 1]
+ */
+
+class Facto {
+	public int factorial(int n) {
+		int factorialOf;
+		if (n == 1)
+			return 1;
+		factorialOf = factorial(n - 1) * n;
+
+		return factorialOf;
 
 	}
 

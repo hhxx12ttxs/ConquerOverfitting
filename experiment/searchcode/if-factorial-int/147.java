@@ -1,15 +1,15 @@
-public class Factorial{
-	public static int obtenerFactorial(int numero){
-		int factorial=1;
-		if (numero<0){
-			System.out.println("No hay factorial de números negativos");
-			System.exit(1);
+package com.harcyah.kata.codingbat.recursion1.factorial;
+
+public class Factorial {
+
+	public int factorial(int n) {
+		if (n == 1) {
+			return 1;
 		}
-		else {
-			for (int i=1;i<=numero;++i)
-				factorial*=i;		
-		}
-		return factorial;
+
+		return n * factorial(n - 1);
 	}
+
 }
+
 

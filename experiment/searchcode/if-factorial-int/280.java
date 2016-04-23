@@ -1,16 +1,11 @@
-/**
-*         Calcula el valor de un factorial.
-*         Cambiado
-*/
- 
+package uk.co.sammy.classes;
+
 public class Factorial {
- 
-  public int calcularFactorial(int i) {
-    if (i > 0) {
-      return i * calcularFactorial(i - 1);
-    } else {
-      return 1;
-    }
-  }
+	public int factorial(int number){
+		if(number == 0){
+			return 1;
+		}
+		return number * factorial(number - 1);
+	}
 }
 

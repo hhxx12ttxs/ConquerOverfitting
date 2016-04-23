@@ -1,18 +1,16 @@
-package homework7_8;
+package org.zykoq.factorial;
 
-public class Main {
+/**
+ * @author <a href="mailto:mr@mobi4friends.de">Maarten Roowaan</a>
+ */
+public class Factorial {
 
-	public static void main(String[] args) {
-		System.out.println(factorial(15, 1));
-	}
-
-	public static final long factorial(int range, long factorial) {
-		if (range > 0) {
-			factorial *= range;
-			range--;
-			return factorial(range, factorial);
-		}
-		return factorial;
-	}
+    public static long calculate(int factorial) {
+        if (factorial < 2) {
+            return 1;
+        }
+        return factorial * calculate(factorial - 1);
+    }
 }
+
 

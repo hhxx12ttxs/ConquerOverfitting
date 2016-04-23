@@ -1,23 +1,18 @@
-/**
- *
- * Factorual of 5 is 5x4x3x2x1 = 120
- *
- */
 public class Factorial {
-
-	public static void main(String[] args) {
-
-		System.out.println(factorial(4));
+	public Factorial () {}
+	
+	public int getFactorial(int x) {
+		if (x == 1) {
+			return 1;
+		} else {
+			return x * getFactorial(x-1);
+		}
 	}
 	
-	private static int factorial(int a){
+	public static void main(String[] args) {
+		Factorial num = new Factorial();
 		
-		if(a==1) {
-			return 1;
-		}
-		
-		return a * factorial(a-1);
+		System.out.println(num.getFactorial(5));
 	}
-
 }
 

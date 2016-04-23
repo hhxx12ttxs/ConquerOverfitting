@@ -76,7 +76,7 @@ public class GathererJavaGithub {
 
 
 			try {
-				int sleep = 6000;
+				int sleep = 7500;
 				Thread.sleep(sleep);
 			} catch (InterruptedException e) {
 				e.printStackTrace();

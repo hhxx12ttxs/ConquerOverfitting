@@ -1,13 +1,35 @@
+package home14_2;
 
-public class Factorial {
+public class Number {
 
-}int myFactorial( int integer)
-{
-if( integer == 1)
-     return 1;
-else
-       {
-       return(integer*(myFactorial(integer-1);
-       }
+	int numb;
+
+	public Number(int numb) {
+
+		this.numb = numb;
+	}
+
+	public int calculateFactorial() {
+
+		int factorial = 0;
+
+		if (numb < 0) {
+
+			System.out.println("Factorial doesn't exist!");
+
+		} else if (numb == 0) {		
+
+			factorial = 1;
+
+		} else {
+			
+			factorial = 1;
+
+			for (int i = 1; i <= numb; i++) {
+				factorial *= i;
+			}
+		}	
+
+		return factorial;
+	}
 }
-

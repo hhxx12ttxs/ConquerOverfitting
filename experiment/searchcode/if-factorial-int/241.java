@@ -1,42 +1,28 @@
-package trace_quiz.sp03;
+package basics;
 
-import obpro.cui.Input;
 
-/**
- * �v���O�������F 
- * �쐬�ҁF 
- * �o�[�W�����F 1.0 () 
- */
-
-public class FactorialCalculator {
+class Factorial{
+	 static int factorial (int n) {
+		 int result;
+		 if(n == 1)
+			 return 1;
+		 
+		 result = factorial(n-1) *n ;
+		 return result;
+	 }
+	
+	
+}
+public class Recursion {
 
 	public static void main(String[] args) {
-		FactorialCalculator factorialCalculator = new FactorialCalculator();
-		factorialCalculator.main();
+		//Factorial f = new Factorial();
+//		System.out.println("Factorial of 3 is " + f.factorial(3));
+		System.out.println("Factorial of 4 is " + Factorial.factorial(4));
+//		f.callMe();
+//		System.out.println("Factorial of 5 is " + f.fact(5));
 	}
 
-	// 
-	void main() {
-		// 
-		int number;
-		System.out.println("�K��̌v�Z�����܂��D�������͂��ĉ�����>>");
-		number = Input.getInt();
-		
-		// 
-		int answer;
-		answer = factorial(number);
-		
-		// 
-		System.out.println("Factorial=" + answer);
-	}
-
-	// 
-	int factorial(int n) {
-		if(n == 1) {
-			return 1;
-		} else {
-			return (n * factorial(n - 1));
-		}
-	}
 }
+
 

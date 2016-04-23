@@ -1,15 +1,18 @@
-package corejava.factorial;
+package factorial;
 
-public class FactorialByRecursion {
-    public long factorialOfNumber(int i) {
-        if (i < 0) {
-            throw new FactorialProgramRuntimeException("FactorialProgramRuntimeException specified that number should be non negative?");
-        }
+public class Factorial {
 
-        if (i == 0) {
-            return 1;
+    public static void main(String[] args) {
+        System.out.println(factorial(1));
+    }
+    
+    private static int factorial (int n) {
+        if (n <= 1) {
+            return 1;   
         }
-        return i * factorialOfNumber(i - 1);
+        else {
+            return n * factorial(n-1);
+        }
     }
 }
 

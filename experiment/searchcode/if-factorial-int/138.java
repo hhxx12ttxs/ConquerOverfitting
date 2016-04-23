@@ -1,13 +1,11 @@
-package com.main.recursive;
+package org.pixielib.util;
 
 public class Factorial {
 
-	public int factorial(int i) {
-		if (i == 0) return 1;
-		else if (i == 1)	return 1;
-		else
-			return i * factorial(i - 1);
-	}
-
+    public static int factorial(int n) {
+        if (n <= 0) return 1;
+        return n * factorial(n - 1);
+    }
 }
+
 

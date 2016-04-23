@@ -1,30 +1,26 @@
-package practice;
-import java.util.*;
-public class Factorial {
-
-	int result = 0;
-	public int findFactorial(int num){
-		
-		if(num == 1){
-			
-			return 1;
-		}
-		else{
-			
-			result = num * findFactorial(num - 1);
-			return result;
-		}
-	}
-	public static void main(String[] args) {
-		// TODO Auto-generated method stub
-		
-		Factorial fc = new Factorial();
-		Scanner sc = new Scanner(System.in);
-		int input_factorial = sc.nextInt();
-		int factorial = fc.findFactorial(input_factorial);
-		System.out.println("The factorial of: " + input_factorial + "  is:  " + factorial);
-		sc.close();
-	}
-
+import java.util.Scanner;
+public class Factorial
+{
+public static void main(String[] args)
+{
+  int factorial;
+  int product;
+  Scanner scan= new Scanner(System.in);
+  System.out.println("Please imput the number :");
+  factorial=scan.nextInt();
+  product=factorial;
+  while(factorial<1){
+    System.out.println("you have imputed a negative number.Try again.");
+    factorial=scan.nextInt();
+  product=factorial;
+  }
+  if(factorial==0){
+    System.out.println("the factorial of 0 is: 1.");}
+  else{
+  for(int i=1;i<factorial;i++){
+  product*=(factorial-i);
+  }
+  System.out.println("the factorial of "+factorial+" is: "+product);
+  }
 }
-
+}

@@ -1,21 +1,22 @@
-package com.quitevis.algorithms.factorial;
+package javamm;
 
-/**
- * Created by lordbritishix on 20/05/15.
- */
-public class Factorial {
-    //f(5) = 5 * f(4)
-    //f(4) = 4 * f(3)
-    //f(3) = 3 * f(2)
-    //f(2) = 2 * f(1)
-    //f(1) = 1 * f(0)
-    //f(0) = 1 -> base case
-    public int factorial(int n) {
-        if (n <= 0) {
-            return 1;
-        }
-
-        return  n * factorial(n - 1);
+@SuppressWarnings("all")
+public class RecursiveFactorial {
+  /**
+   * Example 4.10 of the book
+   */
+  public static int factorial(int n) {
+    if ((n > 1)) {
+      int _factorial = RecursiveFactorial.factorial((n - 1));
+      return (n * _factorial);
+    } else {
+      return 1;
     }
+  }
+  
+  public static void main(String[] args) {
+    int _factorial = RecursiveFactorial.factorial(5);
+    System.out.println(_factorial);
+  }
 }
 

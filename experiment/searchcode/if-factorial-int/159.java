@@ -1,15 +1,21 @@
-class Factorial {
-    int getFactorial(int n){
-        int result;
-        if (n <= 1) {
-            return 1;
-        }
-        result = n * getFactorial(n-1);
-        return result;
-    }
-    public static void main(String[] args){
-        Factorial fac = new Factorial();
-        System.out.println(fac.getFactorial(4));
-    }
+package it.tech.skal.algorithms.recursion;
+
+public class Factorial {
+	
+	public static void main(String a[]){
+		Factorial factorial = new Factorial();
+		System.out.println(factorial.getFactorial(6));
+	}
+
+	private int getFactorial(int i) {
+		if (i == 1) {
+			return 1;
+		} else {
+			return i * getFactorial(i - 1);
+		}
+
+	}
+
 }
+
 

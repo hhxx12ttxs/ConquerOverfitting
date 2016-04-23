@@ -1,22 +1,20 @@
-package com.jeffhobbsonline;
+package it.tech.skal.algorithms.recursion;
 
-/**
- * Factorial Using Recursion
- *
- */
-public class Factorial 
-{
-    public static void main( String[] args )
-    {
-    	int n = 6;
-    	int k = factorial(n);
-        System.out.println("Factorial of " + n + " equals: " + k);
-    }
-    
-    public static int factorial(int n){
-    	if (n == 1)
-    		return 1;
-    	else
-    		return n  * factorial(n-1);
-    }
+public class Factorial {
+	
+	public static void main(String a[]){
+		Factorial factorial = new Factorial();
+		System.out.println(factorial.getFactorial(6));
+	}
+
+	private int getFactorial(int i) {
+		if (i == 1) {
+			return 1;
+		} else {
+			return i * getFactorial(i - 1);
+		}
+
+	}
+
 }
+

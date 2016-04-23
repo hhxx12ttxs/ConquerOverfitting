@@ -1,24 +1,37 @@
-// Factorial.java
-// Recursive factorial method
-package lab5;
-
-
 public class Factorial {
-   
-   // Recursive definition of method factorial
-   public static int factorial( int n )
-   {      
-      if ( n == 1 || n == 0 )  // base case
-         return 1;
-      else {
-         int result1 = factorial(n-1); 
-         int result2 = n * result1;
-         return result2;
-         //return n * factorial(n-1);
-      }
-   }
-         
-   
+  public int factorial(int i) {
+    //return factorialRec(1,i);
+    return factorialIter(1,i);
+  }
+  
+  private int factorialRec(int f, int i) {
+    if (i > 0)
+      return factorialRec(f*i,i-1);
+    else
+      return f;
+  }
+  
+  private int factorialIter(int f, int i) {
+    while (i > 0) {
+      f = f*i;
+      i = i-1;
+    }
+    return f;
+  }
+    
+    public static void main(String[] args) {
+      System.out.println(factorial(0) + " " + factorial(1) + " " + 
+                         factorial(2) + " " + factorial(3));
+    }
 }
 
+/*public class Fibonacci {
+    public Factorial() {
+    }
+
+    public int factorial(int n) {
+        if (n < 1) return n;
+        else return fac(n) * fac(n-1);
+    }
+}*/
 

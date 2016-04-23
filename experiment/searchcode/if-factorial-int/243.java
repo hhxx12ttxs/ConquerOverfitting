@@ -1,18 +1,20 @@
-public class  B{
+class ClassInheritence{
+    public static void main(String[] a){
+        System.out.println(new FastRecursiveFactorial().getFactorial(10,1));
+    }
+}
 
-	public B(){
-		
-	}
-
-	public int factorial(int i){
-		
-		if(i == 1){
-			return 1;
-		}
-
-		int p = i;
-
-		return i*factorial(--p);
-	}
+class RecursiveFactorial {
+    public int getFactorial(int num, int factorial){
+        
+        if (num <2)
+            num=factorial;
+        else
+            num = new FastRecursiveFactorial().getFactorial(num-1,factorial*num) ;
+        return num ;
+    }
+}
+class FastRecursiveFactorial extends RecursiveFactorial{
+    
 }
 

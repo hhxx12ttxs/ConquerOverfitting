@@ -1,25 +1,35 @@
-package com.bayamp.homework;
+// ****************************************************************
+//   Factorial.java
+//
+//   Calculate factorials!
+//          
+// ****************************************************************
+import java.util.Scanner;
 
 public class Factorial {
-	
-	public static int getFactorial(int number){
-		int factorial = 1;
-	for(int i=number; i>0 ; i--){
-		factorial = factorial*i;
-	}	
-		System.out.println("print factorial " + number);
-		return factorial;
-	}
-
-	
-	public static int getFactorialUsingRecursion(int number){
-		if(number==0)
-			return 1;
-		return number*getFactorialUsingRecursion(number-1);
-		
-		
-	}
-	
-	
+  public static void main(String[] args) {
+    Scanner scan = new Scanner(System.in);
+    
+    System.out.println("Please input a positive integer to calculate its factorial.");
+    int factorial = scan.nextInt();
+    int nextFactorial = factorial - 1;
+    int result = factorial;
+    
+    while (factorial < 0) {
+      System.out.println("That's a negative number! Please input a POSITIVE number.");
+      factorial = scan.nextInt();
+    }
+    
+    while (nextFactorial > 0) {
+      result = result * nextFactorial;
+      nextFactorial--;
+    }
+    
+    if (factorial == 0) {
+      result = 1;
+    }
+    
+    System.out.println(factorial + "! is " + result);
+  }
 }
 

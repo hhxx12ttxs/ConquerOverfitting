@@ -1,22 +1,24 @@
 
-public class recursion3 {
+public class Algorithm_Factorial {
 
+	int result;
+
+	Algorithm_Factorial(int n) {
+		result = calcurateFactorial(n);
+	}
+
+	int calcurateFactorial(int n) {
+		if(n>1)
+			return (n) * calcurateFactorial(n-1);
+		else
+			return n;
+	}
 	
+	int returnResult()
+	{
+		return result;
+	}
 
-	    public static int factorial(int x){
-		
-		if(x == 0){
-		    return 1;
-		}
-		return x*factorial(x);
-	    }
-
-
-	    public static void main(String[] arguments){
-		factorial(5);
-
-	    }
-
-	
 }
+
 

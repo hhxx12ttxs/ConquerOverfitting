@@ -1,17 +1,18 @@
-package yg0r2.examples.recursive;
-
-public class Factorial {
-
-	public static void main(String[] args) {
-		System.out.println(factorial(5));
+class Factorial{
+	static int factorial(int n){
+		if(n == 0) return 1;
+		else return factorial(n - 1) * n;
 	}
-
-	public static int factorial(int n) {
-		if (n <= 1) {
-			return 1;
-		}
-
-		return n * factorial(n - 1);
+	static int factorial_iter(int n){
+		int i, ret = 1;
+		for(;n > 0;n --)
+			ret = ret * n;
+		return ret;
 	}
-
+	static int factorial_neg(int n){
+		if(n == 0) return 1;
+		else return factorial(n - 1) * -n;
+	}
 }
+
+
