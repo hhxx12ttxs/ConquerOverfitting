@@ -88,7 +88,7 @@ public class SearchBoundaryFilter {
                 if (filteredList.size() == 0 && !info.isSimpleType){
                     filteredList = BoundaryFilter.getBoundaryWithType(boundaryList, info.getStringType());
                 }
-                return boundaryList;
+                return filteredList;
             }
         }
 
@@ -111,7 +111,7 @@ public class SearchBoundaryFilter {
                 filteredList = BoundaryFilter.getBoundaryWithType(boundaryList, info.getStringType());
             }
             if (filteredList.size() != 0){
-                return boundaryList;
+                return filteredList;
             }
 
         }
@@ -133,7 +133,7 @@ public class SearchBoundaryFilter {
         //if (filteredList.size() == 0 && !info.isSimpleType){
         //    filteredList = BoundaryFilter.getBoundaryWithType(boundaryList, info.getStringType());
         //}
-        return boundaryList;
+        return filteredList;
     }
     private static String getProjectFullName(String project){
         if (project.startsWith("Math")){

@@ -9,6 +9,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.trace.TraceResult;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.filter.AbandanTrueValueFilter;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.CodeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.FileUtils;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.MathUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.TestUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 import com.google.common.collect.Sets;
@@ -101,7 +102,7 @@ public class SuspiciousFixer {
 
     private List<String> getIfStrings(List<ExceptionVariable> exceptionVariables){
         List<String> returnList = new ArrayList<>();
-        List<String> result = new ArrayList<>();
+        Map<ExceptionVariable, List<String>> result = new HashMap<>();
         for (ExceptionVariable exceptionVariable: exceptionVariables){
             List<String> boundarys = getBoundary(exceptionVariable);
             if (boundarys.size() > 1 && exceptionVariables.size() == 1){
@@ -110,9 +111,80 @@ public class SuspiciousFixer {
                 }
                 return returnList;
             }
-            result.addAll(boundarys);
+            boolean addedFlag = false;
+            for (Map.Entry<ExceptionVariable, List<String>> entry: result.entrySet()){
+                if (entry.getKey().name.equals(exceptionVariable.name)){
+                    entry.getValue().addAll(boundarys);
+                    addedFlag = true;
+                    break;
+                }
+            }
+            if (!addedFlag){
+                result.put(exceptionVariable, boundarys);
+            }
+
         }
-        return Arrays.asList(getIfStatementFromBoundary(result));
+        return Arrays.asList(getIfStatementFromBoundary(combineIntervals(result)));
+    }
+
+    private List<String> combineIntervals(Map<ExceptionVariable, List<String>> boundarysMap){
+        List<String> result = new ArrayList<>();
+        for (Map.Entry<ExceptionVariable, List<String>> entry: boundarysMap.entrySet()){
+            if (!MathUtils.isNumberType(entry.getKey().type) || entry.getValue().size() <= 1){
+                result.addAll(entry.getValue());
+            }
+            double leftBoundary;
+            double rightBoundary;
+            boolean leftClose;
+            boolean rightClose;
+            for (String interval: entry.getValue()){
+
+            }
+        }
+        return result;
+    }
+
+    private void parseStringInterval(String interval){
+        double leftBoundary = -Double.MAX_VALUE;
+        double rightBoundary = Double.MAX_VALUE;
+        boolean leftClose = false;
+        boolean rightClose = false;
+        if (interval.contains("&&")){
+            String[] intervals = interval.split("&&");
+            for (String halfInterval: intervals){
+                if (halfInterval.contains(">=")){
+                    leftBoundary = MathUtils.parseStringValue(halfInterval.split(">=")[1]);
+                    leftClose = true;
+                }
+                else if (halfInterval.contains("<=")){
+                    rightBoundary = MathUtils.parseStringValue(halfInterval.split("<=")[1]);
+                    rightClose = true;
+                }
+                else if (halfInterval.contains(">")){
+                    leftBoundary = MathUtils.parseStringValue(halfInterval.split(">")[1]);
+                }
+                else if (halfInterval.contains("<")){
+                    rightBoundary = MathUtils.parseStringValue(halfInterval.split("<")[1]);
+                }
+            }
+        }
+        else {
+            if (interval.contains(">=")){
+                leftBoundary = MathUtils.parseStringValue(interval.split(">=")[1]);
+                leftClose = true;
+            }
+            else if (interval.contains("<=")){
+                rightBoundary = MathUtils.parseStringValue(interval.split("<=")[1]);
+                rightClose = true;
+            }
+            else if (interval.contains(">")){
+                leftBoundary = MathUtils.parseStringValue(interval.split(">")[1]);
+            }
+            else if (interval.contains("<")){
+                rightBoundary = MathUtils.parseStringValue(interval.split("<")[1]);
+            }
+
+        }
     }
 
 
