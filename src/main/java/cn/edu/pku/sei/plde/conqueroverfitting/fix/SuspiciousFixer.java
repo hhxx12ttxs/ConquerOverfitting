@@ -57,9 +57,11 @@ public class SuspiciousFixer {
                     boundarys.put(assertEchelon.getKey(), getIfStrings(echelon));
                 }
                 if (fixMethodTwo(suspicious, boundarys, project, entry.getKey())){
+                    printPatchMessage(suspicious, project, getAllBoundarys(boundarys.values()), exceptionVariables, echelon);
                     return true;
                 }
                  if (fixMethodOne(suspicious, boundarys, project, entry.getKey())){
+                     printPatchMessage(suspicious, project, getAllBoundarys(boundarys.values()), exceptionVariables, echelon);
                     return true;
                 }
             }
@@ -67,7 +69,15 @@ public class SuspiciousFixer {
         return false;
     }
 
-    private void printPatchMessage(Suspicious suspicious,String project, List<String> boundarys, List<ExceptionVariable> exceptionVariables, List<ExceptionVariable> echelon){
+    private Set<String> getAllBoundarys(Collection<List<String>> boundarys){
+        Set<String> sets = new HashSet<>();
+        for (List<String> list: boundarys){
+            sets.addAll(list);
+        }
+        return sets;
+    }
+
+    private void printPatchMessage(Suspicious suspicious,String project, Set<String> boundarys, List<ExceptionVariable> exceptionVariables, List<ExceptionVariable> echelon){
         File recordPackage = new File(System.getProperty("user.dir")+"/patch/");
         recordPackage.mkdirs();
         File recordFile = new File(recordPackage.getAbsolutePath()+"/"+project);
@@ -92,7 +102,7 @@ public class SuspiciousFixer {
                 writer.write(variable.name+" = "+variable.values.toString()+"\n");
             }
             writer.write("==================================\n");
-            writer.write("Search Boundary Cost Time: "+searchTime);
+            writer.write("Search Boundary Cost Time: "+searchTime+"\n");
             writer.close();
         } catch (IOException e){
             e.printStackTrace();

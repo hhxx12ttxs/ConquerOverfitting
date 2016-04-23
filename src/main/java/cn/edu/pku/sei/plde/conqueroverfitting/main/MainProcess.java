@@ -31,6 +31,9 @@ public class MainProcess {
 
 
     public MainProcess(String path){
+        if (!path.endsWith("/")){
+            path += "/";
+        }
         PATH_OF_DEFECTS4J = path;
     }
 
@@ -96,7 +99,7 @@ public class MainProcess {
 
     public boolean isFixSuccess(Suspicious suspicious, Map<ExceptionVariable,List<String>> boundarys, String project){
         System.out.println("Fix Success One Place");
-        printCollectingMessage(project, suspicious, boundarys);
+
         if (TestUtils.getFailTestNumInProject(project) > 0){
             Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc,libPath);
             List<Suspicious> suspiciouses = localization.getSuspiciousLite(false);
@@ -104,12 +107,13 @@ public class MainProcess {
             return true;
         }
         else {
+            printCollectingMessage(project, suspicious);
             System.out.println("Fix All Place Success");
             return true;
         }
     }
 
-    public void printCollectingMessage(String project, Suspicious suspicious, Map<ExceptionVariable, List<String>> boundarys){
+    public void printCollectingMessage(String project, Suspicious suspicious){
         File recordPackage = new File(System.getProperty("user.dir")+"/patch/");
         recordPackage.mkdirs();
         File recordFile = new File(recordPackage.getAbsolutePath()+"/"+project);
@@ -118,9 +122,10 @@ public class MainProcess {
                 recordFile.createNewFile();
             }
             FileWriter writer = new FileWriter(recordFile,true);
+            writer.write("===========================================\n");
             writer.write("True Test Num: "+suspicious.trueTestNums()+"\n");
             writer.write("True Assert Num: "+suspicious.trueAssertNums()+"\n");
-            System.out.println("Whole Cost Time: "+(System.currentTimeMillis()-startMili)/1000);
+            writer.write("Whole Cost Time: "+(System.currentTimeMillis()-startMili)/1000+"\n");
             writer.close();
         } catch (IOException e){
             e.printStackTrace();

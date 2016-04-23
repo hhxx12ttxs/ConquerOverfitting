@@ -24,7 +24,7 @@ import java.util.*;
  * Created by yanrunfa on 16/2/21.
  */
 public class EntiretyTest {
-    private final  String PATH_OF_DEFECTS4J = "/Users/yanrunfa/Documents/defects4j/tmp/";
+    private final  String PATH_OF_DEFECTS4J = "/home/yanrunfa/Documents/defects4j/tmp/";
     private String classpath = System.getProperty("user.dir")+"/project/classpath/";
     private String classSrc = System.getProperty("user.dir")+"/project/classSrc/";
     private String testClasspath = System.getProperty("user.dir")+"/project/testClasspath";
@@ -34,7 +34,7 @@ public class EntiretyTest {
     public List<Suspicious> triedSuspicious = new ArrayList<>();
     @Test
     public void testEntirety() throws Exception{
-        String project = setWorkDirectory("Math",99);
+        String project = setWorkDirectory("Math",82);
         Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc,libPath);
         List<Suspicious> suspiciouses = localization.getSuspiciousLite();
         suspiciousLoop(suspiciouses, project);

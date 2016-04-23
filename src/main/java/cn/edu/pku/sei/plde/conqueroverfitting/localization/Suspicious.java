@@ -288,12 +288,6 @@ public class Suspicious implements Serializable{
         VariableInfo returnInfo = new VariableInfo("return", null, false, "returnType");
         returnInfo.isAddon = true;
         infos.add(returnInfo);
-        //特殊的变量
-        if (CodeUtils.hasFieldWithType(code, "ZERO", classname()) && CodeUtils.hasMethod(code,"equals")){
-            VariableInfo info = new VariableInfo("this.equals(ZERO)",TypeEnum.BOOLEAN, true,null);
-            info.isAddon = true;
-            infos.add(info);
-        }
         //for循环的变量
         String lineString = CodeUtils.getLineFromCode(code, line-1);
         List<String> parameterNames = new ArrayList<>();
