@@ -323,9 +323,9 @@ public class Suspicious implements Serializable{
             for (int i=line; i>0; i--){
                 String lineIString = CodeUtils.getLineFromCode(code, i);
                 if (LineUtils.isIfAndElseIfLine(lineIString)){
-                    VariableInfo ifAddon = InfoUtils.getVariableInIfStatement(lineIString);
+                    List<VariableInfo> ifAddon = InfoUtils.getVariableInIfStatement(lineIString);
                     if (ifAddon != null){
-                        infos.add(ifAddon);
+                        infos.addAll(ifAddon);
                     }
                     break;
                 }

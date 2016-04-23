@@ -21,7 +21,7 @@ public class VariableInfo implements Comparable<VariableInfo>,Serializable{
 	public boolean isFinal = false;
 	public boolean isAddon = false;
 	public int priority = 1;
-
+	public boolean isExpression = false;
 
 	/**
 	 *
@@ -50,6 +50,7 @@ public class VariableInfo implements Comparable<VariableInfo>,Serializable{
 		newInfo.isStatic = info.isStatic;
 		newInfo.isPublic = info.isPublic;
 		newInfo.isAddon = info.isAddon;
+		newInfo.isExpression = info.isExpression;
 		return newInfo;
 	}
 

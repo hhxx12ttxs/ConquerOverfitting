@@ -1,6 +1,7 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.trace;
 
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.BoundaryInfo;
+import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeEnum;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.CodeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.MathUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
@@ -85,7 +86,8 @@ public class ExceptionVariable {
 
             double biggestBoundary = -Double.MAX_VALUE;
             double smallestBoundary = Double.MAX_VALUE;
-
+            BoundaryInfo biggestInfo = null;
+            BoundaryInfo smallestInfo = null;
             for (BoundaryInfo info : boundaryInfos) {
                 try {
                     double doubleValue;
@@ -95,11 +97,35 @@ public class ExceptionVariable {
                         System.out.println("ExceptionExtractor: Cannot parse numeric value "+info.value);
                         continue;
                     }
+                    //小于最小值的最大边界值
                     if (doubleValue >= biggestBoundary && doubleValue <= smallestValue) {
                         biggestBoundary = doubleValue;
+                        biggestInfo = info;
+                        if (doubleValue == smallestValue && biggestInfo.value.equals(info.value)){
+                            if (info.leftClose == 1){
+                                biggestInfo = info;
+                            }
+                        }
+                        if (doubleValue < smallestValue && biggestInfo.value.equals(info.value)){
+                            if (info.rightClose == 1){
+                                biggestInfo = info;
+                            }
+                        }
                     }
+                    //大于最大值的最小边界值
                     if (doubleValue <= smallestBoundary && doubleValue >= biggestValue) {
                         smallestBoundary = doubleValue;
+                        smallestInfo = info;
+                        if (doubleValue == biggestValue && smallestInfo.value.equals(info.value)){
+                            if (info.rightClose == 1){
+                                smallestInfo = info;
+                            }
+                        }
+                        if (doubleValue > biggestValue && smallestInfo.value.equals(info.value)){
+                            if (info.leftClose == 1){
+                                smallestInfo = info;
+                            }
+                        }
                     }
                 } catch (NumberFormatException e){
                     e.printStackTrace();
@@ -109,11 +135,35 @@ public class ExceptionVariable {
                 for (BoundaryInfo info : boundaryInfos) {
                     try {
                         double doubleValue = MathUtils.parseStringValue(info.value);
+                        //大于最小值的最小边界值
                         if (doubleValue <= smallestBoundary && doubleValue >= smallestValue) {
+                            smallestInfo = info;
                             smallestBoundary = doubleValue;
+                            if (doubleValue == smallestValue && smallestInfo.value.equals(info.value)){
+                                if (info.rightClose == 1){
+                                    smallestInfo = info;
+                                }
+                            }
+                            if (doubleValue > smallestValue && smallestInfo.value.equals(info.value)){
+                                if (info.leftClose == 1){
+                                    smallestInfo = info;
+                                }
+                            }
                         }
+                        //小于最大值的最大边界值
                         if (doubleValue >= biggestBoundary && doubleValue <= biggestValue) {
                             biggestBoundary = doubleValue;
+                            biggestInfo = info;
+                            if (doubleValue == biggestValue && biggestInfo.value.equals(info.value)){
+                                if (info.leftClose == 1){
+                                    biggestInfo = info;
+                                }
+                            }
+                            if (doubleValue < biggestValue && biggestInfo.value.equals(info.value)){
+                                if (info.rightClose == 1){
+                                    biggestInfo = info;
+                                }
+                            }
                         }
                     } catch (NumberFormatException e){
                         e.printStackTrace();
@@ -123,22 +173,30 @@ public class ExceptionVariable {
                     return null;
                 }
             }
-            if (isSymmetricalList(valueList)){
-                if (Math.abs(biggestBoundary)>Math.abs(smallestBoundary)){
-                    return Arrays.asList(String.valueOf(-biggestBoundary), String.valueOf(biggestBoundary));
-                }
-                else {
-                    return Arrays.asList(String.valueOf(smallestBoundary), String.valueOf(-smallestBoundary));
-                }
+            //if (isSymmetricalList(valueList)){
+            //    if (Math.abs(biggestBoundary)>Math.abs(smallestBoundary)){
+            //        return Arrays.asList(String.valueOf(-biggestBoundary), String.valueOf(biggestBoundary));
+            //    }
+            //    else {
+            //        return Arrays.asList(String.valueOf(smallestBoundary), String.valueOf(-smallestBoundary));
+            //    }
+            //}
+            //else {
+            String small = String.valueOf(smallestBoundary);
+            String big = String.valueOf(biggestBoundary);
+            if (biggestInfo != null && biggestInfo.rightClose == 1){
+                big = big +']';
             }
-            else {
-                return Arrays.asList(String.valueOf(smallestBoundary), String.valueOf(biggestBoundary));
+            if (smallestInfo != null && smallestInfo.leftClose == 1){
+                small = '[' + small;
             }
-        }
-        else {
-            return valueList;
-        }
 
+            return Arrays.asList(String.valueOf(small), String.valueOf(big));
+            //}
+        }
+        //else {
+            return valueList;
+        //}
     }
 
     private static boolean isSymmetricalList(List<String> list){

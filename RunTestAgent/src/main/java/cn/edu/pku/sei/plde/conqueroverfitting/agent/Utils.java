@@ -52,7 +52,7 @@ public class Utils {
             while ((lineString = reader.readLine()) != null) {
                 line++;
                 if (targetLine.contains(line+1)){
-                    if ((!lineString.contains(";") && !lineString.contains(":") && !lineString.contains("{") && !lineString.contains("}"))|| lineString.contains("return ") || lineString.contains("if (")){
+                    if ((!lineString.contains(";") && !lineString.contains(":") && !lineString.contains("{") && !lineString.contains("}"))|| lineString.contains("return ") || lineString.contains("throw ")){
                         outputStream.write(addingCode.getBytes());
                         writedMap.put(line+1, true);
                     }

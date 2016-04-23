@@ -106,17 +106,30 @@ public class AbandanTrueValueFilter {
                         exceptionValues.add(variable);
                     }
                 }
-                //如果值中有max，min之类的值，将该错误值作为第二等级变量
-                for (String value: variable.values){
-                    if (MathUtils.isMaxMinValue(value)){
-                        variable.values.clear();
-                        variable.values.add(value);
-                        variable.level = 2;
-                        if (!exceptionValues.contains(variable)){
-                            exceptionValues.add(variable);
-                        }
-                        break;
+            }
+            //如果值中有max，min之类的值，将该错误值作为第二等级变量
+            for (String value: variable.values){
+                if (MathUtils.isMaxMinValue(value)){
+                    variable.values.clear();
+                    variable.values.add(value);
+                    variable.level = 2;
+                    if (!exceptionValues.contains(variable)){
+                        exceptionValues.add(variable);
                     }
+                    break;
+                }
+            }
+
+            //如果值中有null，将null作为第二等级变量
+            for (String value: variable.values){
+                if (value.equals("null")){
+                    variable.values.clear();
+                    variable.values.add("null");
+                    variable.level = 2;
+                    if (!exceptionValues.contains(variable)){
+                        exceptionValues.add(variable);
+                    }
+                    break;
                 }
             }
         }
@@ -193,10 +206,6 @@ public class AbandanTrueValueFilter {
                 continue;
             }
             if (var.values.size() == 0){
-                continue;
-            }
-            //对string类型暂时不处理
-            if (var.type.equals("STRING")){
                 continue;
             }
             //当值中出现非常不规则的数据时(作为数字变量值的长度大于10)，过滤该variable

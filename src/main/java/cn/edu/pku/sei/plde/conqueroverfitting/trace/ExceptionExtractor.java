@@ -58,7 +58,9 @@ public class ExceptionExtractor {
     }
 
     private static List<List<ExceptionVariable>> sortWithMethodTwo(List<ExceptionVariable> exceptionVariables, List<TraceResult> traceResults, Suspicious suspicious){
-        ExceptionSorter sorter = new ExceptionSorter(suspicious);
+        String code = FileUtils.getCodeFromFile(suspicious._srcPath, suspicious.classname());
+        String statement = CodeUtils.getMethodBodyBeforeLine(code, suspicious.functionnameWithoutParam(), lastLineOfTraceResults(traceResults));
+        ExceptionSorter sorter = new ExceptionSorter(suspicious, statement);
         return sorter.sort(exceptionVariables);
     }
 
