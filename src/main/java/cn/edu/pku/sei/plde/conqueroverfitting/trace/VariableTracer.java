@@ -303,7 +303,7 @@ public class VariableTracer {
         String agentFunc = "func:" + functionname;
         String agentLine = "line:"+ errorLine;
         String agentSrc = "src:" + _srcPath;
-        String agentCp = "cp:" + "\""+_classpath+":"+StringUtils.join(_suspicious._libPath,":");
+        String agentCp = "cp:" + "\""+_classpath+":"+StringUtils.join(_suspicious._libPath,":")+"\"";
         String agentTestSrc = testClassPath.equals("")?"":"testsrc: "+testClassPath.trim();
         String agentTest = testClassPath.equals("")?"":"test:" + _testClassname;
 

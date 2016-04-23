@@ -206,6 +206,7 @@ public class MethodTwoFixer {
         path += StringUtils.join(additionalPath,System.getProperty("path.separator"));
         path += System.getProperty("path.separator");
         path += StringUtils.join(_suspicious._libPath,System.getProperty("path.separator"));
+        path +="\"";
         return path;
     }
 
