@@ -53,16 +53,19 @@ public class MethodOneFixer {
                 if (!patch._addonFunction.equals("")){
                     CodeUtils.addMethodToFile(targetJavaFile, patch._addonFunction, patch._className.substring(patch._className.lastIndexOf(".")+1));
                 }
+                if (!patch._addonImport.equals("")){
+                    CodeUtils.addImportToFile(targetJavaFile, patch._addonImport);
+                }
                 try {
                     targetClassFile.delete();
                     System.out.println(Utils.shellRun(Arrays.asList("javac -Xlint:unchecked -source 1.6 -target 1.6 -cp "+ buildClasspath(Arrays.asList(PathUtils.getJunitPath())) +" -d "+_classpath+" "+ targetJavaFile.getAbsolutePath())));
                 }
                 catch (IOException e){
-                    System.out.println(" fix fail");
+                    System.out.println("fix fail");
                     continue;
                 }
                 if (!targetClassFile.exists()){ //编译不成功
-                    System.out.println(" fix fail");
+                    System.out.println("MethodOneFixer: fix fail because of compile fail");
                     continue;
                 }
                 Asserts asserts = new Asserts(_classpath,_classSrcPath, _testClassPath, _testSrcPath, patch._testClassName, patch._testMethodName);
@@ -77,10 +80,10 @@ public class MethodOneFixer {
                     _patches.add(patch);
                     FileUtils.copyFile(classBackup, targetClassFile);
                     FileUtils.copyFile(javaBackup, targetJavaFile);
-                    System.out.println(" fix success");
+                    System.out.println("MethodOneFixer: fix success");
                     return true;
                 }
-                System.out.println(" fix fail");
+                System.out.println("MethodOneFixer: fix fail");
             }
         }
         FileUtils.copyFile(classBackup, targetClassFile);
@@ -106,6 +109,12 @@ public class MethodOneFixer {
             }
             if (!backups.containsKey(targetClassFile)){
                 backups.put(targetClassFile, classBackup);
+            }
+            if (!patch._addonFunction.equals("")){
+                CodeUtils.addMethodToFile(targetJavaFile, patch._addonFunction, patch._className.substring(patch._className.lastIndexOf(".")+1));
+            }
+            if (!patch._addonImport.equals("")){
+                CodeUtils.addImportToFile(targetJavaFile, patch._addonImport);
             }
             CodeUtils.addCodeToFile(targetJavaFile, patch._patchString.get(0), patch._patchLines);
             tobeCompile.add(targetJavaFile);

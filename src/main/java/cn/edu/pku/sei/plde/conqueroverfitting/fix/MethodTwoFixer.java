@@ -205,7 +205,7 @@ public class MethodTwoFixer {
         path += System.getProperty("path.separator");
         path += StringUtils.join(additionalPath,System.getProperty("path.separator"));
         path += System.getProperty("path.separator");
-        path += "/home/yanrunfa/.m2/repository/org/joda/joda-convert/1.1/joda-convert-1.1.jar\"";
+        path += StringUtils.join(_suspicious._libPath,System.getProperty("path.separator"));
         return path;
     }
 

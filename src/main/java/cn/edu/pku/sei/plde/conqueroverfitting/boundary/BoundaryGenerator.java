@@ -15,6 +15,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 
 
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.*;
@@ -39,9 +40,10 @@ public class BoundaryGenerator {
                 break;
             }
             keywords.add(keyword);
-
         }
+
         List<BoundaryInfo> variableBoundary = SearchBoundaryFilter.getBoundary(exceptionVariable, project, keywords);
+
         List<String> intervals = exceptionVariable.getBoundaryIntervals(variableBoundary);
         if (intervals == null) {
             return null;
@@ -64,6 +66,8 @@ public class BoundaryGenerator {
         }
         return new ArrayList<>();
     }
+
+
 
     private static String replaceSpecialNumber(String ifString){
         ifString = ifString.replace(String.valueOf(Integer.MIN_VALUE),"Integer.MIN_VALUE");

@@ -82,8 +82,8 @@ public class ExceptionSorter {
         sortBoundary();
         boundaryCombination();
         List<List<ExceptionVariable>> returnList= new ArrayList<>(_variableCombinations);
-        if (returnList.size()> 10){
-            returnList = returnList.subList(0,10);
+        if (returnList.size()> 15){
+            returnList = returnList.subList(0,15);
         }
         for (List<ExceptionVariable> variables: returnList){
             if (variables.size() == 1){
