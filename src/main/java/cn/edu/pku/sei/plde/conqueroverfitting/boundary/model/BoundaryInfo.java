@@ -6,6 +6,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeEnum;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.MethodInfo;
 
 public class BoundaryInfo {
+	public String fileName;
 	public TypeEnum variableSimpleType;
 	public boolean isSimpleType = false;
 	public String otherType;
