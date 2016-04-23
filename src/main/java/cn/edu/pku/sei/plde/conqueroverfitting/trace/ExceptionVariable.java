@@ -1,6 +1,7 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.trace;
 
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.BoundaryInfo;
+import cn.edu.pku.sei.plde.conqueroverfitting.trace.filter.AbandanTrueValueFilter;
 import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeEnum;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.CodeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.MathUtils;
@@ -60,7 +61,15 @@ public class ExceptionVariable {
     }
 
     public boolean judgeTheSame(String[] newValues, String[] thisValues){
-        return false;
+        if (newValues.length != thisValues.length){
+            return false;
+        }
+        for (int i=0; i< newValues.length; i++){
+            if (!newValues[i].equals(thisValues[i])){
+                return false;
+            }
+        }
+        return true;
     }
 
 
@@ -79,9 +88,12 @@ public class ExceptionVariable {
                     thisValue = thisValue.substring(info.value.indexOf('('+1, info.value.lastIndexOf(')')));
                     String[] thisValues = thisValue.contains(",")?thisValue.split(","):new String[]{thisValue};
                     if (judgeTheSame(newValues, thisValues)){
-                        return Arrays.asList("this.equals("+newValue+")");
-                    }else {
-                        return Arrays.asList("!this.equals("+newValue+")");
+                        if (traceResult.getTestResult()){
+                            return Arrays.asList("!this.equals("+newValue+")");
+                        }
+                        else {
+                            return Arrays.asList("!this.equals("+newValue+")");
+                        }
                     }
                 }
             }

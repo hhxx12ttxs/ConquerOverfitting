@@ -29,7 +29,16 @@ public class BoundaryGenerator {
         List<String> keywords = new ArrayList<>();
         if (exceptionVariable.name.length() == 1){
             //keywords.add("factorial");
-            keywords.add(suspicious.functionnameWithoutParam());
+            String variableName = suspicious.functionnameWithoutParam();
+            String keyword = "";
+            for (Character ch: variableName.toCharArray()){
+                if(!((ch<='Z')&&(ch>='A'))){
+                    keyword += ch;
+                    continue;
+                }
+                break;
+            }
+            keywords.add(keyword);
 
         }
         List<BoundaryInfo> variableBoundary = SearchBoundaryFilter.getBoundary(exceptionVariable, project, keywords);
