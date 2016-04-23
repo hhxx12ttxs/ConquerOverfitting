@@ -1,13 +1,18 @@
-package com.prateek.Permutation;
+import java.util.Scanner;
 
-public class Factorial {
-
-	public int calculateFactorial(final int number) {
-		int factorial = 1;
-		if (number > 1) {
-			factorial = number * calculateFactorial(number - 1);
-		}
-		return factorial;
+public class hw1t1 {
+	private static int factorial(int n){
+		if (n <= 1)
+			return 1;
+		return n * factorial(n - 1);	
+	}
+	
+    public static void main(String[] args){
+    	System.out.println("¬ведите число");
+	    Scanner in = new Scanner(System.in);
+	    int number = in.nextInt();
+	    in.close();
+	    System.out.println("‘акториал = " + factorial(number));
 	}
 }
 

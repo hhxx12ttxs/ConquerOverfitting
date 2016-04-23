@@ -1,73 +1,162 @@
-package seker.algorithm.recursion;
+/* ==========================================
+ * JGraphT : a free Java graph-theory library
+ * ==========================================
+ *
+ * Project Info:  http://jgrapht.sourceforge.net/
+ * Project Creator:  Barak Naveh (http://sourceforge.net/users/barak_naveh)
+ *
+ * (C) Copyright 2003-2008, by Barak Naveh and Contributors.
+ *
+ * This library is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2.1 of the License, or
+ * (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public
+ * License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this library; if not, write to the Free Software Foundation,
+ * Inc.,
+ * 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
+ */
+/* -------------------------
+ * KShortestPathKValuesTest.java
+ * -------------------------
+ * (C) Copyright 2007-2008, by France Telecom
+ *
+ * Original Author:  Guillaume Boulmier and Contributors.
+ *
+ * $Id: KShortestPathKValuesTest.java 645 2008-09-30 19:44:48Z perfecthash $
+ *
+ * Changes
+ * -------
+ * 05-Jun-2007 : Initial revision (GB);
+ *
+ */
+package org.jgrapht.alg;
+
+import java.util.*;
+
+import junit.framework.*;
+
+import org.jgrapht.*;
 
 
 /**
- * 阶乘
- * 
- * @author liuxinjian
+ * @author Guillaume Boulmier
+ * @since July 5, 2007
  */
-public class Factorial {
-    
+@SuppressWarnings("unchecked")
+public class KShortestPathKValuesTest
+    extends TestCase
+{
+    //~ Methods ----------------------------------------------------------------
+
     /**
-     * 阶乘：递归的方法实现
-     * 
      * @param n
-     * @return
-     * @throws Exception
+     *
+     * @return n!.
      */
-    public int factorialRecursion(int n) throws Exception {
-        if (0 == n) {
-            return 1;
-        } else if (n > 0) {
-            return n * factorialRecursion(n - 1);
+    public static int factorial(int n)
+    {
+        int factorial = 1;
+        for (int i = 1; i <= n; i++) {
+            factorial *= i;
+        }
+        return factorial;
+    }
+
+    /**
+     * @param k
+     * @param n
+     *
+     * @return A(n,k).
+     */
+    public static int permutation(int n, int k)
+    {
+        if (k <= n) {
+            return factorial(n) / factorial(n - k);
         } else {
-            throw new Exception("negative can't factorial.");
+            return 0;
         }
     }
-    
-    /**
-     * 阶乘：非递归的方式(循环；迭代)实现
-     * 
-     * @param n
-     * @return
-     * @throws Exception
-     */
-    public int factorialRecurrence(int n) throws Exception {
-        if (0 == n) {
-            return 1;
-        } else if (n > 0) {
-            int result = 1;
-            for (int i = 1; i <= n; i ++) {
-                result *= i;
+
+    public void testMaxSizeValue()
+    {
+        KShortestPathCompleteGraph6 graph = new KShortestPathCompleteGraph6();
+
+        for (
+            int maxSize = 1;
+            maxSize <= calculateNbElementaryPathsForCompleteGraph(6);
+            maxSize++)
+        {
+            KShortestPaths finder = new KShortestPaths(graph, "vS", maxSize);
+
+            assertEquals(finder.getPaths("v1").size(), maxSize);
+            assertEquals(finder.getPaths("v2").size(), maxSize);
+            assertEquals(finder.getPaths("v3").size(), maxSize);
+            assertEquals(finder.getPaths("v4").size(), maxSize);
+            assertEquals(finder.getPaths("v5").size(), maxSize);
+        }
+    }
+
+    public void testNbReturnedPaths()
+    {
+        KShortestPathCompleteGraph4 kSPCompleteGraph4 =
+            new KShortestPathCompleteGraph4();
+        verifyNbPathsForAllVertices(kSPCompleteGraph4);
+
+        KShortestPathCompleteGraph5 kSPCompleteGraph5 =
+            new KShortestPathCompleteGraph5();
+        verifyNbPathsForAllVertices(kSPCompleteGraph5);
+
+        KShortestPathCompleteGraph6 kSPCompleteGraph6 =
+            new KShortestPathCompleteGraph6();
+        verifyNbPathsForAllVertices(kSPCompleteGraph6);
+    }
+
+    private int calculateNbElementaryPathsForCompleteGraph(int n)
+    {
+        int nbPaths = 0;
+        for (int k = 1; k <= (n - 1); k++) {
+            nbPaths = nbPaths + permutation(n - 2, k - 1);
+        }
+        return nbPaths;
+    }
+
+    private void verifyNbPathsForAllVertices(Graph graph)
+    {
+        int nbpaths =
+            calculateNbElementaryPathsForCompleteGraph(
+                graph.vertexSet().size());
+        int maxSize = Integer.MAX_VALUE;
+
+        for (
+            Iterator sourceIterator = graph.vertexSet().iterator();
+            sourceIterator.hasNext();)
+        {
+            Object sourceVertex = sourceIterator.next();
+
+            KShortestPaths finder =
+                new KShortestPaths(graph, sourceVertex,
+                    maxSize);
+            for (
+                Iterator targetIterator = graph.vertexSet().iterator();
+                targetIterator.hasNext();)
+            {
+                Object targetVertex = targetIterator.next();
+                if (targetVertex != sourceVertex) {
+                    assertEquals(
+                        finder.getPaths(targetVertex).size(),
+                        nbpaths);
+                }
             }
-            return result;
-        } else {
-            throw new Exception("negative can't factorial.");
         }
-    }
-    
-    /**
-     * @param args
-     * @throws Exception 
-     */
-    public static void main(String[] args) throws Exception {
-        Factorial factorial = new Factorial();
-        
-        System.out.println(factorial.factorialRecursion(0));
-        System.out.println(factorial.factorialRecursion(1));
-        System.out.println(factorial.factorialRecursion(2));
-        System.out.println(factorial.factorialRecursion(3));
-        System.out.println(factorial.factorialRecursion(4));
-        System.out.println(factorial.factorialRecursion(5));
-        
-        System.out.println();
-        
-        System.out.println(factorial.factorialRecurrence(0));
-        System.out.println(factorial.factorialRecurrence(1));
-        System.out.println(factorial.factorialRecurrence(2));
-        System.out.println(factorial.factorialRecurrence(3));
-        System.out.println(factorial.factorialRecurrence(4));
-        System.out.println(factorial.factorialRecurrence(5));
     }
 }
+
+// End KShortestPathKValuesTest.java
 

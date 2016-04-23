@@ -28,7 +28,7 @@ import org.htmlparser.util.NodeIterator;
 import org.htmlparser.util.NodeList;
 
 public class GathererJavaGithub {
-	private static final int API_PAGE_NUM = 300;
+	private static final int API_PAGE_NUM = 100;
 
 	private static final String API_SEARCH_CODE_BASE_URL = "https://github.com/search?l=java&";
 	private static final String API_SEARCH_CODE_POST_URL = "&ref=searchresults&type=Code&utf8=✓";

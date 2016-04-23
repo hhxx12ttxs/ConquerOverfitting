@@ -1,21 +1,25 @@
-package factorial;
 
-public class Factorial {
 
-	public static long factorial(int n) {
-		if (n <= 1) {
-			return 1;
-		} else {
-			return n * factorial(n - 1);
-		}
+public class FactorialRecursivo {
+
+	public static void main(String[] args) {
+		int n;
+		do {
+			System.out.println("Introduce nş positivo");
+			n = LeerTeclado.readInteger();
+		} while (n < 0);
+		
+		System.out.println("El factorial de n es: " + factorial(n));
+
 	}
 
-	public static long factorialLoop(int n) {
-		long factorial = 1;
-		for (int i = 1; i <= n; i++)
-			factorial *= i;
-		return factorial;
+	public static double factorial(int i) {
+		double aux;
+		if (i == 0)
+			aux = 1;
+		else aux=i*factorial(i-1);
+		return aux;
+		
 	}
 }
-
 

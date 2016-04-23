@@ -1,19 +1,27 @@
-package factorial;
+package solutions;
 
+/**
+ * Factorial computation class.
+ */
 public class Factorial {
-
-    public static void main(String[] args) {
-        System.out.println(factorial(1));
-    }
-    
-    private static int factorial (int n) {
-        if (n <= 1) {
-            return 1;   
-        }
-        else {
-            return n * factorial(n-1);
+    /**
+     * Computes the {@code n}! (n factorial).  0! is defined as 1.  n! is
+     * defined as the product of all the integers in {@code [1,n]}.
+     *
+     * Requires: {@code n >= 0}
+     *
+     * @param n Factorial to compute.
+     * @return {@code n}!
+     * @throws IllegalArgumentException if {@code n} is negative.
+     */
+    public static int fac(int n) {
+        if (n < 0) {
+            throw new IllegalArgumentException("n must be positive, was:" + n);
+        } else if (n == 0 || n == 1) {
+            return 1;
+        } else {
+            return n * fac(n - 1);
         }
     }
 }
-
 

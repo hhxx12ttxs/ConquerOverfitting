@@ -15,7 +15,7 @@ public class GathererJavaTest extends TestCase {
 		keyWords.add("if");
 		keyWords.add("factorial");
 		keyWords.add("int");
-		GathererJavaGithub gathererJava = new GathererJavaGithub(keyWords, "if-factorial-int", "commons-lang");
+		GathererJava gathererJava = new GathererJava(keyWords, "if-factorial-int", "commons-lang");
 		//new GathererJavaGithub(keyWords, "commons-math");Math
 		//new GathererJavaGithub(keyWords, "commons-lang");Lang
 		//new GathererJavaGithub(keyWords, "closure-compiler");Closure
