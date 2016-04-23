@@ -240,11 +240,22 @@ public class MathUtils {
                 value.equals("9223372036854775807");
     }
 
-    public static List<Interval> mergetInterval(ArrayList<Interval> intervals){
+    public static List<Interval> mergetDoubleInterval(ArrayList<Interval> intervals){
         Collections.sort(intervals, new Comparator<Interval>() {
             @Override
             public int compare(Interval i1, Interval i2) {
                 if(i1.leftBoundary == i2.leftBoundary){
+                    if(i1.leftClose && i2.leftClose){
+                        if(i1.rightClose == i2.rightClose){
+                            return 0;
+                        }
+                        if(i1.rightClose == false && i2.rightClose == true){
+                            return -1;
+                        }
+                        else{
+                            return 1;
+                        }
+                    }
                     if(i1.leftClose){
                         return -1;
                     }else{
@@ -264,11 +275,66 @@ public class MathUtils {
                     intervalTemp.rightBoundary = interval.rightBoundary;
                     intervalTemp.rightClose = interval.rightClose;
                 }else if(interval.rightBoundary == intervalTemp.rightBoundary){
-                    if(interval.leftClose || intervalTemp.rightClose){
+                    if(interval.rightClose || intervalTemp.rightClose){
                         intervalTemp.rightClose = true;
                     }
                 }
             }else if(interval.leftBoundary == intervalTemp.rightBoundary && (interval.leftClose || intervalTemp.rightClose)){
+                intervalTemp.rightBoundary = interval.rightBoundary;
+                intervalTemp.rightClose = interval.rightClose;
+            }
+            else {
+                result.add(new Interval(intervalTemp));
+                intervalTemp = new Interval(interval);
+            }
+        }
+        result.add(new Interval(intervalTemp));
+        return result;
+    }
+
+    public static List<Interval> mergetIntInterval(ArrayList<Interval> intervals){
+        Collections.sort(intervals, new Comparator<Interval>() {
+            @Override
+            public int compare(Interval i1, Interval i2) {
+                if(i1.leftBoundary == i2.leftBoundary){
+                    if(i1.leftClose && i2.leftClose){
+                        if(i1.rightClose == i2.rightClose){
+                            return 0;
+                        }
+                        if(i1.rightClose == false && i2.rightClose == true){
+                            return -1;
+                        }
+                        else{
+                            return 1;
+                        }
+                    }
+                    if(i1.leftClose){
+                        return -1;
+                    }else{
+                        return 1;
+                    }
+                }
+                return Double.compare(i1.leftBoundary, i2.leftBoundary);
+            }
+        });
+
+        List<Interval> result = new ArrayList<Interval>();
+        Interval intervalTemp = new Interval(intervals.get(0));
+
+        for (Interval interval : intervals) {
+            if (interval.leftBoundary < intervalTemp.rightBoundary) {
+                if(interval.rightBoundary > intervalTemp.rightBoundary){
+                    intervalTemp.rightBoundary = interval.rightBoundary;
+                    intervalTemp.rightClose = interval.rightClose;
+                }else if(interval.rightBoundary == intervalTemp.rightBoundary){
+                    if(interval.rightClose || intervalTemp.rightClose){
+                        intervalTemp.rightClose = true;
+                    }
+                }
+            }else if(interval.leftBoundary == intervalTemp.rightBoundary && (interval.leftClose || intervalTemp.rightClose)){
+                intervalTemp.rightBoundary = interval.rightBoundary;
+                intervalTemp.rightClose = interval.rightClose;
+            }else if((interval.leftBoundary == intervalTemp.rightBoundary + 1)&& (interval.leftClose && intervalTemp.rightClose)) {
                 intervalTemp.rightBoundary = interval.rightBoundary;
                 intervalTemp.rightClose = interval.rightClose;
             }

@@ -82,6 +82,7 @@ public class BoundaryCollectTest {
             log.logStr("type: " + boundaryInfo.variableSimpleType);
             log.logStr("leftClose: " + boundaryInfo.leftClose);
             log.logStr("rightClose: " + boundaryInfo.rightClose);
+            log.logStr("fileName: " + boundaryInfo.fileName);
             log.logSignLine("end");
         }
     }

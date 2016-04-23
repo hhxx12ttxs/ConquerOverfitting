@@ -32,8 +32,11 @@ public class BoundaryCollect {
 				}
 				BoundaryCollectVisitor boundaryCollectVisitor = new BoundaryCollectVisitor();
 				root.accept(boundaryCollectVisitor);
-
-				boundaryList.addAll(boundaryCollectVisitor.getBoundaryInfoList());
+				ArrayList<BoundaryInfo> boundaryListSub = boundaryCollectVisitor.getBoundaryInfoList();
+				for(BoundaryInfo boundaryInfo : boundaryListSub){
+					boundaryInfo.fileName = filePath;
+				}
+				boundaryList.addAll(boundaryListSub);
 			}
 			catch (NullPointerException e){
 				continue;

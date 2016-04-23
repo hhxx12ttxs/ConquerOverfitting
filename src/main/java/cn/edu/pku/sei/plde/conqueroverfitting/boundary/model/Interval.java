@@ -104,4 +104,14 @@ public class Interval {
         return ">";
     }
 
+
+    @Override
+    public boolean equals(Object obj){
+        if (!(obj instanceof Interval))
+            return false;
+        Interval other = (Interval) obj;
+        boolean flag=  leftBoundary == other.leftBoundary && rightBoundary == other.rightBoundary &&
+                leftClose == other.leftClose && rightClose == other.rightClose;
+        return flag;
+    }
 }
