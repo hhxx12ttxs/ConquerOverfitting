@@ -99,7 +99,7 @@ public class VariableTracer {
         }
         _suspicious._assertsMap.put(_testClassname+"#"+_testMethodName, _asserts);
         _suspicious._errorLineMap.put(_testClassname+"#"+_testMethodName, new ArrayList<>(errorLines));
-        results.addAll(getAddonResult(_suspicious.getAllInfo()));
+        //results.addAll(getAddonResult(_suspicious.getAllInfo()));
         deleteTempFile();
         return results;
     }

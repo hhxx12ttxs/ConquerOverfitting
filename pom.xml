@@ -6,7 +6,6 @@
 	<artifactId>ConquerOverfitting</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<modules>
-		<module>VariableTraceAgent</module>
 		<module>RunTestAgent</module>
 	</modules>
 	<packaging>pom</packaging>

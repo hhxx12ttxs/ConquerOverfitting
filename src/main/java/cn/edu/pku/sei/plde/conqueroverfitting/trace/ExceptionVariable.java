@@ -102,7 +102,7 @@ public class ExceptionVariable {
                             return Arrays.asList("!this.equals("+info.value+")");
                         }
                         else {
-                            return Arrays.asList("!this.equals("+info.value+")");
+                            return Arrays.asList("this.equals("+info.value+")");
                         }
                     }
                 }
