@@ -84,10 +84,6 @@ public class ExceptionVariable {
 
     public List<String> getBoundaryIntervals(List<BoundaryInfo> boundaryInfos){
         List<String> valueList = new ArrayList<>(values);
-        //如果是for循环的参数，原封不动放回去
-        //if (CodeUtils.isForLoopParam(new ArrayList<>(values))!=-1){
-        //    return valueList;
-        //}
 
         if (name.equals("this")){
             String thisValue = values.iterator().next();
@@ -242,21 +238,5 @@ public class ExceptionVariable {
         //else {
             return valueList;
         //}
-    }
-
-    private static boolean isSymmetricalList(List<String> list){
-        List<Double> values = new ArrayList<>();
-        for (String value: list){
-            try {
-                values.add(MathUtils.parseStringValue(value));
-            } catch (Exception e){}
-        }
-
-        for (double value: values){
-            if (!values.contains(-value)){
-                return false;
-            }
-        }
-        return true;
     }
 }

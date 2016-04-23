@@ -5,7 +5,6 @@ import cn.edu.pku.sei.plde.conqueroverfitting.boundary.BoundaryFilter;
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.BoundaryInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.gatherer.GathererJava;
 import cn.edu.pku.sei.plde.conqueroverfitting.gatherer.GathererJava;
-import cn.edu.pku.sei.plde.conqueroverfitting.main.Config;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.ExceptionVariable;
 import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeEnum;
 import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeUtils;
@@ -28,9 +27,6 @@ public class SearchBoundaryFilter {
      * @return the filtered key-value map
      */
     public static List<BoundaryInfo> getBoundary(ExceptionVariable exceptionVariable, String project, List<String> keywords){
-        if (exceptionVariable.name.equals("return")){
-            return new ArrayList<>();
-        }
         if (!MathUtils.isNumberType(exceptionVariable.type) && !exceptionVariable.name.equals("this")){
             return new ArrayList<>();
         }
@@ -48,23 +44,10 @@ public class SearchBoundaryFilter {
         keywords.add("if");
         keywords.addAll(addonKeywords);
         keywords.add(valueType);
-        if (info.variableName.startsWith("is") && info.variableName.endsWith("()")){
-            variableName = info.variableName.substring(0, info.variableName.lastIndexOf("("));
-            keywords.add(variableName);
+        if (!info.variableName.equals("this") && info.variableName.length()>1){
+            keywords.add(info.variableName.replace(" ",""));
         }
-        else if (info.variableName.contains("(")) {
-            variableName = info.variableName.substring(0, info.variableName.indexOf("("));
-            keywords.add(variableName);
-        }
-        else if (info.variableName.contains("[")){
-            variableName = info.variableName.substring(0, info.variableName.indexOf("["));
-            keywords.add(variableName);
-        }
-        else {
-            if (!info.variableName.equals("this") && info.variableName.length()>1){
-                keywords.add(info.variableName.replace(" ",""));
-            }
-        }
+
 
         File codePackage = new File("experiment/searchcode/" + StringUtils.join(keywords,"-"));
         File simpleCodePackage = new File("experiment/searchcode/" + StringUtils.join(Arrays.asList("if",variableName),"-"));
@@ -130,9 +113,6 @@ public class SearchBoundaryFilter {
         BoundaryCollect boundaryCollect = new BoundaryCollect(codePackage.getAbsolutePath());
         List<BoundaryInfo> boundaryList = boundaryCollect.getBoundaryList();
         List<BoundaryInfo> filteredList = BoundaryFilter.getBoundaryWithName(boundaryList, variableName);
-        //if (filteredList.size() == 0 && !info.isSimpleType){
-        //    filteredList = BoundaryFilter.getBoundaryWithType(boundaryList, info.getStringType());
-        //}
         return boundaryList;
     }
     private static String getProjectFullName(String project){
@@ -153,23 +133,4 @@ public class SearchBoundaryFilter {
         }
         return "";
     }
-
-    private static String variableName(Map.Entry<VariableInfo, List<String>> entry){
-        return entry.getKey().variableName.contains(".")?entry.getKey().variableName.substring(entry.getKey().variableName.lastIndexOf(".")+1):entry.getKey().variableName;
-    }
-
-    private static void addValueToResult(Map.Entry<VariableInfo, List<String>> entry, Map<VariableInfo, List<String>> result,String value){
-        // isNaN=true在修补中总是对的
-        if (variableName(entry).equals("isNaN")){
-            value = "true";
-        }
-        if (result.containsKey(entry.getKey())){
-            result.get(entry.getKey()).add(value);
-        }
-        else {
-            result.put(entry.getKey(),new ArrayList<String>(Arrays.asList(value)));
-        }
-    }
-
-
 }
