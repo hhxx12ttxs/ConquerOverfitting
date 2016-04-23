@@ -14,8 +14,9 @@ public class GathererJavaTest extends TestCase {
 		ArrayList<String> keyWords = new ArrayList<String>();
 		keyWords.add("if");
 		//keyWords.add("int");
-		keyWords.add("hours");
-		GathererJava gathererJava = new GathererJava(keyWords, "if-hours", "joda-time");
+		keyWords.add("factorial");
+		keyWords.add("int");
+		GathererJavaGithub gathererJava = new GathererJavaGithub(keyWords, "if-factorial-int", "commons-lang");
 		//new GathererJavaGithub(keyWords, "commons-math");Math
 		//new GathererJavaGithub(keyWords, "commons-lang");Lang
 		//new GathererJavaGithub(keyWords, "closure-compiler");Closure

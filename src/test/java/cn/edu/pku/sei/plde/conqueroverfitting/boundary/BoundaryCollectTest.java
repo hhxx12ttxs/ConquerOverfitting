@@ -69,17 +69,19 @@ public class BoundaryCollectTest {
 
     @Test
     public void testTime9() {
-        String path = "experiment//searchcode//if-numDecimals";
+        String path = "experiment//searchcode//if-factorial-int";
         BoundaryCollect boundaryCollect = new BoundaryCollect(path);
         ArrayList<BoundaryInfo> boundaryList = boundaryCollect.getBoundaryList();
 
         assertNotNull(boundaryList);
-        Log log = new Log("log//if-numDecimal");
+        Log log = new Log("log//if-factorial-int");
         for(BoundaryInfo boundaryInfo : boundaryList){
             log.logSignLine("begin");
             log.logStr("name: " + boundaryInfo.name);
             log.logStr("value: " + boundaryInfo.value);
             log.logStr("type: " + boundaryInfo.variableSimpleType);
+            log.logStr("leftClose: " + boundaryInfo.leftClose);
+            log.logStr("rightClose: " + boundaryInfo.rightClose);
             log.logSignLine("end");
         }
     }

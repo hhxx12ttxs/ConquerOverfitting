@@ -28,7 +28,7 @@ import org.htmlparser.util.NodeIterator;
 import org.htmlparser.util.NodeList;
 
 public class GathererJavaGithub {
-	private static final int API_PAGE_NUM = 100;
+	private static final int API_PAGE_NUM = 300;
 
 	private static final String API_SEARCH_CODE_BASE_URL = "https://github.com/search?l=java&";
 	private static final String API_SEARCH_CODE_POST_URL = "&ref=searchresults&type=Code&utf8=✓";
@@ -74,15 +74,23 @@ public class GathererJavaGithub {
 				break;
             }
 
+
+			try {
+				int sleep = 6000;
+				Thread.sleep(sleep);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+
 			codeUrlList.addAll(urls);
 		}
 
-		try {
-			int sleep = 40000;
-			Thread.sleep(sleep);
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-		}
+//		try {
+//			int sleep = 40000;
+//			Thread.sleep(sleep);
+//		} catch (InterruptedException e) {
+//			e.printStackTrace();
+//		}
 
 		int size = codeUrlList.size();
 //		for (int i = MAX_URL_NUM; i < size; i++) {
