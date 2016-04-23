@@ -1,47 +1,111 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.boundary;
 
 
-import java.util.ArrayList;
-
+import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.BoundaryInfo;
+import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.BoundaryWithFreq;
+import cn.edu.pku.sei.plde.conqueroverfitting.file.ReadFile;
 import cn.edu.pku.sei.plde.conqueroverfitting.jdtVisitor.BoundaryCollectVisitor;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.FileUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.JDTUtils;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTParser;
 
-import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.BoundaryInfo;
-import cn.edu.pku.sei.plde.conqueroverfitting.file.ReadFile;
-import cn.edu.pku.sei.plde.conqueroverfitting.utils.FileUtils;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 
 public class BoundaryCollect {
-	private String rootPath;
-	private ArrayList<String> filesPath;
-	private ArrayList<BoundaryInfo> boundaryList;
-    
-	public BoundaryCollect(String rootPath) {
-		this.rootPath = rootPath;
-		boundaryList = new ArrayList<BoundaryInfo>();
-	}
+    private String rootPath;
+    private ArrayList<String> filesPath;
+    private ArrayList<BoundaryInfo> boundaryList;
 
-	public ArrayList<BoundaryInfo> getBoundaryList(){
-		filesPath = FileUtils.getJavaFilesInProj(rootPath);
-		for(String filePath : filesPath){
-			try {
-				ASTNode root = JDTUtils.createASTForSource(new ReadFile(filePath).getSource(), ASTParser.K_COMPILATION_UNIT);
-				if (root == null){
-					return new ArrayList<>();
-				}
-				BoundaryCollectVisitor boundaryCollectVisitor = new BoundaryCollectVisitor();
-				root.accept(boundaryCollectVisitor);
-				ArrayList<BoundaryInfo> boundaryListSub = boundaryCollectVisitor.getBoundaryInfoList();
-				for(BoundaryInfo boundaryInfo : boundaryListSub){
-					boundaryInfo.fileName = filePath;
-				}
-				boundaryList.addAll(boundaryListSub);
-			}
-			catch (NullPointerException e){
-				continue;
-			}
-		}
-		return boundaryList;
-	}
+    public BoundaryCollect(String rootPath) {
+        this.rootPath = rootPath;
+        boundaryList = new ArrayList<BoundaryInfo>();
+        generateBoundaryList();
+    }
+
+    private void generateBoundaryList() {
+        filesPath = FileUtils.getJavaFilesInProj(rootPath);
+        for (String filePath : filesPath) {
+            try {
+                ASTNode root = JDTUtils.createASTForSource(new ReadFile(filePath).getSource(), ASTParser.K_COMPILATION_UNIT);
+                if (root == null) {
+                    return;
+                }
+                BoundaryCollectVisitor boundaryCollectVisitor = new BoundaryCollectVisitor();
+                root.accept(boundaryCollectVisitor);
+                ArrayList<BoundaryInfo> boundaryListSub = boundaryCollectVisitor.getBoundaryInfoList();
+                for (BoundaryInfo boundaryInfo : boundaryListSub) {
+                    boundaryInfo.fileName = filePath;
+                }
+                boundaryList.addAll(boundaryListSub);
+            } catch (NullPointerException e) {
+                continue;
+            }
+        }
+    }
+
+    public ArrayList<BoundaryInfo> getBoundaryList() {
+        return boundaryList;
+    }
+
+    public ArrayList<BoundaryWithFreq> getBoundaryWithFreqList() {
+
+        ArrayList<BoundaryWithFreq> boundaryWithFreqs = new ArrayList<BoundaryWithFreq>();
+        for (BoundaryInfo boundaryInfo : boundaryList) {
+            boolean flag = false;
+            for (BoundaryWithFreq boundaryWithFreq : boundaryWithFreqs) {
+                if (boundaryInfo.isSimpleType && boundaryWithFreq.isSimpleType) {
+                    if (boundaryWithFreq.variableSimpleType == null) {
+                        continue;
+                    }
+                    if (boundaryWithFreq.variableSimpleType.equals(boundaryInfo.variableSimpleType) &&
+                            boundaryWithFreq.value.equals(boundaryInfo.value)) {
+                        boundaryWithFreq.freq++;
+                        boundaryWithFreq.leftClose += boundaryInfo.leftClose;
+                        boundaryWithFreq.rightClose += boundaryInfo.rightClose;
+                        flag = true;
+                        break;
+                    }
+
+                } else if (!boundaryInfo.isSimpleType && !boundaryWithFreq.isSimpleType) {
+                    if (boundaryWithFreq.otherType.equals(boundaryInfo.otherType) &&
+                            boundaryWithFreq.value.equals(boundaryInfo.value)) {
+                        boundaryWithFreq.freq++;
+                        boundaryWithFreq.leftClose += boundaryInfo.leftClose;
+                        boundaryWithFreq.rightClose += boundaryInfo.rightClose;
+                        flag = true;
+                        break;
+                    }
+
+                }
+            }
+            if (!flag) {
+                boundaryWithFreqs.add(new BoundaryWithFreq(boundaryInfo.variableSimpleType, boundaryInfo.isSimpleType,
+                        boundaryInfo.otherType, boundaryInfo.value, boundaryInfo.leftClose, boundaryInfo.rightClose, 1));
+            }
+        }
+
+        Collections.sort(boundaryWithFreqs, new ComparatorBounaryWithFreqs());
+
+        return boundaryWithFreqs;
+    }
+}
+
+class ComparatorBounaryWithFreqs implements Comparator {
+
+    public int compare(Object arg0, Object arg1) {
+        BoundaryWithFreq boundaryWithFreq0 = (BoundaryWithFreq) arg0;
+        BoundaryWithFreq boundaryWithFreq1 = (BoundaryWithFreq) arg1;
+        if(boundaryWithFreq0.freq > boundaryWithFreq1.freq){
+            return -1;
+        }else if(boundaryWithFreq0.freq == boundaryWithFreq1.freq){
+            return 0;
+        }else if(boundaryWithFreq0.freq < boundaryWithFreq1.freq){
+            return 1;
+        }
+        return 0;
+    }
+
 }

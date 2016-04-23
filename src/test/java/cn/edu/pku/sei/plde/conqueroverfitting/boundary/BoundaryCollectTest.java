@@ -1,6 +1,7 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.boundary;
 
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.BoundaryInfo;
+import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.BoundaryWithFreq;
 import cn.edu.pku.sei.plde.conqueroverfitting.log.Log;
 import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeEnum;
 import org.junit.Test;
@@ -71,18 +72,33 @@ public class BoundaryCollectTest {
     public void testTime9() {
         String path = "experiment//searchcode//if-factorial-int";
         BoundaryCollect boundaryCollect = new BoundaryCollect(path);
-        ArrayList<BoundaryInfo> boundaryList = boundaryCollect.getBoundaryList();
+//        ArrayList<BoundaryInfo> boundaryList = boundaryCollect.getBoundaryList();
+//
+//        assertNotNull(boundaryList);
+//        Log log = new Log("log//if-factorial-int");
+//        for(BoundaryInfo boundaryInfo : boundaryList){
+//            log.logSignLine("begin");
+//            log.logStr("name: " + boundaryInfo.name);
+//            log.logStr("value: " + boundaryInfo.value);
+//            log.logStr("type: " + boundaryInfo.variableSimpleType);
+//            log.logStr("leftClose: " + boundaryInfo.leftClose);
+//            log.logStr("rightClose: " + boundaryInfo.rightClose);
+//            log.logStr("fileName: " + boundaryInfo.fileName);
+//            log.logSignLine("end");
+//        }
+//
+//
+        ArrayList<BoundaryWithFreq> boundaryWithFreqs = boundaryCollect.getBoundaryWithFreqList();
 
-        assertNotNull(boundaryList);
+        assertNotNull(boundaryWithFreqs);
         Log log = new Log("log//if-factorial-int");
-        for(BoundaryInfo boundaryInfo : boundaryList){
+        for(BoundaryWithFreq boundaryWithFreq : boundaryWithFreqs){
             log.logSignLine("begin");
-            log.logStr("name: " + boundaryInfo.name);
-            log.logStr("value: " + boundaryInfo.value);
-            log.logStr("type: " + boundaryInfo.variableSimpleType);
-            log.logStr("leftClose: " + boundaryInfo.leftClose);
-            log.logStr("rightClose: " + boundaryInfo.rightClose);
-            log.logStr("fileName: " + boundaryInfo.fileName);
+            log.logStr("value: " + boundaryWithFreq.value);
+            log.logStr("type: " + boundaryWithFreq.variableSimpleType);
+            log.logStr("freq: " + boundaryWithFreq.freq);
+            log.logStr("leftClose: " + boundaryWithFreq.leftClose);
+            log.logStr("rightClose: " + boundaryWithFreq.rightClose);
             log.logSignLine("end");
         }
     }
