@@ -1,16 +1,19 @@
-
-public class FactorialCalculator {
-	public static int factorial(int n){
-		if (n<=1){
-			return 1;
-		}
-		else{
-			return (n*(factorial(n-1)));
-		}
-	}
-	
-	public static void main(String args[]){
-		System.out.println(factorial(5));	
-	}
+class ClassInheritence{
+    public static void main(String[] a){
+        System.out.println(new FastRecursiveFactorial().getFactorial(10,1));
+    }
 }
 
+class RecursiveFactorial {
+    public int getFactorial(int num, int factorial){
+        
+        if (num <2)
+            num=factorial;
+        else
+            num = new FastRecursiveFactorial().getFactorial(num-1,factorial*num) ;
+        return num ;
+    }
+}
+class FastRecursiveFactorial extends RecursiveFactorial{
+    
+}

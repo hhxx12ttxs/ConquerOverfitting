@@ -1,34 +1,33 @@
-package ds.learning.list.misc;
 
-public class Factorial {
+public class FactorialOfAnInteger {
 
-	// Using Loop
-	public int printFactorialValue(int n) {
-		int factorialValue = 1;
-		if (n == 0)
-			return factorialValue;
-		for (int i = 1; i <= n; i++) {
-			factorialValue = factorialValue * i;
+	public static void main(String[] args){
+		System.out.println("5 's Factorial? "+calculateFactorialRecursive(12));
+		System.out.println("5 's Factorial? "+calculateFactorialIterative(12));
+	}
+	
+	public static int calculateFactorialRecursive(int inputNum){
+		int factorialNum = 0;
+		if(inputNum >1){
+			factorialNum = inputNum*calculateFactorialRecursive(inputNum-1);
+		}else{
+			factorialNum =1;
 		}
-		return factorialValue;
+		return factorialNum;
 	}
-
-	// Recursive Example
-	public int factorialUsingRecursive(int n) {
-		if (n == 1)
-			return n;
-		else
-			return n * factorialUsingRecursive(n - 1);
-	}
-
-	public static void main(String[] args) {
-		Factorial factorialTest = new Factorial();
-		int n = 10;
-
-		System.out.println("Using ForLoop");
-		System.out.println(factorialTest.printFactorialValue(n));
-
-		System.out.println("Using Recursive");
-		System.out.println(factorialTest.factorialUsingRecursive(n));
+	
+	public static int calculateFactorialIterative(int inputNum){
+		int factorialNum = 0;
+		if(inputNum ==1){
+			factorialNum =1;
+		}
+		else{
+			factorialNum =1;
+			for(int i =2; i<=inputNum; i++){
+				factorialNum = factorialNum*i;
+		    }
+		}
+		return factorialNum;
 	}
 }
+

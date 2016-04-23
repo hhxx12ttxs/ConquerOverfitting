@@ -1,14 +1,13 @@
-package edu.wbqa.ut;
+package test;
 
-public class Factorial {
 
-	public static int getFactorial(int i) {
-		if (i <= 1) {
-			return i;
-		}
-		return i * getFactorial(i - 1);
+public class CalculoFactorial {
 
-	}
+   public long factorial(int n) {
+      if (n==0)
+         return 1;      
+      return n * factorial(n - 1);
+   }
 
 }
 

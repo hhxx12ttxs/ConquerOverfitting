@@ -1,17 +1,23 @@
-package recursion;
+package com.aman.training;
 
 public class Factorial {
+
+  public static void main(String[] args) {
+		int n =5;
+		Factorial fact = new Factorial();
+		int total= fact.factorial(n);
+		System.out.println(total);
+	}
 	
-	public static int factorial(int n) {
-		if (n <= 0)
+	public int factorial(int n)
+	{
+		int total =1;
+		if (n==0)
 			return 1;
 		else 
-			return n * factorial(n-1);
+			total = n * factorial(n-1);
+		return total;
+		
 	}
-	
-	public static void main(String[] args) {
-		System.out.println(factorial(5));
-	}
-
 }
 

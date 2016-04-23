@@ -1,17 +1,19 @@
-package com.marcos.factorial;
+package apcsbootcamp;
 
 public class Factorial {
-	public static void main(String[] args) {
-		System.out.println(factorial(6));
-	}
-	
-	public static int factorial(int n){
-	
-		if(n == 0)
-			return 1;
-		else
-			n = n * factorial(n - 1);
-		
-		return n;
-	}
+  
+  static int factorial(int n) {
+    if (n == 1) {
+      return 1;
+    }
+    return n * factorial(n - 1);
+  }
+  
+  public static void main(String[] args) {
+    int factorialValue = factorial(3);
+    System.out.println(factorialValue);
+  }
+
 }
+
+

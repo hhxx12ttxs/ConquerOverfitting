@@ -1,25 +1,27 @@
-import java.util.Scanner;
+package JavaTasksUniversityExercise4;
 
-public class Factorial {
-    public static void main(String[] args) {
-        Scanner reader = new Scanner(System.in);
-        System.out.println("Type a number: ");
-        int number = Integer.parseInt(reader.nextLine());
-        int i = 0;
-        int factorial = 1;
-        if (number == 0){
-            factorial = 1;
-            System.out.println("Factorial is " + factorial);
-        } else {
-            while (number > 1){
-                factorial = factorial * number;
-                number--;
-                
-            }
-        System.out.println("Factorial is " + factorial);
-            
-        }
+public class Task5 {
+	public static void main(String[] args) {
+		System.out.println("factorial via recursion: " + factorialRecursion(5));
+		System.out.println("factorial via loop: " + loopFactorial(5));
+	}
 
-    }
+	public static int factorialRecursion(int n) {
+		if (n == 1) {
+			return 1;
+		} else
+			return n * factorialRecursion(n - 1);
+
+	}
+
+	public static int loopFactorial(int n) {
+
+		int factorial = 1;
+		for (int i = 1; i <= n; i++) {
+			factorial *= i;
+		}
+		return factorial;
+	}
 }
+
 

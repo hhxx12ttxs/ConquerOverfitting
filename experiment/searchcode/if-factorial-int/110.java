@@ -1,27 +1,15 @@
-package basics;
+package org.zykoq.factorial;
 
+/**
+ * @author <a href="mailto:mr@mobi4friends.de">Maarten Roowaan</a>
+ */
+public class Factorial {
 
-class Factorial{
-	 static int factorial (int n) {
-		 int result;
-		 if(n == 1)
-			 return 1;
-		 
-		 result = factorial(n-1) *n ;
-		 return result;
-	 }
-	
-	
-}
-public class Recursion {
-
-	public static void main(String[] args) {
-		//Factorial f = new Factorial();
-//		System.out.println("Factorial of 3 is " + f.factorial(3));
-		System.out.println("Factorial of 4 is " + Factorial.factorial(4));
-//		f.callMe();
-//		System.out.println("Factorial of 5 is " + f.fact(5));
-	}
-
+    public static long calculate(int factorial) {
+        if (factorial < 2) {
+            return 1;
+        }
+        return factorial * calculate(factorial - 1);
+    }
 }
 

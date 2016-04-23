@@ -1,16 +1,24 @@
-package com.Litvinenko;
-
-public class Factorial {
-
-    public static void main(String[] args) {
-
-        int result = factorial(4);
-        System.out.println(result);
+class SolveTheBracketProblem{
+    public static void main(String[] a){
+        System.out.println(new Square().getFactorial(1,15));
     }
+}
 
-    public static int factorial(int n) {
-        if (n <= 1) return 1;
-        return factorial(n - 1) * n;
+class RecursiveFactorial {
+    public int getFactorial(int num, int factorial){
+        
+        if (num <2)
+            num = new FastRecursiveFactorial().getFactorial(15,factorial*num);
+        else
+            num = factorial*factorial ;
+        return num ;
     }
+}
+class FastRecursiveFactorial extends RecursiveFactorial{
+    
+}
+
+class Square extends FastRecursiveFactorial{
+    
 }
 

@@ -1,20 +1,26 @@
+package misc;
 
 public class Factorial {
-
-	public static void main(String[] args) {
-		System.out.println(factorialOf(10));
-
+	
+	
+	
+	public static int factorial(int n){
+		
+		 if(n <= 1) {
+			 
+			 return 1;
+		 }
+		  
+		 return n * factorial(n-1);
+		
 	}
 	
-	public static int factorialOf(int number) {
+	
+	public static void main(String arg[]){
 		
-		if ( number == 0 || number ==1)
-			return 1;
-		
-		int factorial = number * factorialOf(number -1);
-		
-		return factorial;
+		System.out.println("Factorial::"+factorial(5));
 	}
 
 }
+
 

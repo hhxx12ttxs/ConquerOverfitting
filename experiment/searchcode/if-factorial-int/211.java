@@ -1,18 +1,21 @@
-package study;
 
-public class FactorialTest {
+public class Factorial {
+
+	// factorial
 	public static void main(String[] args) {
-		System.out.println(factorial(3));
+		Factorial f = new Factorial();
+		int number = f.factorial(5);
+		System.out.println(number);
 	}
-
-
-	public static int factorial(int n) {
-		if (n == 1) {
-			return n;
-		} else {
-			return n * factorial(n - 1);
+	
+	public int factorial(int number) {
+		
+		if( number <= 1 ) {
+			return 1;
 		}
-
+		else {
+			return number * factorial(number-1);
+		}
 	}
 }
 

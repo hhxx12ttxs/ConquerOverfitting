@@ -1,32 +1,24 @@
-package uk.ac.qub.recursion;
+package common;
 
-/**
- * Factorial calculator through use of recursion
- * @author Peter
- *
- */
-public class FactorialRecursion {
+import static java.math.BigInteger.valueOf;
 
-	public FactorialRecursion() {
-		// TODO Auto-generated constructor stub
-	}
+import java.math.BigInteger;
 
-	public static void main(String[] args) {
-		
-		FactorialRecursion factorialRecursion = new FactorialRecursion();
-		System.out.println("Factorial 5! : " + factorialRecursion.factorial(5));
-
-	}
-	
-	public int factorial(int n) {
-		
-		int result;
-		if(n == 1) {
-			return 1;
+public class Factorial {
+	public static BigInteger factorial(final int factorial) {
+		if(factorial == 0){
+			return BigInteger.ONE;
 		}
-		result = factorial(n - 1) * n;
-		return result;
+		return factorial(factorial, valueOf(factorial));
 	}
+
+	private static BigInteger factorial(final int factorial, final BigInteger result) {
+		if(factorial == 1){
+			return result;
+		}
+		return factorial(factorial-1, result.multiply(valueOf(factorial-1)));
+	}
+
 
 }
 

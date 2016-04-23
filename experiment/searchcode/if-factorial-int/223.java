@@ -1,21 +1,16 @@
-package com.algorithm.recursive;
+class ReculFactorial
+{
+	public static void main(String[] args)
+	{
+		System.out.println("3 factorial : " + factorial(3));
+		System.out.println("12 factorial : " + factorial(12));
+	}
 
-public class Factorial {
-
-	public int factorial(int n) {
-		// since 0! or 1! is 1
-		if (n <= 1) {
+	public static int factorial(int n)
+	{
+		if(n==1)
 			return 1;
-		} else {
-			return n * factorial(n - 1);
-		}
+		else
+			return n*factorial(n-1);
 	}
-
-	public static void main(String[] args) {
-		Factorial f = new Factorial();
-		System.out.println(f.factorial(10));
-
-	}
-
 }
-

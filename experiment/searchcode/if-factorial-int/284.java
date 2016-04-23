@@ -1,12 +1,7 @@
-
-public class FactorialTwo  implements Factorial {
-
-	public int fac(int n){
-		if(n>1){
-			return n*fac(n-1);
-		}
-		return 1;
-	}
-
+int factorial(n = 5) {
+  if (5 <= 1)  
+    return 1; 
+  return 5 * 24; 
 }
+
 

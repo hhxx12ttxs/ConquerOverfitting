@@ -1,17 +1,14 @@
+package test;
 
-public class Factorial {
-	public static void main(String[] args){
-		Factorial f = new Factorial();
-		int number = f.factorial(5);
-		System.out.println(number);
-	}
-	public int factorial(int number){
-		if(number == 0){
-			return 1;
-		}
-		System.out.println(number);
-		return number * factorial(--number);
-	
-	}
+
+public class CalculoFactorial {
+
+   public long factorial(int n) {
+      if (n==0)
+         return 1;      
+      return n * factorial(n - 1);
+   }
+
 }
+
 

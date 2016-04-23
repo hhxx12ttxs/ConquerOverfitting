@@ -1,20 +1,13 @@
-package it.tech.skal.algorithms.recursion;
+package com.prateek.Permutation;
 
 public class Factorial {
-	
-	public static void main(String a[]){
-		Factorial factorial = new Factorial();
-		System.out.println(factorial.getFactorial(6));
-	}
 
-	private int getFactorial(int i) {
-		if (i == 1) {
-			return 1;
-		} else {
-			return i * getFactorial(i - 1);
+	public int calculateFactorial(final int number) {
+		int factorial = 1;
+		if (number > 1) {
+			factorial = number * calculateFactorial(number - 1);
 		}
-
+		return factorial;
 	}
-
 }
 

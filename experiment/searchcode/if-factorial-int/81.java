@@ -1,11 +1,13 @@
+package com.prateek.Permutation;
+
 public class Factorial {
 
-	public static long factorial(int n) {
-		if (n <= 1)
-			return 1;
-		else
-			return n * factorial(n - 1);
+	public int calculateFactorial(final int number) {
+		int factorial = 1;
+		if (number > 1) {
+			factorial = number * calculateFactorial(number - 1);
+		}
+		return factorial;
 	}
-
 }
 

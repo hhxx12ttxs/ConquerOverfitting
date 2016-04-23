@@ -1,24 +1,25 @@
+package D11_10_15;
 
+/**
+ * Created by roma on 11.10.15.
+ */
 public class Factorial {
+    long factorial = 1;
 
-	public static void main(String[] args) {
-		
-		double i = factorial(201);
-		System.out.println(i);
+    int mas[] = new int[7];
 
-		System.out.println(factorial(1));
-	}
-	
-	private static int factorial(int n) {
-		
-		System.out.println("Factorial called! n: " + n);
-		if(n == 1) {
-			return 1;
-		}
-		else {
-			return n*factorial(n-1);
-		}
-	}
+    long factorial_a(int a) {
+        if (a < 0) return 0;
+        for (int i = 1; i < a + 1; i++) {
+            factorial = factorial * i;
+        }
+        return factorial;
 
+    }
+
+    public static void main(String[] args) {
+        Factorial fac = new Factorial();
+        System.out.println(fac.factorial_a(5));
+        fac.factorial_a(20);
+    }
 }
-

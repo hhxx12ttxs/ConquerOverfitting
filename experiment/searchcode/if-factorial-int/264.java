@@ -1,25 +1,59 @@
+package ru.pavelnix;
+
+import org.junit.Test;
+
+import static junit.framework.TestCase.assertFalse;
+import static org.hamcrest.core.Is.is;
+import static org.junit.Assert.assertThat;
+
 /**
- * Created by daftnemesis on 16/08/15.
+ * Testing class factorial
  */
-public class Factorial {
+public class FactorialTest {
 
-    public static void main(String[] args) {
+    /**
+     * The factorial should not exist if the number is negative
+     */
+    @Test
+    public void factorialShouldNotExistIfNumberNegative() {
+        //Arrange
+        Factorial factorial = new Factorial(-1);
 
-        for (int i = 1; i <= 20; i++){
-            System.out.println("El factorial de " + i + " es " + factorial(i));
-        }
+        //Act
+        boolean validate = factorial.getValidate();
 
+        //Assert
+        assertFalse(validate);
     }
 
-    public Factorial(){
+    /**
+     * The factorial should equals one if the number is zero
+     */
+    @Test
+    public void factorialShouldOneIfNumberZero() {
+        //Arrange
+        Factorial factorial = new Factorial(0);
 
+        //Act
+        int valueOfFactorial = factorial.countFactorial();
+
+        //Assert
+        assertThat(valueOfFactorial, is(1));
     }
 
-    public static long factorial(long n){
-        if (n == 1)
-            return 1;
-        else
-            return n * factorial(n -1);
+    /**
+     * The factorial should be counted by the formula 1*2*..*N if the number more zero
+     */
+    @Test
+    public void factorialShouldCountedIfNumberMoreZero() {
+        //Arrange
+        Factorial factorial = new Factorial(10);
+
+        //Act
+        int valueOfFactorial = factorial.countFactorial();
+
+        //Assert
+        assertThat(valueOfFactorial, is(3628800));
     }
 }
 

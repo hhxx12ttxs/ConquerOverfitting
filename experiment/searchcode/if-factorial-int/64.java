@@ -1,13 +1,33 @@
-package myextension.solved;
+/*
+ * Factorial.java
+ * �K����v�Z����v���O����
+ * Created on 2011/12/18
+ * Copyright(c) 2011 Yoshiaki Matsuzawa, Shizuoka University. All rights reserved.
+ */
+public class Factorial extends Turtle {
 
-public class Factorial {
+	public static void main(String[] args) {
+		Turtle.startTurtle(new Factorial());
+	}
 
-	public int factorial(int n) {
-		if (n <= 0)
-			return 1;
-		else
-			return n * factorial(n-1);
+	void start() {
+		print("factorial(1) = " + factorial(1));
+		print("factorial(2) = " + factorial(2));
+		print("factorial(3) = " + factorial(3));
+		print("factorial(4) = " + factorial(4));
+		print("factorial(5) = " + factorial(5));
+	}
+
+	int factorial(int n) {
+		int result;
+		if (n == 1) {
+			result = 1;
+		} else {
+			result = n * factorial(n - 1);
+		}
+		return result;
 	}
 
 }
+
 

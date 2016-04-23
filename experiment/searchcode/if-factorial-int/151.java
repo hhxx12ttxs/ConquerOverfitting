@@ -1,23 +1,20 @@
-package com.manh.recursion;
+package it.tech.skal.algorithms.recursion;
 
-public class CalFactorial
-{
-    
-    public static void main(String args[])
-    {
-        int n = 5;
-        
-        int factorial = factorial(n);
-        System.out.println(factorial);
-    }
+public class Factorial {
+	
+	public static void main(String a[]){
+		Factorial factorial = new Factorial();
+		System.out.println(factorial.getFactorial(6));
+	}
 
-    public static int factorial(int n)
-    {
-        if(n == 1)
-        {
-            return 1;
-        }
-        return n*(factorial(n-1));
-    }
+	private int getFactorial(int i) {
+		if (i == 1) {
+			return 1;
+		} else {
+			return i * getFactorial(i - 1);
+		}
+
+	}
+
 }
 

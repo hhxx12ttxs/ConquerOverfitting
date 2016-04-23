@@ -1,31 +1,33 @@
+package algorithms;
 
-import java.util.Scanner;
+public class Factorial {
 
-public class _12CalculateNFactorial {
-    public static void main(String args[])
-    {
-        Scanner scan = new Scanner(System.in);
-        int userInput = scan.nextInt();
-        Factorial number = new Factorial();
-        int factNum = number.factorial(userInput);
-        System.out.println(factNum);
-    }
-    static int Factorial(int a) {
+	public static void factorial(int num) {
+		int fact = 1;
+		for (int i = 1; i <= num; i++) {
+			fact = fact * i;
+		}
+		System.out
+				.println("Factorial.factorial() for " + num + " is = " + fact);
+	}
 
-        int factorial = a * a - 1;
-        return factorial;
-    }
+	public static int factorialRec(int num) {
+		if (num == 0) {
+			return 1;
+		}
+		return num * factorialRec(num - 1);
+	}
+
+	public static void main(String[] args) {
+		Factorial.factorial(5);
+		Factorial.factorial(6);
+
+		System.out.println("Factorial Test for 5 = "
+				+ Factorial.factorialRec(5));
+		System.out.println("Factorial Test for 6 = "
+				+ Factorial.factorialRec(6));
+
+	}
+
 }
-class Factorial
-{
-    int factorial(int n)
-    {
-        int result;
 
-        if(n==1 || n == 0) {
-            return 1;
-        }
-        result = factorial(n-1) * n;
-        return result;
-    }
-}

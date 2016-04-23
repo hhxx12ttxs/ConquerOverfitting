@@ -1,27 +1,38 @@
+package tasks;
 
-public class Factorial {
-	
-	public static int iterFactorial(int i) {
-		int j, answer;
-		answer = 1;
-		for (j=1; j<=i; j++) {
-			answer = answer * j;
-		}
-		return answer;
-	}
+/**
+ */
+public class Factorial_5 {
 
-	public static int recursiveFactorial(int n) {	// recursive factorial function
-		  if (n == 0) return 1;				// basis case
-		  else return n * recursiveFactorial(n-1);	// recursive case
-		}
 
-	public static void main(String[] args) {
-		int a;
-		for (a=0; a< 10; a++) {
-			System.out.println(a + " " + recursiveFactorial(a) +
-					" " + iterFactorial(a) + " " + 
-					(recursiveFactorial(a)-iterFactorial(a)));
-		}
-	}
+    public static void main(String[] args) {
+
+        Factorial_5 factorial_5 = new Factorial_5();
+
+        System.out.println(factorial_5.factorial(6));
+
+        System.out.println(factorial_5.factorialRecursive(10));
+
+    }
+
+
+    public int factorial(int n) {
+
+        int result = 1;
+
+        for (int i = 2; i <= n; i++) {
+            result *= i;
+        }
+
+        return result;
+    }
+
+
+    public int factorialRecursive(int n) {
+        if (n == 1) return n;
+
+        return factorial(n - 1) * n;
+    }
 }
+
 

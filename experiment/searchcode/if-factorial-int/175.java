@@ -1,38 +1,25 @@
-package coderbytejava;
+package edu.neumont.csc250;
 
-/**
- * Write the function FirstFactorial(number) to take the number parameter being passed 
- * and return the factorial of it. 
- *
- */
-
-public class FirstFactorial {
-
-	public static void main(String[] args) {
-
-		int number = 0;
-		
-		System.out.println("functionFirstFactorial: " + functionFirstFactorial(number));
-	}
+public class Factorial {	
 	
-	public static int functionFirstFactorial(int number) {
+	public int findFactorialIterative(int num) {
+		
 		int factorial = 1;
 		
-		for (int i = 1; i <= number; i++) {
-			factorial = factorial * i;
+		for (int i= 1; i <= num; i++){
+			factorial *= i;
 		}
 		
 		return factorial;
 	}
 	
-	/*public static int functionFirstFactorial(int number) {
+	public int findFactorialRecursive(int num){
 		
-		if (number <= 1) {
+		if(num < 2){
 			return 1;
 		}
 		
-		else {
-			return number * functionFirstFactorial(number-1);
-		}
-	}*/
+		return num * findFactorialRecursive(num - 1);
+	}
 }
+

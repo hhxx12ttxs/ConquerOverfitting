@@ -1,17 +1,21 @@
-package recursion;
+public class TailRecursion {
 
-public class Factorial {
-	
 	public static int factorial(int n) {
-		if (n <= 0)
-			return 1;
-		else 
-			return n * factorial(n-1);
-	}
-	
-	public static void main(String[] args) {
-		System.out.println(factorial(5));
+
+		return _factorial(n, 1);
 	}
 
+	private static int _factorial(int n, int aggregator) {
+		if (n == 1) {
+			return aggregator;
+		}
+
+		return _factorial(n-1, aggregator * n);
+	}
+
+	public static void main(String[] args) {
+		int aggregator = 0;
+		System.out.println("factorial is: " + factorial(10));
+	}
 }
 

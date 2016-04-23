@@ -1,33 +1,23 @@
+package com.interviewcake;
 
-public class FactorialOfAnInteger {
+/**
+ * Find the factorial of a number using recursion
+ */
+public class Factorial {
+	
+	
+	public static void main(String[] args) {
+		int n = 5;
+		int factorial = factorial(n);
+		System.out.println("factorial(" + n + ") = " + factorial);
+	}
 
-	public static void main(String[] args){
-		System.out.println("5 's Factorial? "+calculateFactorialRecursive(12));
-		System.out.println("5 's Factorial? "+calculateFactorialIterative(12));
-	}
-	
-	public static int calculateFactorialRecursive(int inputNum){
-		int factorialNum = 0;
-		if(inputNum >1){
-			factorialNum = inputNum*calculateFactorialRecursive(inputNum-1);
-		}else{
-			factorialNum =1;
+	private static final int factorial(int n) {
+		if (n < 1) {
+			return 1;
 		}
-		return factorialNum;
-	}
-	
-	public static int calculateFactorialIterative(int inputNum){
-		int factorialNum = 0;
-		if(inputNum ==1){
-			factorialNum =1;
-		}
-		else{
-			factorialNum =1;
-			for(int i =2; i<=inputNum; i++){
-				factorialNum = factorialNum*i;
-		    }
-		}
-		return factorialNum;
+
+		return n * factorial(n - 1);
 	}
 }
 

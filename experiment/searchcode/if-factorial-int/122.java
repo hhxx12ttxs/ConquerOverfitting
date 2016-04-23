@@ -1,18 +1,13 @@
+package myextension.solved;
+
 public class Factorial {
-	public Factorial () {}
-	
-	public int getFactorial(int x) {
-		if (x == 1) {
+
+	public int factorial(int n) {
+		if (n <= 0)
 			return 1;
-		} else {
-			return x * getFactorial(x-1);
-		}
+		else
+			return n * factorial(n-1);
 	}
-	
-	public static void main(String[] args) {
-		Factorial num = new Factorial();
-		
-		System.out.println(num.getFactorial(5));
-	}
+
 }
 

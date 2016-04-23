@@ -1,6 +1,7 @@
-int factorial(n = 2) {
+int factorial(n = 3) {
  if (n <= 1)  
   return 1; 
- return 2 * 1;  
+ return 3 * factorial(2); 
 }
+
 

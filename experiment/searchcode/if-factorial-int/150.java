@@ -1,12 +1,23 @@
-package com.taro;
 
-public class Factorial {
+public class Algorithm_Factorial {
 
-	public int factorial(int num) {
-		if (num > 1) {
-			return num * factorial(num - 1);
-		} else {
-			return 1;
-		}
+	int result;
+
+	Algorithm_Factorial(int n) {
+		result = calcurateFactorial(n);
 	}
+
+	int calcurateFactorial(int n) {
+		if(n>1)
+			return (n) * calcurateFactorial(n-1);
+		else
+			return n;
+	}
+	
+	int returnResult()
+	{
+		return result;
+	}
+
 }
+

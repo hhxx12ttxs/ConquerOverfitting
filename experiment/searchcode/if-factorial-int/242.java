@@ -1,42 +1,32 @@
-package trace_quiz.sp03;
+package factorial;
 
-import obpro.cui.Input;
+import java.io.PrintStream;
 
-/**
- * �v���O�������F 
- * �쐬�ҁF 
- * �o�[�W�����F 1.0 () 
- */
-
-public class FactorialCalculator {
-
-	public static void main(String[] args) {
-		FactorialCalculator factorialCalculator = new FactorialCalculator();
-		factorialCalculator.main();
+public class Factorial {
+	public static final PrintStream output = new PrintStream( System.out );
+	
+	public static long factorial( int n ) {
+		if ( n == 0 ) return 1;
+		return n * factorial( n - 1 );
 	}
-
-	// 
-	void main() {
-		// 
-		int number;
-		System.out.println("�K��̌v�Z�����܂��D�������͂��ĉ�����>>");
-		number = Input.getInt();
+	
+	public static long factorialIter( int n ) {
+		long result = 1;
 		
-		// 
-		int answer;
-		answer = factorial(number);
-		
-		// 
-		System.out.println("Factorial=" + answer);
-	}
-
-	// 
-	int factorial(int n) {
-		if(n == 1) {
-			return 1;
-		} else {
-			return (n * factorial(n - 1));
+		for ( int i = 1; i <= n; i++ ) {
+			result = result * i;
 		}
+		return result;
 	}
+	
+	/**
+	 * @param args
+	 */
+	public static void main(String[] args) {
+		Factorial.output.println( "4! = " + Factorial.factorial( 4 ) );
+		Factorial.output.println( "4! = " + Factorial.factorialIter( 4 ) );
+	}
+
 }
+
 

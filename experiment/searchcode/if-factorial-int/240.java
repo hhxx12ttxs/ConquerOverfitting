@@ -1,23 +1,34 @@
-package training.ideas.java.datatypes;
+// ****************************************************************
+//   Factorial.java
+//
+//   Calculate factorials!
+//          
+// ****************************************************************
+import java.util.Scanner;
 
-/**
- * Created by idnmao on 8/20/2014.
- */
 public class Factorial {
-    public static int calcFactorialOf(int myinputnum) {
-
-        int calculatedFactorial=0;
-        calcFact(calculatedFactorial,myinputnum);
-        return calculatedFactorial;
+  public static void main(String[] args) {
+    Scanner scan = new Scanner(System.in);
+    
+    System.out.println("Please input a positive integer to calculate its factorial.");
+    int factorial = scan.nextInt();
+    int nextFactorial = factorial - 1;
+    int result = factorial;
+    
+    while (factorial < 0) {
+      System.out.println("That's a negative number! Please input a POSITIVE number.");
+      factorial = scan.nextInt();
     }
     
-    public static void calcFact(int calculatedFactorial, int f){
-        if (f==1){
-            return;
-        }
-        calcFact(calculatedFactorial,f-1);
-        calculatedFactorial=calculatedFactorial*f;
+    while (nextFactorial > 0) {
+      result = result * nextFactorial;
+      nextFactorial--;
     }
-
+    
+    if (factorial == 0) {
+      result = 1;
+    }
+    
+    System.out.println(factorial + "! is " + result);
+  }
 }
-

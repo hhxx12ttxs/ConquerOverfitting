@@ -1,22 +1,27 @@
-/**
- *
- * Factorual of 5 is 5x4x3x2x1 = 120
- *
- */
-public class Factorial {
-
-	public static void main(String[] args) {
-
-		System.out.println(factorial(4));
+package przygotowanka;
+// Factorial - Silnia
+public class RecursiveFactorial {
+	int temp;
+	public static void main (String [] args){
+		int n = 3;
+		RecursiveFactorial rf = new RecursiveFactorial();
+		//System.out.println(rf.factorial(n));
+		System.out.println(rf.factorialMy(n));
+		
 	}
-	
-	private static int factorial(int a){
-		
-		if(a==1) {
+	public int factorial(int n) {
+		if (n == 0)
 			return 1;
+		else
+			return n * factorial(n-1);
+	}
+	public int factorialMy(int n) {
+		if (n == 0)
+			return 1;
+		else{
+			temp = n * factorialMy(n-1);
+			return temp;
 		}
-		
-		return a * factorial(a-1);
 	}
 
 }

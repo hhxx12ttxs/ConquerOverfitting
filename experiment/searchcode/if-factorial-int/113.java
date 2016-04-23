@@ -1,30 +1,37 @@
-package sudas.study.example.zero;
-
-public class CalculateFactorial {
-
-	public static void main(String[] args) {
-		System.out.println(new Facto().factorial(4));
-
-	}
-
-}
+package factorial;
 
 /*
- * calculate the factorial of a number factorial theory factorial of 4 --
- * 4*3*2*1 i.e. if n=4 Formulae is n!=n*(n-1)! therefore 4!=4*(4-1)(3-1)(2-1)
- * [in mathematics factorial of 0 is 1]
+ * Find factorial of a given number.
  */
+public class FactorialFinder {
 
-class Facto {
-	public int factorial(int n) {
-		int factorialOf;
-		if (n == 1)
+	/*
+	 * Return factorial of a given number using recursion.
+	 */
+	public long findFactorialRecursively(final int num) {
+
+		if (num == 1) {
 			return 1;
-		factorialOf = factorial(n - 1) * n;
+		}
+		long factorial = num * findFactorialRecursively(num - 1);
 
-		return factorialOf;
+		return factorial;
+
+	}
+
+	/*
+	 * Return factorial of a given number without using recursion.
+	 */
+	public long findFactorial(final int num) {
+		long factorial = 1;
+		for (int i = num; i > 1; i--) {
+			factorial = factorial * i;
+		}
+
+		return factorial;
 
 	}
 
 }
+
 
