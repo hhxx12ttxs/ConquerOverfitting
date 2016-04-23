@@ -81,8 +81,10 @@ public class AbandanTrueValueFilter {
             exceptionValues.addAll(getThis(suspicious, vars, traceResults));
             return exceptionValues;
         }
+        exceptionValues.addAll(levelTwoCandidate);
         //如果没有第一等级怀疑变量，寻找第二等级怀疑变量
         for (ExceptionVariable variable: levelTwoCandidate){
+            /*
             //优先级大于1的第二等级怀疑变量
             if (variable.variable.priority > 1){
                 if (!exceptionValues.contains(variable)){
@@ -124,6 +126,7 @@ public class AbandanTrueValueFilter {
                     break;
                 }
             }
+            */
         }
         exceptionValues.addAll(getThis(suspicious, vars, traceResults));
         return exceptionValues;
