@@ -93,7 +93,7 @@ public class BoundaryGenerator {
             return "";
         }
         if (variable.variable.variableName.equals("this")){
-            return "this.equals("+intervals.get(0)+")";
+            return intervals.get(0);
         }
         if (variable.variable.variableName.equals("return")){
             return intervals.get(0);

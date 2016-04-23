@@ -1,6 +1,7 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.fix;
 
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.BoundaryGenerator;
+import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.Interval;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Localization;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Suspicious;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.ExceptionExtractor;
@@ -51,9 +52,9 @@ public class SuspiciousFixer {
                     boundarys.put(assertEchelon.getKey(), getIfStrings(echelon));
                 }
                 if (fixMethodTwo(suspicious, boundarys, project, entry.getKey())){
-                    return true;
+                    //return true;
                 }
-                if (fixMethodOne(suspicious, boundarys, project, entry.getKey())){
+                 if (fixMethodOne(suspicious, boundarys, project, entry.getKey())){
                     return true;
                 }
             }
@@ -102,9 +103,9 @@ public class SuspiciousFixer {
 
     private List<String> getIfStrings(List<ExceptionVariable> exceptionVariables){
         List<String> returnList = new ArrayList<>();
-        Map<ExceptionVariable, List<String>> result = new HashMap<>();
+        Map<ExceptionVariable, ArrayList<String>> result = new HashMap<>();
         for (ExceptionVariable exceptionVariable: exceptionVariables){
-            List<String> boundarys = getBoundary(exceptionVariable);
+            ArrayList<String> boundarys = new ArrayList<>(getBoundary(exceptionVariable));
             if (boundarys.size() > 1 && exceptionVariables.size() == 1){
                 for (String boundary: boundarys){
                     returnList.add(getIfStatementFromBoundary(Arrays.asList(boundary)));
@@ -112,7 +113,7 @@ public class SuspiciousFixer {
                 return returnList;
             }
             boolean addedFlag = false;
-            for (Map.Entry<ExceptionVariable, List<String>> entry: result.entrySet()){
+            for (Map.Entry<ExceptionVariable, ArrayList<String>> entry: result.entrySet()){
                 if (entry.getKey().name.equals(exceptionVariable.name)){
                     entry.getValue().addAll(boundarys);
                     addedFlag = true;
@@ -127,65 +128,25 @@ public class SuspiciousFixer {
         return Arrays.asList(getIfStatementFromBoundary(combineIntervals(result)));
     }
 
-    private List<String> combineIntervals(Map<ExceptionVariable, List<String>> boundarysMap){
+    private List<String> combineIntervals(Map<ExceptionVariable, ArrayList<String>> boundarysMap){
         List<String> result = new ArrayList<>();
-        for (Map.Entry<ExceptionVariable, List<String>> entry: boundarysMap.entrySet()){
+        for (Map.Entry<ExceptionVariable, ArrayList<String>> entry: boundarysMap.entrySet()){
             if (!MathUtils.isNumberType(entry.getKey().type) || entry.getValue().size() <= 1){
                 result.addAll(entry.getValue());
+                continue;
             }
-            double leftBoundary;
-            double rightBoundary;
-            boolean leftClose;
-            boolean rightClose;
+            ArrayList<Interval> intervals = new ArrayList<>();
             for (String interval: entry.getValue()){
-
+                intervals.add(new Interval(interval));
+            }
+            List<Interval> mergeResult = MathUtils.mergetInterval(intervals);
+            for (Interval interval: mergeResult){
+                result.add("("+interval.toString(entry.getKey().name, entry.getKey().type)+")");
             }
         }
         return result;
     }
 
-    private void parseStringInterval(String interval){
-        double leftBoundary = -Double.MAX_VALUE;
-        double rightBoundary = Double.MAX_VALUE;
-        boolean leftClose = false;
-        boolean rightClose = false;
-        if (interval.contains("&&")){
-            String[] intervals = interval.split("&&");
-            for (String halfInterval: intervals){
-                if (halfInterval.contains(">=")){
-                    leftBoundary = MathUtils.parseStringValue(halfInterval.split(">=")[1]);
-                    leftClose = true;
-                }
-                else if (halfInterval.contains("<=")){
-                    rightBoundary = MathUtils.parseStringValue(halfInterval.split("<=")[1]);
-                    rightClose = true;
-                }
-                else if (halfInterval.contains(">")){
-                    leftBoundary = MathUtils.parseStringValue(halfInterval.split(">")[1]);
-                }
-                else if (halfInterval.contains("<")){
-                    rightBoundary = MathUtils.parseStringValue(halfInterval.split("<")[1]);
-                }
-            }
-        }
-        else {
-            if (interval.contains(">=")){
-                leftBoundary = MathUtils.parseStringValue(interval.split(">=")[1]);
-                leftClose = true;
-            }
-            else if (interval.contains("<=")){
-                rightBoundary = MathUtils.parseStringValue(interval.split("<=")[1]);
-                rightClose = true;
-            }
-            else if (interval.contains(">")){
-                leftBoundary = MathUtils.parseStringValue(interval.split(">")[1]);
-            }
-            else if (interval.contains("<")){
-                rightBoundary = MathUtils.parseStringValue(interval.split("<")[1]);
-            }
-
-        }
-    }
 
 
     private String getIfStatementFromBoundary(List<String> boundary){
@@ -214,6 +175,15 @@ public class SuspiciousFixer {
             String testClassName = ifString.getKey().split("#")[0];
             String testMethodName = ifString.getKey().split("#")[1];
             int assertLine = Integer.valueOf(ifString.getKey().split("#")[2]);
+            if (assertLine == -1){
+                testClassName = suspicious._failTests.get(0).split("#")[0];
+                testMethodName = suspicious._failTests.get(0).split("#")[1];
+                if (suspicious._assertsMap.containsKey(suspicious._failTests.get(0))){
+                    if (suspicious._assertsMap.get(suspicious._failTests.get(0))._errorAssertLines.size()>0){
+                        assertLine = suspicious._assertsMap.get(suspicious._failTests.get(0))._errorAssertLines.get(0);
+                    }
+                }
+            }
             if (!CodeUtils.getLineFromCode(FileUtils.getCodeFromFile(suspicious._testSrcPath, testClassName),assertLine).contains("assert")){
                 assertLine = -1;
             }

@@ -76,7 +76,12 @@ public class VariableTracer {
             }
             Map<String, Integer> commentedTestClasses = tracer._commentedTestClass;
             if (commentedTestClasses.size() < 1){
-                commentedTestClasses.put("", line);
+                if (_asserts.errorLines().size()>0){
+                    commentedTestClasses.put("", _asserts.errorLines().get(0));
+                }
+                else {
+                    commentedTestClasses.put("",-1);
+                }
             }
             if (_asserts.trueAssertNum() > 0 && _asserts.errorAssertNum() > 0 && !_asserts.getTrueTestFile().equals("")){
                 commentedTestClasses.put(_asserts.getTrueTestFile(), -1);

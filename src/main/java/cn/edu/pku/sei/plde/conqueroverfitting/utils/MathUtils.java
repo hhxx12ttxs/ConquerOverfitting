@@ -16,6 +16,10 @@ public class MathUtils {
     public static final List<Character> number = Arrays.asList('1','2','3','4','5','6','7','8','9','0');
 
     public static double parseStringValue(String value) throws NumberFormatException{
+        value = value.trim();
+        if (value.startsWith("(") && value.contains(")") && !value.endsWith(")")){
+            value = value.substring(value.indexOf(")")+1);
+        }
         if (value.equals("Integer.MIN_VALUE")){
             return Integer.MIN_VALUE;
         }

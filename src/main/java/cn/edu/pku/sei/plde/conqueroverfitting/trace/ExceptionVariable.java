@@ -26,6 +26,10 @@ public class ExceptionVariable {
         return traceResult._testClass+"#"+traceResult._testMethod+"#"+traceResult._assertLine;
     }
 
+    public boolean isSuccess(){
+        return traceResult.getTestResult();
+    }
+
     public ExceptionVariable(VariableInfo variable,TraceResult traceResult){
         this.traceResult = traceResult;
         this.variable = variable;
@@ -64,11 +68,16 @@ public class ExceptionVariable {
         if (newValues.length != thisValues.length){
             return false;
         }
-        for (int i=0; i< newValues.length; i++){
-            if (!newValues[i].equals(thisValues[i])){
-                return false;
+        try{
+            for (int i=0; i< newValues.length; i++){
+                if (MathUtils.parseStringValue(newValues[i])!=MathUtils.parseStringValue(thisValues[i])){
+                    return false;
+                }
             }
+        } catch (Exception e){
+            return false;
         }
+
         return true;
     }
 
@@ -79,24 +88,26 @@ public class ExceptionVariable {
         //if (CodeUtils.isForLoopParam(new ArrayList<>(values))!=-1){
         //    return valueList;
         //}
+
         if (name.equals("this")){
+            String thisValue = values.iterator().next();
+            thisValue = thisValue.substring(thisValue.indexOf('(')+1, thisValue.lastIndexOf(')'));
+            String[] thisValues = thisValue.contains(",")?thisValue.split(","):new String[]{thisValue};
             for (BoundaryInfo info: boundaryInfos){
-                if (info.value.contains("new ") && info.value.contains(type) && info.value.contains("(") && info.value.contains(")")){
-                    String newValue = info.value.substring(info.value.indexOf('('+1, info.value.lastIndexOf(')')));
+                if (info.value.contains("new "+type) && info.value.contains("(") && info.value.contains(")") && !info.value.endsWith("(")){
+                    String newValue = info.value.substring(info.value.indexOf('(')+1, info.value.lastIndexOf(')'));
                     String[] newValues = newValue.contains(",")?newValue.split(","):new String[]{newValue};
-                    String thisValue = values.iterator().next();
-                    thisValue = thisValue.substring(info.value.indexOf('('+1, info.value.lastIndexOf(')')));
-                    String[] thisValues = thisValue.contains(",")?thisValue.split(","):new String[]{thisValue};
                     if (judgeTheSame(newValues, thisValues)){
                         if (traceResult.getTestResult()){
-                            return Arrays.asList("!this.equals("+newValue+")");
+                            return Arrays.asList("!this.equals("+info.value+")");
                         }
                         else {
-                            return Arrays.asList("!this.equals("+newValue+")");
+                            return Arrays.asList("!this.equals("+info.value+")");
                         }
                     }
                 }
             }
+            return new ArrayList<>();
         }
         if (MathUtils.isNumberType(type)) {
             if (valueList.size() == 1 && (valueList.get(0).equals("NaN") || boundaryInfos.size() == 0)){

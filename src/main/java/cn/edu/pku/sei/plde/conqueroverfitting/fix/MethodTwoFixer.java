@@ -87,7 +87,7 @@ public class MethodTwoFixer {
     }
 
     private String getIfStatementFromString(String ifString){
-        String statement =  ifString.replace(" ","").replace("if(","if (!(");
+        String statement =  ifString.replace("if (","if (!(");
         statement += "){";
         return statement;
     }
