@@ -47,7 +47,9 @@ public class SearchBoundaryFilter {
         if (!info.variableName.equals("this") && info.variableName.length()>1){
             keywords.add(info.variableName.replace(" ",""));
         }
-
+        if (info.isExpression){
+            keywords.add(info.expressMethod);
+        }
 
         File codePackage = new File("experiment/searchcode/" + StringUtils.join(keywords,"-"));
         File simpleCodePackage = new File("experiment/searchcode/" + StringUtils.join(Arrays.asList("if",variableName),"-"));
@@ -61,7 +63,7 @@ public class SearchBoundaryFilter {
             if (!codePackage.exists()) {
                 codePackage.mkdirs();
             }
-            if (codePackage.list().length < 30){
+            if (codePackage.list().length < 30 && !info.isExpression){
                 FileUtils.deleteDir(codePackage);
             }
             else {
@@ -71,6 +73,7 @@ public class SearchBoundaryFilter {
                 if (filteredList.size() == 0 && !info.isSimpleType){
                     filteredList = BoundaryFilter.getBoundaryWithType(boundaryList, info.getStringType());
                 }
+                FileUtils.deleteDir(codePackage);
                 return boundaryList;
             }
         }
@@ -94,6 +97,7 @@ public class SearchBoundaryFilter {
                 filteredList = BoundaryFilter.getBoundaryWithType(boundaryList, info.getStringType());
             }
             if (filteredList.size() != 0){
+                FileUtils.deleteDir(complexCodePackage);
                 return boundaryList;
             }
 
@@ -113,6 +117,7 @@ public class SearchBoundaryFilter {
         BoundaryCollect boundaryCollect = new BoundaryCollect(codePackage.getAbsolutePath());
         List<BoundaryInfo> boundaryList = boundaryCollect.getBoundaryList();
         List<BoundaryInfo> filteredList = BoundaryFilter.getBoundaryWithName(boundaryList, variableName);
+        FileUtils.deleteDir(simpleCodePackage);
         return boundaryList;
     }
     private static String getProjectFullName(String project){

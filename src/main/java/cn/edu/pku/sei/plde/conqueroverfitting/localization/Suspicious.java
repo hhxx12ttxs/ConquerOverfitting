@@ -3,6 +3,7 @@ package cn.edu.pku.sei.plde.conqueroverfitting.localization;
 import cn.edu.pku.sei.plde.conqueroverfitting.assertCollect.Asserts;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.common.library.JavaLibrary;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.common.synth.TestClassesFinder;
+import cn.edu.pku.sei.plde.conqueroverfitting.trace.ExceptionVariable;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.TraceResult;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.VariableTracer;
 import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeEnum;
@@ -312,16 +313,22 @@ public class Suspicious implements Serializable{
 
             }
         }
-        //if的变量
-        if (LineUtils.isLineInIf(code, line)){
-            for (int i=line; i>0; i--){
-                String lineIString = CodeUtils.getLineFromCode(code, i);
-                if (LineUtils.isIfAndElseIfLine(lineIString)){
-                    List<VariableInfo> ifAddon = InfoUtils.getVariableInIfStatement(lineIString);
-                    if (ifAddon != null){
-                        infos.addAll(ifAddon);
-                    }
-                    break;
+        String methodCode = CodeUtils.getMethodString(code, functionnameWithoutParam(),line);
+        String methodCodeBeforeLine = CodeUtils.getMethodBodyBeforeLine(code, functionnameWithoutParam(),line)+CodeUtils.getLineFromCode(code,line);
+        Set<String> expresses = ExpressionUtils.getExpressionsInMethod(methodCode);
+        for (String express: expresses){
+            if (methodCodeBeforeLine.replace(" ","").contains(express.replace(" ",""))){
+                if (express.contains("==") || express.contains(">") || express.contains("<")){
+                    VariableInfo info = new VariableInfo(express,TypeEnum.BOOLEAN,true,null);
+                    info.expressMethod = functionnameWithoutParam();
+                    info.isExpression = true;
+                    infos.add(info);
+                }
+                else {
+                    VariableInfo info = new VariableInfo(express,TypeEnum.DOUBLE,true,null);
+                    info.expressMethod = functionnameWithoutParam();
+                    info.isExpression = true;
+                    infos.add(info);
                 }
             }
         }

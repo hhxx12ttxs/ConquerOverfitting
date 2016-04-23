@@ -19,8 +19,8 @@ public class ExceptionVariable {
     public String type;
     public Set<String> values;
     public int level = 1;
+    public boolean isExpression;
     private TraceResult traceResult;
-
 
     public String getAssertMessage(){
         return traceResult._testClass+"#"+traceResult._testMethod+"#"+traceResult._assertLine;
@@ -36,6 +36,7 @@ public class ExceptionVariable {
         this.level = variable.priority;
         this.name = variable.variableName;
         this.type = variable.getStringType();
+        this.isExpression = variable.isExpression;
         if (traceResult.get(variable.variableName)!=null){
             this.values = new HashSet<>(traceResult.get(variable.variableName));
         }

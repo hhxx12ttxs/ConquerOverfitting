@@ -42,6 +42,7 @@ public class BoundaryGenerator {
             keywords.add(keyword);
         }
 
+
         List<BoundaryInfo> variableBoundary = SearchBoundaryFilter.getBoundary(exceptionVariable, project, keywords);
 
         List<String> intervals = exceptionVariable.getBoundaryIntervals(variableBoundary);

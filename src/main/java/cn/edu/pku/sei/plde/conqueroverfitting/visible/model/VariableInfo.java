@@ -22,6 +22,7 @@ public class VariableInfo implements Comparable<VariableInfo>,Serializable{
 	public boolean isAddon = false;
 	public int priority = 1;
 	public boolean isExpression = false;
+	public String expressMethod = "";
 
 	/**
 	 *
