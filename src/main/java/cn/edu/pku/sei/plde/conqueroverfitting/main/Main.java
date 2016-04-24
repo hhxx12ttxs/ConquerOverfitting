@@ -28,6 +28,15 @@ public class Main {
             System.out.println("No file in path");
             return;
         }
+        if (args.length == 2){
+            String projectName = args[1];
+            try {
+                fixProject(projectName, path);
+            } catch (Exception e){
+                e.printStackTrace();
+            }
+
+        }
         for (File sub_file : sub_files){
             if (sub_file.isDirectory()){
                 System.out.println("Main: fixing project "+sub_file.getName());
@@ -42,11 +51,12 @@ public class Main {
     }
 
     private static void fixProject(String project, String path) throws Exception{
-        if (!project.contains("-")){
+        if (!project.replace("_","-").contains("-")){
             System.out.println("Main: cannot recognize project name \""+project+"\"");
             return;
         }
         if (!StringUtils.isNumeric(project.split("-")[1])){
+            System.out.println("Main: cannot recognize project name \""+project+"\"");
             return;
         }
         String projectType = project.split("-")[0];

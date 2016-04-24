@@ -558,7 +558,7 @@ public class CodeUtils {
                 for (int i=0; i< resultString.length; i++){
                     String resultLine = resultString[i];
                     if (resultLine.replace(" ","").contains(lineString.replace(" ",""))){
-                        if (resultString[i+1].replace(" ","").contains(lastString.replace(" ","")) && i<resultString.length-1){
+                        if (resultString.length>i+1 && resultString[i+1].replace(" ","").contains(lastString.replace(" ","")) && i<resultString.length-1){
                             if (i<=1){
                                 break;
                             }
@@ -566,7 +566,7 @@ public class CodeUtils {
                                 break;
                             }
                         }
-                        if (resultString[i-1].replace(" ","").contains(lastString.replace(" ","")) && i>0){
+                        if (i>=1 && resultString[i-1].replace(" ","").contains(lastString.replace(" ","")) && i>0){
                             if (i==resultString.length-1){
                                 break;
                             }

@@ -43,15 +43,15 @@ public class BoundaryGenerator {
         }
 
         List<BoundaryInfo> variableBoundary = SearchBoundaryFilter.getBoundary(exceptionVariable, project, keywords);
-        Map<String, String> intervals = exceptionVariable.getBoundaryIntervals(variableBoundary);
+        Map<List<String>, String> intervals = exceptionVariable.getBoundaryIntervals(variableBoundary);
         if (intervals == null) {
             return new ArrayList<>();
         }
 
         List<String> returnList = new ArrayList<>();
-        for (Map.Entry<String, String> entry: intervals.entrySet()){
+        for (Map.Entry<List<String>, String> entry: intervals.entrySet()){
             String interval = entry.getValue();
-            String value = entry.getKey();
+            List<String> value = entry.getKey();
             String ifString = generateWithSingleWord(exceptionVariable,interval,value);
             ifString = replaceSpecialNumber(ifString);
             if (!ifString.equals("")){
@@ -76,7 +76,7 @@ public class BoundaryGenerator {
     }
 
 
-    private static String generateWithSingleWord(ExceptionVariable variable, String intervals,String valueString) {
+    private static String generateWithSingleWord(ExceptionVariable variable, String intervals,List<String> valueStrings) {
         if (variable.variable.variableName.equals("this")){
             return intervals;
         }
@@ -141,15 +141,17 @@ public class BoundaryGenerator {
             String varType = MathUtils.getSimpleOfNumberType(variable.variable.getStringType());
             Map<String, String> interval = new HashMap<>();
 
-            double value = MathUtils.parseStringValue(valueString);
-            if (value < biggestBoundary) {
-                interval.put("forwardInterval", variable.variable.variableName + lessSymbol(biggestClose)+"("+varType+")" + biggestBoundary);
-            }
-            else if (value > smallestBoundary) {
-                interval.put("backwardInterval", variable.variable.variableName + greaterSymbol(smallestClose)+"("+ varType+")" + smallestBoundary);
-            }
-            else if (value <= smallestBoundary && value >= biggestBoundary) {
-                interval.put("innerInterval", "("+variable.variable.variableName + lessSymbol(smallestClose)+"("+varType+")" + smallestBoundary + " && " + variable.variable.variableName + greaterSymbol(biggestClose)+"("+varType+")" + biggestBoundary+")");
+            for (String valueString: valueStrings){
+                double value = MathUtils.parseStringValue(valueString);
+                if (value < biggestBoundary) {
+                    interval.put("forwardInterval", variable.variable.variableName + lessSymbol(biggestClose)+"("+varType+")" + biggestBoundary);
+                }
+                else if (value > smallestBoundary) {
+                    interval.put("backwardInterval", variable.variable.variableName + greaterSymbol(smallestClose)+"("+ varType+")" + smallestBoundary);
+                }
+                else if (value <= smallestBoundary && value >= biggestBoundary) {
+                    interval.put("innerInterval", "("+variable.variable.variableName + lessSymbol(smallestClose)+"("+varType+")" + smallestBoundary + " && " + variable.variable.variableName + greaterSymbol(biggestClose)+"("+varType+")" + biggestBoundary+")");
+                }
             }
 
             if (interval.size() == 0){

@@ -183,8 +183,16 @@ public class SuspiciousFixer {
             }
             ArrayList<Interval> intervals = new ArrayList<>();
             for (String interval: entry.getValue()){
-                intervals.add(new Interval(interval));
-                returnList.add(Arrays.asList(interval));
+                if (interval.contains("||")){
+                    intervals.add(new Interval(interval.split("||")[0]));
+                    intervals.add(new Interval(interval.split("||")[1]));
+                }
+                else {
+                    intervals.add(new Interval(interval));
+                }
+                if (entry.getValue().size()>1){
+                    returnList.add(Arrays.asList(interval));
+                }
             }
             List<Interval> mergeResult;
             if (entry.getKey().type.toLowerCase().equals("int")){

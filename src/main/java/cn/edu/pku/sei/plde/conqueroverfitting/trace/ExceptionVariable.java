@@ -92,9 +92,27 @@ public class ExceptionVariable {
         }
         return result;
     }
-    private String getIntervalWithValue(String value, List<BoundaryInfo> boundaryInfos){
-        double smallestValue = MathUtils.parseStringValue(value);
-        double biggestValue = MathUtils.parseStringValue(value);
+    private String getIntervalWithValue(List<String> valueList, List<BoundaryInfo> boundaryInfos){
+        double smallestValue;
+        double biggestValue;
+        if (valueList.size() > 1){
+            smallestValue = MathUtils.parseStringValue(valueList.get(0));
+            biggestValue = MathUtils.parseStringValue(valueList.get(0));
+            for (String value : valueList) {
+                double doubleValue = Double.valueOf(value);
+                if (Double.compare(doubleValue, smallestValue) < 0) {
+                    smallestValue = doubleValue;
+                }
+                if (Double.compare(doubleValue, biggestValue) > 0) {
+                    biggestValue = doubleValue;
+                }
+            }
+        }
+        else {
+            smallestValue = MathUtils.parseStringValue(valueList.get(0));
+            biggestValue = MathUtils.parseStringValue(valueList.get(0));
+        }
+
 
         double biggestBoundary = -Double.MAX_VALUE;
         double smallestBoundary = Double.MAX_VALUE;
@@ -206,9 +224,9 @@ public class ExceptionVariable {
     }
 
 
-    public Map<String, String> getBoundaryIntervals(List<BoundaryInfo> boundaryInfos){
+    public Map<List<String>, String> getBoundaryIntervals(List<BoundaryInfo> boundaryInfos){
         List<String> valueList = new ArrayList<>(values);
-        Map<String, String> result = new HashMap<>();
+        Map<List<String>, String> result = new HashMap<>();
         boundaryInfos = boundaryFilter(boundaryInfos);
         if (name.equals("this")){
             String thisValue = values.iterator().next();
@@ -220,10 +238,10 @@ public class ExceptionVariable {
                     String[] newValues = newValue.contains(",")?newValue.split(","):new String[]{newValue};
                     if (judgeTheSame(newValues, thisValues)){
                         if (traceResult.getTestResult()){
-                            result.put(thisValue,"!this.equals("+info.value+")");
+                            result.put(Arrays.asList(thisValue),"!this.equals("+info.value+")");
                         }
                         else {
-                            result.put(thisValue,"this.equals("+info.value+")");
+                            result.put(Arrays.asList(thisValue),"this.equals("+info.value+")");
                         }
                     }
                 }
@@ -232,18 +250,24 @@ public class ExceptionVariable {
         }
         if (MathUtils.isNumberType(type)) {
             if (valueList.size() == 1 && (valueList.get(0).equals("NaN") || boundaryInfos.size() == 0)){
-                result.put(valueList.get(0), valueList.get(0));
+                result.put(valueList, valueList.get(0));
             }
-            for (String value: valueList){
-                String intervals = getIntervalWithValue(value, boundaryInfos);
-                if (intervals!=null){
-                    result.put(value, intervals);
+            if (valueList.size()>5){
+                String intervals = getIntervalWithValue(valueList, boundaryInfos);
+                result.put(valueList,intervals);
+            }
+            else {
+                for (String value: valueList){
+                    String intervals = getIntervalWithValue(Arrays.asList(value), boundaryInfos);
+                    if (intervals != null){
+                        result.put(Arrays.asList(value), intervals);
+                    }
                 }
             }
             return result;
         }
         for (String value: valueList){
-            result.put(value, value);
+            result.put(Arrays.asList(value), value);
         }
         return result;
     }
