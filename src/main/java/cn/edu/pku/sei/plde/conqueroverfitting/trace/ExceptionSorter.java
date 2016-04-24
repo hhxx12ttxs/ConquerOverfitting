@@ -52,19 +52,6 @@ public class ExceptionSorter {
             return result;
         }
 
-        //如果怀疑变量有两个，这两个变量都是数组型函数参数的元素，而且类型相同，将这两个同时放入第一梯队，
-        if (exceptionVariables.size() == 2){
-            VariableInfo info1 = exceptionVariables.get(0).variable;
-            VariableInfo info2 = exceptionVariables.get(1).variable;
-            if (TypeUtils.isArrayFromName(info1.variableName) && TypeUtils.isArrayFromName(info2.variableName) &&
-                    info1.getStringType().equals(info2.getStringType())){
-                if (info1.isParameter && info2.isParameter){
-                    result.add(exceptionVariables);
-                    return result;
-                }
-            }
-        }
-
         for (ExceptionVariable exceptionVariable: exceptionVariables){
             if (exceptionVariable.variable.isParameter){
                 _paramVariables.add(exceptionVariable);
@@ -164,12 +151,10 @@ public class ExceptionSorter {
             }
 
         }
-        //没有经过赋值的类变量优先度最低，放在list的最胡
         for (ExceptionVariable exceptionVariable: _fieldVariables){
             if (_sortedVariable.size() < 15 && !_sortedVariable.contains(exceptionVariable)){
                 _sortedVariable.add(exceptionVariable);
             }        }
-        //addon 优先度最低
         for (ExceptionVariable exceptionVariable: _addonVariable){
             if (!_sortedVariable.contains(exceptionVariable)){
                 if (_sortedVariable.size() < 15){

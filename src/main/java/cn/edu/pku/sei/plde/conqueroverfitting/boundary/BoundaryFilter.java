@@ -1,7 +1,6 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.boundary;
 
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.BoundaryInfo;
-import cn.edu.pku.sei.plde.conqueroverfitting.main.Config;
 import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.MathUtils;
 
@@ -81,45 +80,5 @@ public class BoundaryFilter {
         return result;
     }
 
-    /**
-     *
-     * @param boundaryInfos The boundary info list
-     * @param value the specific value
-     * @param type the specific type
-     * @return the count of boundary info has the specific value
-     */
-    public static int countTheValueOccurs(List<BoundaryInfo> boundaryInfos, String value, String type){
-        int count = 0;
-        for (BoundaryInfo info: boundaryInfos){
-            if (info.isSimpleType && info.variableSimpleType==null){
-                continue;
-            }
-            if (!info.isSimpleType && info.otherType == null){
-                continue;
-            }
-            String infoType = info.isSimpleType?info.variableSimpleType.toString():info.otherType;
-            if (Config.judgeAsTheSameInFilter(info.value, infoType, value, type)){
-                count ++;
-            }
-        }
-        return count;
-    }
 
-
-    /**
-     *
-     * @param boundaryInfos
-     * @param value
-     * @param type
-     * @return
-     */
-    public static List<BoundaryInfo> getBoundaryWithValueSmaller(List<BoundaryInfo> boundaryInfos, String value, String type){
-        List<BoundaryInfo> result = new ArrayList<BoundaryInfo>();
-        for (BoundaryInfo info: boundaryInfos){
-            if (Double.valueOf(info.value) <= Double.valueOf(value)){
-                result.add(info);
-            }
-        }
-        return result;
-    }
 }

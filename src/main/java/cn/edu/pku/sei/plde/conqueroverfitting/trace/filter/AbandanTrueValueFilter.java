@@ -237,22 +237,6 @@ public class AbandanTrueValueFilter {
             if (var.values.size() == 0){
                 continue;
             }
-            //当值中出现非常不规则的数据时(作为数字变量值的长度大于10)，过滤该variable
-            List<String> bannedValue = new ArrayList<>();
-            for (String value: var.values){
-                if (MathUtils.isNumberType(var.variable.getStringType())&& (value.length()>10 && !MathUtils.isMaxMinValue(value))){
-                    bannedValue.add(value);
-                }
-            }
-            if (bannedValue.size()== 1){
-                continue;
-            }
-            //vip通道，出现这两个变量的时候，通常时显而易见的修复，只保留此怀疑变量即可，清除其他所有怀疑变量
-            if (var.variable.variableName.equals("this") || var.variable.variableName.equals("return")){
-                cleanedVariable.clear();
-                cleanedVariable.add(var);
-                break;
-            }
             cleanedVariable.add(var);
         }
         return cleanedVariable;

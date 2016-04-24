@@ -51,13 +51,8 @@ public class Patch {
 
 
 
-
-
-
     private String generatePatchString(String ifString, String fixString){
         String patchString = "";
-        ifString = ifString.replace("(int)-2.147483648E9","Integer.MIN_VALUE");
-        ifString = ifString.replace("(double)1.7976931348623157E308","Double.MAX_VALUE");
         for (String _if: ifString.split("\n")){
             patchString += _if + "{" + fixString + "}\n";
         }

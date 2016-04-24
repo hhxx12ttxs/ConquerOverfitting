@@ -99,7 +99,7 @@ public class VariableTracer {
         }
         _suspicious._assertsMap.put(_testClassname+"#"+_testMethodName, _asserts);
         _suspicious._errorLineMap.put(_testClassname+"#"+_testMethodName, new ArrayList<>(errorLines));
-        results.addAll(getAddonResult(_suspicious.getAllInfo()));
+        //results.addAll(getAddonResult(_suspicious.getAllInfo()));
         deleteTempFile();
         return results;
     }
@@ -108,62 +108,7 @@ public class VariableTracer {
         return shellResult.split("\\|into_method\\|").length-1;
     }
 
-    private List<TraceResult> getAddonResult(List<VariableInfo> variableInfos){
-        List<TraceResult> results = new ArrayList<>();
-        if (_asserts._asserts.size() == 0){
-            return results;
-        }
-        String firstAssert = _asserts._asserts.get(0);
-        String classCode = FileUtils.getCodeFromFile(_srcPath, _classname);
-        String methodCode = CodeUtils.getMethodBody(classCode, _suspicious.functionnameWithoutParam());
-        if (methodCode.equals("")){
-            return results;
-        }
-        String firstStatement = methodCode.substring(0,methodCode.length()).split("\n")[0];
 
-        if (_asserts._asserts.size() == 1 && firstAssert.contains("Equals")){
-            List<String> params = CodeUtils.divideParameter(firstAssert, 1, false);
-            if (params.size() == 2){
-                String param1 = params.get(0).contains(_functionname)?params.get(0):params.get(1);
-                String param2 = params.get(0).contains(_functionname)?params.get(1):params.get(0);
-                String className = _classname.substring(_classname.lastIndexOf(".")+1);
-                if (param1.startsWith(className+".") && param2.startsWith(className+".") && param1.contains("()") && CodeUtils.countChar(param1,'.') >1){
-                    TraceResult traceResult = new TraceResult(false);
-                    traceResult._assertLine = _asserts._errorAssertLines.get(0);
-                    traceResult._testClass = _testClassname;
-                    traceResult._testMethod = _testMethodName;
-                    traceResult.put("this", param1.substring(param1.indexOf(".")+1,param1.lastIndexOf(".")));
-                    for (VariableInfo info: variableInfos){
-                        if (info.variableName.equals("this")){
-                            info.priority = 0;
-                        }
-                    }
-                    results.add(traceResult);
-                }
-            }
-        }
-        if (_asserts._asserts.size() == 1 && firstAssert.contains("True") && firstAssert.contains(">=")){
-            if (firstStatement.startsWith("return")){
-                String returnString = methodCode.substring(firstStatement.indexOf(" ")+1, firstStatement.length()-1);
-                String param = firstAssert.substring(firstAssert.indexOf('(')+1, firstAssert.lastIndexOf(')'));
-                String numParam = param.split(">=")[0].contains(_functionname)?param.split(">=")[1]:param.split(">=")[0];
-                if (numParam.trim().matches("^(-?\\d+)(\\.\\d+)?$")){
-                    TraceResult traceResult = new TraceResult(false);
-                    traceResult._assertLine = _asserts._errorAssertLines.get(0);
-                    traceResult._testClass = _testClassname;
-                    traceResult._testMethod = _testMethodName;
-                    traceResult.put("return", "("+returnString+")" + "<" + numParam.trim());
-                    results.add(traceResult);
-                    for (VariableInfo info: variableInfos){
-                        if (info.variableName.equals("return")){
-                            info.priority = 0;
-                        }
-                    }
-                }
-            }
-        }
-        return results;
-    }
 
     private void deleteTempFile(){
         //clean temp file

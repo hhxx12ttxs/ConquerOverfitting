@@ -50,7 +50,6 @@ public class BoundaryGenerator {
         }
         String ifString = generateWithSingleWord(exceptionVariable,intervals,trueValues,falseValues);
         ifString = replaceSpecialNumber(ifString);
-        //如果怀疑变量的等级大于1,并且没有与之区间匹配的if生成方法，则分别对区间中的每个值生成if进行枚举。
         if ((exceptionVariable.variable.priority > 1 || trueValues.size() ==0) && ifString.equals("") && CodeUtils.isForLoopParam(intervals)==-1){
             List<String> result = new ArrayList<>();
             for (String value: intervals){
