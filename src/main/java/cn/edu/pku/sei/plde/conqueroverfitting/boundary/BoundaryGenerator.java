@@ -1,6 +1,7 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.boundary;
 
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.BoundaryInfo;
+import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.BoundaryWithFreq;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Suspicious;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.ExceptionExtractor;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.ExceptionVariable;
@@ -42,8 +43,18 @@ public class BoundaryGenerator {
             keywords.add(keyword);
         }
 
-        List<BoundaryInfo> variableBoundary = SearchBoundaryFilter.getBoundary(exceptionVariable, project, keywords);
-        Map<List<String>, String> intervals = exceptionVariable.getBoundaryIntervals(variableBoundary);
+        List<BoundaryWithFreq> variableBoundary = SearchBoundaryFilter.getBoundary(exceptionVariable, project, keywords);
+        ArrayList<BoundaryWithFreq> intervalss = new ArrayList<>();
+        if (MathUtils.isNumberType(exceptionVariable.type)){
+            for (String value: exceptionVariable.values){
+                intervalss.addAll(MathUtils.generateInterval(variableBoundary, Double.valueOf(value)));
+            }
+        }
+        else {
+
+        }
+        List<BoundaryInfo> boundaryInfo = SearchBoundaryFilter.getBoundaryInfo(exceptionVariable, project, keywords);
+        Map<List<String>, String> intervals = exceptionVariable.getBoundaryIntervals(boundaryInfo);
         if (intervals == null) {
             return new ArrayList<>();
         }

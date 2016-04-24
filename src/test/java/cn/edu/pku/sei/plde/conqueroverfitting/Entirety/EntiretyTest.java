@@ -37,7 +37,7 @@ public class EntiretyTest {
     public List<Suspicious> triedSuspicious = new ArrayList<>();
     @Test
     public void testEntirety() throws Exception{
-        String project = setWorkDirectory("Math",93);
+        String project = setWorkDirectory("Math",35);
         Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc,libPath);
         List<Suspicious> suspiciouses = localization.getSuspiciousLite();
         suspiciousLoop(suspiciouses, project);
@@ -209,19 +209,6 @@ public class EntiretyTest {
             return project;
         }
         return project;
-    }
-
-
-    @Test
-    public void testGetBoundary(){
-        VariableInfo variableInfo = new VariableInfo("n", TypeEnum.INT,true, null);
-        TraceResult result = new TraceResult(false);
-        result.put("n","1");
-        ExceptionVariable variable = new ExceptionVariable(variableInfo, result);
-        List<BoundaryInfo> boundaryInfos = SearchBoundaryFilter.getBoundary(variable,"Math",Arrays.asList("factorial","17"));
-        for (BoundaryInfo boundaryInfo: boundaryInfos){
-            System.out.println(boundaryInfo.value);
-        }
     }
 
 }
