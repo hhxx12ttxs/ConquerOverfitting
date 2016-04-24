@@ -87,25 +87,6 @@ public class BoundaryCollect {
             }
         }
 
-        Collections.sort(boundaryWithFreqs, new ComparatorBounaryWithFreqs());
-
         return boundaryWithFreqs;
     }
-}
-
-class ComparatorBounaryWithFreqs implements Comparator {
-
-    public int compare(Object arg0, Object arg1) {
-        BoundaryWithFreq boundaryWithFreq0 = (BoundaryWithFreq) arg0;
-        BoundaryWithFreq boundaryWithFreq1 = (BoundaryWithFreq) arg1;
-        if(boundaryWithFreq0.freq > boundaryWithFreq1.freq){
-            return -1;
-        }else if(boundaryWithFreq0.freq == boundaryWithFreq1.freq){
-            return 0;
-        }else if(boundaryWithFreq0.freq < boundaryWithFreq1.freq){
-            return 1;
-        }
-        return 0;
-    }
-
 }
