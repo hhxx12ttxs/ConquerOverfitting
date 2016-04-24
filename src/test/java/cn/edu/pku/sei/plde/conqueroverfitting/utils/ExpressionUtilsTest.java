@@ -34,4 +34,17 @@ public class ExpressionUtilsTest {
         assertTrue(expressionSet.contains("a + 1"));
         assertTrue(expressionSet.contains("c + d"));
     }
+
+    @Test
+    public void testMath105(){
+        String source = "    public double getSumSquaredErrors() {\n" +
+                "        return sumYY - sumXY * sumXY / sumXX;\n" +
+                "    }";
+        Set<String> expressionSet = ExpressionUtils.getExpressionsInMethod(source);
+        assertTrue(expressionSet.size() == 1);
+        assertTrue(expressionSet.contains("sumYY - sumXY * sumXY / sumXX"));
+    }
+
+
+
 }
