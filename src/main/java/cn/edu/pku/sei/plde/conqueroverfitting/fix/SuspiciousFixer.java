@@ -55,16 +55,42 @@ public class SuspiciousFixer {
             List<List<ExceptionVariable>> echelons = extractor.sort();
             for (List<ExceptionVariable> echelon: echelons){
                 Map<String, List<String>> boundarys = new HashMap<>();
-                for (Map.Entry<String,List<ExceptionVariable>> assertEchelon: classifyWithAssert(echelon).entrySet()){
-                    boundarys.put(assertEchelon.getKey(), getIfStrings(echelon));
+                List<ExceptionVariable> aEchelon = new ArrayList<>(echelon);
+                if (aEchelon.size() == 1){
+                    for (Map.Entry<String,List<ExceptionVariable>> assertEchelon: classifyWithAssert(echelon).entrySet()){
+                        boundarys.put(assertEchelon.getKey(), getIfStrings(echelon));
+                    }
+                    if (fixMethodTwo(suspicious, boundarys, project, entry.getKey(),errorTestNum)){
+                        printPatchMessage(suspicious, project, getAllBoundarys(boundarys.values()), exceptionVariables, echelon);
+                        return true;
+                    }
+                    if (fixMethodOne(suspicious, boundarys, project, entry.getKey(),errorTestNum)){
+                        printPatchMessage(suspicious, project, getAllBoundarys(boundarys.values()), exceptionVariables, echelon);
+                        return true;
+                    }
                 }
-                if (fixMethodTwo(suspicious, boundarys, project, entry.getKey(),errorTestNum)){
-                    printPatchMessage(suspicious, project, getAllBoundarys(boundarys.values()), exceptionVariables, echelon);
-                    return true;
-                }
-                 if (fixMethodOne(suspicious, boundarys, project, entry.getKey(),errorTestNum)){
-                     printPatchMessage(suspicious, project, getAllBoundarys(boundarys.values()), exceptionVariables, echelon);
-                    return true;
+                else {
+                    for (ExceptionVariable exceptionVariable: echelon){
+                        for (Map.Entry<String,List<ExceptionVariable>> assertEchelon: classifyWithAssert(Arrays.asList(exceptionVariable)).entrySet()){
+                            boundarys.put(assertEchelon.getKey(), getIfStrings(assertEchelon.getValue()));
+                        }
+                        if (!fixMethodTwo(suspicious, boundarys, project, entry.getKey(),errorTestNum) &&
+                                !fixMethodOne(suspicious, boundarys, project, entry.getKey(),errorTestNum)){
+                            aEchelon.remove(exceptionVariable);
+                        }
+                    }
+                    for (Map.Entry<String,List<ExceptionVariable>> assertEchelon: classifyWithAssert(aEchelon).entrySet()){
+                        boundarys.put(assertEchelon.getKey(), getIfStrings(aEchelon));
+                    }
+                    if (fixMethodTwo(suspicious, boundarys, project, entry.getKey(),errorTestNum)){
+                        printPatchMessage(suspicious, project, getAllBoundarys(boundarys.values()), exceptionVariables, echelon);
+                        return true;
+                    }
+                    if (fixMethodOne(suspicious, boundarys, project, entry.getKey(),errorTestNum)){
+                        printPatchMessage(suspicious, project, getAllBoundarys(boundarys.values()), exceptionVariables, echelon);
+                        return true;
+                    }
+
                 }
             }
         }
