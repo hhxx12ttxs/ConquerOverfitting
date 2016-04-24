@@ -43,21 +43,29 @@ public class BoundaryGenerator {
             keywords.add(keyword);
         }
 
+
         List<BoundaryWithFreq> variableBoundary = SearchBoundaryFilter.getBoundary(exceptionVariable, project, keywords);
-        ArrayList<BoundaryWithFreq> intervalss = new ArrayList<>();
+
+        Map<List<String>, String> intervals = new HashMap<>();
         if (MathUtils.isNumberType(exceptionVariable.type)){
             for (String value: exceptionVariable.values){
-                intervalss.addAll(MathUtils.generateInterval(variableBoundary, Double.valueOf(value)));
+                ArrayList<BoundaryWithFreq> intervalss = MathUtils.generateInterval(variableBoundary, Double.valueOf(value));
+                String left = intervalss.get(0).value;
+                if (intervalss.get(0).leftClose >= intervalss.get(0).rightClose){
+                    left = "["+left;
+                }
+                String right = intervalss.get(1).value;
+                if (intervalss.get(1).rightClose >= intervalss.get(1).leftClose){
+                    right = right + "]";
+                }
+                intervals.put(Arrays.asList(value), left+"-"+right);
             }
         }
         else {
+            List<BoundaryInfo> boundaryInfo = SearchBoundaryFilter.getBoundaryInfo(exceptionVariable, project, keywords);
+            intervals = exceptionVariable.getBoundaryIntervals(boundaryInfo);
+        }
 
-        }
-        List<BoundaryInfo> boundaryInfo = SearchBoundaryFilter.getBoundaryInfo(exceptionVariable, project, keywords);
-        Map<List<String>, String> intervals = exceptionVariable.getBoundaryIntervals(boundaryInfo);
-        if (intervals == null) {
-            return new ArrayList<>();
-        }
 
         List<String> returnList = new ArrayList<>();
         for (Map.Entry<List<String>, String> entry: intervals.entrySet()){

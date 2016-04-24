@@ -55,8 +55,7 @@ public class SuspiciousFixer {
             List<List<ExceptionVariable>> echelons = extractor.sort();
             for (List<ExceptionVariable> echelon: echelons){
                 Map<String, List<String>> boundarys = new HashMap<>();
-                List<ExceptionVariable> aEchelon = new ArrayList<>(echelon);
-                if (aEchelon.size() == 1){
+                if (sortWithVariable(echelon).size() == 1){
                     for (Map.Entry<String,List<ExceptionVariable>> assertEchelon: classifyWithAssert(echelon).entrySet()){
                         boundarys.put(assertEchelon.getKey(), getIfStrings(echelon));
                     }
@@ -70,6 +69,7 @@ public class SuspiciousFixer {
                     }
                 }
                 else {
+                    List<ExceptionVariable> aEchelon = sortWithVariable(echelon);
                     for (ExceptionVariable exceptionVariable: echelon){
                         for (Map.Entry<String,List<ExceptionVariable>> assertEchelon: classifyWithAssert(Arrays.asList(exceptionVariable)).entrySet()){
                             boundarys.put(assertEchelon.getKey(), getIfStrings(assertEchelon.getValue()));
@@ -95,6 +95,19 @@ public class SuspiciousFixer {
             }
         }
         return false;
+    }
+
+    private List<ExceptionVariable> sortWithVariable(List<ExceptionVariable> variables){
+        Map<String,ExceptionVariable> result = new HashMap<>();
+        for (ExceptionVariable exceptionVariable: variables){
+            if (!result.containsKey(exceptionVariable.name)){
+                result.put(exceptionVariable.name, exceptionVariable);
+            }
+            else {
+                result.get(exceptionVariable.name).values.addAll(exceptionVariable.values);
+            }
+        }
+        return new ArrayList<>(result.values());
     }
 
     private Set<String> getAllBoundarys(Collection<List<String>> boundarys){

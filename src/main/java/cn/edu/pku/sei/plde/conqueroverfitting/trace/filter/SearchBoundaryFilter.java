@@ -84,7 +84,6 @@ public class SearchBoundaryFilter {
             keywords.remove(info.variableName);
             codePackage = new File("experiment/searchcode/" + StringUtils.join(keywords,"-"));
             if (!codePackage.exists()){
-
                 GathererJava gathererJava = new GathererJava(keywords, StringUtils.join(keywords,"-"),getProjectFullName(project));
                 gathererJava.searchCode();
                 if (!codePackage.exists()) {
