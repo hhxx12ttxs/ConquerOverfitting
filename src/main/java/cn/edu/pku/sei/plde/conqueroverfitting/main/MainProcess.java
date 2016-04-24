@@ -6,6 +6,8 @@ import cn.edu.pku.sei.plde.conqueroverfitting.localization.Suspicious;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.ExceptionVariable;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.FileUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.TestUtils;
+import org.apache.commons.io.IOUtils;
+import org.easymock.EasyMock;
 import org.joda.convert.FromString;
 
 import java.io.File;
@@ -133,7 +135,11 @@ public class MainProcess {
     }
 
 
+
     public String setWorkDirectory(String projectName, int number){
+        libPath.add(FromString.class.getProtectionDomain().getCodeSource().getLocation().getFile());
+        libPath.add(EasyMock.class.getProtectionDomain().getCodeSource().getLocation().getFile());
+        libPath.add(IOUtils.class.getProtectionDomain().getCodeSource().getLocation().getFile());
         File projectDir = new File(System.getProperty("user.dir")+"/project/");
         FileUtils.deleteDirNow(projectDir.getAbsolutePath());
         if (!projectDir.exists()){
@@ -159,12 +165,13 @@ public class MainProcess {
             testClassSrc = projectDir.getAbsolutePath()+"/"+project +"/src/test/";
             return project;
         }
-        if ((projectName.equals("Lang") && (number == 7 || number ==13))){
+        if ((projectName.equals("Lang") && (number ==13))){
             FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project,projectDir.getAbsolutePath());
             classpath = projectDir.getAbsolutePath()+"/"+project +"/target/classes/";
             testClasspath = projectDir.getAbsolutePath()+"/"+project +"/target/tests/";
             classSrc = projectDir.getAbsolutePath()+"/"+project +"/src/main/java/";
             testClassSrc = projectDir.getAbsolutePath()+"/"+project +"/src/test/java/";
+            FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project+"/src/test/resources/",System.getProperty("user.dir")+"/src/test");
             return project;
         }
         if (projectName.equals("Time") && (number == 3||number == 9|| number ==15)){
@@ -194,6 +201,7 @@ public class MainProcess {
             testClasspath = projectDir.getAbsolutePath()+"/"+project +"/target/test-classes/";
             classSrc = projectDir.getAbsolutePath()+"/"+project +"/src/main/java/";
             testClassSrc = projectDir.getAbsolutePath()+"/"+project +"/src/test/java/";
+            FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project+"/src/test/resources/",System.getProperty("user.dir")+"/src/test");
             return project;
         }
         if (projectName.equals("Closure")){
@@ -234,4 +242,5 @@ public class MainProcess {
         }
         return project;
     }
+
 }

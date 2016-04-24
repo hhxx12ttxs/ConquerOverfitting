@@ -35,6 +35,7 @@ public class SuspiciousFixer {
     private Suspicious suspicious;
     private List<ExceptionVariable> exceptionVariables;
     private String project;
+    private int errorTestNum;
     private long searchTime = 0;
     public SuspiciousFixer(Suspicious suspicious, String project){
         this.suspicious = suspicious;
@@ -42,6 +43,7 @@ public class SuspiciousFixer {
         traceResults = suspicious.getTraceResult();
         trueValues = AbandanTrueValueFilter.getTrueValue(traceResults, suspicious.getAllInfo());
         falseValues = AbandanTrueValueFilter.getFalseValue(traceResults, suspicious.getAllInfo());
+        errorTestNum = TestUtils.getFailTestNumInProject(project);
     }
 
     public boolean mainFixProcess(){
@@ -56,11 +58,11 @@ public class SuspiciousFixer {
                 for (Map.Entry<String,List<ExceptionVariable>> assertEchelon: classifyWithAssert(echelon).entrySet()){
                     boundarys.put(assertEchelon.getKey(), getIfStrings(echelon));
                 }
-                if (fixMethodTwo(suspicious, boundarys, project, entry.getKey())){
+                if (fixMethodTwo(suspicious, boundarys, project, entry.getKey(),errorTestNum)){
                     printPatchMessage(suspicious, project, getAllBoundarys(boundarys.values()), exceptionVariables, echelon);
                     return true;
                 }
-                 if (fixMethodOne(suspicious, boundarys, project, entry.getKey())){
+                 if (fixMethodOne(suspicious, boundarys, project, entry.getKey(),errorTestNum)){
                      printPatchMessage(suspicious, project, getAllBoundarys(boundarys.values()), exceptionVariables, echelon);
                     return true;
                 }
@@ -115,7 +117,7 @@ public class SuspiciousFixer {
         Map<Integer, List<TraceResult>> result = new TreeMap<Integer, List<TraceResult>>(new Comparator<Integer>() {
             @Override
             public int compare(Integer integer, Integer t1) {
-                return -integer.compareTo(t1);
+                return integer.compareTo(t1);
             }
         });
         for (TraceResult traceResult: traceResults){
@@ -153,12 +155,6 @@ public class SuspiciousFixer {
         Map<ExceptionVariable, ArrayList<String>> result = new HashMap<>();
         for (ExceptionVariable exceptionVariable: exceptionVariables){
             ArrayList<String> boundarys = new ArrayList<>(getBoundary(exceptionVariable));
-            if (boundarys.size() > 1 && exceptionVariables.size() == 1){
-                for (String boundary: boundarys){
-                    returnList.add(getIfStatementFromBoundary(Arrays.asList(boundary)));
-                }
-                return returnList;
-            }
             boolean addedFlag = false;
             for (Map.Entry<ExceptionVariable, ArrayList<String>> entry: result.entrySet()){
                 if (entry.getKey().name.equals(exceptionVariable.name)){
@@ -170,12 +166,15 @@ public class SuspiciousFixer {
             if (!addedFlag){
                 result.put(exceptionVariable, boundarys);
             }
-
         }
-        return Arrays.asList(getIfStatementFromBoundary(combineIntervals(result)));
+        for (List<String> list: combineIntervals(result)){
+            returnList.add(getIfStatementFromBoundary(list));
+        }
+        return returnList;
     }
 
-    private List<String> combineIntervals(Map<ExceptionVariable, ArrayList<String>> boundarysMap){
+    private List<List<String>> combineIntervals(Map<ExceptionVariable, ArrayList<String>> boundarysMap){
+        List<List<String>> returnList = new ArrayList<>();
         List<String> result = new ArrayList<>();
         for (Map.Entry<ExceptionVariable, ArrayList<String>> entry: boundarysMap.entrySet()){
             if (!MathUtils.isNumberType(entry.getKey().type) || entry.getValue().size() <= 1){
@@ -185,6 +184,7 @@ public class SuspiciousFixer {
             ArrayList<Interval> intervals = new ArrayList<>();
             for (String interval: entry.getValue()){
                 intervals.add(new Interval(interval));
+                returnList.add(Arrays.asList(interval));
             }
             List<Interval> mergeResult;
             if (entry.getKey().type.toLowerCase().equals("int")){
@@ -197,12 +197,16 @@ public class SuspiciousFixer {
                 result.add("("+interval.toString(entry.getKey().name, entry.getKey().type)+")");
             }
         }
-        return result;
+        returnList.add(result);
+        return returnList;
     }
 
 
 
     private String getIfStatementFromBoundary(List<String> boundary){
+        if (boundary.size() == 0){
+            return "";
+        }
         return "if ("+ StringUtils.join(boundary,"||")+")";
     }
 
@@ -217,15 +221,21 @@ public class SuspiciousFixer {
     }
 
 
-    public static boolean fixMethodTwo(Suspicious suspicious, Map<String, List<String>> ifStrings, String project, int errorLine){
-        MethodTwoFixer fixer = new MethodTwoFixer(suspicious);
-        return fixer.fix(ifStrings, Sets.newHashSet(errorLine));
+    public static boolean fixMethodTwo(Suspicious suspicious, Map<String, List<String>> ifStrings, String project, int errorLine, int errorTestNum){
+        if (ifStrings.size() == 0){
+            return false;
+        }
+        MethodTwoFixer fixer = new MethodTwoFixer(suspicious, errorTestNum);
+        return fixer.fix(ifStrings, Sets.newHashSet(errorLine), project);
     }
 
 
-    public static boolean fixMethodOne(Suspicious suspicious,Map<String, List<String>> ifStrings, String project, int errorLine) {
+    public static boolean fixMethodOne(Suspicious suspicious,Map<String, List<String>> ifStrings, String project, int errorLine, int errorTestNum) {
+        if (ifStrings.size() == 0){
+            return false;
+        }
         ReturnCapturer fixCapturer = new ReturnCapturer(suspicious._classpath,suspicious._srcPath, suspicious._testClasspath, suspicious._testSrcPath);
-        MethodOneFixer methodOneFixer = new MethodOneFixer(suspicious, project);
+        MethodOneFixer methodOneFixer = new MethodOneFixer(suspicious, project,errorTestNum);
         for (Map.Entry<String, List<String>> ifString: ifStrings.entrySet()){
             String testClassName = ifString.getKey().split("#")[0];
             String testMethodName = ifString.getKey().split("#")[1];

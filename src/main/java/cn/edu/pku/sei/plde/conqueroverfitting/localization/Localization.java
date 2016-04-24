@@ -158,7 +158,6 @@ public class Localization  {
     }
 
     private List<StatementExt> statementFilter(List<StatementExt> statements){
-        List<String> bannedMethodName = Arrays.asList("valueOf","toString","reflectionToString","getInstance");
         List<StatementExt> result = new ArrayList<>();
         Map<String, String> errorLineMap = new HashMap<>();
         Map<String, String> testTraceMap = new HashMap<>();
@@ -171,9 +170,6 @@ public class Localization  {
             }
         }
         for (StatementExt statement: statements){
-            if (bannedMethodName.contains(getFunctionNameFromStatement(statement))){
-                continue;
-            }
             if (statement.getName().contains("exception") || statement.getName().contains("Exception")){
                 continue;
             }

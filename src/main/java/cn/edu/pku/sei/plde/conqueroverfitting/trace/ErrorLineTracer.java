@@ -73,14 +73,10 @@ public class ErrorLineTracer {
                 returnList.add(line);
             }
         }
-        if (returnList.size() == 1){
-            //将错误行之前的简单if语句的行加入错误行的列表
-            int errorLine = returnList.iterator().next();
-            for (int i= errorLine; i> methodStartLine; i--){
-                String lineString = CodeUtils.getLineFromCode(code, i);
-                if (LineUtils.isIfAndElseIfLine(lineString) && InfoUtils.getVariableInIfStatement(lineString) != null){
-                    returnList.add(i+1);
-                }
+        for (int i= defaultErrorLine; i> methodStartLine; i--){
+            String lineString = CodeUtils.getLineFromCode(code, i);
+            if (LineUtils.isIfAndElseIfLine(lineString)){
+                returnList.add(i+1);
             }
         }
         return returnList;

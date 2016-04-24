@@ -313,6 +313,7 @@ public class Suspicious implements Serializable{
 
             }
         }
+        /*
         String methodCode = CodeUtils.getMethodString(code, functionnameWithoutParam(),line);
         String methodCodeBeforeLine = CodeUtils.getMethodBodyBeforeLine(code, functionnameWithoutParam(),line)+CodeUtils.getLineFromCode(code,line);
         Set<String> expresses = ExpressionUtils.getExpressionsInMethod(methodCode);
@@ -329,6 +330,19 @@ public class Suspicious implements Serializable{
                     info.expressMethod = functionnameWithoutParam();
                     info.isExpression = true;
                     infos.add(info);
+                }
+            }
+        }*/
+        //if的表达式
+        if (LineUtils.isLineInIf(code, line)){
+            for (int i=line; i>0; i--){
+                String lineIString = CodeUtils.getLineFromCode(code, i);
+                if (LineUtils.isIfAndElseIfLine(lineIString)){
+                    List<VariableInfo> ifAddon = InfoUtils.getVariableInIfStatement(lineIString, functionnameWithoutParam());
+                    if (ifAddon != null){
+                        infos.addAll(ifAddon);
+                    }
+                    break;
                 }
             }
         }

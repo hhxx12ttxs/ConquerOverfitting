@@ -82,10 +82,134 @@ public class ExceptionVariable {
         return true;
     }
 
+    public List<BoundaryInfo> boundaryFilter(List<BoundaryInfo> boundaryInfos){
+        List<BoundaryInfo> result = new ArrayList<>();
+        for (BoundaryInfo info: boundaryInfos){
+            if (info.name.equals("serialVersionUID")){
+                continue;
+            }
+            result.add(info);
+        }
+        return result;
+    }
+    private String getIntervalWithValue(String value, List<BoundaryInfo> boundaryInfos){
+        double smallestValue = MathUtils.parseStringValue(value);
+        double biggestValue = MathUtils.parseStringValue(value);
 
-    public List<String> getBoundaryIntervals(List<BoundaryInfo> boundaryInfos){
+        double biggestBoundary = -Double.MAX_VALUE;
+        double smallestBoundary = Double.MAX_VALUE;
+        BoundaryInfo biggestInfo = null;
+        BoundaryInfo smallestInfo = null;
+        for (BoundaryInfo info : boundaryInfos) {
+            try {
+                double doubleValue;
+                try {
+                    doubleValue = MathUtils.parseStringValue(info.value);
+                } catch (NumberFormatException e){
+                    System.out.println("ExceptionExtractor: Cannot parse numeric value "+info.value);
+                    continue;
+                }
+                //小于最小值的最大边界值
+                if (doubleValue >= biggestBoundary && doubleValue <= smallestValue) {
+                    biggestBoundary = doubleValue;
+                    if (biggestInfo == null){
+                        biggestInfo = info;
+                    }
+                    if (doubleValue == smallestValue && biggestInfo.value.equals(info.value)){
+                        if (info.rightClose == 1){
+                            biggestInfo = info;
+                        }
+                    }
+                    if (doubleValue < smallestValue && biggestInfo.value.equals(info.value)){
+                        if (info.rightClose == 0){
+                            biggestInfo = info;
+                        }
+                    }
+                }
+                //大于最大值的最小边界值
+                if (doubleValue <= smallestBoundary && doubleValue >= biggestValue) {
+                    smallestBoundary = doubleValue;
+                    if (smallestInfo == null){
+                        smallestInfo = info;
+                    }
+                    if (doubleValue == biggestValue && smallestInfo.value.equals(info.value)){
+                        if (info.leftClose == 1){
+                            smallestInfo = info;
+                        }
+                    }
+                    if (doubleValue > biggestValue && smallestInfo.value.equals(info.value)){
+                        if (info.leftClose == 0){
+                            smallestInfo = info;
+                        }
+                    }
+                }
+            } catch (NumberFormatException e){
+                e.printStackTrace();
+            }
+        }
+        if (biggestBoundary == -Double.MAX_VALUE && smallestBoundary == Double.MAX_VALUE){
+            for (BoundaryInfo info : boundaryInfos) {
+                try {
+                    double doubleValue = MathUtils.parseStringValue(info.value);
+                    //大于最小值的最小边界值
+                    if (doubleValue <= smallestBoundary && doubleValue >= smallestValue) {
+                        smallestBoundary = doubleValue;
+                        if (smallestInfo == null){
+                            smallestInfo = info;
+                        }
+                        if (doubleValue == smallestValue && smallestInfo.value.equals(info.value)){
+                            if (info.leftClose == 1){
+                                smallestInfo = info;
+                            }
+                        }
+                        if (doubleValue > smallestValue && smallestInfo.value.equals(info.value)){
+                            if (info.leftClose == 0){
+                                smallestInfo = info;
+                            }
+                        }
+                    }
+                    //小于最大值的最大边界值
+                    if (doubleValue >= biggestBoundary && doubleValue <= biggestValue) {
+                        biggestBoundary = doubleValue;
+                        if (biggestInfo == null){
+                            biggestInfo = info;
+                        }
+                        if (doubleValue == biggestValue && biggestInfo.value.equals(info.value)){
+                            if (info.rightClose == 1){
+                                biggestInfo = info;
+                            }
+                        }
+                        if (doubleValue < biggestValue && biggestInfo.value.equals(info.value)){
+                            if (info.rightClose == 0){
+                                biggestInfo = info;
+                            }
+                        }
+                    }
+                } catch (NumberFormatException e){
+                    e.printStackTrace();
+                }
+            }
+            if (biggestBoundary == -Double.MAX_VALUE || smallestBoundary == Double.MAX_VALUE){
+                return null;
+            }
+        }
+        String small = String.valueOf(smallestBoundary);
+        String big = String.valueOf(biggestBoundary);
+        if (biggestInfo != null && biggestInfo.rightClose == 1){
+            big = big +']';
+        }
+        if (smallestInfo != null && smallestInfo.leftClose == 1){
+            small = '[' + small;
+        }
+
+        return small+"-"+big;
+    }
+
+
+    public Map<String, String> getBoundaryIntervals(List<BoundaryInfo> boundaryInfos){
         List<String> valueList = new ArrayList<>(values);
-
+        Map<String, String> result = new HashMap<>();
+        boundaryInfos = boundaryFilter(boundaryInfos);
         if (name.equals("this")){
             String thisValue = values.iterator().next();
             thisValue = thisValue.substring(thisValue.indexOf('(')+1, thisValue.lastIndexOf(')'));
@@ -96,148 +220,31 @@ public class ExceptionVariable {
                     String[] newValues = newValue.contains(",")?newValue.split(","):new String[]{newValue};
                     if (judgeTheSame(newValues, thisValues)){
                         if (traceResult.getTestResult()){
-                            return Arrays.asList("!this.equals("+info.value+")");
+                            result.put(thisValue,"!this.equals("+info.value+")");
                         }
                         else {
-                            return Arrays.asList("this.equals("+info.value+")");
+                            result.put(thisValue,"this.equals("+info.value+")");
                         }
                     }
                 }
             }
-            return new ArrayList<>();
+            return result;
         }
         if (MathUtils.isNumberType(type)) {
             if (valueList.size() == 1 && (valueList.get(0).equals("NaN") || boundaryInfos.size() == 0)){
-                return valueList;
+                result.put(valueList.get(0), valueList.get(0));
             }
-            if (boundaryInfos.size() == 0 && level == 2){
-                return valueList;
-            }
-            
-            double smallestValue = MathUtils.parseStringValue(valueList.get(0));
-            double biggestValue = MathUtils.parseStringValue(valueList.get(0));
-            for (String value : valueList) {
-                double doubleValue = Double.valueOf(value);
-                if (Double.compare(doubleValue, smallestValue) < 0) {
-                    smallestValue = doubleValue;
-                }
-                if (Double.compare(doubleValue, biggestValue) > 0) {
-                    biggestValue = doubleValue;
+            for (String value: valueList){
+                String intervals = getIntervalWithValue(value, boundaryInfos);
+                if (intervals!=null){
+                    result.put(value, intervals);
                 }
             }
-
-            double biggestBoundary = -Double.MAX_VALUE;
-            double smallestBoundary = Double.MAX_VALUE;
-            BoundaryInfo biggestInfo = null;
-            BoundaryInfo smallestInfo = null;
-            for (BoundaryInfo info : boundaryInfos) {
-                try {
-                    double doubleValue;
-                    try {
-                        doubleValue = MathUtils.parseStringValue(info.value);
-                    } catch (NumberFormatException e){
-                        System.out.println("ExceptionExtractor: Cannot parse numeric value "+info.value);
-                        continue;
-                    }
-                    //小于最小值的最大边界值
-                    if (doubleValue >= biggestBoundary && doubleValue <= smallestValue) {
-                        biggestBoundary = doubleValue;
-                        biggestInfo = info;
-                        if (doubleValue == smallestValue && biggestInfo.value.equals(info.value)){
-                            if (info.leftClose == 1){
-                                biggestInfo = info;
-                            }
-                        }
-                        if (doubleValue < smallestValue && biggestInfo.value.equals(info.value)){
-                            if (info.rightClose == 1){
-                                biggestInfo = info;
-                            }
-                        }
-                    }
-                    //大于最大值的最小边界值
-                    if (doubleValue <= smallestBoundary && doubleValue >= biggestValue) {
-                        smallestBoundary = doubleValue;
-                        smallestInfo = info;
-                        if (doubleValue == biggestValue && smallestInfo.value.equals(info.value)){
-                            if (info.rightClose == 1){
-                                smallestInfo = info;
-                            }
-                        }
-                        if (doubleValue > biggestValue && smallestInfo.value.equals(info.value)){
-                            if (info.leftClose == 1){
-                                smallestInfo = info;
-                            }
-                        }
-                    }
-                } catch (NumberFormatException e){
-                    e.printStackTrace();
-                }
-            }
-            if (biggestBoundary == -Double.MAX_VALUE && smallestBoundary == Double.MAX_VALUE){
-                for (BoundaryInfo info : boundaryInfos) {
-                    try {
-                        double doubleValue = MathUtils.parseStringValue(info.value);
-                        //大于最小值的最小边界值
-                        if (doubleValue <= smallestBoundary && doubleValue >= smallestValue) {
-                            smallestInfo = info;
-                            smallestBoundary = doubleValue;
-                            if (doubleValue == smallestValue && smallestInfo.value.equals(info.value)){
-                                if (info.rightClose == 1){
-                                    smallestInfo = info;
-                                }
-                            }
-                            if (doubleValue > smallestValue && smallestInfo.value.equals(info.value)){
-                                if (info.leftClose == 1){
-                                    smallestInfo = info;
-                                }
-                            }
-                        }
-                        //小于最大值的最大边界值
-                        if (doubleValue >= biggestBoundary && doubleValue <= biggestValue) {
-                            biggestBoundary = doubleValue;
-                            biggestInfo = info;
-                            if (doubleValue == biggestValue && biggestInfo.value.equals(info.value)){
-                                if (info.leftClose == 1){
-                                    biggestInfo = info;
-                                }
-                            }
-                            if (doubleValue < biggestValue && biggestInfo.value.equals(info.value)){
-                                if (info.rightClose == 1){
-                                    biggestInfo = info;
-                                }
-                            }
-                        }
-                    } catch (NumberFormatException e){
-                        e.printStackTrace();
-                    }
-                }
-                if (biggestBoundary == -Double.MAX_VALUE || smallestBoundary == Double.MAX_VALUE){
-                    return null;
-                }
-            }
-            //if (isSymmetricalList(valueList)){
-            //    if (Math.abs(biggestBoundary)>Math.abs(smallestBoundary)){
-            //        return Arrays.asList(String.valueOf(-biggestBoundary), String.valueOf(biggestBoundary));
-            //    }
-            //    else {
-            //        return Arrays.asList(String.valueOf(smallestBoundary), String.valueOf(-smallestBoundary));
-            //    }
-            //}
-            //else {
-            String small = String.valueOf(smallestBoundary);
-            String big = String.valueOf(biggestBoundary);
-            if (biggestInfo != null && biggestInfo.rightClose == 1){
-                big = big +']';
-            }
-            if (smallestInfo != null && smallestInfo.leftClose == 1){
-                small = '[' + small;
-            }
-
-            return Arrays.asList(String.valueOf(small), String.valueOf(big));
-            //}
+            return result;
         }
-        //else {
-            return valueList;
-        //}
+        for (String value: valueList){
+            result.put(value, value);
+        }
+        return result;
     }
 }

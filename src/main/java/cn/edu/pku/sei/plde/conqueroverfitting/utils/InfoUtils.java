@@ -20,8 +20,8 @@ import java.util.List;
  * Created by yanrunfa on 16/2/23.
  */
 public class InfoUtils {
-    public static final List<String> BANNED_VAR_NAME = Arrays.asList("serialVersionUID","toString()");
-    public static final List<String> BANNED_METHOD_NAME = Arrays.asList("toString","hashCode");
+    public static final List<String> BANNED_VAR_NAME = Arrays.asList("serialVersionUID");
+    public static final List<String> BANNED_METHOD_NAME = Arrays.asList("hashCode");
 
     /**
      *
@@ -185,7 +185,7 @@ public class InfoUtils {
     }
 
 
-    public static List<VariableInfo> getVariableInIfStatement(String ifString){
+    public static List<VariableInfo> getVariableInIfStatement(String ifString, String methodName){
         List<VariableInfo> result = new ArrayList<>();
         if (!ifString.contains("if") || !ifString.contains("(") || !ifString.contains(")")){
             return null;
@@ -214,6 +214,7 @@ public class InfoUtils {
         }
         VariableInfo info = new VariableInfo(ifStatement.trim(),TypeEnum.BOOLEAN,true, null);
         info.isAddon = true;
+        info.expressMethod = methodName;
         result.add(info);
         try {
             MathUtils.parseStringValue(var2);
@@ -221,17 +222,23 @@ public class InfoUtils {
             try {
                 MathUtils.parseStringValue(var1);
                 VariableInfo info2 = new VariableInfo(var2.trim(),TypeEnum.DOUBLE,true, null);
-                info.isAddon = true;
-                info.priority = 2;
-                result.add(info2);
+                if (VariableUtils.isExpression(info)){
+                    info.isAddon = true;
+                    info.priority = 2;
+                    info.expressMethod = methodName;
+                    result.add(info2);
+                }
             } catch (Exception e2){
                 return result;
             }
         }
         VariableInfo info2 = new VariableInfo(var1.trim(),TypeEnum.DOUBLE,true, null);
-        info.isAddon = true;
-        info.priority = 2;
-        result.add(info2);
+        if (VariableUtils.isExpression(info)){
+            info2.isAddon = true;
+            info2.priority = 2;
+            info2.expressMethod = methodName;
+            result.add(info2);
+        }
         return result;
     }
 

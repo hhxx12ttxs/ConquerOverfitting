@@ -28,8 +28,9 @@ public class MethodTwoFixer {
     private Set<Integer> _errorLines;
     private int _methodStartLine;
     private int _methodEndLine;
+    private int _errorTestNum;
 
-    public MethodTwoFixer(Suspicious suspicious){
+    public MethodTwoFixer(Suspicious suspicious, int errorTestNum){
         _suspicious = suspicious;
         _classpath = suspicious._classpath;
         _testClassPath = suspicious._testClasspath;
@@ -43,13 +44,14 @@ public class MethodTwoFixer {
         List<Integer> methodLines = CodeUtils.getSingleMethodLine(_code, _methodName, _errorLines.iterator().next());
         _methodStartLine = methodLines.get(0);
         _methodEndLine = methodLines.get(1);
+        _errorTestNum = errorTestNum;
     }
 
-    public boolean fix(Map<String, List<String>> ifStrings){
-        return fix(ifStrings, _errorLines);
+    public boolean fix(Map<String, List<String>> ifStrings, String project){
+        return fix(ifStrings, _errorLines, project);
     }
 
-    public boolean fix(Map<String, List<String>> ifStrings, Set<Integer> errorLines){
+    public boolean fix(Map<String, List<String>> ifStrings, Set<Integer> errorLines, String project){
         for (Map.Entry<String, List<String>> entry: ifStrings.entrySet()){
             for (int errorLine: errorLines){
                 List<Integer> ifLines = getIfLine(errorLine);
@@ -57,22 +59,28 @@ public class MethodTwoFixer {
                     continue;
                 }
                 for (String ifString: entry.getValue()){
+                    if (ifString.equals("")){
+                        continue;
+                    }
                     int startLine = ifLines.get(0);
                     int endLine = ifLines.get(1);
-                    while (startLine < endLine) {
+                    while (startLine <= endLine) {
                         String lastLineString = CodeUtils.getLineFromCode(_code, startLine-1);
                         boolean result = false;
                         if (!LineUtils.isIfAndElseIfLine(lastLineString)) {
-                            result = fixWithAddIf(startLine, endLine, getIfStatementFromString(ifString),entry.getKey(), false);
+                            result = fixWithAddIf(startLine, endLine, getIfStatementFromString(ifString),entry.getKey(), false, project);
                         }
                         else {
+                            if (getIfStringFromStatement(ifString).contains(getIfStringFromStatement(lastLineString))){
+                                return false;
+                            }
                             String ifEnd = lastLineString.substring(lastLineString.lastIndexOf(')'));
                             lastLineString = lastLineString.substring(0, lastLineString.lastIndexOf(')'));
                             String ifStatement =lastLineString+ "&&" +getIfStringFromStatement(getIfStatementFromString(ifString)) + ifEnd;
-                            result = fixWithAddIf(startLine-1, endLine, ifStatement,entry.getKey(),  true);
+                            result = fixWithAddIf(startLine-1, endLine, ifStatement,entry.getKey(),  true, project);
                             if (!result){
                                 ifStatement =lastLineString+ "||" +getIfStringFromStatement(ifString) + ifEnd;
-                                result = fixWithAddIf(startLine-1, endLine, ifStatement,entry.getKey(),  true);
+                                result = fixWithAddIf(startLine-1, endLine, ifStatement,entry.getKey(),  true, project);
                             }
                         }
                         if (result){
@@ -96,7 +104,7 @@ public class MethodTwoFixer {
         return ifStatement.substring(ifStatement.indexOf('(')+1, ifStatement.lastIndexOf(')'));
     }
 
-    private boolean fixWithAddIf(int ifStartLine, int ifEndLine, String ifStatement,String testMessage, boolean replace){
+    private boolean fixWithAddIf(int ifStartLine, int ifEndLine, String ifStatement,String testMessage, boolean replace, String project){
         String testClassName = testMessage.split("#")[0];
         String testMethodName = testMessage.split("#")[1];
         int assertLine = Integer.valueOf(testMessage.split("#")[2]);
@@ -127,8 +135,11 @@ public class MethodTwoFixer {
         int errAssertBeforeFix = _suspicious._assertsMap.get(testClassName+"#"+testMethodName).errorNum();
         System.out.print("Method 2 try patch: "+ifStatement);
         if (errAssertAfterFix < errAssertBeforeFix || errAssertAfterFix == 0) {
-            System.out.println(" fix success");
-            return true;
+            int errorTestNumAfterFix = TestUtils.getFailTestNumInProject(project);
+            if (errorTestNumAfterFix < _errorTestNum){
+                System.out.println(" fix success");
+                return true;
+            }
         }
         FileUtils.copyFile(classBackup, targetClassFile);
         FileUtils.copyFile(javaBackup, targetJavaFile);

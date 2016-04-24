@@ -61,10 +61,10 @@ public class RunTestAgent {
             }
             else if (key.equalsIgnoreCase("var")){
                 if (targetVariables.length == 0){
-                    targetVariables = value.split("/");
+                    targetVariables = value.split("//");
                 }
                 else {
-                    targetVariables = concat(targetVariables, value.split("/"));
+                    targetVariables = concat(targetVariables, value.split("//"));
                 }
             }
             else if (key.equalsIgnoreCase("src")){
@@ -74,11 +74,13 @@ public class RunTestAgent {
                 classPath = value;
             }
             else if (key.equalsIgnoreCase("method")){
-                String[] methods = value.split("/");
+                String[] methods = value.split("//");
                 List<String> vars = new ArrayList<String>();
                 for (String method: methods){
-                    if (method.contains("?")){
-                        vars.add(method.substring(0,method.lastIndexOf("?"))+"()"+method.substring(method.lastIndexOf("?")));
+                    if (method.contains("??")){
+                        String methodType = method.split("\\?\\?")[1];
+                        String methodName = method.split("\\?\\?")[0];
+                        vars.add(methodName+"()??"+methodType);
                     }
                     else {
                         vars.add(method+"()");

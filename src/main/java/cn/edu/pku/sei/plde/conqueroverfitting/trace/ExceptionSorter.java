@@ -107,6 +107,9 @@ public class ExceptionSorter {
         if (pos <= n.size() && each.size()> 0) {
             res.add(each);
         }
+        if (res.size() > 15){
+            return;
+        }
         for (int i = pos; i < n.size(); i++) {
             each.add(n.get(i));
             helper(res, new ArrayList<>(each), i + 1, n);

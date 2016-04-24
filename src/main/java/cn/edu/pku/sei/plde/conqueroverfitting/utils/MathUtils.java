@@ -20,6 +20,9 @@ public class MathUtils {
         if (value.startsWith("(") && value.contains(")") && !value.endsWith(")")){
             value = value.substring(value.indexOf(")")+1);
         }
+        if (value.equals("-0.0")){
+            return 0.0;
+        }
         if (value.equals("Integer.MIN_VALUE")){
             return Integer.MIN_VALUE;
         }
@@ -44,12 +47,13 @@ public class MathUtils {
         if (value.endsWith(".0")){
             value = value.substring(0, value.lastIndexOf("."));
         }
-        if (!number.contains(value.charAt(value.length()-1))){
-            value = value.substring(0, value.length()-1);
-            if (value.length() == 0){
-                throw new NumberFormatException();
-            }
-        }
+        //if (!number.contains(value.charAt(value.length()-1))){
+        //    if (value.length() == 1){
+        //        throw new NumberFormatException();
+        //    }
+        //    value = value.substring(0, value.length()-1);
+
+        //}
 
         return Double.valueOf(value);
     }

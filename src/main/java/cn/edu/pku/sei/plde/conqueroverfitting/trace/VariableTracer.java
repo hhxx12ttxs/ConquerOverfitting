@@ -246,10 +246,10 @@ public class VariableTracer {
         for (VariableInfo var: vars){
             agentVars += var.variableName;
             if (!var.isSimpleType){
-                agentVars += "?";
+                agentVars += "??";
                 agentVars += var.otherType;
             }
-            agentVars += "/";
+            agentVars += "//";
 
         }
         String agentMethods = "";
@@ -259,10 +259,10 @@ public class VariableTracer {
         for (MethodInfo method: methods){
             agentMethods += method.methodName;
             if (!method.isSimpleType){
-                agentMethods += "?";
+                agentMethods += "??";
                 agentMethods += method.otherType;
             }
-            agentMethods += "/";
+            agentMethods += "//";
         }
         return StringUtils.join(Arrays.asList(agentClass,agentFunc,agentLine,agentSrc,agentCp,agentVars,agentMethods, agentTest, agentTestSrc),",,");
     }

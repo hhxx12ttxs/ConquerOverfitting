@@ -10,6 +10,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeEnum;
 import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.FileUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.MathUtils;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.VariableUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 import org.apache.commons.lang.StringUtils;
 
@@ -44,12 +45,14 @@ public class SearchBoundaryFilter {
         keywords.add("if");
         keywords.addAll(addonKeywords);
         keywords.add(valueType);
-        if (!info.variableName.equals("this") && info.variableName.length()>1){
+        if (VariableUtils.isExpression(info)){
+            keywords.add(info.expressMethod);
+            keywords.remove(valueType);
+        }
+        else if (!info.variableName.equals("this") && info.variableName.length()>1){
             keywords.add(info.variableName.replace(" ",""));
         }
-        if (info.isExpression){
-            keywords.add(info.expressMethod);
-        }
+
 
         File codePackage = new File("experiment/searchcode/" + StringUtils.join(keywords,"-"));
         File simpleCodePackage = new File("experiment/searchcode/" + StringUtils.join(Arrays.asList("if",variableName),"-"));
@@ -63,7 +66,7 @@ public class SearchBoundaryFilter {
             if (!codePackage.exists()) {
                 codePackage.mkdirs();
             }
-            if (codePackage.list().length < 30 && !info.isExpression){
+            if (codePackage.list().length < 30 && !VariableUtils.isExpression(info)){
                 FileUtils.deleteDir(codePackage);
             }
             else {
@@ -73,7 +76,7 @@ public class SearchBoundaryFilter {
                 if (filteredList.size() == 0 && !info.isSimpleType){
                     filteredList = BoundaryFilter.getBoundaryWithType(boundaryList, info.getStringType());
                 }
-                FileUtils.deleteDir(codePackage);
+                //FileUtils.deleteDir(codePackage);
                 return boundaryList;
             }
         }
@@ -97,7 +100,7 @@ public class SearchBoundaryFilter {
                 filteredList = BoundaryFilter.getBoundaryWithType(boundaryList, info.getStringType());
             }
             if (filteredList.size() != 0){
-                FileUtils.deleteDir(complexCodePackage);
+                //FileUtils.deleteDir(complexCodePackage);
                 return boundaryList;
             }
 
@@ -117,7 +120,7 @@ public class SearchBoundaryFilter {
         BoundaryCollect boundaryCollect = new BoundaryCollect(codePackage.getAbsolutePath());
         List<BoundaryInfo> boundaryList = boundaryCollect.getBoundaryList();
         List<BoundaryInfo> filteredList = BoundaryFilter.getBoundaryWithName(boundaryList, variableName);
-        FileUtils.deleteDir(simpleCodePackage);
+        //FileUtils.deleteDir(simpleCodePackage);
         return boundaryList;
     }
     private static String getProjectFullName(String project){

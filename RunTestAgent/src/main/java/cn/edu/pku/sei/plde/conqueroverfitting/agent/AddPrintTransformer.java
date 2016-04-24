@@ -116,8 +116,8 @@ public class AddPrintTransformer implements ClassFileTransformer {
 
     private String generatePrintLine(String var){
         String printLine = "";
-        String varName = var.contains("?")?var.substring(0, var.lastIndexOf("?")):var;
-        String varType = var.contains("?")?var.substring(var.lastIndexOf("?")+1):null;
+        String varName = var.contains("??")?var.substring(0, var.lastIndexOf("??")):var;
+        String varType = var.contains("??")?var.substring(var.lastIndexOf("??")+2):null;
         if (varName.equals("this") || varName.equals("return")){
             return "";
         }

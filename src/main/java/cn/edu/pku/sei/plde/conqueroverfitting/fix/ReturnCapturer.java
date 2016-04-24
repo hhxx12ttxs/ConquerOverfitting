@@ -318,6 +318,12 @@ public class ReturnCapturer {
             return "return false;";
         }
         else if (assertType.contains("assertTrue")){
+            if (parameters.get(0).contains(">=")){
+                String numParam = parameters.get(0).split(">=")[0].contains(_methodName)?parameters.get(0).split(">=")[1]:parameters.get(0).split(">=")[0];
+                if (numParam.trim().matches("^(-?\\d+)(\\.\\d+)?$")){
+                    return "return "+numParam+";";
+                }
+            }
             String attachLines = staticSlicingProcess(parameters, new ArrayList<String>(), statements);
             for (String line: attachLines.split("\n")){
                 if (LineUtils.isLineInCatchBlock(statements, line)){

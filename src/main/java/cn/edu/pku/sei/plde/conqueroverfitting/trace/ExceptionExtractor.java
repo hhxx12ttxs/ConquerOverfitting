@@ -10,10 +10,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.sort.VariableSort;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.filter.AbandanTrueValueFilter;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.filter.SearchBoundaryFilter;
 import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeUtils;
-import cn.edu.pku.sei.plde.conqueroverfitting.utils.CodeUtils;
-import cn.edu.pku.sei.plde.conqueroverfitting.utils.FileUtils;
-import cn.edu.pku.sei.plde.conqueroverfitting.utils.InfoUtils;
-import cn.edu.pku.sei.plde.conqueroverfitting.utils.MathUtils;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.*;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 import org.apache.commons.lang.StringUtils;
 import org.apache.http.auth.KerberosCredentials;
@@ -40,16 +37,33 @@ public class ExceptionExtractor {
 
     public List<List<ExceptionVariable>> sort(){
         List<List<ExceptionVariable>> result = new ArrayList<>();
+        List<ExceptionVariable> sortList = new ArrayList<>(exceptionVariables);
         for (ExceptionVariable exceptionVariable: exceptionVariables){
             if (exceptionVariable.name.equals("this")){
                 result.add(Arrays.asList(exceptionVariable));
+                sortList.remove(exceptionVariable);
+            }
+        }
+        for (ExceptionVariable exceptionVariable: exceptionVariables){
+            if (VariableUtils.isExpression(exceptionVariable.variable)
+                    && !exceptionVariable.name.contains(">")
+                    && !exceptionVariable.name.contains("<")
+                    && !exceptionVariable.name.contains("==")){
+                result.add(Arrays.asList(exceptionVariable));
+                sortList.remove(exceptionVariable);
+            }
+        }
+        for (ExceptionVariable exceptionVariable: exceptionVariables){
+            if (VariableUtils.isExpression(exceptionVariable.variable) && sortList.contains(exceptionVariable)){
+                result.add(Arrays.asList(exceptionVariable));
+                sortList.remove(exceptionVariable);
             }
         }
         if (hasTrueTraceResult(traceResults)){
-            result.addAll(sortWithMethodOne(exceptionVariables, traceResults, suspicious));
+            result.addAll(sortWithMethodOne(sortList, traceResults, suspicious));
         }
         else {
-            result.addAll(sortWithMethodTwo(exceptionVariables, traceResults, suspicious));
+            result.addAll(sortWithMethodTwo(sortList, traceResults, suspicious));
         }
         return result;
     }
@@ -74,7 +88,7 @@ public class ExceptionExtractor {
 
     private static List<List<ExceptionVariable>> sortWithMethodOne(List<ExceptionVariable> exceptionVariables,List<TraceResult> traceResults, Suspicious suspicious){
         String code = FileUtils.getCodeFromFile(suspicious._srcPath, suspicious.classname());
-        String statement = CodeUtils.getMethodBodyBeforeLine(code, suspicious.functionnameWithoutParam(), lastLineOfTraceResults(traceResults));
+        String statement = CodeUtils.getMethodBodyBeforeLine(code, suspicious.functionnameWithoutParam(), lastLineOfTraceResults(traceResults))+CodeUtils.getLineFromCode(code, lastLineOfTraceResults(traceResults));
         Set<String> variables = new HashSet<>();
         for (ExceptionVariable variable: exceptionVariables){
             if (variable.name.endsWith(".null") || variable.name.endsWith(".Comparable")){

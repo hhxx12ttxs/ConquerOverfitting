@@ -53,24 +53,46 @@ public class Interval {
                     rightBoundary = MathUtils.parseStringValue(halfInterval.split("<")[1]);
                 }
             }
+            return;
         }
-        else {
-            if (interval.contains(">=")){
-                leftBoundary = MathUtils.parseStringValue(interval.split(">=")[1]);
-                leftClose = true;
+        if (interval.contains("||")){
+            String[] intervals = interval.split("||");
+            for (String halfInterval: intervals){
+                if (halfInterval.contains(">=")){
+                    leftBoundary = MathUtils.parseStringValue(halfInterval.split(">=")[1]);
+                    leftClose = true;
+                }
+                else if (halfInterval.contains("<=")){
+                    rightBoundary = MathUtils.parseStringValue(halfInterval.split("<=")[1]);
+                    rightClose = true;
+                }
+                else if (halfInterval.contains(">")){
+                    leftBoundary = MathUtils.parseStringValue(halfInterval.split(">")[1]);
+                }
+                else if (halfInterval.contains("<")){
+                    System.out.println(interval);
+                    rightBoundary = MathUtils.parseStringValue(halfInterval.split("<")[1]);
+                }
             }
-            else if (interval.contains("<=")){
-                rightBoundary = MathUtils.parseStringValue(interval.split("<=")[1]);
-                rightClose = true;
-            }
-            else if (interval.contains(">")){
-                leftBoundary = MathUtils.parseStringValue(interval.split(">")[1]);
-            }
-            else if (interval.contains("<")){
-                rightBoundary = MathUtils.parseStringValue(interval.split("<")[1]);
-            }
+            return;
+        }
 
+        if (interval.contains(">=")){
+            leftBoundary = MathUtils.parseStringValue(interval.split(">=")[1]);
+            leftClose = true;
         }
+        else if (interval.contains("<=")){
+            rightBoundary = MathUtils.parseStringValue(interval.split("<=")[1]);
+            rightClose = true;
+        }
+        else if (interval.contains(">")){
+            leftBoundary = MathUtils.parseStringValue(interval.split(">")[1]);
+        }
+        else if (interval.contains("<")){
+            rightBoundary = MathUtils.parseStringValue(interval.split("<")[1]);
+        }
+
+
     }
 
 
