@@ -879,4 +879,12 @@ public class CodeUtils {
         return result;
     }
 
+    public static boolean isValue(String returnValue){
+        if(returnValue.contains("Exception") || returnValue.contains("null") || returnValue.contains("INF") || returnValue.contains("NaN")
+                || returnValue.contains("false") || returnValue.contains("true")){
+            return true;
+        }
+        return false;
+    }
+
 }
