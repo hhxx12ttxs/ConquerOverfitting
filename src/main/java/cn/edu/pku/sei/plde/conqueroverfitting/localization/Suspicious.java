@@ -106,6 +106,12 @@ public class Suspicious implements Serializable{
         return result;
     }
 
+    public void setErrorLines(Set<Integer> lines){
+        this._lines.clear();
+        for (int line: lines){
+            this._lines.add(String.valueOf(line));
+        }
+    }
 
 
     public int getDefaultErrorLine() {

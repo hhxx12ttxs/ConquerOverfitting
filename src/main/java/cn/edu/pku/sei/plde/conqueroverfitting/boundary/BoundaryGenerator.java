@@ -47,9 +47,15 @@ public class BoundaryGenerator {
         List<BoundaryWithFreq> variableBoundary = SearchBoundaryFilter.getBoundary(exceptionVariable, project, keywords);
 
         Map<List<String>, String> intervals = new HashMap<>();
-        if (MathUtils.isNumberType(exceptionVariable.type)){
+        if (MathUtils.isNumberType(exceptionVariable.type) && exceptionVariable.values.size() <=5){
             for (String value: exceptionVariable.values){
-                ArrayList<BoundaryWithFreq> intervalss = MathUtils.generateInterval(variableBoundary, Double.valueOf(value));
+                ArrayList<BoundaryWithFreq> intervalss;
+                try {
+                    intervalss = MathUtils.generateInterval(variableBoundary, Double.valueOf(value));
+                }catch (Exception e){
+                    intervals.put(Arrays.asList(value), "["+value+"-"+value+"]");
+                    continue;
+                }
                 String left = intervalss.get(0).value;
                 if (intervalss.get(0).leftClose >= intervalss.get(0).rightClose){
                     left = "["+left;

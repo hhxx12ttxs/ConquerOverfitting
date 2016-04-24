@@ -87,7 +87,7 @@ public class StatementExt extends Statement  {
 
     @Override
     public double getSuspiciousness() {
-        if (this.getLabel().contains("PivotRow")){
+        if (this.getLabel().contains("getOffsetFromLocal")){
             return getSuspiciousness(this.defaultMetric)*10;
         }
         return getSuspiciousness(this.defaultMetric);
