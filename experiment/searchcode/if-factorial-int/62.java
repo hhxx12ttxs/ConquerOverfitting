@@ -1,281 +1,377 @@
-package test_group;
+/*
+ *  RapidMiner
+ *
+ *  Copyright (C) 2001-2012 by Rapid-I and the contributors
+ *
+ *  Complete list of developers available at our web site:
+ *
+ *       http://rapid-i.com
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program.  If not, see http://www.gnu.org/licenses/.
+ */
+package com.rapidminer.tools.math;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.SortedSet;
-import java.util.TreeSet;
+import java.util.Collection;
+import java.util.Iterator;
 
-import junit.framework.Assert;
+import Jama.Matrix;
 
-import org.junit.Test;
-import org.openscience.cdk.group.Permutation;
-import org.openscience.cdk.group.SSPermutationGroup;
+import com.rapidminer.example.Attribute;
+import com.rapidminer.example.Example;
+import com.rapidminer.example.ExampleSet;
 
+/**
+ * This class provides mathematical functions not already provided by
+ * <tt>java.lang.Math</tt>:
+ * <ul>
+ * <li><tt>tanh()</tt> : tangens hyperbolicus, <i>y = tanh(x) = (e^x - e^-x) /
+ * (e^x + e^-x)</i></li>
+ * </ul>
+ * 
+ * @author Ralf Klinkenberg, Ingo Mierswa
+ */
+public class MathFunctions {
 
+	protected static final double log2 = Math.log(2.0d);
 
-import cages.OrbitCounter;
-import cages.PermutationGenerator;
-import cages.TrivialAutomorphismGenerator;
-import engine.Graph;
+	/**
+	 * coefficients for polynomials used in normalInverse() to estimate normal
+	 * distribution;
+	 */
+	// coefficients for approximation of intervall 0,138... < probability <
+	// 0,861...
+	protected static final double DIVISOR_COEFFICIENTS_0[] = {
+		-5.99633501014107895267E1, 9.80010754185999661536E1,
+		-5.66762857469070293439E1, 1.39312609387279679503E1,
+		-1.23916583867381258016E0, };
 
-public class GroupTest {
-    
-    public int factorial(int n) {
-        if (n == 1) return n;
-        else return n * factorial(n - 1);
-    }
-    
-    public Graph makeCycleGraph(int n) {
-        Graph graph = new Graph();
-        for (int i = 0; i < n - 1; i++) {
-            graph.makeEdge(i, i + 1);
-        }
-        graph.makeEdge(0, n - 1);
-        return graph;
-    }
-    
-    public Graph makeChainGraph(int n) {
-        Graph graph = new Graph();
-        for (int i = 0; i < n - 1; i++) {
-            graph.makeEdge(i, i + 1);
-        }
-        return graph;
-    }
-    
-    public Graph makeCompleteGraph(int n) {
-        Graph graph = new Graph();
-        for (int i = 0; i < n; i++) {
-            for (int j = i + 1; j < n; j++) {
-                graph.makeEdge(i, j);
-            }
-        }
-        return graph;
-    }
-    
-    public SSPermutationGroup makeAutByBruteForce(Graph graph) {
-        List<Permutation> automorphisms = 
-            TrivialAutomorphismGenerator.generate(graph);
-        int n = graph.getVertexCount();
-        
-        SSPermutationGroup autG = new SSPermutationGroup(n);
-        for (Permutation automorphism : automorphisms) {
-            autG.enter(automorphism);
-        }
-        return autG;
-    }
-    
-    public SSPermutationGroup makeAutByPartitionRefinement(Graph graph) {
-        TestDiscretePartitionRefiner refiner = new TestDiscretePartitionRefiner();
-        refiner.isCanonical(graph);
-        return refiner.getGroup();
-    }
-    
-    /**
-     * Make a group where every possible permutation of [0...n-1] is added. Note
-     * that this is a very inefficient way to make the group, but makes testing
-     * easier.
-     * 
-     * @param n the size of the permutation (group)
-     * @return the resulting group
-     */
-    public SSPermutationGroup makeCompleteGroup(int n) {
-        PermutationGenerator permutations = new PermutationGenerator(n);
-        Permutation identity = new Permutation(n);
-        SSPermutationGroup g = 
-            new SSPermutationGroup(identity);
-        // add each permutation generated to the group
-        while (permutations.hasNext()) {
-            Permutation p = permutations.next();
-            g.enter(p);
-        }
-        return g;
-    }
-    
-    @Test
-    public void testBruteForceColorAutomorphism() {
-        Graph graph = new Graph("0:1,0:2,1:3,2:3");
-        int[] colors = new int[] {0, 0, 1, 1};
-        for (int color : colors) { graph.colors.add(color); }
-        String ses = graph.getSortedColoredEdgeString();
-        String sces = graph.getSortedColorOnlyEdgeString();
-        SSPermutationGroup symN = SSPermutationGroup.makeSymN(4);
-        int i = 0;
-        
-        for (Permutation p : symN.all()) {
-            String spes = graph.getSortedPermutedColoredEdgeString(p.getValues());
-            String spces = graph.getSortedPermutedColoredOnlyEdgeString(p.getValues());
-            int[] permColors = new int[colors.length];
-            for (int j = 0; j < colors.length; j++) {
-                permColors[j] = colors[p.get(j)];
-            }
-            boolean colAut = Arrays.equals(colors, permColors);
-            boolean graAut = ses.equals(spes);
-            boolean col2Aut = sces.equals(spces);
-            String is = String.format("%3d", i);
-            if (col2Aut) {
-                System.out.println(is + " " + p + " " + spes 
-                        + " " + Arrays.toString(permColors) + " "  
-                        + col2Aut + " " + spces + " COLOR");
-            } else if (graAut && colAut) {
-                System.out.println(is + " " + p + " " + spes 
-                        + " " + Arrays.toString(permColors) + " "  
-                        + col2Aut + " " + spces + " GRA + COL ");
-            } else if (graAut) {
-                System.out.println(is + " " + p + " " + spes 
-                        + " " + Arrays.toString(permColors) + " "
-                        + col2Aut + " " + spces + " GRA ");
-            } else {
-                System.out.println(is + " " + p + " " + spes 
-                        + " " + Arrays.toString(permColors) + " "
-                        + col2Aut + " " + spces);
-            }
-            i++;
-        }
-    }
-    
-    @Test
-    public void testMakeSymN() {
-        for (int i = 2; i < 15; i++) {
-            SSPermutationGroup group = SSPermutationGroup.makeSymN(i);
-            System.out.println(i + " " + group.orderAsLong() + " " + group.toString());
-        }
-    }
-    
-    @Test
-    public void testAddingPermutations() {
-        int n = 6;
-        int nFactorial = factorial(n);
-//        SSPermutationGroup g = makeCompleteGroup(n);
-        SSPermutationGroup g = SSPermutationGroup.makeSymN(n); 
-        
-        // now, check that we can regenerate all the same permutations
-        List<Permutation> all = g.all();
-        Assert.assertEquals(nFactorial, all.size());
-    }
-    
-    @Test
-    public void testCycleGraph() {
-        
-        // make a cycle of size n
-        int n = 4;
-        Graph graph = makeCycleGraph(n);
-        
-        String cert = graph.getSortedEdgeString();
-        
-        // make the permutation group of size n
-        SSPermutationGroup group = makeCompleteGroup(n);
-        for (int i = 0; i < n; i++) {
-            for (Permutation permutation : group.getLeftTransversal(i)) {
-                int[] p = permutation.getValues();
-                String spes = graph.getSortedPermutedEdgeString(p);
-                String pes = graph.getPermutedEdgeString(p);
-                boolean id = spes.equals(cert); 
-                System.out.println(
-                 i + "\t" + id + "\t" + spes + "\t" + pes + "\t" + permutation);
-            }
-        }
-    }
-    
-    @Test
-    public void makeAutGroupFromGenerators() {
-        int n = 8;
-        // cube
-        Graph graph = new Graph("0:1,0:2,0:4,1:3,1:5,2:3,2:6,3:7,4:5,4:6,5:7,6:7");
-        String cert = graph.getSortedEdgeString();
-        
-        // generators for the automorphism group
-        List<Permutation> generators = new ArrayList<Permutation>();
-        generators.add(new Permutation(1, 3, 5, 7, 0, 2, 4, 6));
-        generators.add(new Permutation(1, 3, 0, 2, 5, 7, 4, 6));
-        
-        SSPermutationGroup group = new SSPermutationGroup(n, generators);
-        for (int i = 0; i < n; i++) {
-            int j = 0;
-            for (Permutation permutation : group.getLeftTransversal(i)) {
-                String spes = graph.getSortedPermutedEdgeString(permutation.getValues()); 
-                System.out.println(
-                        i + "," + j + "\t"
-                        + permutation + "\t" 
-                        + permutation.toCycleString() + "\t"
-                        + Arrays.toString(permutation.getType()) + "\t"
-                        + spes.equals(cert));
-                j++;
-            }
-        }
-        int i = 0;
-        for (Permutation p : group.all()) {
-            String spes = graph.getSortedPermutedEdgeString(p.getValues());
-            System.out.println(
-                    i + "\t" + p +"\t" + p.toCycleString()
-                    + "\t" + Arrays.toString(p.getType()) + "\t"
-                    + "\t" + spes + "\t" + spes.equals(cert));
-            i++;
-        }
-    }
-    
-    @Test
-    public void testOrbitCounter() {
-        int n = 4;
-        SSPermutationGroup group = makeCompleteGroup(n);
-        OrbitCounter counter = new OrbitCounter(n, group);
-        int[] counts = counter.count();
-        System.out.println(group.order());
-        System.out.println(Arrays.toString(counter.getV3()));
-        System.out.println(Arrays.toString(counts));
-    }
-   
-    public void testTransversal(int n, Graph graph) {
-        
-        // Sym(n) : make the total symmetry group
-        SSPermutationGroup group = SSPermutationGroup.makeSymN(n);
-        
-        // Aut(G) : make the automorphism group for this graph
-//        SSPermutationGroup subgroup = makeAutByBruteForce(graph);
-        SSPermutationGroup subgroup = makeAutByPartitionRefinement(graph);
-        
-        // the graph invariants
-        SortedSet<String> edgeStrings = new TreeSet<String>();
-        
-        // generate the traversal, and the invariants for each graph permutation
-        List<Permutation> traversal = group.transversal(subgroup); 
-        for (Permutation p : traversal) {
-            String spes = graph.getSortedPermutedEdgeString(p.getValues());
-            System.out.println(p + "\t" + p.toCycleString() + "\t" + spes);
-            edgeStrings.add(spes);
-        }
-        
-        System.out.println(
-                          " |Aut(G)| = " + subgroup.order()
-                        + ", |Sym(N)| = " + group.order() 
-                        + ", |Aut(G) in Sym(N)| = " + traversal.size()
-                        + ", |Sym(N)|/|Aut(G)| = " + group.order() / subgroup.order());
-        
-        // check that each permutation induces a different edge string
-        Assert.assertEquals(traversal.size(), edgeStrings.size());
-        System.out.println(edgeStrings.first());
-    }
-    
-    @Test
-    public void testCycleGraphTransversal() {
-        int n = 6;
-        Graph graph = makeCycleGraph(n);
-        testTransversal(n, graph);
-    }
-    
-    @Test
-    public void testChainGraphTransversal() {
-        int n = 5;
-        Graph graph = makeChainGraph(n);
-        testTransversal(n, graph);
-    }
-    
-    @Test
-    public void testCompleteGraphTransversal() {
-        int n = 5;
-        Graph graph = makeCompleteGraph(n);
-        testTransversal(n, graph);
-    }
-    
+	protected static final double DIVIDER_COEFFICIENTS_0[] = {
+		1.00000000000000000000E0, 1.95448858338141759834E0,
+		4.67627912898881538453E0, 8.63602421390890590575E1,
+		-2.25462687854119370527E2, 2.00260212380060660359E2,
+		-8.20372256168333339912E1, 1.59056225126211695515E1,
+		-1.18331621121330003142E0, };
+
+	// coefficients for approximation of intervall exp(-32) < probability <
+	// 0,138...
+	// or 0,861 < probability < 1 - exp(-32)
+	protected static final double DIVISOR_COEFFICIENTS_1[] = {
+		4.05544892305962419923E0, 3.15251094599893866154E1,
+		5.71628192246421288162E1, 4.40805073893200834700E1,
+		1.46849561928858024014E1, 2.18663306850790267539E0,
+		-1.40256079171354495875E-1, -3.50424626827848203418E-2,
+		-8.57456785154685413611E-4, };
+
+	protected static final double DIVIDER_COEFFICIENTS_1[] = {
+		1.00000000000000000000E0, 1.57799883256466749731E1,
+		4.53907635128879210584E1, 4.13172038254672030440E1,
+		1.50425385692907503408E1, 2.50464946208309415979E0,
+		-1.42182922854787788574E-1, -3.80806407691578277194E-2,
+		-9.33259480895457427372E-4, };
+
+	// coefficients for approximation of intervall 0 < probability < exp(-32)
+	// or 1 - exp(-32) < probability < 1
+	protected static final double DIVISOR_COEFFICIENTS_3[] = {
+		3.23774891776946035970E0, 6.91522889068984211695E0,
+		3.93881025292474443415E0, 1.33303460815807542389E0,
+		2.01485389549179081538E-1, 1.23716634817820021358E-2,
+		3.01581553508235416007E-4, 2.65806974686737550832E-6,
+		6.23974539184983293730E-9, };
+
+	protected static final double DIVIDER_COEFFICIENTS_3[] = {
+		1.00000000000000000000E0, 6.02427039364742014255E0,
+		3.67983563856160859403E0, 1.37702099489081330271E0,
+		2.16236993594496635890E-1, 1.34204006088543189037E-2,
+		3.28014464682127739104E-4, 2.89247864745380683936E-6,
+		6.79019408009981274425E-9, };
+
+	/**
+	 * returns tangens hyperbolicus of <tt>x</tt>, i.e. <i>y = tanh(x) = (e^x -
+	 * e^-x) / (e^x + e^-x)</i>.
+	 */
+	public static double tanh(double x) {
+		return ((java.lang.Math.exp(x) - java.lang.Math.exp(-x)) / (java.lang.Math
+				.exp(x) + java.lang.Math.exp(-x)));
+	}
+
+	/**
+	 * Returns the value x for which the area under the normal probability
+	 * density function (integrated from minus infinity to this value x) is
+	 * equal to the given probability. The normal distribution has mean of zero
+	 * and variance of one.
+	 * 
+	 * @param probability
+	 *            the area under the normal pdf
+	 * @return x
+	 */
+	public static double normalInverse(double probability) {
+
+		final double smallArgumentEnd = Math.exp(-2);
+		final double rootedPi = Math.sqrt(2.0 * Math.PI);
+
+		if (probability <= 0.0)
+			throw new IllegalArgumentException();
+		if (probability >= 1.0)
+			throw new IllegalArgumentException();
+
+		boolean wrappedArround = false;
+		if (probability > (1.0 - smallArgumentEnd)) {
+			probability = 1.0 - probability;
+			wrappedArround = true;
+		}
+
+		if (probability > smallArgumentEnd) {
+			// approximation for intervall 0,138... < probability < 0,861...
+			probability = probability - 0.5;
+			double squaredProbability = probability * probability;
+			double x = probability;
+			x += probability
+			* (squaredProbability
+					* solvePolynomial(squaredProbability,
+							DIVISOR_COEFFICIENTS_0) / solvePolynomial(
+									squaredProbability, DIVIDER_COEFFICIENTS_0));
+			x = x * rootedPi;
+			return (x);
+		} else {
+			double x = Math.sqrt(-2.0 * Math.log(probability));
+			double inversedX = 1.0 / x;
+			if (x < 8.0) { // equal to probability > exp(-32)
+				// approximation for intervall exp(-32) < probability < 0,138...
+				// or 0,861 < probability < 1 - exp(-32)
+				x = (x - Math.log(x) / x) - inversedX
+				* solvePolynomial(inversedX, DIVISOR_COEFFICIENTS_1)
+				/ solvePolynomial(inversedX, DIVIDER_COEFFICIENTS_1);
+			} else {
+				// approximation for intervall 0 < probability < exp(-32) or 1 -
+				// exp(-32) < probability < 1
+				x = (x - Math.log(x) / x) - inversedX
+				* solvePolynomial(inversedX, DIVISOR_COEFFICIENTS_3)
+				/ solvePolynomial(inversedX, DIVIDER_COEFFICIENTS_3);
+			}
+			if (!wrappedArround) {
+				x = -x;
+			}
+			return (x);
+		}
+	}
+
+	/**
+	 * Solves a given polynomial at x. The polynomial is given by the
+	 * coefficients. The coefficients are stored in natural order:
+	 * coefficients[i] : c_i*x^i
+	 */
+	public static double solvePolynomial(double x, double[] coefficients) {
+		double value = coefficients[0];
+		for (int i = 1; i < coefficients.length; i++) {
+			value += coefficients[i] * Math.pow(x, i);
+		}
+		return value;
+	}
+
+	/**
+	 * @param v
+	 *            a vector values
+	 * @param a
+	 *            a threeshold, only values greater equal this value are used in
+	 *            the calculation
+	 * @return the variance
+	 */
+	public static double variance(double v[], double a) {
+		// calc mean
+		double sum = 0.0;
+		int counter = 0;
+
+		for (int i = 0; i < v.length; i++) {
+			if (v[i] >= a) {
+				sum = sum + v[i];
+				counter++;
+			}
+		}
+		double mean = sum / counter;
+
+		sum = 0.0;
+		counter = 0;
+		for (int i = 0; i < v.length; i++) {
+			if (v[i] >= a) {
+				sum = sum + (v[i] - mean) * (v[i] - mean);
+				counter++;
+			}
+		}
+		double variance = sum / counter;
+		return variance;
+	}
+
+	/** This method calculates the correlation between two (numerical) attributes of an example set. */
+	public static double correlation(ExampleSet exampleSet, Attribute firstAttribute, Attribute secondAttribute, boolean squared) {
+		double sumProd = 0.0d;
+		double sumFirst = 0.0d;
+		double sumSecond = 0.0d;
+		double sumFirstSquared = 0.0d;
+		double sumSecondSquared = 0.0d;
+		int counter = 0;
+
+		Iterator<Example> reader = exampleSet.iterator();
+		while (reader.hasNext()) {
+			Example example = reader.next();
+			double first = example.getValue(firstAttribute);
+			double second = example.getValue(secondAttribute);
+			double prod = first * second;
+			if (!Double.isNaN(prod)) {
+				sumProd += prod;
+				sumFirst += first;
+				sumFirstSquared += first * first;
+				sumSecond += second;
+				sumSecondSquared += second * second;
+				counter++;
+			}
+		}
+		double divisor = Math.sqrt((counter * sumFirstSquared - sumFirst * sumFirst) * (counter * sumSecondSquared - sumSecond * sumSecond));
+		double r;
+		if (divisor == 0) {
+			// one or both of the standard deviations are 0 -> correlation is undefined
+			r = Double.NaN;
+		} else {
+			r = (counter * sumProd - sumFirst * sumSecond) / divisor;
+		}
+		if (squared) {
+			return r * r;
+		} else {
+			return r;
+		}
+	}
+
+	public static double correlation(double[] x1, double[] x2) {
+		// Calculate the mean and stddev
+		int counter = 0;
+		double sum1 = 0.0;
+		double sum2 = 0.0;
+		double sumS1 = 0.0;
+		double sumS2 = 0.0;
+
+		for (int i = 0; i < x1.length; i++) {
+			sum1 = sum1 + x1[i];
+			sum2 = sum2 + x2[i];
+			counter++;
+		}
+
+		double mean1 = sum1 / counter;
+		double mean2 = sum2 / counter;
+
+		double sum = 0.0;
+		counter = 0;
+
+		for (int i = 0; i < x1.length; i++) {
+			sum = sum + (x1[i] - mean1) * (x2[i] - mean2);
+			sumS1 = sumS1 + (x1[i] - mean1) * (x1[i] - mean1);
+			sumS2 = sumS2 + (x2[i] - mean2) * (x2[i] - mean2);
+			counter++;
+		}
+
+		return sum / Math.sqrt(sumS1 * sumS2);
+	}
+
+	public static double robustMin(double m1, double m2) {
+		double min = Math.min(m1, m2);
+		if (!Double.isNaN(min)) {
+			return min;
+		} else {
+			if (Double.isNaN(m1)) {
+				return m2;
+			} else {
+				return m1;
+			}
+		}
+	}
+
+	public static double robustMax(double m1, double m2) {
+		double max = Math.max(m1, m2);
+		if (!Double.isNaN(max)) {
+			return max;
+		} else {
+			if (Double.isNaN(m1)) {
+				return m2;
+			} else {
+				return m1;
+			}
+		}
+	}
+
+	/**
+	 * This method returns the logarithmus dualis from value
+	 * 
+	 * @param value the value
+	 * @return the log2 of value
+	 */
+	public static double ld(double value) {
+		return Math.log(value) / log2;
+	}
+
+	/**
+	 *  Returns the greatest common divisor (GCD) of the given pair of values. 
+	 */
+	public static long getGCD(long a, long b) {
+		long c;
+		while (b != 0) {
+			c = a % b;
+			a = b;
+			b = c;
+		} 
+		return a;
+	}
+
+	/**
+	 *  Returns the greatest common divisor (GCD) of the given pair of values. 
+	 */
+	public static long getGCD(Collection<Long> collection) {
+		boolean first = true;
+		long currentGCD = 1;
+		Iterator<Long> i = collection.iterator();
+		while (i.hasNext()) {
+			long value = i.next();
+			if (first) {
+				currentGCD = value;
+				first = false;
+			} else {
+				currentGCD = getGCD(currentGCD, value);
+			}
+		}
+		return currentGCD;
+	}
+
+	public static int factorial(int k) {
+		int result = 1;
+		for (int i = k; i > 1; i--) {
+			result += i;
+		}
+		return result;
+	}
+	
+	public static Matrix invertMatrix(Matrix m) {
+		double startFactor = 0.1d;
+		while (true) {
+			try {
+				Matrix inverse = m.inverse();
+				return(inverse);
+			} catch (Exception e) {
+				for (int x = 0; x < m.getColumnDimension(); x++) {
+					for (int y = 0; y < m.getRowDimension(); y++) {
+						m.set(x, y, m.get(x, y) + startFactor);
+					}
+				}
+				startFactor *= 10d;
+			}
+		}
+	}
 }
 

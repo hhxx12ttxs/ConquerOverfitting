@@ -1,497 +1,894 @@
-/* ====================================================================
-   Licensed to the Apache Software Foundation (ASF) under one or more
-   contributor license agreements.  See the NOTICE file distributed with
-   this work for additional information regarding copyright ownership.
-   The ASF licenses this file to You under the Apache License, Version 2.0
-   (the "License"); you may not use this file except in compliance with
-   the License.  You may obtain a copy of the License at
+package com.plectix.simulator.staticanalysis;
 
-       http://www.apache.org/licenses/LICENSE-2.0
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
-==================================================================== */
-
-package org.apache.poi.ss.formula.functions;
-
-import org.apache.poi.ss.formula.eval.*;
+import com.plectix.simulator.interfaces.ConnectedComponentInterface;
+import com.plectix.simulator.interfaces.ObservableConnectedComponentInterface;
+import com.plectix.simulator.interfaces.SolutionInterface;
+import com.plectix.simulator.simulationclasses.action.Action;
+import com.plectix.simulator.simulationclasses.action.ActionObserverInteface;
+import com.plectix.simulator.simulationclasses.action.ActionType;
+import com.plectix.simulator.simulationclasses.action.AddAction;
+import com.plectix.simulator.simulationclasses.action.DefaultAction;
+import com.plectix.simulator.simulationclasses.action.DeleteAction;
+import com.plectix.simulator.simulationclasses.injections.Injection;
+import com.plectix.simulator.simulationclasses.probability.WeightedItem;
+import com.plectix.simulator.simulationclasses.solution.RuleApplicationPoolInterface;
+import com.plectix.simulator.simulator.SimulationData;
+import com.plectix.simulator.simulator.ThreadLocalData;
+import com.plectix.simulator.staticanalysis.stories.storage.EventBuilder;
+import com.plectix.simulator.staticanalysis.stories.storage.NullEvent;
+import com.plectix.simulator.staticanalysis.stories.storage.StoryStorageException;
+import com.plectix.simulator.util.io.PlxLogger;
 
 /**
- * @author Amol S. Deshmukh &lt; amolweb at ya hoo dot com &gt;
- * @author Josh Micich
- * @author Stephen Wolke (smwolke at geistig.com)
+ * This class is an implementation of 'rule' entity.
+ * 
+ * <br>
+ * <br>
+ * Rule has two handsides with list of connected components each, name and rate.
+ * 
+ * <br>
+ * In general we have kappa file line like <br>
+ * <br>
+ * <code>'ruleName' leftHandSide -> rightHandSide @ ruleRate</code>, where <br>
+ * <li><code>ruleName</code> - name of this rule</li> <li>
+ * <code>leftHandside</code> - list of substances (maybe empty)</li> <li>
+ * <code>rightHandside</code> - list of substances (maybe empty), which will
+ * replace leftHandside after applying this rule</li> <li><code>ruleRate</code>
+ * - rate of this rule, i.e. number, which affects on rule application frequency
+ * in a whole process</li> <br>
+ * <br>
+ * For example, we have kappa file line such as : <code>'name' A(x) -> B(), C() @ 0.0</code> <br>
+ * This one means rule, which transform agent A with site x to agents B and C.
+ * Notice that this rule will never be applied, because it has zero
+ * <code>ruleRate</code>
+ * 
+ * @see ConnectedComponent
+ * @author evlasov
  */
-public abstract class NumericFunction implements Function {
+public class Rule implements WeightedItem {
+	private static final PlxLogger LOGGER = ThreadLocalData
+			.getLogger(Rule.class);
 
-	static final double ZERO = 0.0;
-	static final double TEN = 10.0;
-	static final double LOG_10_TO_BASE_e = Math.log(TEN);
+	private final List<ConnectedComponentInterface> leftHandside;
+	private final List<ConnectedComponentInterface> rightHandside;
+	private final String ruleName;
+	private List<Site> sitesConnectedWithDeleted;
+	private List<Site> sitesConnectedWithBroken;
+	private boolean doesNothing;
 
-	protected static final double singleOperandEvaluate(ValueEval arg, int srcRowIndex, int srcColumnIndex) throws EvaluationException {
-		if (arg == null) {
-			throw new IllegalArgumentException("arg must not be null");
+	private int automorphismNumber = 1;
+	private boolean hasInfiniteRate = false;
+	private final List<Rule> activatedRules = new LinkedList<Rule>();
+	private final List<Rule> inhibitedRule = new LinkedList<Rule>();
+
+	private final List<ObservableConnectedComponentInterface> activatedObservable = new LinkedList<ObservableConnectedComponentInterface>();
+	private final List<ObservableConnectedComponentInterface> inhibitedObservable = new LinkedList<ObservableConnectedComponentInterface>();
+
+	private int ruleId;
+	private List<Action> actionList;
+	private Map<Agent, Agent> agentAddList;
+	private List<Injection> injections;
+	private List<Site> changedActivatedSites;
+	private List<ChangedSite> changedInhibitedSites;
+	private double activity = 0.;
+	private double rate;
+
+	private static NullEvent nullEvent = new NullEvent();
+
+	private RuleApplicationPoolInterface pool;
+
+	/**
+	 * This one is and additional rate, that we should consider when applying a
+	 * binary rule
+	 */
+	private double additionalRate = -1;
+	private final boolean isBinary;
+
+	/**
+	 * The only CRule constructor.
+	 * 
+	 * @param leftHandsideComponents
+	 *            left handside of the rule, list of connected components
+	 * @param rightHandsideComponents
+	 *            right handside of the rule, list of connected components
+	 * @param ruleName
+	 *            name of the rule
+	 * @param ruleRate
+	 *            rate of the rule
+	 * @param ruleId
+	 *            unique rule identificator
+	 * @param isStorify
+	 *            <tt>true</tt> if simulator run in storify mode, <tt>false</tt>
+	 *            otherwise
+	 */
+	public Rule(List<ConnectedComponentInterface> leftHandsideComponents,
+			List<ConnectedComponentInterface> rightHandsideComponents,
+			String ruleName, double ruleRate, int ruleId, boolean isStorify) {
+		if (leftHandsideComponents == null) {
+			leftHandside = new ArrayList<ConnectedComponentInterface>();
+			leftHandside.add(ThreadLocalData.getEmptyConnectedComponent());
+		} else {
+			this.leftHandside = leftHandsideComponents;
 		}
-		ValueEval ve = OperandResolver.getSingleValue(arg, srcRowIndex, srcColumnIndex);
-		double result = OperandResolver.coerceValueToDouble(ve);
-		checkValue(result);
-		return result;
+		this.rightHandside = rightHandsideComponents;
+		this.rate = ruleRate;
+		associateWithComponents(leftHandsideComponents);
+		associateWithComponents(rightHandsideComponents);
+		for (ConnectedComponentInterface cc : this.leftHandside) {
+			cc.initSpanningTreeMap();
+		}
+		if (ruleRate == Double.POSITIVE_INFINITY) {
+			this.hasInfiniteRate = true;
+			this.rate = 1;
+		} else {
+			this.rate = ruleRate;
+		}
+
+		this.ruleName = ruleName;
+		this.ruleId = ruleId;
+		calculateAutomorphismsNumber();
+		markRightHandSideAgents();
+		createActionList();
+		sortActionList();
+		if (isStorify) {
+			doesNothing = true;
+			for (Action action : actionList) {
+				if (action.getType() != ActionType.NONE) {
+					doesNothing = false;
+					break;
+				}
+			}
+		}
+
+		isBinary = (leftHandside.size() == 2)
+				&& (leftHandside.get(0).getAgents().size() == 1)
+				&& (leftHandside.get(1).getAgents().size() == 1)
+				&& onlyOneBoundAction();
+	}
+
+	private final boolean onlyOneBoundAction() {
+		int counter = 0;
+		for (Action action : actionList) {
+			if (action.getType() == ActionType.NONE) {
+				continue;
+			}
+			if (action.getType() == ActionType.BOUND) {
+				counter++;
+			} else {
+				return false;
+			}
+			if (counter > 2) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	/**
-	 * @throws EvaluationException (#NUM!) if <tt>result</tt> is <tt>NaN</> or <tt>Infinity</tt>
+	 * This method links every connected component in given list with this rule
+	 * 
+	 * @param connectedComponents
+	 *            give list of connected component
 	 */
-	public static final void checkValue(double result) throws EvaluationException {
-		if (Double.isNaN(result) || Double.isInfinite(result)) {
-			throw new EvaluationException(ErrorEval.NUM_ERROR);
+	private final void associateWithComponents(
+			List<ConnectedComponentInterface> connectedComponents) {
+		if (connectedComponents == null)
+			return;
+		for (ConnectedComponentInterface cc : connectedComponents)
+			cc.setRule(this);
+	}
+
+	/**
+	 * 
+	 * @return <tt>true</tt> if left handside of this rule contains no
+	 *         substances, otherwise <tt>false</tt>
+	 */
+	final boolean leftHandSideIsEmpty() {
+		return leftHandside.contains(ThreadLocalData
+				.getEmptyConnectedComponent());
+	}
+
+	/**
+	 * 
+	 * @return <tt>true</tt> if left handside of this rule contains the same
+	 *         substances as right handside, otherwise <tt>false</tt>
+	 */
+	public final boolean doesNothing() {
+		return doesNothing;
+	}
+
+	/**
+	 * Indicates if rate of this rule is infinite
+	 * 
+	 * @return <tt>true</tt> if rate of this rule is infinite, otherwise
+	 *         <tt>false</tt>
+	 */
+	public final boolean hasInfiniteRate() {
+		return hasInfiniteRate;
+	}
+
+	/**
+	 * Sets rate of this rule to infinity
+	 * 
+	 * @param infiniteRate
+	 */
+	public final void setInfinityRateFlag(boolean infiniteRate) {
+		this.hasInfiniteRate = infiniteRate;
+	}
+
+	/**
+	 * This method is used by simulator in "storify" mode to apply current rule
+	 * 
+	 * @param injections
+	 *            list of injections, which point to substances this rule will
+	 *            be applied to
+	 * @param netNotation
+	 *            INetworkNotation object which keep information about rule
+	 *            application
+	 * @param simulationData
+	 *            simulation data
+	 * @param lastApplication
+	 *            is <tt>true</tt> if and only if this application is the latest
+	 *            in current simulation, otherwise false
+	 * @throws StoryStorageException
+	 */
+	public void applyRuleForStories(List<Injection> injections,
+			EventBuilder eventBuilder, SimulationData simulationData,
+			boolean lastApplication) throws StoryStorageException {
+		apply(injections, eventBuilder, simulationData, lastApplication);
+	}
+
+	/**
+	 * This method is used by simulator in "simulation" mode to apply current
+	 * rule
+	 * 
+	 * @param injectionList
+	 *            list of injections, which point to substances this rule will
+	 *            be applied to
+	 * @param simulationData
+	 *            simulation data
+	 * @throws StoryStorageException
+	 */
+	public void applyRule(List<Injection> injectionList,
+			SimulationData simulationData) throws StoryStorageException {
+		apply(injectionList, nullEvent, simulationData, false);
+	}
+
+	/**
+	 * This method searches agent in solution, which was added with the latest
+	 * application of this rule
+	 * 
+	 * @param agent
+	 *            agent from the right handside of the rule, which was "parent"
+	 *            of the unknown agent
+	 * @return agent in solution, which was added with the latest application of
+	 *         this rule
+	 */
+	public final Agent getAgentAdd(Agent agent) {
+		return agentAddList.get(agent);
+	}
+
+	/**
+	 * This method puts agent in solution, which was added with the latest
+	 * application of this rule, with it's "parent" - agent from the right
+	 * handside of the rule
+	 * 
+	 * @param agent
+	 *            agent from the right handside of the rule
+	 * @param agentFromSolution
+	 *            agent from solution
+	 */
+	public final void registerAddedAgent(Agent agent, Agent agentFromSolution) {
+		agentAddList.put(agent, agentFromSolution);
+	}
+
+	/**
+	 * The main method for the rule application
+	 * 
+	 * @param injections
+	 *            list of injections, which point to substances this rule will
+	 *            be applied to
+	 * @param netNotation
+	 *            INetworkNotation object which keep information about rule
+	 *            application
+	 * @param simulationData
+	 *            simulation data
+	 * @param lastApplication
+	 *            is <tt>true</tt> if and only if this application is the latest
+	 *            in current simulation, otherwise false
+	 * @throws StoryStorageException
+	 */
+	protected final void apply(List<Injection> injections,
+			ActionObserverInteface event, SimulationData simulationData,
+			boolean lastApplication) throws StoryStorageException {
+		agentAddList = new LinkedHashMap<Agent, Agent>();
+		sitesConnectedWithDeleted = new ArrayList<Site>();
+		sitesConnectedWithBroken = new ArrayList<Site>();
+		this.injections = injections;
+
+		if (rightHandside != null) {
+			for (ConnectedComponentInterface cc : rightHandside) {
+				cc.clearAgentsFromSolutionForRHS();
+			}
+		}
+		event.setTypeById(simulationData.getStoriesAgentTypesStorage());
+		for (Action action : actionList) {
+			if (action.getLeftCComponent() == null) {
+				action.doAction(pool, null, event, simulationData);
+			} else {
+				action.doAction(pool, injections.get(leftHandside
+						.indexOf(action.getLeftCComponent())), event,
+						simulationData);
+			}
+		}
+
+	}
+
+	public final RuleApplicationPoolInterface getPool() {
+		return pool;
+	}
+
+	public final void preparePool(SimulationData simulationData) {
+		SolutionInterface solution = simulationData.getKappaSystem()
+				.getSolution();
+		pool = solution.prepareRuleApplicationPool();
+	}
+
+	/**
+	 * This method sets idInRuleSide parameters to the agents from the rule's
+	 * right handside and needed for initialization
+	 */
+	private final void markRightHandSideAgents() {
+		List<Agent> rhsAgents = new ArrayList<Agent>();
+		List<Agent> lhsAgents = new ArrayList<Agent>();
+
+		if (leftHandside.get(0).isEmpty()) {
+			int indexAgentRHS = 0;
+			for (ConnectedComponentInterface cc : rightHandside)
+				for (Agent agent : cc.getAgents())
+					if (agent.getIdInRuleHandside() == Agent.UNMARKED)
+						agent.setIdInRuleSide(indexAgentRHS++);
+			return;
+		} else {
+			for (ConnectedComponentInterface cc : leftHandside) {
+				lhsAgents.addAll(cc.getAgents());
+			}
+		}
+
+		if (rightHandside == null)
+			return;
+		for (ConnectedComponentInterface cc : rightHandside) {
+			rhsAgents.addAll(cc.getAgents());
+		}
+		sortAgentsByIdInRuleHandside(rhsAgents);
+		sortAgentsByIdInRuleHandside(lhsAgents);
+
+		int index = 0;
+		for (Agent lhsAgent : lhsAgents) {
+			if ((index < rhsAgents.size())
+					&& !(rhsAgents.get(index).equalz(lhsAgent) && rhsAgents
+							.get(index).siteMapsAreEqual(lhsAgent))) {
+				break;
+			}
+			// filling of fixed agents
+			// if (index < rhsAgents.size() && isStorify)
+			// fillFixedSites(lhsAgent, rhsAgents.get(index));
+			index++;
+		}
+
+		for (int i = index; i < rhsAgents.size(); i++) {
+			if (index == 0)
+				rhsAgents.get(i).setIdInRuleSide(lhsAgents.size() + i + 1);
+			else
+				rhsAgents.get(i).setIdInRuleSide(lhsAgents.size() + i);
 		}
 	}
 
-	public final ValueEval evaluate(ValueEval[] args, int srcCellRow, int srcCellCol) {
-		double result;
-		try {
-			result = eval(args, srcCellRow, srcCellCol);
-			checkValue(result);
-		} catch (EvaluationException e) {
-			return e.getErrorEval();
-		}
-		return new NumberEval(result);
-	}
-
-	protected abstract double eval(ValueEval[] args, int srcCellRow, int srcCellCol) throws EvaluationException;
-
-	/* -------------------------------------------------------------------------- */
-	// intermediate sub-classes (one-arg, two-arg and multi-arg)
-
-	public static abstract class OneArg extends Fixed1ArgFunction {
-		protected OneArg() {
-			// no fields to initialise
-		}
-		public ValueEval evaluate(int srcRowIndex, int srcColumnIndex, ValueEval arg0) {
-			double result;
-			try {
-				double d = singleOperandEvaluate(arg0, srcRowIndex, srcColumnIndex);
-				result = evaluate(d);
-				checkValue(result);
-			} catch (EvaluationException e) {
-				return e.getErrorEval();
-			}
-			return new NumberEval(result);
-		}
-		protected final double eval(ValueEval[] args, int srcCellRow, int srcCellCol) throws EvaluationException {
-			if (args.length != 1) {
-				throw new EvaluationException(ErrorEval.VALUE_INVALID);
-			}
-			double d = singleOperandEvaluate(args[0], srcCellRow, srcCellCol);
-			return evaluate(d);
-		}
-		protected abstract double evaluate(double d) throws EvaluationException;
-	}
-
-	public static abstract class TwoArg extends Fixed2ArgFunction {
-		protected TwoArg() {
-			// no fields to initialise
-		}
-
-
-		public ValueEval evaluate(int srcRowIndex, int srcColumnIndex, ValueEval arg0, ValueEval arg1) {
-			double result;
-			try {
-				double d0 = singleOperandEvaluate(arg0, srcRowIndex, srcColumnIndex);
-				double d1 = singleOperandEvaluate(arg1, srcRowIndex, srcColumnIndex);
-				result =  evaluate(d0, d1);
-				checkValue(result);
-			} catch (EvaluationException e) {
-				return e.getErrorEval();
-			}
-			return new NumberEval(result);
-		}
-
-		protected abstract double evaluate(double d0, double d1) throws EvaluationException;
-	}
-
-	/* -------------------------------------------------------------------------- */
-
-	public static final Function ABS = new OneArg() {
-		protected double evaluate(double d) {
-			return Math.abs(d);
-		}
-	};
-	public static final Function ACOS = new OneArg() {
-		protected double evaluate(double d) {
-			return Math.acos(d);
-		}
-	};
-	public static final Function ACOSH = new OneArg() {
-		protected double evaluate(double d) {
-			return MathX.acosh(d);
-		}
-	};
-	public static final Function ASIN = new OneArg() {
-		protected double evaluate(double d) {
-			return Math.asin(d);
-		}
-	};
-	public static final Function ASINH = new OneArg() {
-		protected double evaluate(double d) {
-			return MathX.asinh(d);
-		}
-	};
-	public static final Function ATAN = new OneArg() {
-		protected double evaluate(double d) {
-			return Math.atan(d);
-		}
-	};
-	public static final Function ATANH = new OneArg() {
-		protected double evaluate(double d) {
-			return MathX.atanh(d);
-		}
-	};
-	public static final Function COS = new OneArg() {
-		protected double evaluate(double d) {
-			return Math.cos(d);
-		}
-	};
-	public static final Function COSH = new OneArg() {
-		protected double evaluate(double d) {
-			return MathX.cosh(d);
-		}
-	};
-	public static final Function DEGREES = new OneArg() {
-		protected double evaluate(double d) {
-			return Math.toDegrees(d);
-		}
-	};
-	static final NumberEval DOLLAR_ARG2_DEFAULT = new NumberEval(2.0);
-	public static final Function DOLLAR = new Var1or2ArgFunction() {
-		public ValueEval evaluate(int srcRowIndex, int srcColumnIndex, ValueEval arg0) {
-			return evaluate(srcRowIndex, srcColumnIndex, arg0, DOLLAR_ARG2_DEFAULT);
-		}
-
-		public ValueEval evaluate(int srcRowIndex, int srcColumnIndex, ValueEval arg0,
-				ValueEval arg1) {
-			double val;
-			double d1;
-			try {
-				val = singleOperandEvaluate(arg0, srcRowIndex, srcColumnIndex);
-				d1 = singleOperandEvaluate(arg1, srcRowIndex, srcColumnIndex);
-			} catch (EvaluationException e) {
-				return e.getErrorEval();
-			}
-			// second arg converts to int by truncating toward zero
-			int nPlaces = (int)d1;
-
-			if (nPlaces > 127) {
-				return ErrorEval.VALUE_INVALID;
-			}
-
-
-			// TODO - DOLLAR() function impl is NQR
-			// result should be StringEval, with leading '$' and thousands separators
-			// current junits are asserting incorrect behaviour
-			return new NumberEval(val);
-		}
-	};
-	public static final Function EXP = new OneArg() {
-		protected double evaluate(double d) {
-			return Math.pow(Math.E, d);
-		}
-	};
-	public static final Function FACT = new OneArg() {
-		protected double evaluate(double d) {
-			return MathX.factorial((int)d);
-		}
-	};
-	public static final Function INT = new OneArg() {
-		protected double evaluate(double d) {
-			return Math.round(d-0.5);
-		}
-	};
-	public static final Function LN = new OneArg() {
-		protected double evaluate(double d) {
-			return Math.log(d);
-		}
-	};
-	public static final Function LOG10 = new OneArg() {
-		protected double evaluate(double d) {
-			return Math.log(d) / LOG_10_TO_BASE_e;
-		}
-	};
-	public static final Function RADIANS = new OneArg() {
-		protected double evaluate(double d) {
-			return Math.toRadians(d);
-		}
-	};
-	public static final Function SIGN = new OneArg() {
-		protected double evaluate(double d) {
-			return MathX.sign(d);
-		}
-	};
-	public static final Function SIN = new OneArg() {
-		protected double evaluate(double d) {
-			return Math.sin(d);
-		}
-	};
-	public static final Function SINH = new OneArg() {
-		protected double evaluate(double d) {
-			return MathX.sinh(d);
-		}
-	};
-	public static final Function SQRT = new OneArg() {
-		protected double evaluate(double d) {
-			return Math.sqrt(d);
-		}
-	};
-
-	public static final Function TAN = new OneArg() {
-		protected double evaluate(double d) {
-			return Math.tan(d);
-		}
-	};
-	public static final Function TANH = new OneArg() {
-		protected double evaluate(double d) {
-			return MathX.tanh(d);
-		}
-	};
-
-	/* -------------------------------------------------------------------------- */
-
-	public static final Function ATAN2 = new TwoArg() {
-		protected double evaluate(double d0, double d1) throws EvaluationException {
-			if (d0 == ZERO && d1 == ZERO) {
-				throw new EvaluationException(ErrorEval.DIV_ZERO);
-			}
-			return Math.atan2(d1, d0);
-		}
-	};
-	public static final Function CEILING = new TwoArg() {
-		protected double evaluate(double d0, double d1) {
-			return MathX.ceiling(d0, d1);
-		}
-	};
-	public static final Function COMBIN = new TwoArg() {
-		protected double evaluate(double d0, double d1) throws EvaluationException {
-			if (d0 > Integer.MAX_VALUE || d1 > Integer.MAX_VALUE) {
-				throw new EvaluationException(ErrorEval.NUM_ERROR);
-			}
-			return  MathX.nChooseK((int) d0, (int) d1);
-		}
-	};
-	public static final Function FLOOR = new TwoArg() {
-		protected double evaluate(double d0, double d1) throws EvaluationException {
-			if (d1 == ZERO) {
-				if (d0 == ZERO) {
-					return ZERO;
+	/**
+	 * This method sorts agents by id in rule's handside
+	 * 
+	 * @param agents
+	 *            list of agents to be sorted
+	 */
+	private final void sortAgentsByIdInRuleHandside(List<Agent> agents) {
+		Agent left;
+		Agent right;
+		for (int i = 0; i < agents.size() - 1; i++) {
+			for (int j = i + 1; j < agents.size(); j++) {
+				left = agents.get(i);
+				right = agents.get(j);
+				if (left.getIdInRuleHandside() > right.getIdInRuleHandside()) {
+					agents.set(i, right);
+					agents.set(j, left);
 				}
-				throw new EvaluationException(ErrorEval.DIV_ZERO);
 			}
-			return MathX.floor(d0, d1);
 		}
-	};
-	public static final Function MOD = new TwoArg() {
-		protected double evaluate(double d0, double d1) throws EvaluationException {
-			if (d1 == ZERO) {
-				throw new EvaluationException(ErrorEval.DIV_ZERO);
+	}
+
+	/**
+	 * This method sorts action of this rule by priority
+	 */
+	private final void sortActionList() {
+		for (int i = 0; i < actionList.size(); i++) {
+			for (int j = 0; j < actionList.size(); j++) {
+				if (actionList.get(i).getType().compareTo(
+						actionList.get(j).getType()) < 0) {
+					Action actionMin = actionList.get(j);
+					Action actionR = actionList.get(i);
+					actionList.set(j, actionR);
+					actionList.set(i, actionMin);
+				}
 			}
-			return MathX.mod(d0, d1);
 		}
-	};
-	public static final Function POWER = new TwoArg() {
-		protected double evaluate(double d0, double d1) {
-			return Math.pow(d0, d1);
-		}
-	};
-	public static final Function ROUND = new TwoArg() {
-		protected double evaluate(double d0, double d1) {
-			return MathX.round(d0, (int)d1);
-		}
-	};
-	public static final Function ROUNDDOWN = new TwoArg() {
-		protected double evaluate(double d0, double d1) {
-			return MathX.roundDown(d0, (int)d1);
-		}
-	};
-	public static final Function ROUNDUP = new TwoArg() {
-		protected double evaluate(double d0, double d1) {
-			return MathX.roundUp(d0, (int)d1);
-		}
-	};
-	static final NumberEval TRUNC_ARG2_DEFAULT = new NumberEval(0);
-	public static final Function TRUNC = new Var1or2ArgFunction() {
+	}
 
-		public ValueEval evaluate(int srcRowIndex, int srcColumnIndex, ValueEval arg0) {
-			return evaluate(srcRowIndex, srcColumnIndex, arg0, TRUNC_ARG2_DEFAULT);
-		}
-
-		public ValueEval evaluate(int srcRowIndex, int srcColumnIndex, ValueEval arg0, ValueEval arg1) {
-			double result;
-			try {
-				double d0 = singleOperandEvaluate(arg0, srcRowIndex, srcColumnIndex);
-				double d1 = singleOperandEvaluate(arg1, srcRowIndex, srcColumnIndex);
-				double multi = Math.pow(10d,d1);
-				if(d0 < 0) result = -Math.floor(-d0 * multi) / multi;
-                else result = Math.floor(d0 * multi) / multi;
-				checkValue(result);
-			}catch (EvaluationException e) {
-				return e.getErrorEval();
+	/**
+	 * Util method using when creating actions list
+	 * 
+	 * @param sourceSite
+	 * @param internalState
+	 * @param linkState
+	 */
+	public final void addInhibitedChangedSite(Site sourceSite,
+			boolean internalState, boolean linkState) {
+		for (ChangedSite inSite : changedInhibitedSites)
+			if (inSite.getSite() == sourceSite) {
+				if (!inSite.hasInternalState())
+					inSite.setInternalState(internalState);
+				if (!inSite.hasLinkState())
+					inSite.setLinkState(linkState);
+				return;
 			}
-			return new NumberEval(result);
-		}
-	};
+		changedInhibitedSites.add(new ChangedSite(sourceSite, internalState,
+				linkState));
+	}
 
-	/* -------------------------------------------------------------------------- */
+	/**
+	 * This methods creates atomic-actions list for this rule
+	 */
+	private final void createActionList() {
+		changedActivatedSites = new ArrayList<Site>();
+		changedInhibitedSites = new ArrayList<ChangedSite>();
+		actionList = new ArrayList<Action>();
 
-	private static final class Log extends Var1or2ArgFunction {
-		public Log() {
-			// no instance fields
+		if (rightHandside != null)
+			for (ConnectedComponentInterface cc : rightHandside)
+				for (Agent agentRight : cc.getAgents())
+					for (Site site : agentRight.getSites()) {
+						changedActivatedSites.add(site);
+					}
+
+		if (rightHandside == null) {
+			for (ConnectedComponentInterface ccL : leftHandside)
+				for (Agent lAgent : ccL.getAgents()) {
+					actionList.add(new DeleteAction(this, lAgent, ccL));
+					for (Site site : lAgent.getSites()) {
+						changedInhibitedSites.add(new ChangedSite(site, true,
+								true));
+					}
+				}
+			return;
 		}
-		public ValueEval evaluate(int srcRowIndex, int srcColumnIndex, ValueEval arg0) {
-			double result;
-			try {
-				double d0 = NumericFunction.singleOperandEvaluate(arg0, srcRowIndex, srcColumnIndex);
-				result = Math.log(d0) / LOG_10_TO_BASE_e;
-				NumericFunction.checkValue(result);
-			} catch (EvaluationException e) {
-				return e.getErrorEval();
+
+		int lhsAgentsQuantity = 0;
+		if (!this.leftHandSideIsEmpty()) {
+			for (ConnectedComponentInterface cc : leftHandside) {
+				lhsAgentsQuantity += cc.getAgents().size();
 			}
-			return new NumberEval(result);
 		}
-		public ValueEval evaluate(int srcRowIndex, int srcColumnIndex, ValueEval arg0,
-				ValueEval arg1) {
-			double result;
-			try {
-				double d0 = NumericFunction.singleOperandEvaluate(arg0, srcRowIndex, srcColumnIndex);
-				double d1 = NumericFunction.singleOperandEvaluate(arg1, srcRowIndex, srcColumnIndex);
-				double logE = Math.log(d0);
-				double base = d1;
-				if (base == Math.E) {
-					result = logE;
+
+		for (ConnectedComponentInterface ccR : rightHandside) {
+			for (Agent rAgent : ccR.getAgents()) {
+				if ((lhsAgentsQuantity == 0)
+						|| (rAgent.getIdInRuleHandside() > lhsAgentsQuantity)) {
+					actionList.add(new AddAction(this, rAgent, ccR));
+					// fillChangedSites(rAgent);
+				}
+			}
+		}
+
+		if (leftHandside.get(0).isEmpty())
+			return;
+		for (ConnectedComponentInterface ccL : leftHandside)
+			for (Agent lAgent : ccL.getAgents()) {
+				this.addAllActions(lAgent, ccL);
+			}
+	}
+
+	/**
+	 * This method adds all actions among to a given agent
+	 * 
+	 * @param lAgent
+	 *            given agent
+	 * @param ccL
+	 *            connected component which contains lAgent
+	 */
+	private final void addAllActions(Agent lAgent,
+			ConnectedComponentInterface ccL) {
+		for (ConnectedComponentInterface ccR : rightHandside) {
+			for (Agent rAgent : ccR.getAgents()) {
+				if (lAgent.getIdInRuleHandside() == rAgent
+						.getIdInRuleHandside()) {
+					Action newAction = new DefaultAction(this, lAgent, rAgent,
+							ccL, ccR);
+					actionList.add(newAction);
+					actionList.addAll(newAction.createAtomicActions());
+					return;
+				}
+			}
+		}
+		actionList.add(new DeleteAction(this, lAgent, ccL));
+	}
+
+	/**
+	 * Calculates automorphism number for this rule
+	 */
+	private final void calculateAutomorphismsNumber() {
+		if (leftHandside != null) {
+			Map<String, Integer> repetitionFactor = new LinkedHashMap<String, Integer>();
+			for (ConnectedComponentInterface component : leftHandside) {
+				String hashForComponent = component.getSmilesString();
+				Integer old = repetitionFactor.get(hashForComponent);
+				if (old == null) {
+					repetitionFactor.put(hashForComponent, Integer.valueOf(1));
 				} else {
-					result = logE / Math.log(base);
+					repetitionFactor.put(hashForComponent, Integer
+							.valueOf(old + 1));
 				}
-				NumericFunction.checkValue(result);
-			} catch (EvaluationException e) {
-				return e.getErrorEval();
 			}
-			return new NumberEval(result);
+
+			for (Integer i : repetitionFactor.values()) {
+				automorphismNumber *= factorial(i);
+			}
 		}
 	}
 
-	public static final Function LOG = new Log();
-
-	static final NumberEval PI_EVAL = new NumberEval(Math.PI);
-	public static final Function PI = new Fixed0ArgFunction() {
-		public ValueEval evaluate(int srcRowIndex, int srcColumnIndex) {
-			return PI_EVAL;
+	private int factorial(int i) {
+		if (i == 0) {
+			throw new RuntimeException(
+					"internal error : repetition factor for component equals 0");
 		}
-	};
-	public static final Function RAND = new Fixed0ArgFunction() {
-		public ValueEval evaluate(int srcRowIndex, int srcColumnIndex) {
-			return new NumberEval(Math.random());
+		int answer = 1;
+		for (int j = 1; j <= i; j++) {
+			answer *= j;
 		}
-	};
-    public static final Function POISSON = new Fixed3ArgFunction() {
+		return answer;
+	}
 
-        private final static double DEFAULT_RETURN_RESULT =1;
-        
-        /**
-         * This checks is x = 0 and the mean = 0.
-         * Excel currently returns the value 1 where as the
-         * maths common implementation will error.
-         * @param x  The number.
-         * @param mean The mean.
-         * @return If a default value should be returned.
-         */
-        private boolean isDefaultResult(double x, double mean) {
+	/**
+	 * This method calculates activity of this rule according to it's current
+	 * parameters
+	 */
+	public final void calculateActivity() {
+		activity = 1.;
+		for (ConnectedComponentInterface cc : this.leftHandside) {
+			activity *= cc.getInjectionsWeight();
+		}
+		if (!this.bolognaWanted()) {
+			activity *= rate;
+		} else {
+			double k1 = rate;
+			// additional rate
+			double k2 = additionalRate;
 
-            if ( x == 0 && mean == 0 ) {
-                return true;
-            }
-            return false;
-        }
-
-        private boolean checkArgument(double aDouble) throws EvaluationException {
-
-            NumericFunction.checkValue(aDouble);
-
-            // make sure that the number is positive
-            if (aDouble < 0) {
-                throw new EvaluationException(ErrorEval.NUM_ERROR);
-            }
-            
-            return true;
-        }
-
-        private double probability(int k, double lambda) {
-            return Math.pow(lambda, k) * Math.exp(-lambda) / factorial(k);
-        }
-
-        private double cumulativeProbability(int x, double lambda) {
-            double result = 0;
-            for(int k = 0; k <= x; k++){
-                result += probability(k, lambda);
-            }
-            return result;
-        }
-
-        /** All long-representable factorials */
-        private final long[] FACTORIALS = new long[] {
-                           1l,                  1l,                   2l,
-                           6l,                 24l,                 120l,
-                         720l,               5040l,               40320l,
-                      362880l,            3628800l,            39916800l,
-                   479001600l,         6227020800l,         87178291200l,
-               1307674368000l,     20922789888000l,     355687428096000l,
-            6402373705728000l, 121645100408832000l, 2432902008176640000l };
-
-
-        public long factorial(final int n) {
-            if (n < 0 || n > 20) {
-                throw new IllegalArgumentException("Valid argument should be in the range [0..20]");
-            }
-            return FACTORIALS[n];
-        }
-
-        public ValueEval evaluate(int srcRowIndex, int srcColumnIndex, ValueEval arg0, ValueEval arg1, ValueEval arg2) {
-
-            // arguments/result for this function
-            double mean=0;
-            double x=0;
-            boolean cumulative = ((BoolEval)arg2).getBooleanValue();
-            double result=0;
-
-            try {
-				x = NumericFunction.singleOperandEvaluate(arg0, srcRowIndex, srcColumnIndex);
-				mean = NumericFunction.singleOperandEvaluate(arg1, srcRowIndex, srcColumnIndex);
-
-                // check for default result : excel implementation for 0,0
-                // is different to Math Common.
-                if (isDefaultResult(x,mean)) {
-                    return new NumberEval(DEFAULT_RETURN_RESULT); 
-                }
-                // check the arguments : as per excel function def
-                checkArgument(x);
-                checkArgument(mean);
-
-                // truncate x : as per excel function def
-                if ( cumulative ) {
-                    result = cumulativeProbability((int)x, mean);
-                } else {
-                    result = probability((int)x, mean);
-                }
-
-                // check the result
-                NumericFunction.checkValue(result);
-
-			} catch (EvaluationException e) {
-				return e.getErrorEval();
+			long commonInjectionsWeight = 0;
+			for (ConnectedComponentInterface cc : this.leftHandside) {
+				commonInjectionsWeight += cc.getInjectionsWeight();
 			}
-            
-            return new NumberEval(result);
+			double temp = k1 / commonInjectionsWeight;
+			double k2prime = Math.max(temp, k2);
+			activity *= k2prime;
+		}
+		activity /= automorphismNumber;
+	}
 
-        }
-    };
+	/**
+	 * This method returns the name of this rule
+	 * 
+	 * @return the name of this rule
+	 */
+	public final String getName() {
+		return ruleName;
+	}
+
+	public int getAutomorphismNumber() {
+		return automorphismNumber;
+	}
+
+	/**
+	 * This method returns activity of this rule
+	 * 
+	 * @return activity of this rule
+	 */
+	public final double getActivity() {
+		return activity;
+	}
+
+	/**
+	 * This method sets activity of this rule to a given value
+	 * 
+	 * @param activity
+	 *            new value
+	 */
+	public final void setActivity(double activity) {
+		this.activity = activity;
+	}
+
+	/**
+	 * This method returns list of components from the left handside of this
+	 * rule
+	 * 
+	 * @return list of components from the left handside of this rule
+	 */
+	public final List<ConnectedComponentInterface> getLeftHandSide() {
+		if (leftHandside == null) {
+			return null;
+		} else {
+			return leftHandside;
+		}
+	}
+
+	/**
+	 * This method returns list of components from the right handside of this
+	 * rule
+	 * 
+	 * @return list of components from the right handside of this rule
+	 */
+	public final List<ConnectedComponentInterface> getRightHandSide() {
+		if (rightHandside == null) {
+			return null;
+		} else {
+			return rightHandside;
+		}
+	}
+
+	/**
+	 * This method returns injection from the injection-list from the latest
+	 * application of this rule, which points to connected component, including
+	 * siteTo
+	 * 
+	 * @param siteTo
+	 *            given site
+	 * @return injection from the injection-list from the latest application of
+	 *         this rule, which points to connected component, including siteTo
+	 */
+	public final Injection getInjectionBySiteToFromLHS(Site siteTo) {
+		int sideId = siteTo.getParentAgent().getIdInRuleHandside();
+		int i = 0;
+		for (ConnectedComponentInterface cc : leftHandside) {
+			for (Agent agent : cc.getAgents())
+				if (agent.getIdInRuleHandside() == sideId)
+					return injections.get(i);
+			i++;
+		}
+		return null;
+	}
+
+	public final List<Site> getSitesConnectedWithBroken() {
+		return sitesConnectedWithBroken;
+	}
+
+	/**
+	 * This method adds given site util list.
+	 * 
+	 * @param site
+	 *            given site
+	 */
+	public final void addSiteConnectedWithBroken(Site site) {
+		sitesConnectedWithBroken.add(site);
+	}
+
+	public final List<Site> getSitesConnectedWithDeleted() {
+		return sitesConnectedWithDeleted;
+	}
+
+	public final void addSiteConnectedWithDeleted(Site site) {
+		sitesConnectedWithDeleted.add(site);
+	}
+
+	public final Site getSiteConnectedWithDeleted(int index) {
+		return sitesConnectedWithDeleted.get(index);
+	}
+
+	public final void removeSiteConnectedWithDeleted(int index) {
+		sitesConnectedWithDeleted.remove(index);
+	}
+
+	public final void addAction(Action action) {
+		actionList.add(action);
+	}
+
+	/**
+	 * We use this method to compare rules
+	 * 
+	 * @param obj
+	 *            another rule
+	 * @return <tt>true</tt> if rules have similar id's, otherwise
+	 *         <tt>false</tt>
+	 */
+	public final boolean equalz(Rule obj) {
+		if (this == obj) {
+			return true;
+		}
+
+		if (obj == null) {
+			return false;
+		}
+
+		Rule rule = obj;
+		return rule.toString().equals(this.toString());
+	}
+
+	/**
+	 * Returns id number of current rule
+	 * 
+	 * @return rule id
+	 */
+	public final int getRuleId() {
+		return ruleId;
+	}
+
+	/**
+	 * Sets id of current rule to a given value
+	 * 
+	 * @param id
+	 *            new value of rule id
+	 */
+	public final void setRuleID(int id) {
+		this.ruleId = id;
+	}
+
+	/**
+	 * Returns current rule rate
+	 * 
+	 * @return rule rate
+	 */
+	public final double getRate() {
+		return rate;
+	}
+
+	/**
+	 * Sets current rule rate to a given value
+	 * 
+	 * @param ruleRate
+	 *            new value of rule rate
+	 */
+	public final void setRuleRate(double ruleRate) {
+		if (ruleRate >= 0) {
+			this.rate = ruleRate;
+		} else {
+			LOGGER.info("warning : rate of the rule '" + ruleName
+					+ "' was attempted to be set as negative");
+			this.rate = 0;
+		}
+	}
+
+	/**
+	 * Returns list of observable components which activate by this rule
+	 * 
+	 * @return list of observable components which activate by this rule
+	 */
+	public final List<ObservableConnectedComponentInterface> getActivatedObservable() {
+		return activatedObservable;
+	}
+
+	/**
+	 * Returns list of rules which activate by this rule
+	 * 
+	 * @return list of rules which activate by this rule
+	 */
+	public final List<Rule> getActivatedRules() {
+		return activatedRules;
+	}
+
+	public final void addActivatedRule(Rule rule) {
+		activatedRules.add(rule);
+	}
+
+	public final void addinhibitedRule(Rule rule) {
+		inhibitedRule.add(rule);
+	}
+
+	public final void addActivatedObs(ObservableConnectedComponentInterface obs) {
+		activatedObservable.add(obs);
+	}
+
+	public final void addinhibitedObs(ObservableConnectedComponentInterface obs) {
+		inhibitedObservable.add(obs);
+	}
+
+	/**
+	 * Returns list of actions, which this rule performs
+	 * 
+	 * @return list of actions, which this rule performs
+	 */
+	public final List<Action> getActionList() {
+		return actionList;
+	}
+
+	@Override
+	public final double getWeight() {
+		return activity;
+	}
+
+	public final void setAdditionalRate(double binaryRate) {
+		this.additionalRate = binaryRate;
+	}
+
+	public final double getAdditionalRate() {
+		return this.additionalRate;
+	}
+
+	/**
+	 * This method tells us when we should perform Bologna method on application
+	 * of this rule
+	 * 
+	 * @return <tt>true</tt> if and only if this rule is binary and we should
+	 *         consider it's additional rate when applying
+	 */
+	public final boolean bolognaWanted() {
+		return this.isBinary && additionalRate != -1;
+	}
+
+	public final void positiveUpdate(List<Rule> rules,
+			List<ObservableConnectedComponentInterface> observables) {
+		for (Rule ruleFromList : rules) {
+			// if(rules!=rule)
+			for (ConnectedComponentInterface cc : ruleFromList
+					.getLeftHandSide()) {
+				cc.doPositiveUpdate(this.rightHandside);
+			}
+		}
+		for (ObservableConnectedComponentInterface oCC : observables) {
+			if (oCC.getMainAutomorphismNumber() == ObservableConnectedComponent.NO_INDEX)
+				oCC.doPositiveUpdate(this.rightHandside);
+		}
+	}
+
+	@Override
+	public final String toString() {
+		StringBuffer st = new StringBuffer(leftHandside.toString());
+		st.append("->");
+		if (rightHandside == null) {
+			st.append("[]");
+		} else {
+			st.append(rightHandside);
+		}
+		return st.toString();
+	}
+	
+	public final String getCanonicalRuleString() {
+		Set<String> leftHandSideSorted = new TreeSet<String>();
+		if (this.getLeftHandSide() != null) {
+			for (ConnectedComponentInterface component : this.getLeftHandSide()) {
+				leftHandSideSorted.add(component.getSmilesString());
+			}
+		}
+		
+		Set<String> rightHandSideSorted = new TreeSet<String>();
+		if (this.getRightHandSide() != null) {
+			for (ConnectedComponentInterface component : this.getRightHandSide()) {
+				rightHandSideSorted.add(component.getSmilesString());
+			}
+		}
+		
+		StringBuffer st = new StringBuffer();
+		for (String leftComponent : leftHandSideSorted) {
+			st.append(leftComponent + " ");
+		}
+		st.append("->");
+		for (String rightComponent : rightHandSideSorted) {
+			st.append(" " + rightComponent);
+		}
+		
+		return st.toString();
+	}
 }
-

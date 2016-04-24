@@ -1,422 +1,153 @@
-/*
-Copyright ďż˝ 1999 CERN - European Organization for Nuclear Research.
-Permission to use, copy, modify, distribute and sell this software and its documentation for any purpose 
-is hereby granted without fee, provided that the above copyright notice appear in all copies and 
-that both that copyright notice and this permission notice appear in supporting documentation. 
-CERN makes no representations about the suitability of this software for any purpose. 
-It is provided "as is" without expressed or implied warranty.
-*/
-package org.apache.mahout.math.jet.random;
+package com.google.common.math;
 
-import org.apache.mahout.math.jet.math.Arithmetic;
+import com.google.common.annotations.Beta;
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Preconditions;
+import java.math.BigInteger;
+import java.math.RoundingMode;
 
-/**
- * Contains various mathematical helper methods.
- *
- * <b>Implementation:</b> High performance implementation. <dt>This is a port of <tt>gen_fun.cpp</tt> from the <A
- * HREF="http://www.cis.tu-graz.ac.at/stat/stadl/random.html">C-RAND / WIN-RAND</A> library.
- */
-public final class Fun {
-  private static final double[] B_0 = {-1.5787132, -0.6130827, 0.1735823, 1.4793411,
-    2.6667307, 4.9086836, 8.1355339,
-  };
-  private static final double[] B_05 = {-1.9694802, -0.7642538, 0.0826017, 1.4276355,
-    2.6303682, 4.8857787, 8.1207968,
-  };
-  private static final double[] B_1 = {-2.9807345, -1.1969943, -0.1843161, 1.2739241,
-    2.5218256, 4.8172216, 8.0765633,
-  };
-  private static final double[] B_2 = {-5.9889676, -2.7145389, -1.1781269, 0.6782201,
-    2.0954009, 4.5452152, 7.9003173,
-  };
-  private static final double[] B_3 = {-9.6803440, -4.8211925, -2.6533185, -0.2583337,
-    1.4091915, 4.0993448, 7.6088310,
-  };
-  private static final double[] B_5 = {-18.1567152, -10.0939408, -6.5819139, -2.9371545,
-    -0.6289005, 2.7270412, 6.6936799,
-  };
-  private static final double[] B_8 = {-32.4910195, -19.6065943, -14.0347298, -8.3839439,
-    -4.9679730, -0.3567823, 4.5589697,
-  };
+@Beta
+public final class DoubleMath
+{
+  private static final double MIN_INT_AS_DOUBLE = -2147483648.0D;
+  private static final double MAX_INT_AS_DOUBLE = 2147483647.0D;
+  private static final double MIN_LONG_AS_DOUBLE = -9.223372036854776E+018D;
+  private static final double MAX_LONG_AS_DOUBLE_PLUS_ONE = 9.223372036854776E+018D;
+  private static final double LN_2 = Math.log(2.0D);
 
-  private Fun() {
+  @VisibleForTesting
+  static final int MAX_FACTORIAL = 170;
+
+  @VisibleForTesting
+  static final double[] EVERY_SIXTEENTH_FACTORIAL = { 1.0D, 20922789888000.0D, 2.631308369336935E+035D, 1.241391559253607E+061D, 1.268869321858842E+089D, 7.156945704626381E+118D, 9.916779348709497E+149D, 1.974506857221074E+182D, 3.856204823625804E+215D, 5.550293832739304E+249D, 4.714723635992062E+284D };
+
+  static double roundIntermediate(double paramDouble, RoundingMode paramRoundingMode)
+  {
+    if (!DoubleUtils.isFinite(paramDouble))
+      throw new ArithmeticException("input is infinite or NaN");
+    switch (1.$SwitchMap$java$math$RoundingMode[paramRoundingMode.ordinal()])
+    {
+    case 1:
+      MathPreconditions.checkRoundingUnnecessary(isMathematicalInteger(paramDouble));
+      return paramDouble;
+    case 2:
+      return paramDouble >= 0.0D ? paramDouble : Math.floor(paramDouble);
+    case 3:
+      return paramDouble >= 0.0D ? Math.ceil(paramDouble) : paramDouble;
+    case 4:
+      return paramDouble;
+    case 5:
+      return paramDouble >= 0.0D ? Math.ceil(paramDouble) : Math.floor(paramDouble);
+    case 6:
+      return Math.rint(paramDouble);
+    case 7:
+      if (isMathematicalInteger(paramDouble))
+        return paramDouble;
+      return paramDouble >= 0.0D ? paramDouble + 0.5D : paramDouble - 0.5D;
+    case 8:
+      if (isMathematicalInteger(paramDouble))
+        return paramDouble;
+      if (paramDouble >= 0.0D)
+      {
+        d = paramDouble + 0.5D;
+        return d == paramDouble ? paramDouble : DoubleUtils.nextDown(d);
+      }
+      double d = paramDouble - 0.5D;
+      return d == paramDouble ? paramDouble : Math.nextUp(d);
+    }
+    throw new AssertionError();
   }
 
-  private static double fktValue(double lambda, double z1, double z2, double xValue) {
-    return Math.cos(z1 * xValue) / Math.pow(xValue * xValue + z2 * z2, lambda + 0.5);
+  public static int roundToInt(double paramDouble, RoundingMode paramRoundingMode)
+  {
+    double d = roundIntermediate(paramDouble, paramRoundingMode);
+    MathPreconditions.checkInRange((d > -2147483649.0D ? 1 : 0) & (d < 2147483648.0D ? 1 : 0));
+    return (int)d;
   }
 
-  public static double bessel2Fkt(double lambda, double beta) {
-    if (lambda == 0.0) {
-      if (beta == 0.1) {
-        return B_0[0];
-      }
-      if (beta == 0.5) {
-        return B_0[1];
-      }
-      if (beta == 1.0) {
-        return B_0[2];
-      }
-      if (beta == 2.0) {
-        return B_0[3];
-      }
-      if (beta == 3.0) {
-        return B_0[4];
-      }
-      if (beta == 5.0) {
-        return B_0[5];
-      }
-      if (beta == 8.0) {
-        return B_0[6];
-      }
-    }
-
-    if (lambda == 0.5) {
-      if (beta == 0.1) {
-        return B_05[0];
-      }
-      if (beta == 0.5) {
-        return B_05[1];
-      }
-      if (beta == 1.0) {
-        return B_05[2];
-      }
-      if (beta == 2.0) {
-        return B_05[3];
-      }
-      if (beta == 3.0) {
-        return B_05[4];
-      }
-      if (beta == 5.0) {
-        return B_05[5];
-      }
-      if (beta == 8.0) {
-        return B_05[6];
-      }
-    }
-
-    if (lambda == 1.0) {
-      if (beta == 0.1) {
-        return B_1[0];
-      }
-      if (beta == 0.5) {
-        return B_1[1];
-      }
-      if (beta == 1.0) {
-        return B_1[2];
-      }
-      if (beta == 2.0) {
-        return B_1[3];
-      }
-      if (beta == 3.0) {
-        return B_1[4];
-      }
-      if (beta == 5.0) {
-        return B_1[5];
-      }
-      if (beta == 8.0) {
-        return B_1[6];
-      }
-    }
-
-    if (lambda == 2.0) {
-      if (beta == 0.1) {
-        return B_2[0];
-      }
-      if (beta == 0.5) {
-        return B_2[1];
-      }
-      if (beta == 1.0) {
-        return B_2[2];
-      }
-      if (beta == 2.0) {
-        return B_2[3];
-      }
-      if (beta == 3.0) {
-        return B_2[4];
-      }
-      if (beta == 5.0) {
-        return B_2[5];
-      }
-      if (beta == 8.0) {
-        return B_2[6];
-      }
-    }
-
-    if (lambda == 3.0) {
-      if (beta == 0.1) {
-        return B_3[0];
-      }
-      if (beta == 0.5) {
-        return B_3[1];
-      }
-      if (beta == 1.0) {
-        return B_3[2];
-      }
-      if (beta == 2.0) {
-        return B_3[3];
-      }
-      if (beta == 3.0) {
-        return B_3[4];
-      }
-      if (beta == 5.0) {
-        return B_3[5];
-      }
-      if (beta == 8.0) {
-        return B_3[6];
-      }
-    }
-
-    if (lambda == 5.0) {
-      if (beta == 0.1) {
-        return B_5[0];
-      }
-      if (beta == 0.5) {
-        return B_5[1];
-      }
-      if (beta == 1.0) {
-        return B_5[2];
-      }
-      if (beta == 2.0) {
-        return B_5[3];
-      }
-      if (beta == 3.0) {
-        return B_5[4];
-      }
-      if (beta == 5.0) {
-        return B_5[5];
-      }
-      if (beta == 8.0) {
-        return B_5[6];
-      }
-    }
-
-    if (lambda == 8.0) {
-      if (beta == 0.1) {
-        return B_8[0];
-      }
-      if (beta == 0.5) {
-        return B_8[1];
-      }
-      if (beta == 1.0) {
-        return B_8[2];
-      }
-      if (beta == 2.0) {
-        return B_8[3];
-      }
-      if (beta == 3.0) {
-        return B_8[4];
-      }
-      if (beta == 5.0) {
-        return B_8[5];
-      }
-      if (beta == 8.0) {
-        return B_8[6];
-      }
-    }
-
-
-    int i;
-    double erg;
-    double sum;
-    if ((beta - 5.0 * lambda - 8.0) >= 0.0) {
-      double my = 4.0 * lambda * lambda;
-      double c = -0.9189385 + 0.5 * Math.log(beta) + beta;
-      sum = 1.0;
-      i = 1;
-      double prod = 0.0;
-      double diff = 8.0;
-      double value = 1.0;
-      while (factorial(i) * Math.pow(8.0 * beta, i) <= 1.0e250 && i <= 10) {
-        if (i == 1) {
-          prod = my - 1.0;
-        } else {
-          value += diff;
-          prod *= my - value;
-          diff *= 2.0;
-        }
-        sum += prod / (factorial(i) * Math.pow((8.0 * beta), i));
-        i++;
-      }
-      erg = c - Math.log(sum);
-      return erg;
-    }
-
-    double pi = Math.PI;
-    if ((lambda > 0.0) && ((beta - 0.04 * lambda) <= 0.0)) {
-      if (lambda < 11.5) {
-        erg = -Math.log(gamma(lambda)) - lambda * Math.log(2.0) + lambda * Math.log(beta);
-        return erg;
-      } else {
-        erg = -(lambda + 1.0) * Math.log(2.0) - (lambda - 0.5) * Math.log(lambda) + lambda
-            + lambda * Math.log(beta) - 0.5 * Math.log(0.5 * pi);
-        return erg;
-      }
-    }
-
-
-    // otherwise numerical integration of the function defined above
-
-    double x = 0.0;
-
-    double newValue;
-    double x1;
-    double step;
-    if (beta < 1.57) {
-      double fx = (fkt2Value(lambda, beta, x)) * 0.01;
-      double y = 0.0;
-      while (true) { //while (!NULL) {
-        y += 0.1;
-        if ((fkt2Value(lambda, beta, y)) < fx) {
-          break;
-        }
-      }
-      step = y * 0.001;
-      x1 = step;
-      sum = (0.5 * (10.0 * step + fkt2Value(lambda, beta, x1))) * step;
-      double firstValue = sum;
-      double epsilon = 0.01;
-      while (true) { //while (!NULL) {
-        x = x1;
-        x1 += step;
-        newValue = (0.5 * (fkt2Value(lambda, beta, x) + fkt2Value(lambda, beta, x1))) * step;
-        sum += newValue;
-        if ((newValue / firstValue) < epsilon) {
-          break;
-        }
-      }
-      erg = -Math.log(2.0 * sum);
-      return erg;
-    } else {
-      double z1 = beta / 1.57;
-      sum = 0.0;
-      double period = pi / z1;
-      step = 0.1 * period;
-      double border = 100.0 / ((lambda + 0.1) * (lambda + 0.1));
-      int nrPer = (int) Math.ceil(border / period) + 20;
-      x1 = step;
-      int j;
-      double z2 = 1.57;
-      for (i = 1; i <= nrPer; i++) {
-        for (j = 1; j <= 10; j++) {
-          newValue = (0.5 * (fktValue(lambda, z1, z2, x) + fktValue(lambda, z1, z2, x1))) * step;
-          sum += newValue;
-          x = x1;
-          x1 += step;
-        }
-      }
-      for (j = 1; j <= 5; j++) {
-        newValue = 0.5 * (fktValue(lambda, z1, z2, x) + fktValue(lambda, z1, z2, x1)) * step;
-        sum += newValue;
-        x = x1;
-        x1 += step;
-      }
-      double firstSum = sum;
-      for (j = 1; j <= 10; j++) {
-        newValue = (0.5 * (fktValue(lambda, z1, z2, x) + fktValue(lambda, z1, z2, x1))) * step;
-        sum += newValue;
-        x = x1;
-        x1 += step;
-      }
-      double secondSum = sum;
-      sum = 0.5 * (firstSum + secondSum);
-      erg = gamma(lambda + 0.5) * Math.pow(2.0 * z2, lambda) / (Math.sqrt(pi) * Math.pow(z1, lambda)) * sum;
-      erg = -Math.log(2.0 * erg);
-      return erg;
-    }
+  public static long roundToLong(double paramDouble, RoundingMode paramRoundingMode)
+  {
+    double d = roundIntermediate(paramDouble, paramRoundingMode);
+    MathPreconditions.checkInRange((-9.223372036854776E+018D - d < 1.0D ? 1 : 0) & (d < 9.223372036854776E+018D ? 1 : 0));
+    return ()d;
   }
 
-  /** Modified Bessel Functions of First Kind - Order 0. */
-  public static double bessi0(double x) {
-    double ax;
-    double ans;
-    double y;
+  public static BigInteger roundToBigInteger(double paramDouble, RoundingMode paramRoundingMode)
+  {
+    paramDouble = roundIntermediate(paramDouble, paramRoundingMode);
+    if (((-9.223372036854776E+018D - paramDouble < 1.0D ? 1 : 0) & (paramDouble < 9.223372036854776E+018D ? 1 : 0)) != 0)
+      return BigInteger.valueOf(()paramDouble);
+    int i = Math.getExponent(paramDouble);
+    if (i < 0)
+      return BigInteger.ZERO;
+    long l = DoubleUtils.getSignificand(paramDouble);
+    BigInteger localBigInteger = BigInteger.valueOf(l).shiftLeft(i - 52);
+    return paramDouble < 0.0D ? localBigInteger.negate() : localBigInteger;
+  }
 
-    if ((ax = Math.abs(x)) < 3.75) {
-      y = x / 3.75;
-      y *= y;
-      ans = 1.0 + y * (3.5156229 + y * (3.0899424 + y * (1.2067492
-          + y * (0.2659732 + y * (0.360768e-1 + y * 0.45813e-2)))));
-    } else {
-      y = 3.75 / ax;
-      ans = (Math.exp(ax) / Math.sqrt(ax)) * (0.39894228 + y * (0.1328592e-1
-          + y * (0.225319e-2 + y * (-0.157565e-2 + y * (0.916281e-2
-          + y * (-0.2057706e-1 + y * (0.2635537e-1 + y * (-0.1647633e-1
-          + y * 0.392377e-2))))))));
+  public static boolean isPowerOfTwo(double paramDouble)
+  {
+    return (paramDouble > 0.0D) && (DoubleUtils.isFinite(paramDouble)) && (LongMath.isPowerOfTwo(DoubleUtils.getSignificand(paramDouble)));
+  }
+
+  public static double log2(double paramDouble)
+  {
+    return Math.log(paramDouble) / LN_2;
+  }
+
+  public static int log2(double paramDouble, RoundingMode paramRoundingMode)
+  {
+    Preconditions.checkArgument((paramDouble > 0.0D) && (DoubleUtils.isFinite(paramDouble)), "x must be positive and finite");
+    int i = Math.getExponent(paramDouble);
+    if (!DoubleUtils.isNormal(paramDouble))
+      return log2(paramDouble * 4503599627370496.0D, paramRoundingMode) - 52;
+    int j;
+    switch (1.$SwitchMap$java$math$RoundingMode[paramRoundingMode.ordinal()])
+    {
+    case 1:
+      MathPreconditions.checkRoundingUnnecessary(isPowerOfTwo(paramDouble));
+    case 2:
+      j = 0;
+      break;
+    case 3:
+      j = !isPowerOfTwo(paramDouble) ? 1 : 0;
+      break;
+    case 4:
+      j = (i < 0 ? 1 : 0) & (!isPowerOfTwo(paramDouble) ? 1 : 0);
+      break;
+    case 5:
+      j = (i >= 0 ? 1 : 0) & (!isPowerOfTwo(paramDouble) ? 1 : 0);
+      break;
+    case 6:
+    case 7:
+    case 8:
+      double d = DoubleUtils.scaleNormalize(paramDouble);
+      j = d * d > 2.0D ? 1 : 0;
+      break;
+    default:
+      throw new AssertionError();
     }
-    return ans;
+    return j != 0 ? i + 1 : i;
   }
 
-  /** Modified Bessel Functions of First Kind - Order 1. */
-  public static double bessi1(double x) {
-    double ax;
-    double ans;
-    double y;
-
-    if ((ax = Math.abs(x)) < 3.75) {
-      y = x / 3.75;
-      y *= y;
-      ans = ax * (0.5 + y * (0.87890594 + y * (0.51498869 + y * (0.15084934
-          + y * (0.2658733e-1 + y * (0.301532e-2 + y * 0.32411e-3))))));
-    } else {
-      y = 3.75 / ax;
-      ans = 0.2282967e-1 + y * (-0.2895312e-1 + y * (0.1787654e-1
-          - y * 0.420059e-2));
-      ans = 0.39894228 + y * (-0.3988024e-1 + y * (-0.362018e-2
-          + y * (0.163801e-2 + y * (-0.1031555e-1 + y * ans))));
-      ans *= Math.exp(ax) / Math.sqrt(ax);
-    }
-    return x < 0.0 ? -ans : ans;
+  public static boolean isMathematicalInteger(double paramDouble)
+  {
+    return (DoubleUtils.isFinite(paramDouble)) && ((paramDouble == 0.0D) || (52 - Long.numberOfTrailingZeros(DoubleUtils.getSignificand(paramDouble)) <= Math.getExponent(paramDouble)));
   }
 
-  /** Returns <tt>n!</tt>. */
-  public static long factorial(int n) {
-    return Arithmetic.longFactorial(n);
-  }
-
-  private static double fkt2Value(double lambda, double beta, double xValue) {
-
-    return cosh(lambda * xValue) * Math.exp(-beta * cosh(xValue));
-  }
-
-  private static double cosh(double x) {
-    return (Math.exp(x) + Math.exp(-x)) / 2.0;
-  }
-
-
-  /** Returns the gamma function <tt>gamma(x)</tt>. */
-  public static double gamma(double x) {
-    x = logGamma(x);
-    //if (x > Math.log(Double.MAX_VALUE)) return Double.MAX_VALUE;
-    return Math.exp(x);
-  }
-
-  /** Returns a quick approximation of <tt>log(gamma(x))</tt>. */
-  public static double logGamma(double x) {
-
-    if (x <= 0.0 /* || x > 1.3e19 */) {
-      return -999;
-    }
-
-    double z;
-    for (z = 1.0; x < 11.0; x++) {
-      z *= x;
-    }
-
-    double r = 1.0 / (x * x);
-    double c6 = -1.9175269175269175e-03;
-    double c5 = 8.4175084175084175e-04;
-    double c4 = -5.9523809523809524e-04;
-    double c3 = 7.9365079365079365e-04;
-    double c2 = -2.7777777777777777e-03;
-    double c1 = 8.3333333333333333e-02;
-    double g = c1 + r * (c2 + r * (c3 + r * (c4 + r * (c5 + r + c6))));
-    double c0 = 9.1893853320467274e-01;
-    g = (x - 0.5) * Math.log(x) - x + c0 + g / x;
-    if (z == 1.0) {
-      return g;
-    }
-    return g - Math.log(z);
+  public static double factorial(int paramInt)
+  {
+    MathPreconditions.checkNonNegative("n", paramInt);
+    if (paramInt > 170)
+      return (1.0D / 0.0D);
+    double d = 1.0D;
+    for (int i = 1 + (paramInt & 0xFFFFFFF0); i <= paramInt; i++)
+      d *= i;
+    return d * EVERY_SIXTEENTH_FACTORIAL[(paramInt >> 4)];
   }
 }
 
+/* Location:           D:\stuff\work\random\CodeTanks\#local-runner\local-runner\
+ * Qualified Name:     com.google.common.math.DoubleMath
+ * JD-Core Version:    0.6.2
+ */

@@ -1,1004 +1,423 @@
-/*
-* The Apache Software License, Version 1.1
-*
-* Copyright (c) 2001-2002 The Apache Software Foundation.  All rights
-* reserved.
-*
-* Redistribution and use in source and binary forms, with or without
-* modification, are permitted provided that the following conditions
-* are met:
-*
-* 1. Redistributions of source code must retain the above copyright
-*    notice, this list of conditions and the following disclaimer.
-*
-* 2. Redistributions in binary form must reproduce the above copyright
-*    notice, this list of conditions and the following disclaimer in
-*    the documentation and/or other materials provided with the
-*    distribution.
-*
-* 3. The end-user documentation included with the redistribution, if
-*    any, must include the following acknowlegement:
-*       "This product includes software developed by the
-*        Apache Software Foundation (http://www.apache.org/)."
-*    Alternately, this acknowlegement may appear in the software itself,
-*    if and wherever such third-party acknowlegements normally appear.
-*
-* 4. The names "The Jakarta Project", "Ant", and "Apache Software
-*    Foundation" must not be used to endorse or promote products derived
-*    from this software without prior written permission. For written
-*    permission, please contact apache@apache.org.
-*
-* 5. Products derived from this software may not be called "Apache"
-*    nor may "Apache" appear in their names without prior written
-*    permission of the Apache Group.
-*
-* THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESSED OR IMPLIED
-* WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-* OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-* DISCLAIMED.  IN NO EVENT SHALL THE APACHE SOFTWARE FOUNDATION OR
-* ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-* SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-* LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
-* USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-* ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-* OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
-* OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
-* SUCH DAMAGE.
-* ====================================================================
-*
-* This software consists of voluntary contributions made by many
-* individuals on behalf of the Apache Software Foundation.  For more
-* information on the Apache Software Foundation, please see
-* <http://www.apache.org/>.
-*/
-package ise.calculator;
+/* Copyright (C) 2002 Univ. of Massachusetts Amherst, Computer Science Dept.
+   This file is part of "MALLET" (MAchine Learning for LanguagE Toolkit).
+   http://www.cs.umass.edu/~mccallum/mallet
+   This software is provided under the terms of the Common Public License,
+   version 1.0, as published by http://www.opensource.org.  For further
+   information, see the file `LICENSE' included with this distribution. */
 
-import java.lang.reflect.Method;
-import java.lang.reflect.Array;
-import java.lang.reflect.InvocationTargetException;
-import java.math.BigInteger;
-import java.math.BigDecimal;
-import java.util.Vector;
-import java.util.Enumeration;
 
-/**
- * Provides access to java.lang.Math and java.lang.StrictMath for Ant. Provides
- * add, subtract, multiply, divide and mod methods as well as access to all methods
- * java.lang.Math and java.lang.StrictMath via reflection. 
- * @author Dale Anson, danson@germane-software.com
+
+
+/** 
+   @author Andrew McCallum <a href="mailto:mccallum@cs.umass.edu">mccallum@cs.umass.edu</a>
  */
-public class Math {
 
-   private boolean strict = false;
+package cc.mallet.util;
 
-   public static Class BIGDECIMAL_TYPE;
-   public static Class BIGINT_TYPE;
-   static {
-      try {
-         BIGDECIMAL_TYPE = Class.forName( "java.math.BigDecimal" );
-      }
-      catch ( ClassNotFoundException e ) {
-         BIGDECIMAL_TYPE = null;
-      }
-      try {
-         BIGINT_TYPE = Class.forName( "java.math.BigInteger" );
-      }
-      catch ( Exception e ) {
-         BIGINT_TYPE = null;
-      }
-   }
+// Math and statistics functions
+public final class Maths {
 
-   public Math() {}
+	// From libbow, dirichlet.c
+	// Written by Tom Minka <minka@stat.cmu.edu>
+	public static final double logGamma (double x)
+	{
+		double result, y, xnum, xden;
+		int i;
+		final double d1 = -5.772156649015328605195174e-1;
+		final double p1[] = { 
+			4.945235359296727046734888e0, 2.018112620856775083915565e2, 
+			2.290838373831346393026739e3, 1.131967205903380828685045e4, 
+			2.855724635671635335736389e4, 3.848496228443793359990269e4, 
+			2.637748787624195437963534e4, 7.225813979700288197698961e3 
+		};
+		final double q1[] = {
+			6.748212550303777196073036e1, 1.113332393857199323513008e3, 
+			7.738757056935398733233834e3, 2.763987074403340708898585e4, 
+			5.499310206226157329794414e4, 6.161122180066002127833352e4, 
+			3.635127591501940507276287e4, 8.785536302431013170870835e3
+		};
+		final double d2 = 4.227843350984671393993777e-1;
+		final double p2[] = {
+			4.974607845568932035012064e0, 5.424138599891070494101986e2, 
+			1.550693864978364947665077e4, 1.847932904445632425417223e5, 
+			1.088204769468828767498470e6, 3.338152967987029735917223e6, 
+			5.106661678927352456275255e6, 3.074109054850539556250927e6
+		};
+		final double q2[] = {
+			1.830328399370592604055942e2, 7.765049321445005871323047e3, 
+			1.331903827966074194402448e5, 1.136705821321969608938755e6, 
+			5.267964117437946917577538e6, 1.346701454311101692290052e7, 
+			1.782736530353274213975932e7, 9.533095591844353613395747e6
+		};
+		final double d4 = 1.791759469228055000094023e0;
+		final double p4[] = {
+			1.474502166059939948905062e4, 2.426813369486704502836312e6, 
+			1.214755574045093227939592e8, 2.663432449630976949898078e9, 
+			2.940378956634553899906876e10, 1.702665737765398868392998e11, 
+			4.926125793377430887588120e11, 5.606251856223951465078242e11
+		};
+		final double q4[] = {
+			2.690530175870899333379843e3, 6.393885654300092398984238e5, 
+			4.135599930241388052042842e7, 1.120872109616147941376570e9, 
+			1.488613728678813811542398e10, 1.016803586272438228077304e11, 
+			3.417476345507377132798597e11, 4.463158187419713286462081e11
+		};
+		final double c[] = {
+			-1.910444077728e-03, 8.4171387781295e-04, 
+			-5.952379913043012e-04, 7.93650793500350248e-04, 
+			-2.777777777777681622553e-03, 8.333333333333333331554247e-02, 
+			5.7083835261e-03
+		};
+		final double a = 0.6796875;
 
-   public Math( boolean strict ) {
-      this.strict = strict;
-   }
+		if((x <= 0.5) || ((x > a) && (x <= 1.5))) {
+			if(x <= 0.5) {
+				result = -Math.log(x);
+				/*  Test whether X < machine epsilon. */
+				if(x+1 == 1) {
+					return result;
+				}
+			}
+			else {
+				result = 0;
+				x = (x - 0.5) - 0.5;
+			}
+			xnum = 0;
+			xden = 1;
+			for(i=0;i<8;i++) {
+				xnum = xnum * x + p1[i];
+				xden = xden * x + q1[i];
+			}
+			result += x*(d1 + x*(xnum/xden));
+		}
+		else if((x <= a) || ((x > 1.5) && (x <= 4))) {
+			if(x <= a) {
+				result = -Math.log(x);
+				x = (x - 0.5) - 0.5;
+			}
+			else {
+				result = 0;
+				x -= 2;
+			}
+			xnum = 0;
+			xden = 1;
+			for(i=0;i<8;i++) {
+				xnum = xnum * x + p2[i];
+				xden = xden * x + q2[i];
+			}
+			result += x*(d2 + x*(xnum/xden));
+		}
+		else if(x <= 12) {
+			x -= 4;
+			xnum = 0;
+			xden = -1;
+			for(i=0;i<8;i++) {
+				xnum = xnum * x + p4[i];
+				xden = xden * x + q4[i];
+			}
+			result = d4 + x*(xnum/xden);
+		}
+		/*  X > 12  */
+		else {
+			y = Math.log(x);
+			result = x*(y - 1) - y*0.5 + .9189385332046727417803297;
+			x = 1/x;
+			y = x*x;
+			xnum = c[6];
+			for(i=0;i<6;i++) {
+				xnum = xnum * y + c[i];
+			}
+			xnum *= x;
+			result += xnum;
+		}
+		return result;
+	}
+	
+	// This is from "Numeric Recipes in C"
+  public static double oldLogGamma (double x) {
+    int j;
+    double y, tmp, ser;
+    double [] cof = {76.18009172947146, -86.50532032941677 ,
+                     24.01409824083091, -1.231739572450155 ,
+                      0.1208650973866179e-2, -0.5395239384953e-5};
+    y = x;
+    tmp = x + 5.5 - (x + 0.5) * Math.log (x + 5.5);
+    ser = 1.000000000190015;
+    for (j = 0; j <= 5; j++)
+      ser += cof[j] / ++y;
+    return Math.log (2.5066282746310005 * ser / x) - tmp;
+  }
 
-   public void setStrict( boolean strict ) {
-      this.strict = strict;
-   }
+  public static double logBeta (double a, double b) {
+    return logGamma(a)+logGamma(b)-logGamma(a+b);
+  }
 
-   public boolean isStrict() {
-      return strict;
-   }
+  public static double beta (double a, double b) {
+    return Math.exp (logBeta(a,b));
+  }
 
-   public static BigDecimal add( BigDecimal a, BigDecimal b ) {
-      return a.add( b );
-   }
+  public static double gamma (double x) {
+    return Math.exp (logGamma(x));
+  }
 
-   public static BigInteger add( BigInteger a, BigInteger b ) {
-      return a.add( b );
-   }
+  public static double factorial (int n) {
+    return Math.exp (logGamma(n+1));
+  }
 
-   public static BigInteger and( BigInteger a, BigInteger b ) {
-      return a.and( b );
-   }
+  public static double logFactorial (int n) {
+    return logGamma(n+1);
+  }
 
-   public static int and( int a, int b ) {
-      return a & b;
-   }
-
-   public static BigInteger or( BigInteger a, BigInteger b ) {
-      return a.or( b );
-   }
-
-   public static int or( int a, int b ) {
-      return a | b;
-   }
-
-   public static BigInteger not( BigInteger a ) {
-      return a.not();
-   }
-
-   public static int not( int a ) {
-      return ~a;
-   }
-
-   public static BigInteger xor( BigInteger a, BigInteger b ) {
-      return a.xor( b );
-   }
-
-   public static int xor( int a, int b ) {
-      return a ^ b;
-   }
-
-   public static double add( double a, double b ) {
-      return a + b;
-   }
-   public static float add( float a, float b ) {
-      return a + b;
-   }
-   public static long add( long a, long b ) {
-      return a + b;
-   }
-   public static int add( int a, int b ) {
-      return a + b;
-   }
-   public static BigInteger add( BigInteger[] a ) {
-      if ( a.length == 0 )
-         throw new IllegalArgumentException();
-      if ( a.length == 1 )
-         return a[ 0 ];
-      BigInteger b = a[ 0 ];
-      for ( int i = 1; i < a.length; i++ )
-         b = b.add( a[ i ] );
-      return b;
-   }
-   public static double add( double[] a ) {
-      if ( a.length == 0 )
-         throw new IllegalArgumentException();
-      if ( a.length == 1 )
-         return a[ 0 ];
-      double b = a[ 0 ];
-      for ( int i = 1; i < a.length; i++ )
-         b += a[ i ];
-      return b;
-   }
-   public static float add( float[] a ) {
-      if ( a.length == 0 )
-         throw new IllegalArgumentException();
-      if ( a.length == 1 )
-         return a[ 0 ];
-      float b = a[ 0 ];
-      for ( int i = 1; i < a.length; i++ )
-         b += a[ i ];
-      return b;
-   }
-   public static long add( long[] a ) {
-      if ( a.length == 0 )
-         throw new IllegalArgumentException();
-      if ( a.length == 1 )
-         return a[ 0 ];
-      long b = a[ 0 ];
-      for ( int i = 1; i < a.length; i++ )
-         b += a[ i ];
-      return b;
-   }
-   public static int add( int[] a ) {
-      if ( a.length == 0 )
-         throw new IllegalArgumentException();
-      if ( a.length == 1 )
-         return a[ 0 ];
-      int b = a[ 0 ];
-      for ( int i = 1; i < a.length; i++ )
-         b += a[ i ];
-      return b;
-   }
-
-   public static BigDecimal subtract( BigDecimal a, BigDecimal b ) {
-      return a.subtract( b );
-   }
-
-   public static BigInteger subtract( BigInteger a, BigInteger b ) {
-      return a.subtract( b );
-   }
-
-   public static double subtract( double a, double b ) {
-      return a - b;
-   }
-   public static float subtract( float a, float b ) {
-      return a - b;
-   }
-   public static long subtract( long a, long b ) {
-      return a - b;
-   }
-   public static int subtract( int a, int b ) {
-      return a - b;
-   }
-   public static BigDecimal subtract( BigDecimal[] a ) {
-      if ( a.length == 0 )
-         throw new IllegalArgumentException();
-      if ( a.length == 1 )
-         return a[ 0 ];
-      BigDecimal b = a[ 0 ];
-      for ( int i = 1; i < a.length; i++ )
-         b = b.subtract( a[ i ] );
-      return b;
-   }
-   public static BigInteger subtract( BigInteger[] a ) {
-      if ( a.length == 0 )
-         throw new IllegalArgumentException();
-      if ( a.length == 1 )
-         return a[ 0 ];
-      BigInteger b = a[ 0 ];
-      for ( int i = 1; i < a.length; i++ )
-         b = b.subtract( a[ i ] );
-      return b;
-   }
-   public static double subtract( double[] a ) {
-      if ( a.length == 0 )
-         throw new IllegalArgumentException();
-      if ( a.length == 1 )
-         return a[ 0 ];
-      double b = a[ 0 ];
-      for ( int i = 1; i < a.length; i++ )
-         b -= a[ i ];
-      return b;
-   }
-   public static float subtract( float[] a ) {
-      if ( a.length == 0 )
-         throw new IllegalArgumentException();
-      if ( a.length == 1 )
-         return a[ 0 ];
-      float b = a[ 0 ];
-      for ( int i = 1; i < a.length; i++ )
-         b -= a[ i ];
-      return b;
-   }
-   public static long subtract( long[] a ) {
-      if ( a.length == 0 )
-         throw new IllegalArgumentException();
-      if ( a.length == 1 )
-         return a[ 0 ];
-      long b = a[ 0 ];
-      for ( int i = 1; i < a.length; i++ )
-         b -= a[ i ];
-      return b;
-   }
-   public static int subtract( int[] a ) {
-      if ( a.length == 0 )
-         throw new IllegalArgumentException();
-      if ( a.length == 1 )
-         return a[ 0 ];
-      int b = a[ 0 ];
-      for ( int i = 1; i < a.length; i++ )
-         b -= a[ i ];
-      return b;
-   }
-
-   public static BigDecimal multiply( BigDecimal a, BigDecimal b ) {
-      return a.multiply( b );
-   }
-
-   public static BigInteger multiply( BigInteger a, BigInteger b ) {
-      return a.multiply( b );
-   }
-
-   public static double multiply( double a, double b ) {
-      return a * b;
-   }
-   public static float multiply( float a, float b ) {
-      return a * b;
-   }
-   public static long multiply( long a, long b ) {
-      return a * b;
-   }
-   public static int multiply( int a, int b ) {
-      return a * b;
-   }
-   public static BigDecimal multiply( BigDecimal[] a ) {
-      if ( a.length == 0 )
-         throw new IllegalArgumentException();
-      if ( a.length == 1 )
-         return a[ 0 ];
-      BigDecimal b = a[ 0 ];
-      for ( int i = 1; i < a.length; i++ )
-         b = b.multiply( a[ i ] );
-      return b;
-   }
-   public static BigInteger multiply( BigInteger[] a ) {
-      if ( a.length == 0 )
-         throw new IllegalArgumentException();
-      if ( a.length == 1 )
-         return a[ 0 ];
-      BigInteger b = a[ 0 ];
-      for ( int i = 1; i < a.length; i++ )
-         b = b.multiply( a[ i ] );
-      return b;
-   }
-   public static double multiply( double[] a ) {
-      if ( a.length == 0 )
-         throw new IllegalArgumentException();
-      if ( a.length == 1 )
-         return a[ 0 ];
-      double b = a[ 0 ];
-      for ( int i = 1; i < a.length; i++ )
-         b *= a[ i ];
-      return b;
-   }
-   public static float multiply( float[] a ) {
-      if ( a.length == 0 )
-         throw new IllegalArgumentException();
-      if ( a.length == 1 )
-         return a[ 0 ];
-      float b = a[ 0 ];
-      for ( int i = 1; i < a.length; i++ )
-         b *= a[ i ];
-      return b;
-   }
-   public static long multiply( long[] a ) {
-      if ( a.length == 0 )
-         throw new IllegalArgumentException();
-      if ( a.length == 1 )
-         return a[ 0 ];
-      long b = a[ 0 ];
-      for ( int i = 1; i < a.length; i++ )
-         b *= a[ i ];
-      return b;
-   }
-   public static int multiply( int[] a ) {
-      if ( a.length == 0 )
-         throw new IllegalArgumentException();
-      if ( a.length == 1 )
-         return a[ 0 ];
-      int b = a[ 0 ];
-      for ( int i = 1; i < a.length; i++ )
-         b *= a[ i ];
-      return b;
-   }
-
-   public static BigDecimal divide( BigDecimal a, BigDecimal b ) {
-      try {
-         return a.divide( b, BigDecimal.ROUND_HALF_EVEN );
-      }
-      catch ( Throwable e ) {
-         return a.divide( b, BigDecimal.ROUND_HALF_EVEN );
-      }
-   }
-
-   public static BigInteger divide( BigInteger a, BigInteger b ) {
-      return a.divide( b );
-   }
-
-   public static double divide( double a, double b ) {
-      return a / b;
-   }
-   public static float divide( float a, float b ) {
-      return a / b;
-   }
-   public static long divide( long a, long b ) {
-      return a / b;
-   }
-   public static int divide( int a, int b ) {
-      return a / b;
-   }
-   public static BigDecimal divide( BigDecimal[] a ) {
-      if ( a.length == 0 )
-         throw new IllegalArgumentException();
-      if ( a.length == 1 )
-         return a[ 0 ];
-      BigDecimal b = a[ 0 ];
-      for ( int i = 1; i < a.length; i++ )
-         b = b.divide( a[ i ], BigDecimal.ROUND_HALF_EVEN );
-      return b;
-   }
-   public static BigInteger divide( BigInteger[] a ) {
-      if ( a.length == 0 )
-         throw new IllegalArgumentException();
-      if ( a.length == 1 )
-         return a[ 0 ];
-      BigInteger b = a[ 0 ];
-      for ( int i = 1; i < a.length; i++ )
-         b = b.divide( a[ i ] );
-      return b;
-   }
-   public static double divide( double[] a ) {
-      if ( a.length == 0 )
-         throw new IllegalArgumentException();
-      if ( a.length == 1 )
-         return a[ 0 ];
-      double b = a[ 0 ];
-      for ( int i = 1; i < a.length; i++ )
-         b /= a[ i ];
-      return b;
-   }
-   public static float divide( float[] a ) {
-      if ( a.length == 0 )
-         throw new IllegalArgumentException();
-      if ( a.length == 1 )
-         return a[ 0 ];
-      float b = a[ 0 ];
-      for ( int i = 1; i < a.length; i++ )
-         b /= a[ i ];
-      return b;
-   }
-   public static long divide( long[] a ) {
-      if ( a.length == 0 )
-         throw new IllegalArgumentException();
-      if ( a.length == 1 )
-         return a[ 0 ];
-      long b = a[ 0 ];
-      for ( int i = 1; i < a.length; i++ )
-         b /= a[ i ];
-      return b;
-   }
-   public static int divide( int[] a ) {
-      if ( a.length == 0 )
-         throw new IllegalArgumentException();
-      if ( a.length == 1 )
-         return a[ 0 ];
-      int b = a[ 0 ];
-      for ( int i = 1; i < a.length; i++ )
-         b /= a[ i ];
-      return b;
-   }
-
-   public static BigInteger mod( BigInteger a, BigInteger b ) {
-      return a.mod( b );
-   }
-
-   public static double mod( double a, double b ) {
-      return a % b;
-   }
-   public static float mod( float a, float b ) {
-      return a % b;
-   }
-   public static long mod( long a, long b ) {
-      return a % b;
-   }
-   public static int mod( int a, int b ) {
-      return a % b;
-   }
-   public static BigInteger mod( BigInteger[] a ) {
-      if ( a.length == 0 )
-         throw new IllegalArgumentException();
-      if ( a.length == 1 )
-         return a[ 0 ];
-      BigInteger b = a[ 0 ];
-      for ( int i = 1; i < a.length; i++ )
-         b = b.mod( a[ i ] );
-      return b;
-   }
-   public static double mod( double[] a ) {
-      if ( a.length == 0 )
-         throw new IllegalArgumentException();
-      if ( a.length == 1 )
-         return a[ 0 ];
-      double b = a[ 0 ];
-      for ( int i = 1; i < a.length; i++ )
-         b %= a[ i ];
-      return b;
-   }
-   public static float mod( float[] a ) {
-      if ( a.length == 0 )
-         throw new IllegalArgumentException();
-      if ( a.length == 1 )
-         return a[ 0 ];
-      float b = a[ 0 ];
-      for ( int i = 1; i < a.length; i++ )
-         b %= a[ i ];
-      return b;
-   }
-   public static long mod( long[] a ) {
-      if ( a.length == 0 )
-         throw new IllegalArgumentException();
-      if ( a.length == 1 )
-         return a[ 0 ];
-      long b = a[ 0 ];
-      for ( int i = 1; i < a.length; i++ )
-         b %= a[ i ];
-      return b;
-   }
-   public static int mod( int[] a ) {
-      if ( a.length == 0 )
-         throw new IllegalArgumentException();
-      if ( a.length == 1 )
-         return a[ 0 ];
-      int b = a[ 0 ];
-      for ( int i = 1; i < a.length; i++ )
-         b %= a[ i ];
-      return b;
-   }
-
-   public static BigInteger factorial( BigInteger x ) {
-      if ( x.compareTo( new BigInteger( "0" ) ) < 0 )
-         throw new IllegalArgumentException( "number must be greater than 0" );
-      BigInteger y = x;
-      for ( x = x.subtract( new BigInteger( "1" ) ); x.toString().compareTo( "1" ) > 0; x = x.subtract( new BigInteger( "1" ) ) ) {
-         y = y.multiply( x );
-      }
-      return y;
-   }
-
-   public static int factorial( double x ) {
-      return factorial( ( int ) x );
-   }
-
-   public static int factorial( float x ) {
-      return factorial( ( int ) x );
-   }
-
-   public static int factorial( int x ) {
-      if ( x < 0 )
-         throw new IllegalArgumentException( "number must be greater than 0" );
-      int y = x;
-      for ( x -= 1; x > 1; x-- )
-         y *= x;
-      return y;
-   }
-
-   public static BigDecimal min( BigDecimal a, BigDecimal b ) {
-      return a.min( b );
-   }
-
-   public static BigInteger min( BigInteger a, BigInteger b ) {
-      return a.min( b );
-   }
-
-   public static BigDecimal max( BigDecimal a, BigDecimal b ) {
-      return a.max( b );
-   }
-
-   public static BigInteger max( BigInteger a, BigInteger b ) {
-      return a.max( b );
-   }
-
-   /**
-    * y raised to the x power   
-    */
-   public static BigInteger pow( BigInteger y, BigInteger x ) {
-      int exp = x.intValue();
-      if ( exp < 1 )
-         throw new IllegalArgumentException( "Exponent must be greater than 0" );
-      return y.pow( x.intValue() );
-   }
-
-   /**
-    * y raised to the x power   
-    */
-   public static BigDecimal pow( BigDecimal y, BigDecimal x ) {
-      if ( x.compareTo( new BigDecimal( "1" ) ) <= 0 ) {
-         throw new ArithmeticException( "Powers of BigDecimals must be integers greater than 1" );
-      }
-      String exp = x.toString();
-      if ( exp.indexOf( "." ) > 0 )
-         exp = exp.substring( 0, exp.indexOf( "." ) );
-      BigInteger e = new BigInteger( exp );
-      BigDecimal z = new BigDecimal( y.toString() );
-      for ( ;e.compareTo( BigInteger.ONE ) > 0; e = e.subtract( BigInteger.ONE ) ) {
-         y = y.multiply( z );
-      }
-      return y;
-   }
-   
-   /**
-    * Do a mathematical calculation. The allowed operations are all 
-    * operations supported by java.lang.Math and this class. Assumes data 
-    * type is "double".
-    * @param op the name of a mathematical operation to perform
-    * @param the operands for the operation, these strings must parse to numbers.  
-    */
-   public Number calculate( String op, String[] operands ) {
-      return calculate( op, "double", operands );
-   }
-
-   /**
-    * Do a mathematical calculation. The allowed operations are all 
-    * operations supported by java.lang.Math.
-    * @param op the name of a mathematical operation to perform
-    * @param type the data type of the operands
-    * @param the operands for the operation  
-    */
-   public Number calculate( String op, String type, String[] operands ) {
-      try {
-         if ( operands.length >= 2 && ( op.equals( "add" ) ||
-                 op.equals( "subtract" ) ||
-                 op.equals( "multiply" ) ||
-                 op.equals( "divide" ) ||
-                 op.equals( "mod" ) ) ) {
-            return calculateArray( op, type, operands );
-         }
-
-         if ( operands.length > 2 )
-            throw new IllegalArgumentException( "too many operands" );
-
-         Class c;
-         Method m;
-         if ( strict )
-            c = Class.forName( "java.lang.StrictMath" );
-         else
-            c = Class.forName( "java.lang.Math" );
-
-         // check if op is 'random'. Random is a special case in that it is
-         // the only method in Math that takes no parameters.
-         if ( op.equals( "random" ) ) {
-            m = c.getDeclaredMethod( op, new Class[] {} );
-            Object result = m.invoke( c, null );
-            return ( Number ) result;
-         }
-
-         // find candidate methods for the requested operation
-         Vector candidates = new Vector();
-         Method[] methods = c.getDeclaredMethods();
-         for ( int i = 0; i < methods.length; i++ ) {
-            String name = methods[ i ].getName();
-            if ( name.equals( op ) ) {
-               candidates.addElement( new Candidate( c, methods[ i ] ) );
-            }
-         }
-
-         // also look for candidate methods in this class
-         c = this.getClass();
-         methods = c.getDeclaredMethods();
-         for ( int i = 0; i < methods.length; i++ ) {
-            String name = methods[ i ].getName();
-            if ( name.equals( op ) ) {
-               candidates.addElement( new Candidate( c, methods[ i ] ) );
-            }
-         }
-
-         if ( candidates.size() == 0 )
-            throw new RuntimeException( "Unknown operation: " + op );
-
-         // get the desired data type for the operation, default is
-         // Double.TYPE if no other match is found
-         Class wantTypeClass = getDataType( type );
-
-         // get the parameter count for the candidate methods -- in Math,
-         // all like named methods have the same number of parameters, just
-         // the data types are different. (Fix for bug # 724812 -- the above
-         // statement is true of java.lang.Math, but not of this class.)
-         //int paramCount = ( ( Method ) candidates.elementAt( 0 ) ).getParameterTypes().length;
-         int paramCount = -1;
-         try {
-            for ( int i = 0; i <= candidates.size(); i++ ) {
-               Candidate candidate = ( Candidate ) candidates.elementAt( i );
-               Method method = candidate.getCandidateMethod();
-               paramCount = method.getParameterTypes().length;
-               if ( paramCount == operands.length )
-                  break;
-            }
-         }
-         catch ( Exception e ) {
-            throw new RuntimeException( "Wrong number of arguments, have " +
-                  operands.length + ", but can't find corresponding method." );
-         }
-
-         // make sure there are enough arguments to pass to the method
-         // see bug fix above, this is no longer necessary
-         //if ( operands.length != paramCount )
-         //   throw new RuntimeException( "Wrong number of arguments, have " +
-         //         operands.length + ", expected " + paramCount );
-
-         // determine the actual type class for the method to invoke.
-         // Some methods have only one implementation so determine the
-         // typeClass from the method itself, not the desired.
-         Class typeClass = null;
-         if ( candidates.size() == 1 ) {
-            Candidate candidate = ( Candidate ) candidates.elementAt( 0 );
-            c = candidate.getCandidateClass();
-            m = candidate.getCandidateMethod();
-            typeClass = m.getParameterTypes() [ 0 ];
-         }
-         else {
-            // check each candidate to find one with the desired type
-            Enumeration en = candidates.elements();
-            while ( en.hasMoreElements() ) {
-               Candidate candidate = ( Candidate ) en.nextElement();
-               c = candidate.getCandidateClass();
-               m = candidate.getCandidateMethod();
-               if ( m.getParameterTypes() [ 0 ].equals( wantTypeClass ) ) {
-                  typeClass = wantTypeClass;
-                  break;
-               }
-            }
-            if ( typeClass == null )
-               throw new RuntimeException( "Can't find a method with parameters of type " + type );
-         }
-
-         // get the method to invoke
-         Class[] paramTypes = new Class[ paramCount ];
-         for ( int i = 0; i < paramCount; i++ ) {
-            paramTypes[ i ] = typeClass;
-         }
-         m = c.getDeclaredMethod( op, paramTypes );
-         //System.out.println( "Math.calculate, invoking: " + m.toString() );
-
-         // load the parameters and invoke the method
-         Object[] params = getParams( typeClass, operands );
-
-         try {
-            //System.out.println( "Math.calculateArray, invoking: " + m.toString() );
-            Object result = m.invoke( c, params );
-            return ( Number ) result;
-         }
-         catch ( InvocationTargetException ite ) {
-            Throwable t = ite.getCause();
-            if ( t != null && t instanceof ArithmeticException ) {
-               throw ( ArithmeticException ) t;
-            }
-            else {
-               throw ite;
-            }
-         }
-      }
-      catch ( Exception e ) {
-         if ( e instanceof RuntimeException )
-            throw ( RuntimeException ) e;
-      }
-      return null;
-   }
-
-   /**
-   * Performs a calculation on an array of numbers. The mathematical methods
-   * in this class will accept an array of numbers, so
-   * <code>add(new int[]{1, 2, 3})</code>
-   * is equivalent to
-   * <code>add(add(1, 2), 3)</code>
-   * which is equivalent to 1 + 2 + 3.
-   * @param op the operation to perform
-   * @type the data type of the operands. All operands will be cast to the same
-   * data type
-   * @param operands these strings must parse to numbers.
+  /**
+   * Computes p(x;n,p) where x~B(n,p)
    */
-   private Number calculateArray( String op, String type, String[] operands ) {
-      try {
-         Class c = this.getClass();
+  // Copied as the "classic" method from Catherine Loader.
+  //  Fast and Accurate Computation of Binomial Probabilities.
+  //   2001.  (This is not the fast and accurate version.)
+  public static double logBinom (int x, int n, double p)
+  {
+    return logFactorial (n) - logFactorial (x) - logFactorial (n - x)
+            + (x*Math.log (p)) + ((n-x)*Math.log (1-p));
+  }
 
-         // find candidate methods for the requested operation
-         Vector candidates = new Vector();
-         Method[] methods = c.getDeclaredMethods();
-         for ( int i = 0; i < methods.length; i++ ) {
-            String name = methods[ i ].getName();
-            if ( name.equals( op ) ) {
-               if ( methods[ i ].getParameterTypes().length == 1 ) {
-                  if ( methods[ i ].getParameterTypes() [ 0 ].isArray() )
-                     candidates.addElement( methods[ i ] );
-               }
-            }
-         }
-         if ( candidates.size() == 0 )
-            throw new RuntimeException( "Unknown operation: " + op );
-
-         // get the desired data type for the operation, default is
-         // Double.TYPE if no other match is found
-         Object wantTypeClass = getDataTypeArray( type, operands.length );
-
-         // find the actual method to invoke and invoke it immediately once
-         // it is found
-         Class typeClass = null;
-         Enumeration en = candidates.elements();
-         while ( en.hasMoreElements() ) {
-            Method m = ( Method ) en.nextElement();
-            if ( m.getParameterTypes() [ 0 ].equals( wantTypeClass.getClass() ) ) {
-               typeClass = getDataType( type );
-               Object[] params = getParamsArray( typeClass, operands );
-               try {
-                  //System.out.println( "Math.calculateArray, invoking: " + m.toString() );
-                  Object result = m.invoke( c, params );
-                  return ( Number ) result;
-               }
-               catch ( InvocationTargetException ite ) {
-                  Throwable t = ite.getCause();
-                  if ( t != null && t instanceof ArithmeticException ) {
-                     //System.out.println( "caught ArithmeticException in Math" );
-                     throw ( ArithmeticException ) t;
-                  }
-                  else {
-                     //System.out.println( "throwing " + ite.getMessage() );
-                     throw ite;
-                  }
-               }
-            }
-         }
-      }
-      catch ( Exception e ) {
-         //e.printStackTrace();
-         if ( e instanceof ArithmeticException ) {
-            //System.out.println("rethrowing " + e.getMessage());
-            throw ( ArithmeticException ) e;
-         }
-      }
-      return null;
-   }
-
-   /**
-   * Converts a string representing a data type into the actual type.
-   * @param type one of "int", "long", "float", or "double"
-   * @return one of Integer.TYPE, Long.TYPE, Float.TYPE, or Double.TYPE. If the
-   * given type is null or not one of the allowed types, Double.TYPE will be
-   * returned.
+  /**
+   * Vastly inefficient O(x) method to compute cdf of B(n,p)
    */
-   private Class getDataType( String type ) {
-      if ( type == null )
-         return Double.TYPE;
-      if ( type.equals( "int" ) ) {
-         return Integer.TYPE;
-      }
-      else if ( type.equals( "long" ) ) {
-         return Long.TYPE;
-      }
-      else if ( type.equals( "float" ) ) {
-         return Float.TYPE;
-      }
-      else if ( type.equals( "bigint" ) ) {
-         try {
-            return Class.forName( "java.math.BigInteger" );
-         }
-         catch ( Exception e ) {
-            //e.printStackTrace();
-         }
-      }
-      else if ( type.equals( "bigdecimal" ) ) {
-         try {
-            return Class.forName( "java.math.BigDecimal" );
-         }
-         catch ( Exception e ) {
-            //e.printStackTrace();
-         }
-      }
-      return Double.TYPE;
-   }
+  public static double pbinom (int x, int n, double p) {
+    double sum = Double.NEGATIVE_INFINITY;
+    for (int i = 0; i <= x; i++) {
+      sum = sumLogProb (sum, logBinom (i, n, p));
+    }
+    return Math.exp (sum);
+  }
 
-   /**
-   * Converts a string representing a data type into an Array.
-   * @param type one of "int", "long", "float", or "double"
-   * @param length how long to make the array
-   * @return an Array representing the data type
+  public static double sigmod(double beta){
+	return (double)1.0/(1.0+Math.exp(-beta));
+  }
+
+  public static double sigmod_rev(double sig){
+	return (double)Math.log(sig/(1-sig));
+  }
+
+  public static double logit (double p)
+  {
+    return Math.log (p / (1 - p));
+  }
+
+  // Combination?
+  public static double numCombinations (int n, int r) {
+    return Math.exp (logFactorial(n)-logFactorial(r)-logFactorial(n-r));
+  }
+
+  // Permutation?
+  public static double numPermutations (int n, int r) {
+    return Math.exp (logFactorial(n)-logFactorial(r));
+  }
+
+
+	public static double cosh (double a)
+	{
+		if (a < 0)
+			return 0.5 * (Math.exp(-a) + Math.exp(a));
+		else
+			return 0.5 * (Math.exp(a) + Math.exp(-a));
+		}
+
+	public static double tanh (double a)
+	{
+		return (Math.exp(a) - Math.exp(-a)) / (Math.exp(a) + Math.exp(-a));
+	}
+
+	/**
+	 * Numbers that are closer than this are considered equal
+	 * by almostEquals.
+	 */
+	public static double EPSILON = 0.000001;
+
+	public static boolean almostEquals (double d1, double d2)
+  {
+		return almostEquals (d1, d2, EPSILON);
+	}
+  
+   public static boolean almostEquals (double d1, double d2, double epsilon)
+   {
+		return Math.abs (d1 - d2) < epsilon;
+	}
+
+  public static boolean almostEquals (double[] d1, double[] d2, double eps)
+ {
+   for (int i = 0; i < d1.length; i++) {
+     double v1 = d1[i];
+     double v2 = d2[i];
+     if (!almostEquals (v1, v2, eps)) return false;
+   }
+   return true;
+ }
+
+  // gsc
+  /**
+   * Checks if <tt>min &lt;= value &lt;= max</tt>.
    */
-   private Object getDataTypeArray( String type, int length ) {
-      if ( type == null )
-         return Array.newInstance( Double.TYPE, length );
-      if ( type.equals( "int" ) ) {
-         return Array.newInstance( Integer.TYPE, length );
-      }
-      else if ( type.equals( "long" ) ) {
-         return Array.newInstance( Long.TYPE, length );
-      }
-      else if ( type.equals( "float" ) ) {
-         return Array.newInstance( Float.TYPE, length );
-      }
-      else if ( type.equals( "bigdecimal" ) ) {
-         return Array.newInstance( BIGDECIMAL_TYPE, length );
-      }
-      else if ( type.equals( "bigint" ) ) {
-         return Array.newInstance( BIGINT_TYPE, length );
-      }
-      else {
-         return Array.newInstance( Double.TYPE, length );
-      }
-   }
+  public static boolean checkWithinRange(double value, double min, double max) {
+    return (value > min || almostEquals(value, min, EPSILON)) &&
+           (value < max || almostEquals(value, max, EPSILON));
+  }
 
-   /**
-   * @returns the given operands as an array of the given type.
+  public static final double log2 = Math.log(2);
+
+  // gsc
+  /**
+   * Returns the KL divergence, K(p1 || p2).
+   *
+   * The log is w.r.t. base 2. <p>
+   *
+   * *Note*: If any value in <tt>p2</tt> is <tt>0.0</tt> then the KL-divergence
+   * is <tt>infinite</tt>. 
+   * 
    */
-   private Object[] getParams( Class typeClass, String[] operands ) {
-      int paramCount = operands.length;
-      Object[] params = new Object[ paramCount ];
-      if ( typeClass == BIGDECIMAL_TYPE ) {
-         for ( int i = 0; i < paramCount; i++ ) {
-            params[ i ] = new BigDecimal( operands[ i ] );
-         }
+  public static double klDivergence(double[] p1, double[] p2) {
+    assert (p1.length == p2.length);
+    double klDiv = 0.0;
+    for (int i = 0; i < p1.length; ++i) {
+      if (p1[i] == 0) {
+        continue;
       }
-      else if ( typeClass == BIGINT_TYPE ) {
-         for ( int i = 0; i < paramCount; i++ ) {
-            params[ i ] = new BigInteger( operands[ i ] );
-         }
+      if (p2[i] == 0) {
+        return Double.POSITIVE_INFINITY;
       }
-      else if ( typeClass == Double.TYPE ) {
-         for ( int i = 0; i < paramCount; i++ ) {
-            params[ i ] = new Double( operands[ i ] );
-         }
-      }
-      else if ( typeClass == Long.TYPE ) {
-         for ( int i = 0; i < paramCount; i++ ) {
-            params[ i ] = new Long( operands[ i ] );
-         }
-      }
-      else if ( typeClass == Float.TYPE ) {
-         for ( int i = 0; i < paramCount; i++ ) {
-            params[ i ] = new Float( operands[ i ] );
-         }
-      }
-      else {
-         // Integer.TYPE is only other choice
-         for ( int i = 0; i < paramCount; i++ ) {
-            params[ i ] = new Integer( operands[ i ] );
-         }
-      }
-      if ( paramCount > 2 )
-         params = new Object[] {params};
-      return params;
-   }
+      klDiv += p1[i] * Math.log(p1[i] / p2[i]);
+    }
+    return klDiv / log2; // moved this division out of the loop -DM
+  }
 
-   /**
-   * Converts the given operands into an array of the given type.
+  // gsc
+  /**
+   * Returns the Jensen-Shannon divergence.
    */
-   private Object[] getParamsArray( Class typeClass, String[] operands ) {
-      int paramCount = operands.length;
-      if ( typeClass == BIGDECIMAL_TYPE ) {
-         BigDecimal[] array = ( BigDecimal[] ) Array.newInstance( typeClass, operands.length );
-         for ( int i = 0; i < paramCount; i++ ) {
-            array[ i ] = new BigDecimal( operands[ i ] );
-         }
-         return new Object[] {array};
-      }
-      else if ( typeClass == BIGINT_TYPE ) {
-         BigInteger[] array = ( BigInteger[] ) Array.newInstance( typeClass, operands.length );
-         for ( int i = 0; i < paramCount; i++ ) {
-            array[ i ] = new BigInteger( operands[ i ] );
-         }
-         return new Object[] {array};
-      }
-      else if ( typeClass == Double.TYPE ) {
-         double[] array = ( double[] ) Array.newInstance( typeClass, operands.length );
-         for ( int i = 0; i < paramCount; i++ ) {
-            Array.setDouble( array, i, new Double( operands[ i ] ).doubleValue() );
-         }
-         return new Object[] {array};
-      }
-      else if ( typeClass == Long.TYPE ) {
-         long[] array = ( long[] ) Array.newInstance( typeClass, operands.length );
-         for ( int i = 0; i < paramCount; i++ ) {
-            Array.setLong( array, i, new Long( operands[ i ] ).longValue() );
-         }
-         return new Object[] {array};
-      }
-      else if ( typeClass == Float.TYPE ) {
-         float[] array = ( float[] ) Array.newInstance( typeClass, operands.length );
-         for ( int i = 0; i < paramCount; i++ ) {
-            Array.setFloat( array, i, new Float( operands[ i ] ).floatValue() );
-         }
-         return new Object[] {array};
-      }
-      else {
-         // Integer.TYPE is only other choice
-         Object array = Array.newInstance( typeClass, operands.length );
-         for ( int i = 0; i < paramCount; i++ ) {
-            Array.setInt( array, i, new Integer( operands[ i ] ).intValue() );
-         }
-         return new Object[] {array};
-      }
-   }
+  public static double jensenShannonDivergence(double[] p1, double[] p2) {
+    assert(p1.length == p2.length);
+    double[] average = new double[p1.length];
+    for (int i = 0; i < p1.length; ++i) {
+      average[i] += (p1[i] + p2[i])/2;
+    }
+    return (klDivergence(p1, average) + klDivergence(p2, average))/2;
+  }
 
-   public class Candidate {
-      private Class c;
-      private Method m;
-      public Candidate( Class c, Method m ) {
-         this.c = c;
-         this.m = m;
-      }
-      public Class getCandidateClass() {
-         return c;
-      }
-      public Method getCandidateMethod() {
-         return m;
-      }
-   }
+  /**
+	 *  Returns the sum of two doubles expressed in log space,
+	 *   that is,
+	 * <pre>
+	 *    sumLogProb = log (e^a + e^b)
+   *               = log e^a(1 + e^(b-a))
+   *               = a + log (1 + e^(b-a))
+	 * </pre>
+	 *
+	 * By exponentiating <tt>b-a</tt>, we obtain better numerical precision than
+	 *  we would if we calculated <tt>e^a</tt> or <tt>e^b</tt> directly.
+	 * <P>
+	 * Note: This function is just like 
+   *  {@link cc.mallet.fst.Transducer#sumNegLogProb sumNegLogProb}
+	 *   in <TT>Transducer</TT>,
+   *   except that the logs aren't negated.
+	 */
+	public static double sumLogProb (double a, double b)
+	{
+		if (a == Double.NEGATIVE_INFINITY) 
+			return b;
+		else if (b == Double.NEGATIVE_INFINITY)
+			return a;
+		else if (b < a)
+			return a + Math.log (1 + Math.exp(b-a));
+		else
+			return b + Math.log (1 + Math.exp(a-b));
+	}
 
-   public static void main ( String[] args ) {
-      Math math = new Math();
-      System.out.println( math.calculate( "add", new String[] {"6", "5", "4"} ) );
-   }
+  // Below from Stanford NLP package, SloppyMath.java
+
+  private static final double LOGTOLERANCE = 30.0;
+
+  /**
+   * Sums an array of numbers log(x1)...log(xn).  This saves some of
+   *  the unnecessary calls to Math.log in the two-argument version.
+   * <p>
+   * Note that this implementation IGNORES elements of the input
+   *  array that are more than LOGTOLERANCE (currently 30.0) less
+   *  than the maximum element.
+   * <p>
+   * Cursory testing makes me wonder if this is actually much faster than
+   *  repeated use of the 2-argument version, however -cas.
+   * @param vals An array log(x1), log(x2), ..., log(xn)
+   * @return log(x1+x2+...+xn)
+   */
+  public static double sumLogProb (double[] vals)
+  {
+    double max = Double.NEGATIVE_INFINITY;
+    int len = vals.length;
+    int maxidx = 0;
+
+    for (int i = 0; i < len; i++) {
+      if (vals[i] > max) {
+        max = vals[i];
+        maxidx = i;
+      }
+    }
+
+    boolean anyAdded = false;
+    double intermediate = 0.0;
+    double cutoff = max - LOGTOLERANCE;
+
+    for (int i = 0; i < maxidx; i++) {
+      if (vals[i] >= cutoff) {
+        anyAdded = true;
+        intermediate += Math.exp(vals[i] - max);
+      }
+    }
+    for (int i = maxidx + 1; i < len; i++) {
+      if (vals[i] >= cutoff) {
+        anyAdded = true;
+        intermediate += Math.exp(vals[i] - max);
+      }
+    }
+
+    if (anyAdded) {
+      return max + Math.log(1.0 + intermediate);
+    } else {
+      return max;
+    }
+
+  }
+
+  /**
+   *  Returns the difference of two doubles expressed in log space,
+   *   that is,
+   * <pre>
+   *    sumLogProb = log (e^a - e^b)
+   *               = log e^a(1 - e^(b-a))
+   *               = a + log (1 - e^(b-a))
+   * </pre>
+   *
+   * By exponentiating <tt>b-a</tt>, we obtain better numerical precision than
+   *  we would if we calculated <tt>e^a</tt> or <tt>e^b</tt> directly.
+   * <p>
+   * Returns <tt>NaN</tt> if b > a (so that log(e^a - e^b) is undefined).
+   */
+  public static double subtractLogProb (double a, double b)
+  {
+    if (b == Double.NEGATIVE_INFINITY)
+      return a;
+    else
+      return a + Math.log (1 - Math.exp(b-a));
+  }
+
+  public static double getEntropy(double[] dist) {
+  	double entropy = 0;
+  	for (int i = 0; i < dist.length; i++) {
+  		if (dist[i] != 0) {
+  			entropy -= dist[i] * Math.log(dist[i]);
+  		}
+  	}
+  	return entropy;
+  }
+  
 }
 

@@ -1,483 +1,625 @@
-/**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements. See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership. The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License. You may obtain a copy of the License at
+/*
+ * Copyright (C) 2011 The Guava Authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
  * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied. See the License for the
- * specific language governing permissions and limitations
- * under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
-/*
-Copyright 1999 CERN - European Organization for Nuclear Research.
-Permission to use, copy, modify, distribute and sell this software and its documentation for any purpose 
-is hereby granted without fee, provided that the above copyright notice appear in all copies and 
-that both that copyright notice and this permission notice appear in supporting documentation. 
-CERN makes no representations about the suitability of this software for any purpose. 
-It is provided "as is" without expressed or implied warranty.
-*/
-package org.apache.mahout.collections;
+
+package com.google.common.math;
+
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.math.MathPreconditions.checkNoOverflow;
+import static com.google.common.math.MathPreconditions.checkNonNegative;
+import static com.google.common.math.MathPreconditions.checkPositive;
+import static com.google.common.math.MathPreconditions.checkRoundingUnnecessary;
+import static java.lang.Math.abs;
+import static java.lang.Math.min;
+import static java.math.RoundingMode.HALF_EVEN;
+import static java.math.RoundingMode.HALF_UP;
+
+import com.google.common.annotations.Beta;
+import com.google.common.annotations.VisibleForTesting;
+
+import java.math.BigInteger;
+import java.math.RoundingMode;
 
 /**
- * Arithmetic functions.
+ * A class for arithmetic on values of type {@code long}. Where possible, methods are defined and
+ * named analogously to their {@code BigInteger} counterparts.
+ *
+ * <p>The implementations of many methods in this class are based on material from Henry S. Warren,
+ * Jr.'s <i>Hacker's Delight</i>, (Addison Wesley, 2002).
+ *
+ * <p>Similar functionality for {@code int} and for {@link BigInteger} can be found in
+ * {@link IntMath} and {@link BigIntegerMath} respectively.  For other common operations on
+ * {@code long} values, see {@link com.google.common.primitives.Longs}.
+ *
+ * @author Louis Wasserman
+ * @since 11.0
  */
-public final class Arithmetic extends Constants {
-  // for method stirlingCorrection(...)
-  private static final double[] stirlingCorrection = {
-    0.0,
-    8.106146679532726e-02, 4.134069595540929e-02,
-    2.767792568499834e-02, 2.079067210376509e-02,
-    1.664469118982119e-02, 1.387612882307075e-02,
-    1.189670994589177e-02, 1.041126526197209e-02,
-    9.255462182712733e-03, 8.330563433362871e-03,
-    7.573675487951841e-03, 6.942840107209530e-03,
-    6.408994188004207e-03, 5.951370112758848e-03,
-    5.554733551962801e-03, 5.207655919609640e-03,
-    4.901395948434738e-03, 4.629153749334029e-03,
-    4.385560249232324e-03, 4.166319691996922e-03,
-    3.967954218640860e-03, 3.787618068444430e-03,
-    3.622960224683090e-03, 3.472021382978770e-03,
-    3.333155636728090e-03, 3.204970228055040e-03,
-    3.086278682608780e-03, 2.976063983550410e-03,
-    2.873449362352470e-03, 2.777674929752690e-03,
-  };
+@Beta
+public final class LongMath {
+  // NOTE: Whenever both tests are cheap and functional, it's faster to use &, | instead of &&, ||
 
-  // for method logFactorial(...)
-  // log(k!) for k = 0, ..., 29
-  private static final double[] logFactorials = {
-    0.00000000000000000, 0.00000000000000000, 0.69314718055994531,
-    1.79175946922805500, 3.17805383034794562, 4.78749174278204599,
-    6.57925121201010100, 8.52516136106541430, 10.60460290274525023,
-    12.80182748008146961, 15.10441257307551530, 17.50230784587388584,
-    19.98721449566188615, 22.55216385312342289, 25.19122118273868150,
-    27.89927138384089157, 30.67186010608067280, 33.50507345013688888,
-    36.39544520803305358, 39.33988418719949404, 42.33561646075348503,
-    45.38013889847690803, 48.47118135183522388, 51.60667556776437357,
-    54.78472939811231919, 58.00360522298051994, 61.26170176100200198,
-    64.55753862700633106, 67.88974313718153498, 71.25703896716800901
-  };
-
-  // k! for k = 0, ..., 20
-  private static final long[] longFactorials = {
-    1L,
-    1L,
-    2L,
-    6L,
-    24L,
-    120L,
-    720L,
-    5040L,
-    40320L,
-    362880L,
-    3628800L,
-    39916800L,
-    479001600L,
-    6227020800L,
-    87178291200L,
-    1307674368000L,
-    20922789888000L,
-    355687428096000L,
-    6402373705728000L,
-    121645100408832000L,
-    2432902008176640000L
-  };
-
-  // k! for k = 21, ..., 170
-  private static final double[] doubleFactorials = {
-    5.109094217170944E19,
-    1.1240007277776077E21,
-    2.585201673888498E22,
-    6.204484017332394E23,
-    1.5511210043330984E25,
-    4.032914611266057E26,
-    1.0888869450418352E28,
-    3.048883446117138E29,
-    8.841761993739701E30,
-    2.652528598121911E32,
-    8.222838654177924E33,
-    2.6313083693369355E35,
-    8.68331761881189E36,
-    2.952327990396041E38,
-    1.0333147966386144E40,
-    3.719933267899013E41,
-    1.3763753091226346E43,
-    5.23022617466601E44,
-    2.0397882081197447E46,
-    8.15915283247898E47,
-    3.34525266131638E49,
-    1.4050061177528801E51,
-    6.041526306337384E52,
-    2.6582715747884495E54,
-    1.196222208654802E56,
-    5.502622159812089E57,
-    2.5862324151116827E59,
-    1.2413915592536068E61,
-    6.082818640342679E62,
-    3.0414093201713376E64,
-    1.5511187532873816E66,
-    8.06581751709439E67,
-    4.274883284060024E69,
-    2.308436973392413E71,
-    1.2696403353658264E73,
-    7.109985878048632E74,
-    4.052691950487723E76,
-    2.350561331282879E78,
-    1.386831185456898E80,
-    8.32098711274139E81,
-    5.075802138772246E83,
-    3.146997326038794E85,
-    1.9826083154044396E87,
-    1.2688693218588414E89,
-    8.247650592082472E90,
-    5.443449390774432E92,
-    3.6471110918188705E94,
-    2.48003554243683E96,
-    1.7112245242814127E98,
-    1.1978571669969892E100,
-    8.504785885678624E101,
-    6.123445837688612E103,
-    4.470115461512686E105,
-    3.307885441519387E107,
-    2.4809140811395404E109,
-    1.8854947016660506E111,
-    1.451830920282859E113,
-    1.1324281178206295E115,
-    8.94618213078298E116,
-    7.15694570462638E118,
-    5.797126020747369E120,
-    4.7536433370128435E122,
-    3.94552396972066E124,
-    3.314240134565354E126,
-    2.8171041143805494E128,
-    2.4227095383672744E130,
-    2.107757298379527E132,
-    1.854826422573984E134,
-    1.6507955160908465E136,
-    1.4857159644817605E138,
-    1.3520015276784033E140,
-    1.2438414054641305E142,
-    1.156772507081641E144,
-    1.0873661566567426E146,
-    1.0329978488239061E148,
-    9.916779348709491E149,
-    9.619275968248216E151,
-    9.426890448883248E153,
-    9.332621544394415E155,
-    9.332621544394418E157,
-    9.42594775983836E159,
-    9.614466715035125E161,
-    9.902900716486178E163,
-    1.0299016745145631E166,
-    1.0813967582402912E168,
-    1.1462805637347086E170,
-    1.2265202031961373E172,
-    1.324641819451829E174,
-    1.4438595832024942E176,
-    1.5882455415227423E178,
-    1.7629525510902457E180,
-    1.974506857221075E182,
-    2.2311927486598138E184,
-    2.543559733472186E186,
-    2.925093693493014E188,
-    3.393108684451899E190,
-    3.96993716080872E192,
-    4.6845258497542896E194,
-    5.574585761207606E196,
-    6.689502913449135E198,
-    8.094298525273444E200,
-    9.875044200833601E202,
-    1.2146304367025332E205,
-    1.506141741511141E207,
-    1.882677176888926E209,
-    2.3721732428800483E211,
-    3.0126600184576624E213,
-    3.856204823625808E215,
-    4.974504222477287E217,
-    6.466855489220473E219,
-    8.471580690878813E221,
-    1.1182486511960037E224,
-    1.4872707060906847E226,
-    1.99294274616152E228,
-    2.690472707318049E230,
-    3.6590428819525483E232,
-    5.0128887482749884E234,
-    6.917786472619482E236,
-    9.615723196941089E238,
-    1.3462012475717523E241,
-    1.8981437590761713E243,
-    2.6953641378881633E245,
-    3.8543707171800694E247,
-    5.550293832739308E249,
-    8.047926057471989E251,
-    1.1749972043909107E254,
-    1.72724589045464E256,
-    2.5563239178728637E258,
-    3.8089226376305687E260,
-    5.7133839564458575E262,
-    8.627209774233244E264,
-    1.3113358856834527E267,
-    2.0063439050956838E269,
-    3.0897696138473515E271,
-    4.789142901463393E273,
-    7.471062926282892E275,
-    1.1729568794264134E278,
-    1.8532718694937346E280,
-    2.946702272495036E282,
-    4.714723635992061E284,
-    7.590705053947223E286,
-    1.2296942187394494E289,
-    2.0044015765453032E291,
-    3.287218585534299E293,
-    5.423910666131583E295,
-    9.003691705778434E297,
-    1.5036165148649983E300,
-    2.5260757449731988E302,
-    4.2690680090047056E304,
-    7.257415615308004E306
-  };
-
-  /** Makes this class non instantiable, but still let's others inherit from it. */
-  protected Arithmetic() {
+  /**
+   * Returns {@code true} if {@code x} represents a power of two.
+   *
+   * <p>This differs from {@code Long.bitCount(x) == 1}, because
+   * {@code Long.bitCount(Long.MIN_VALUE) == 1}, but {@link Long#MIN_VALUE} is not a power of two.
+   */
+  public static boolean isPowerOfTwo(long x) {
+    return x > 0 & (x & (x - 1)) == 0;
   }
 
   /**
-   * Efficiently returns the binomial coefficient, often also referred to as "n over k" or "n choose k". The binomial
-   * coefficient is defined as <tt>(n * n-1 * ... * n-k+1 ) / ( 1 * 2 * ... * k )</tt>. <ul> <li>k<0<tt>: <tt>0</tt>.
-   * <li>k==0<tt>: <tt>1</tt>. <li>k==1<tt>: <tt>n</tt>. <li>else: <tt>(n * n-1 * ... * n-k+1 ) / ( 1 * 2 * ... * k
-   * )</tt>. </ul>
+   * Returns the base-2 logarithm of {@code x}, rounded according to the specified rounding mode.
    *
-   * @return the binomial coefficient.
+   * @throws IllegalArgumentException if {@code x <= 0}
+   * @throws ArithmeticException if {@code mode} is {@link RoundingMode#UNNECESSARY} and {@code x}
+   *         is not a power of two
    */
-  public static double binomial(double n, long k) {
-    if (k < 0) {
-      return 0;
-    }
-    if (k == 0) {
-      return 1;
-    }
-    if (k == 1) {
-      return n;
-    }
+  @SuppressWarnings("fallthrough")
+  public static int log2(long x, RoundingMode mode) {
+    checkPositive("x", x);
+    switch (mode) {
+      case UNNECESSARY:
+        checkRoundingUnnecessary(isPowerOfTwo(x));
+        // fall through
+      case DOWN:
+      case FLOOR:
+        return (Long.SIZE - 1) - Long.numberOfLeadingZeros(x);
 
-    // binomial(n,k) = (n * n-1 * ... * n-k+1 ) / ( 1 * 2 * ... * k )
-    double a = n - k + 1;
-    double b = 1;
-    double binomial = 1;
-    for (long i = k; i-- > 0;) {
-      binomial *= (a++) / (b++);
+      case UP:
+      case CEILING:
+        return Long.SIZE - Long.numberOfLeadingZeros(x - 1);
+
+      case HALF_DOWN:
+      case HALF_UP:
+      case HALF_EVEN:
+        // Since sqrt(2) is irrational, log2(x) - logFloor cannot be exactly 0.5
+        int leadingZeros = Long.numberOfLeadingZeros(x);
+        long cmp = MAX_POWER_OF_SQRT2_UNSIGNED >>> leadingZeros;
+        // floor(2^(logFloor + 0.5))
+        int logFloor = (Long.SIZE - 1) - leadingZeros;
+        return (x <= cmp) ? logFloor : logFloor + 1;
+
+      default:
+        throw new AssertionError("impossible");
     }
-    return binomial;
   }
 
-  /**
-   * Efficiently returns the binomial coefficient, often also referred to as "n over k" or "n choose k". The binomial
-   * coefficient is defined as <ul> <li>k<0<tt>: <tt>0</tt>. <li>k==0 || k==n<tt>: <tt>1</tt>. <li>k==1 || k==n-1<tt>:
-   * <tt>n</tt>. <li>else: <tt>(n * n-1 * ... * n-k+1 ) / ( 1 * 2 * ... * k )</tt>. </ul>
-   *
-   * @return the binomial coefficient.
-   */
-  public static double binomial(long n, long k) {
-    if (k < 0) {
-      return 0;
-    }
-    if (k == 0 || k == n) {
-      return 1;
-    }
-    if (k == 1 || k == n - 1) {
-      return n;
-    }
+  /** The biggest half power of two that fits into an unsigned long */
+  @VisibleForTesting static final long MAX_POWER_OF_SQRT2_UNSIGNED = 0xB504F333F9DE6484L;
 
-    // try quick version and see whether we get numeric overflows.
-    // factorial(..) is O(1); requires no loop; only a table lookup.
-    if (n > k) {
-      int max = longFactorials.length + doubleFactorials.length;
-      if (n < max) { // if (n! < inf && k! < inf)
-        double n_fac = factorial((int) n);
-        double k_fac = factorial((int) k);
-        double n_minus_k_fac = factorial((int) (n - k));
-        double nk = n_minus_k_fac * k_fac;
-        if (nk != Double.POSITIVE_INFINITY) { // no numeric overflow?
-          // now this is completely safe and accurate
-          return n_fac / nk;
-        }
+  /**
+   * Returns the base-10 logarithm of {@code x}, rounded according to the specified rounding mode.
+   *
+   * @throws IllegalArgumentException if {@code x <= 0}
+   * @throws ArithmeticException if {@code mode} is {@link RoundingMode#UNNECESSARY} and {@code x}
+   *         is not a power of ten
+   */
+  @SuppressWarnings("fallthrough")
+  public static int log10(long x, RoundingMode mode) {
+    checkPositive("x", x);
+    if (fitsInInt(x)) {
+      return IntMath.log10((int) x, mode);
+    }
+    int logFloor = log10Floor(x);
+    long floorPow = POWERS_OF_10[logFloor];
+    switch (mode) {
+      case UNNECESSARY:
+        checkRoundingUnnecessary(x == floorPow);
+        // fall through
+      case FLOOR:
+      case DOWN:
+        return logFloor;
+      case CEILING:
+      case UP:
+        return (x == floorPow) ? logFloor : logFloor + 1;
+      case HALF_DOWN:
+      case HALF_UP:
+      case HALF_EVEN:
+        // sqrt(10) is irrational, so log10(x)-logFloor is never exactly 0.5
+        return (x <= HALF_POWERS_OF_10[logFloor]) ? logFloor : logFloor + 1;
+      default:
+        throw new AssertionError();
+    }
+  }
+
+  static int log10Floor(long x) {
+    for (int i = 1; i < POWERS_OF_10.length; i++) {
+      if (x < POWERS_OF_10[i]) {
+        return i - 1;
       }
-      if (k > n / 2) {
-        k = n - k;
-      } // quicker
     }
-
-    // binomial(n,k) = (n * n-1 * ... * n-k+1 ) / ( 1 * 2 * ... * k )
-    long a = n - k + 1;
-    long b = 1;
-    double binomial = 1;
-    for (long i = k; i-- > 0;) {
-      binomial *= (double) a++ / (b++);
-    }
-    return binomial;
+    return POWERS_OF_10.length - 1;
   }
 
-  /**
-   * Returns the smallest <code>long &gt;= value</code>. <dt>Examples: {@code 1.0 -> 1, 1.2 -> 2, 1.9 -> 2}. This
-   * method is safer than using (long) Math.ceil(value), because of possible rounding error.
-   */
-  public static long ceil(double value) {
-    return Math.round(Math.ceil(value));
-  }
+  @VisibleForTesting
+  static final long[] POWERS_OF_10 = {
+    1L,
+    10L,
+    100L,
+    1000L,
+    10000L,
+    100000L,
+    1000000L,
+    10000000L,
+    100000000L,
+    1000000000L,
+    10000000000L,
+    100000000000L,
+    1000000000000L,
+    10000000000000L,
+    100000000000000L,
+    1000000000000000L,
+    10000000000000000L,
+    100000000000000000L,
+    1000000000000000000L
+  };
+
+  // HALF_POWERS_OF_10[i] = largest long less than 10^(i + 0.5)
+  @VisibleForTesting
+  static final long[] HALF_POWERS_OF_10 = {
+    3L,
+    31L,
+    316L,
+    3162L,
+    31622L,
+    316227L,
+    3162277L,
+    31622776L,
+    316227766L,
+    3162277660L,
+    31622776601L,
+    316227766016L,
+    3162277660168L,
+    31622776601683L,
+    316227766016837L,
+    3162277660168379L,
+    31622776601683793L,
+    316227766016837933L,
+    3162277660168379331L
+  };
 
   /**
-   * Evaluates the series of Chebyshev polynomials Ti at argument x/2. The series is given by
-   * <pre>
-   *        N-1
-   *         - '
-   *  y  =   >   coef[i] T (x/2)
-   *         -            i
-   *        i=0
-   * </pre>
-   * Coefficients are stored in reverse order, i.e. the zero order term is last in the array.  Note N is the number of
-   * coefficients, not the order. <p> If coefficients are for the interval a to b, x must have been transformed to x ->
-   * 2(2x - b - a)/(b-a) before entering the routine.  This maps x from (a, b) to (-1, 1), over which the Chebyshev
-   * polynomials are defined. <p> If the coefficients are for the inverted interval, in which (a, b) is mapped to (1/b,
-   * 1/a), the transformation required is x -> 2(2ab/x - b - a)/(b-a).  If b is infinity, this becomes x -> 4a/x - 1.
-   * <p> SPEED: <p> Taking advantage of the recurrence properties of the Chebyshev polynomials, the routine requires one
-   * more addition per loop than evaluating a nested polynomial of the same degree.
+   * Returns {@code b} to the {@code k}th power. Even if the result overflows, it will be equal to
+   * {@code BigInteger.valueOf(b).pow(k).longValue()}. This implementation runs in {@code O(log k)}
+   * time.
    *
-   * @param x    argument to the polynomial.
-   * @param coef the coefficients of the polynomial.
-   * @param N    the number of coefficients.
+   * @throws IllegalArgumentException if {@code k < 0}
    */
-  public static double chbevl(double x, double[] coef, int N) {
+  public static long pow(long b, int k) {
+    checkNonNegative("exponent", k);
+    if (-2 <= b && b <= 2) {
+      switch ((int) b) {
+        case 0:
+          return (k == 0) ? 1 : 0;
+        case 1:
+          return 1;
+        case (-1):
+          return ((k & 1) == 0) ? 1 : -1;
+        case 2:
+          return (k < Long.SIZE) ? 1L << k : 0;
+        case (-2):
+          if (k < Long.SIZE) {
+            return ((k & 1) == 0) ? 1L << k : -(1L << k);
+          } else {
+            return 0;
+          }
+      }
+    }
+    for (long accum = 1;; k >>= 1) {
+      switch (k) {
+        case 0:
+          return accum;
+        case 1:
+          return accum * b;
+        default:
+          accum *= ((k & 1) == 0) ? 1 : b;
+          b *= b;
+      }
+    }
+  }
 
-    int p = 0;
+  /**
+   * Returns the square root of {@code x}, rounded with the specified rounding mode.
+   *
+   * @throws IllegalArgumentException if {@code x < 0}
+   * @throws ArithmeticException if {@code mode} is {@link RoundingMode#UNNECESSARY} and
+   *         {@code sqrt(x)} is not an integer
+   */
+  @SuppressWarnings("fallthrough")
+  public static long sqrt(long x, RoundingMode mode) {
+    checkNonNegative("x", x);
+    if (fitsInInt(x)) {
+      return IntMath.sqrt((int) x, mode);
+    }
+    long sqrtFloor = sqrtFloor(x);
+    switch (mode) {
+      case UNNECESSARY:
+        checkRoundingUnnecessary(sqrtFloor * sqrtFloor == x); // fall through
+      case FLOOR:
+      case DOWN:
+        return sqrtFloor;
+      case CEILING:
+      case UP:
+        return (sqrtFloor * sqrtFloor == x) ? sqrtFloor : sqrtFloor + 1;
+      case HALF_DOWN:
+      case HALF_UP:
+      case HALF_EVEN:
+        long halfSquare = sqrtFloor * sqrtFloor + sqrtFloor;
+        /*
+         * We wish to test whether or not x <= (sqrtFloor + 0.5)^2 = halfSquare + 0.25. Since both
+         * x and halfSquare are integers, this is equivalent to testing whether or not x <=
+         * halfSquare. (We have to deal with overflow, though.)
+         */
+        return (halfSquare >= x | halfSquare < 0) ? sqrtFloor : sqrtFloor + 1;
+      default:
+        throw new AssertionError();
+    }
+  }
 
-    double b0 = coef[p++];
-    double b1 = 0.0;
-    int i = N - 1;
-
-    double b2;
+  private static long sqrtFloor(long x) {
+    // Hackers's Delight, Figure 11-1
+    long sqrt0 = (long) Math.sqrt(x);
+    // Precision can be lost in the cast to double, so we use this as a starting estimate.
+    long sqrt1 = (sqrt0 + (x / sqrt0)) >> 1;
+    if (sqrt1 == sqrt0) {
+      return sqrt0;
+    }
     do {
-      b2 = b1;
-      b1 = b0;
-      b0 = x * b1 - b2 + coef[p++];
-    } while (--i > 0);
-
-    return 0.5 * (b0 - b2);
+      sqrt0 = sqrt1;
+      sqrt1 = (sqrt0 + (x / sqrt0)) >> 1;
+    } while (sqrt1 < sqrt0);
+    return sqrt0;
   }
 
   /**
-   * Instantly returns the factorial <tt>k!</tt>.
+   * Returns the result of dividing {@code p} by {@code q}, rounding using the specified
+   * {@code RoundingMode}.
    *
-   * @param k must hold <tt>k &gt;= 0</tt>.
+   * @throws ArithmeticException if {@code q == 0}, or if {@code mode == UNNECESSARY} and {@code a}
+   *         is not an integer multiple of {@code b}
    */
-  private static double factorial(int k) {
-    if (k < 0) {
-      throw new IllegalArgumentException();
+  @SuppressWarnings("fallthrough")
+  public static long divide(long p, long q, RoundingMode mode) {
+    checkNotNull(mode);
+    long div = p / q; // throws if q == 0
+    long rem = p - q * div; // equals p % q
+
+    if (rem == 0) {
+      return div;
     }
 
-    int length1 = longFactorials.length;
-    if (k < length1) {
-      return longFactorials[k];
+    /*
+     * Normal Java division rounds towards 0, consistently with RoundingMode.DOWN. We just have to
+     * deal with the cases where rounding towards 0 is wrong, which typically depends on the sign of
+     * p / q.
+     *
+     * signum is 1 if p and q are both nonnegative or both negative, and -1 otherwise.
+     */
+    int signum = 1 | (int) ((p ^ q) >> (Long.SIZE - 1));
+    boolean increment;
+    switch (mode) {
+      case UNNECESSARY:
+        checkRoundingUnnecessary(rem == 0);
+        // fall through
+      case DOWN:
+        increment = false;
+        break;
+      case UP:
+        increment = true;
+        break;
+      case CEILING:
+        increment = signum > 0;
+        break;
+      case FLOOR:
+        increment = signum < 0;
+        break;
+      case HALF_EVEN:
+      case HALF_DOWN:
+      case HALF_UP:
+        long absRem = abs(rem);
+        long cmpRemToHalfDivisor = absRem - (abs(q) - absRem);
+        // subtracting two nonnegative longs can't overflow
+        // cmpRemToHalfDivisor has the same sign as compare(abs(rem), abs(q) / 2).
+        if (cmpRemToHalfDivisor == 0) { // exactly on the half mark
+          increment = (mode == HALF_UP | (mode == HALF_EVEN & (div & 1) != 0));
+        } else {
+          increment = cmpRemToHalfDivisor > 0; // closer to the UP value
+        }
+        break;
+      default:
+        throw new AssertionError();
     }
-
-    int length2 = doubleFactorials.length;
-    if (k < length1 + length2) {
-      return doubleFactorials[k - length1];
-    } else {
-      return Double.POSITIVE_INFINITY;
-    }
+    return increment ? div + signum : div;
   }
 
   /**
-   * Returns the largest <code>long &lt;= value</code>. <dt>Examples: {@code 1.0 -> 1, 1.2 -> 1, 1.9 -> 1 <dt> 2.0 -> 2,}
-   * 2.2 -> 2, 2.9 -> 2 </code><dt> This method is safer than using (long) Math.floor(value), because of possible
-   * rounding error.
-   */
-  public static long floor(double value) {
-    return Math.round(Math.floor(value));
-  }
-
-  /** Returns <tt>log<sub>base</sub>value</tt>. */
-  public static double log(double base, double value) {
-    return Math.log(value) / Math.log(base);
-  }
-
-  /** Returns <tt>log<sub>10</sub>value</tt>. */
-  public static double log10(double value) {
-    // 1.0 / Math.log(10) == 0.43429448190325176
-    return Math.log(value) * 0.43429448190325176;
-  }
-
-  /** Returns <tt>log<sub>2</sub>value</tt>. */
-  public static double log2(double value) {
-    // 1.0 / Math.log(2) == 1.4426950408889634
-    return Math.log(value) * 1.4426950408889634;
-  }
-
-  /**
-   * Returns <tt>log(k!)</tt>. Tries to avoid overflows. For <tt>k<30</tt> simply looks up a table in O(1). For
-   * <tt>k>=30</tt> uses stirlings approximation.
+   * Returns {@code x mod m}. This differs from {@code x % m} in that it always returns a
+   * non-negative result.
    *
-   * @param k must hold <tt>k &gt;= 0</tt>.
-   */
-  public static double logFactorial(int k) {
-    if (k >= 30) {
-
-      double r = 1.0 / (double) k;
-      double rr = r * r;
-      double C7 = -5.95238095238095238e-04;
-      double C5 = 7.93650793650793651e-04;
-      double C3 = -2.77777777777777778e-03;
-      double C1 = 8.33333333333333333e-02;
-      double C0 = 9.18938533204672742e-01;
-      return (k + 0.5) * Math.log(k) - k + C0 + r * (C1 + rr * (C3 + rr * (C5 + rr * C7)));
-    } else {
-      return logFactorials[k];
-    }
-  }
-
-  /**
-   * Instantly returns the factorial <tt>k!</tt>.
+   * <p>For example:
    *
-   * @param k must hold <tt>k &gt;= 0 && k &lt; 21</tt>.
+   * <pre> {@code
+   *
+   * mod(7, 4) == 3
+   * mod(-7, 4) == 1
+   * mod(-1, 4) == 3
+   * mod(-8, 4) == 0
+   * mod(8, 4) == 0}</pre>
+   *
+   * @throws ArithmeticException if {@code m <= 0}
    */
-  public static long longFactorial(int k) {
-    if (k < 0) {
-      throw new IllegalArgumentException("Negative k");
-    }
-
-    if (k < longFactorials.length) {
-      return longFactorials[k];
-    }
-    throw new IllegalArgumentException("Overflow");
+  public static int mod(long x, int m) {
+    // Cast is safe because the result is guaranteed in the range [0, m)
+    return (int) mod(x, (long) m);
   }
 
   /**
-   * Returns the StirlingCorrection. <p> Correction term of the Stirling approximation for <tt>log(k!)</tt> (series in
-   * 1/k, or table values for small k) with int parameter k. <p> <tt> log k! = (k + 1/2)log(k + 1) - (k + 1) +
-   * (1/2)log(2Pi) + stirlingCorrection(k + 1) <p> log k! = (k + 1/2)log(k)     -  k      + (1/2)log(2Pi) +
-   * stirlingCorrection(k) </tt>
+   * Returns {@code x mod m}. This differs from {@code x % m} in that it always returns a
+   * non-negative result.
+   *
+   * <p>For example:
+   *
+   * <pre> {@code
+   *
+   * mod(7, 4) == 3
+   * mod(-7, 4) == 1
+   * mod(-1, 4) == 3
+   * mod(-8, 4) == 0
+   * mod(8, 4) == 0}</pre>
+   *
+   * @throws ArithmeticException if {@code m <= 0}
    */
-  public static double stirlingCorrection(int k) {
+  public static long mod(long x, long m) {
+    if (m <= 0) {
+      throw new ArithmeticException("Modulus " + m + " must be > 0");
+    }
+    long result = x % m;
+    return (result >= 0) ? result : result + m;
+  }
 
-    if (k > 30) {
-      double r = 1.0 / (double) k;
-      double rr = r * r;
-      double C7 = -5.95238095238095238e-04;     //  -1/1680
-      double C5 = 7.93650793650793651e-04;     //  +1/1260
-      double C3 = -2.77777777777777778e-03;     //  -1/360
-      double C1 = 8.33333333333333333e-02;     //  +1/12
-      return r * (C1 + rr * (C3 + rr * (C5 + rr * C7)));
-    } else {
-      return stirlingCorrection[k];
+  /**
+   * Returns the greatest common divisor of {@code a, b}. Returns {@code 0} if
+   * {@code a == 0 && b == 0}.
+   *
+   * @throws IllegalArgumentException if {@code a < 0} or {@code b < 0}
+   */
+  public static long gcd(long a, long b) {
+    /*
+     * The reason we require both arguments to be >= 0 is because otherwise, what do you return on
+     * gcd(0, Long.MIN_VALUE)? BigInteger.gcd would return positive 2^63, but positive 2^63 isn't
+     * an int.
+     */
+    checkNonNegative("a", a);
+    checkNonNegative("b", b);
+    if (a == 0 | b == 0) {
+      return a | b;
+    }
+    /*
+     * Uses the binary GCD algorithm; see http://en.wikipedia.org/wiki/Binary_GCD_algorithm.
+     * This is over 40% faster than the Euclidean algorithm in benchmarks.
+     */
+    int aTwos = Long.numberOfTrailingZeros(a);
+    a >>= aTwos; // divide out all 2s
+    int bTwos = Long.numberOfTrailingZeros(b);
+    b >>= bTwos; // divide out all 2s
+    while (a != b) { // both a, b are odd
+      if (a < b) { // swap a, b
+        long t = b;
+        b = a;
+        a = t;
+      }
+      a -= b; // a is now positive and even
+      a >>= Long.numberOfTrailingZeros(a); // divide out all 2s, since 2 doesn't divide b
+    }
+    return a << min(aTwos, bTwos);
+  }
+
+  /**
+   * Returns the sum of {@code a} and {@code b}, provided it does not overflow.
+   *
+   * @throws ArithmeticException if {@code a + b} overflows in signed {@code long} arithmetic
+   */
+  public static long checkedAdd(long a, long b) {
+    long result = a + b;
+    checkNoOverflow((a ^ b) < 0 | (a ^ result) >= 0);
+    return result;
+  }
+
+  /**
+   * Returns the difference of {@code a} and {@code b}, provided it does not overflow.
+   *
+   * @throws ArithmeticException if {@code a - b} overflows in signed {@code long} arithmetic
+   */
+  public static long checkedSubtract(long a, long b) {
+    long result = a - b;
+    checkNoOverflow((a ^ b) >= 0 | (a ^ result) >= 0);
+    return result;
+  }
+
+  /**
+   * Returns the product of {@code a} and {@code b}, provided it does not overflow.
+   *
+   * @throws ArithmeticException if {@code a * b} overflows in signed {@code long} arithmetic
+   */
+  public static long checkedMultiply(long a, long b) {
+    // Hacker's Delight, Section 2-12
+    int leadingZeros = Long.numberOfLeadingZeros(a) + Long.numberOfLeadingZeros(~a)
+        + Long.numberOfLeadingZeros(b) + Long.numberOfLeadingZeros(~b);
+    /*
+     * If leadingZeros > Long.SIZE + 1 it's definitely fine, if it's < Long.SIZE it's definitely
+     * bad. We do the leadingZeros check to avoid the division below if at all possible.
+     *
+     * Otherwise, if b == Long.MIN_VALUE, then the only allowed values of a are 0 and 1. We take
+     * care of all a < 0 with their own check, because in particular, the case a == -1 will
+     * incorrectly pass the division check below.
+     *
+     * In all other cases, we check that either a is 0 or the result is consistent with division.
+     */
+    if (leadingZeros > Long.SIZE + 1) {
+      return a * b;
+    }
+    checkNoOverflow(leadingZeros >= Long.SIZE);
+    checkNoOverflow(a >= 0 | b != Long.MIN_VALUE);
+    long result = a * b;
+    checkNoOverflow(a == 0 || result / a == b);
+    return result;
+  }
+
+  /**
+   * Returns the {@code b} to the {@code k}th power, provided it does not overflow.
+   *
+   * @throws ArithmeticException if {@code b} to the {@code k}th power overflows in signed
+   *         {@code long} arithmetic
+   */
+  public static long checkedPow(long b, int k) {
+    checkNonNegative("exponent", k);
+    if (b >= -2 & b <= 2) {
+      switch ((int) b) {
+        case 0:
+          return (k == 0) ? 1 : 0;
+        case 1:
+          return 1;
+        case (-1):
+          return ((k & 1) == 0) ? 1 : -1;
+        case 2:
+          checkNoOverflow(k < Long.SIZE - 1);
+          return 1L << k;
+        case (-2):
+          checkNoOverflow(k < Long.SIZE);
+          return ((k & 1) == 0) ? (1L << k) : (-1L << k);
+      }
+    }
+    long accum = 1;
+    while (true) {
+      switch (k) {
+        case 0:
+          return accum;
+        case 1:
+          return checkedMultiply(accum, b);
+        default:
+          if ((k & 1) != 0) {
+            accum = checkedMultiply(accum, b);
+          }
+          k >>= 1;
+          if (k > 0) {
+            checkNoOverflow(b <= FLOOR_SQRT_MAX_LONG);
+            b *= b;
+          }
+      }
     }
   }
 
+  @VisibleForTesting static final long FLOOR_SQRT_MAX_LONG = 3037000499L;
+
+  /**
+   * Returns {@code n!}, that is, the product of the first {@code n} positive
+   * integers, {@code 1} if {@code n == 0}, or {@link Long#MAX_VALUE} if the
+   * result does not fit in a {@code long}.
+   *
+   * @throws IllegalArgumentException if {@code n < 0}
+   */
+  public static long factorial(int n) {
+    checkNonNegative("n", n);
+    return (n < FACTORIALS.length) ? FACTORIALS[n] : Long.MAX_VALUE;
+  }
+
+  static final long[] FACTORIALS = {
+      1L,
+      1L,
+      1L * 2,
+      1L * 2 * 3,
+      1L * 2 * 3 * 4,
+      1L * 2 * 3 * 4 * 5,
+      1L * 2 * 3 * 4 * 5 * 6,
+      1L * 2 * 3 * 4 * 5 * 6 * 7,
+      1L * 2 * 3 * 4 * 5 * 6 * 7 * 8,
+      1L * 2 * 3 * 4 * 5 * 6 * 7 * 8 * 9,
+      1L * 2 * 3 * 4 * 5 * 6 * 7 * 8 * 9 * 10,
+      1L * 2 * 3 * 4 * 5 * 6 * 7 * 8 * 9 * 10 * 11,
+      1L * 2 * 3 * 4 * 5 * 6 * 7 * 8 * 9 * 10 * 11 * 12,
+      1L * 2 * 3 * 4 * 5 * 6 * 7 * 8 * 9 * 10 * 11 * 12 * 13,
+      1L * 2 * 3 * 4 * 5 * 6 * 7 * 8 * 9 * 10 * 11 * 12 * 13 * 14,
+      1L * 2 * 3 * 4 * 5 * 6 * 7 * 8 * 9 * 10 * 11 * 12 * 13 * 14 * 15,
+      1L * 2 * 3 * 4 * 5 * 6 * 7 * 8 * 9 * 10 * 11 * 12 * 13 * 14 * 15 * 16,
+      1L * 2 * 3 * 4 * 5 * 6 * 7 * 8 * 9 * 10 * 11 * 12 * 13 * 14 * 15 * 16 * 17,
+      1L * 2 * 3 * 4 * 5 * 6 * 7 * 8 * 9 * 10 * 11 * 12 * 13 * 14 * 15 * 16 * 17 * 18,
+      1L * 2 * 3 * 4 * 5 * 6 * 7 * 8 * 9 * 10 * 11 * 12 * 13 * 14 * 15 * 16 * 17 * 18 * 19,
+      1L * 2 * 3 * 4 * 5 * 6 * 7 * 8 * 9 * 10 * 11 * 12 * 13 * 14 * 15 * 16 * 17 * 18 * 19 * 20
+  };
+
+  /**
+   * Returns {@code n} choose {@code k}, also known as the binomial coefficient of {@code n} and
+   * {@code k}, or {@link Long#MAX_VALUE} if the result does not fit in a {@code long}.
+   *
+   * @throws IllegalArgumentException if {@code n < 0}, {@code k < 0}, or {@code k > n}
+   */
+  public static long binomial(int n, int k) {
+    checkNonNegative("n", n);
+    checkNonNegative("k", k);
+    checkArgument(k <= n, "k (%s) > n (%s)", k, n);
+    if (k > (n >> 1)) {
+      k = n - k;
+    }
+    if (k >= BIGGEST_BINOMIALS.length || n > BIGGEST_BINOMIALS[k]) {
+      return Long.MAX_VALUE;
+    }
+    long result = 1;
+    if (k < BIGGEST_SIMPLE_BINOMIALS.length && n <= BIGGEST_SIMPLE_BINOMIALS[k]) {
+      // guaranteed not to overflow
+      for (int i = 0; i < k; i++) {
+        result *= n - i;
+        result /= i + 1;
+      }
+    } else {
+      // We want to do this in long math for speed, but want to avoid overflow.
+      // Dividing by the GCD suffices to avoid overflow in all the remaining cases.
+      for (int i = 1; i <= k; i++, n--) {
+        int d = IntMath.gcd(n, i);
+        result /= i / d; // (i/d) is guaranteed to divide result
+        result *= n / d;
+      }
+    }
+    return result;
+  }
+
+  /*
+   * binomial(BIGGEST_BINOMIALS[k], k) fits in a long, but not
+   * binomial(BIGGEST_BINOMIALS[k] + 1, k).
+   */
+  static final int[] BIGGEST_BINOMIALS =
+      {Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MAX_VALUE, 3810779, 121977, 16175, 4337, 1733,
+          887, 534, 361, 265, 206, 169, 143, 125, 111, 101, 94, 88, 83, 79, 76, 74, 72, 70, 69, 68,
+          67, 67, 66, 66, 66, 66};
+
+  /*
+   * binomial(BIGGEST_SIMPLE_BINOMIALS[k], k) doesn't need to use the slower GCD-based impl,
+   * but binomial(BIGGEST_SIMPLE_BINOMIALS[k] + 1, k) does.
+   */
+  @VisibleForTesting static final int[] BIGGEST_SIMPLE_BINOMIALS =
+      {Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MAX_VALUE, 2642246, 86251, 11724, 3218, 1313,
+          684, 419, 287, 214, 169, 139, 119, 105, 95, 87, 81, 76, 73, 70, 68, 66, 64, 63, 62, 62,
+          61, 61, 61};
+  // These values were generated by using checkedMultiply to see when the simple multiply/divide
+  // algorithm would lead to an overflow.
+
+  static boolean fitsInInt(long x) {
+    return (int) x == x;
+  }
+
+  private LongMath() {}
 }
 
