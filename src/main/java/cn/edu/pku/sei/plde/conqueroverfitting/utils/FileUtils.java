@@ -72,10 +72,16 @@ public class FileUtils {
 	}
 
 	public static String getFileAddressOfJava(String srcPath, String className){
+		if (className.contains("<") && className.contains(">")){
+			className = className.substring(0, className.indexOf("<"));
+		}
 		return  srcPath.trim() + System.getProperty("file.separator") + className.trim().replace('.',System.getProperty("file.separator").charAt(0))+".java";
 	}
 
     public static String getFileAddressOfClass(String classPath, String className){
+		if (className.contains("<") && className.contains(">")){
+			className = className.substring(0, className.indexOf("<"));
+		}
         return  classPath.trim() + System.getProperty("file.separator") + className.trim().replace('.',System.getProperty("file.separator").charAt(0))+".class";
     }
 

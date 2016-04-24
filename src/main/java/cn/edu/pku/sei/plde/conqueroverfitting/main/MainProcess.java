@@ -39,16 +39,16 @@ public class MainProcess {
         PATH_OF_DEFECTS4J = path;
     }
 
-    public void mainProcess(String projectType, int projectNumber) throws Exception{
+    public boolean mainProcess(String projectType, int projectNumber) throws Exception{
         String project = setWorkDirectory(projectType,projectNumber);
         libPath.add(FromString.class.getProtectionDomain().getCodeSource().getLocation().getFile());
         if (!checkProjectDirectory()){
             System.out.println("Main Process: set work directory error at project "+projectType+"-"+projectNumber);
-            return;
+            return false;
         }
         Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc,libPath);
         List<Suspicious> suspiciouses = localization.getSuspiciousLite();
-        suspiciousLoop(suspiciouses, project);
+        return suspiciousLoop(suspiciouses, project);
     }
 
     private boolean checkProjectDirectory(){
@@ -67,7 +67,7 @@ public class MainProcess {
         return true;
     }
 
-    public void suspiciousLoop(List<Suspicious> suspiciouses, String project) {
+    public boolean suspiciousLoop(List<Suspicious> suspiciouses, String project) {
         for (Suspicious suspicious: suspiciouses){
             suspicious._libPath = libPath;
             boolean tried = false;
@@ -81,13 +81,14 @@ public class MainProcess {
             }
             try {
                 if (fixSuspicious(suspicious, project)){
-                    break;
+                    return true;
                 }
             } catch (Exception e){
                 e.printStackTrace();
             }
             triedSuspicious.add(suspicious);
         }
+        return false;
     }
 
 

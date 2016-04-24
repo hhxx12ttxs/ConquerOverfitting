@@ -382,6 +382,8 @@ public class ReturnCapturer {
 
     private String staticSlicingProcess(List<String> returnParam, List<String> callParam, String statements){
         for (int i=0; i<returnParam.size(); i++){
+            returnParam.remove("");
+            callParam.remove("");
             if (StringUtils.isNumeric(returnParam.get(i))){
                 returnParam.remove(i);
             }

@@ -52,6 +52,14 @@ public class Main {
         String projectType = project.split("-")[0];
         int projectNumber = Integer.valueOf(project.split("-")[1]);
         MainProcess process = new MainProcess(path);
-        process.mainProcess(projectType, projectNumber);
+        boolean result = process.mainProcess(projectType, projectNumber);
+        if (!result){
+            File recordPackage = new File(System.getProperty("user.dir")+"/patch/");
+            recordPackage.mkdirs();
+            File recordFile = new File(recordPackage.getAbsolutePath()+"/"+project);
+            if (recordFile.exists()){
+                recordFile.renameTo(new File(recordFile.getName()+".fail"));
+            }
+        }
     }
 }
