@@ -53,7 +53,6 @@ public class MethodTwoFixer {
 
     public boolean fix(Map<String, List<String>> ifStrings, Set<Integer> errorLines, String project, boolean debug){
         for (Map.Entry<String, List<String>> entry: ifStrings.entrySet()){
-            errorLines.addAll(_errorLines);
             for (int errorLine: errorLines){
                 List<Integer> ifLines = getIfLine(errorLine);
                 if (ifLines.size()!=2){

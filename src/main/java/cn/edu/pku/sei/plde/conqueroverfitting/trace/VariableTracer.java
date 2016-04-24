@@ -67,7 +67,7 @@ public class VariableTracer {
         ErrorLineTracer tracer = new ErrorLineTracer(_asserts, _classname, _functionname);
         Set<Integer> errorLines = tracer.trace(errorLine, isSuccess);
         List<TraceResult> results = new ArrayList<>();
-        _suspicious.setErrorLines(errorLines);
+        //_suspicious.setErrorLines(errorLines);
         for (int line: errorLines){
             List<VariableInfo> variableInfos = _suspicious.getVariableInfo(_srcPath, line);
             variableInfos.removeAll(getBannedVariables(line));

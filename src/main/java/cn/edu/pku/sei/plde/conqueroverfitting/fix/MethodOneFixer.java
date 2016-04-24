@@ -79,7 +79,7 @@ public class MethodOneFixer {
 
                 if (errAssertNumAfterFix < errAssertBeforeFix){
                     int errorTestAterFix = TestUtils.getFailTestNumInProject(_project);
-                    if (errorTestAterFix < errAssertBeforeFix){
+                    if (errorTestAterFix < _errorTestNum){
                         patch._patchString.clear();
                         patch._patchString.add(patchString);
                         patch._patchLines.clear();

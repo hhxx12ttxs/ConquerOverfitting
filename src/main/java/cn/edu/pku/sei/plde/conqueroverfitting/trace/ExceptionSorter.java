@@ -129,6 +129,7 @@ public class ExceptionSorter {
         //根据最后赋值的行确定优先度
         for (ExceptionVariable exceptionVariable: _variables){
             int lastAssignLine = getLastAssignLine(exceptionVariable.variable);
+
             if (lastAssignLine == -1){
                 continue;
             }
@@ -170,11 +171,15 @@ public class ExceptionSorter {
 
     private int getLastAssignLine(VariableInfo info){
         int returnLine =-1;
+        String variableName = info.variableName;
+        if (variableName.endsWith(".null") || variableName.endsWith(".Comparable")){
+            variableName = variableName.substring(0,variableName.indexOf("."));
+        }
         for (int i = 0; i < _methodCode.length; i++){
-            if (_methodCode[i].matches(".*"+info.variableName+"\\s*=.*") && !_methodCode[i].matches(".*\".*"+info.variableName+"\\s*=.*")){
+            if (_methodCode[i].matches(".*"+variableName+"\\s*=.*") && !_methodCode[i].matches(".*\".*"+variableName+"\\s*=.*")){
                 returnLine = i;
             }
-            else if (_methodCode[i].trim().contains(info.variableName) && VariableUtils.isExpression(info) && LineUtils.isBoundaryLine(_methodCode[i])){
+            else if (_methodCode[i].trim().contains(variableName) && VariableUtils.isExpression(info) && LineUtils.isBoundaryLine(_methodCode[i])){
                 returnLine = i;
             }
         }
