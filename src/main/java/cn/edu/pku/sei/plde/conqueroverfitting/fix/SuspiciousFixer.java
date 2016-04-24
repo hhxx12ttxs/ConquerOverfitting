@@ -1,6 +1,7 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.fix;
 
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.BoundaryGenerator;
+import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.Interval;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Localization;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Suspicious;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.ExceptionExtractor;
@@ -9,6 +10,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.trace.TraceResult;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.filter.AbandanTrueValueFilter;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.CodeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.FileUtils;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.MathUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.TestUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 import com.google.common.collect.Sets;
@@ -16,6 +18,10 @@ import org.apache.commons.collections.map.LinkedMap;
 import org.apache.commons.lang.StringUtils;
 
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.*;
 
 /**
@@ -29,6 +35,7 @@ public class SuspiciousFixer {
     private Suspicious suspicious;
     private List<ExceptionVariable> exceptionVariables;
     private String project;
+    private long searchTime = 0;
     public SuspiciousFixer(Suspicious suspicious, String project){
         this.suspicious = suspicious;
         this.project = project;
@@ -50,14 +57,56 @@ public class SuspiciousFixer {
                     boundarys.put(assertEchelon.getKey(), getIfStrings(echelon));
                 }
                 if (fixMethodTwo(suspicious, boundarys, project, entry.getKey())){
+                    printPatchMessage(suspicious, project, getAllBoundarys(boundarys.values()), exceptionVariables, echelon);
                     return true;
                 }
-                if (fixMethodOne(suspicious, boundarys, project, entry.getKey())){
+                 if (fixMethodOne(suspicious, boundarys, project, entry.getKey())){
+                     printPatchMessage(suspicious, project, getAllBoundarys(boundarys.values()), exceptionVariables, echelon);
                     return true;
                 }
             }
         }
         return false;
+    }
+
+    private Set<String> getAllBoundarys(Collection<List<String>> boundarys){
+        Set<String> sets = new HashSet<>();
+        for (List<String> list: boundarys){
+            sets.addAll(list);
+        }
+        return sets;
+    }
+
+    private void printPatchMessage(Suspicious suspicious,String project, Set<String> boundarys, List<ExceptionVariable> exceptionVariables, List<ExceptionVariable> echelon){
+        File recordPackage = new File(System.getProperty("user.dir")+"/patch/");
+        recordPackage.mkdirs();
+        File recordFile = new File(recordPackage.getAbsolutePath()+"/"+project);
+        try {
+            if (!recordFile.exists()){
+                recordFile.createNewFile();
+            }
+            FileWriter writer = new FileWriter(recordFile,true);
+            writer.write("==================================\n");
+            writer.write("boundary of suspicious: "+suspicious.classname()+"#"+suspicious.functionnameWithoutParam()+"\n");
+            for (String boundary: boundarys){
+                writer.write(boundary+"\n");
+            }
+            writer.write("\n");
+            writer.write("suspicious variable of suspicious before sort: "+suspicious.classname()+"#"+suspicious.functionnameWithoutParam()+"\n");
+            for (ExceptionVariable variable: exceptionVariables){
+                writer.write(variable.name+" = "+variable.values.toString()+"\n");
+            }
+            writer.write("\n");
+            writer.write("variable echelon of suspicious before search: "+suspicious.classname()+"#"+suspicious.functionnameWithoutParam()+"\n");
+            for (ExceptionVariable variable: echelon){
+                writer.write(variable.name+" = "+variable.values.toString()+"\n");
+            }
+            writer.write("==================================\n");
+            writer.write("Search Boundary Cost Time: "+searchTime+"\n");
+            writer.close();
+        } catch (IOException e){
+            e.printStackTrace();
+        }
     }
 
 
@@ -101,19 +150,56 @@ public class SuspiciousFixer {
 
     private List<String> getIfStrings(List<ExceptionVariable> exceptionVariables){
         List<String> returnList = new ArrayList<>();
-        List<String> result = new ArrayList<>();
+        Map<ExceptionVariable, ArrayList<String>> result = new HashMap<>();
         for (ExceptionVariable exceptionVariable: exceptionVariables){
-            List<String> boundarys = getBoundary(exceptionVariable);
+            ArrayList<String> boundarys = new ArrayList<>(getBoundary(exceptionVariable));
             if (boundarys.size() > 1 && exceptionVariables.size() == 1){
                 for (String boundary: boundarys){
                     returnList.add(getIfStatementFromBoundary(Arrays.asList(boundary)));
                 }
                 return returnList;
             }
-            result.addAll(boundarys);
+            boolean addedFlag = false;
+            for (Map.Entry<ExceptionVariable, ArrayList<String>> entry: result.entrySet()){
+                if (entry.getKey().name.equals(exceptionVariable.name)){
+                    entry.getValue().addAll(boundarys);
+                    addedFlag = true;
+                    break;
+                }
+            }
+            if (!addedFlag){
+                result.put(exceptionVariable, boundarys);
+            }
+
         }
-        return Arrays.asList(getIfStatementFromBoundary(result));
+        return Arrays.asList(getIfStatementFromBoundary(combineIntervals(result)));
     }
+
+    private List<String> combineIntervals(Map<ExceptionVariable, ArrayList<String>> boundarysMap){
+        List<String> result = new ArrayList<>();
+        for (Map.Entry<ExceptionVariable, ArrayList<String>> entry: boundarysMap.entrySet()){
+            if (!MathUtils.isNumberType(entry.getKey().type) || entry.getValue().size() <= 1){
+                result.addAll(entry.getValue());
+                continue;
+            }
+            ArrayList<Interval> intervals = new ArrayList<>();
+            for (String interval: entry.getValue()){
+                intervals.add(new Interval(interval));
+            }
+            List<Interval> mergeResult;
+            if (entry.getKey().type.toLowerCase().equals("int")){
+                mergeResult = MathUtils.mergetIntInterval(intervals);
+            }
+            else {
+                mergeResult = MathUtils.mergetDoubleInterval(intervals);
+            }
+            for (Interval interval: mergeResult){
+                result.add("("+interval.toString(entry.getKey().name, entry.getKey().type)+")");
+            }
+        }
+        return result;
+    }
+
 
 
     private String getIfStatementFromBoundary(List<String> boundary){
@@ -122,7 +208,9 @@ public class SuspiciousFixer {
 
     private List<String> getBoundary(ExceptionVariable exceptionVariable){
         if (!boundarysMap.containsKey(exceptionVariable)){
+            long startTime = System.currentTimeMillis();
             List<String> boundarys = BoundaryGenerator.generate(suspicious,exceptionVariable, trueValues, falseValues, project);
+            searchTime += System.currentTimeMillis()-startTime;
             boundarysMap.put(exceptionVariable, boundarys);
         }
         return boundarysMap.get(exceptionVariable);
@@ -142,6 +230,15 @@ public class SuspiciousFixer {
             String testClassName = ifString.getKey().split("#")[0];
             String testMethodName = ifString.getKey().split("#")[1];
             int assertLine = Integer.valueOf(ifString.getKey().split("#")[2]);
+            if (assertLine == -1){
+                testClassName = suspicious._failTests.get(0).split("#")[0];
+                testMethodName = suspicious._failTests.get(0).split("#")[1];
+                if (suspicious._assertsMap.containsKey(suspicious._failTests.get(0))){
+                    if (suspicious._assertsMap.get(suspicious._failTests.get(0))._errorAssertLines.size()>0){
+                        assertLine = suspicious._assertsMap.get(suspicious._failTests.get(0))._errorAssertLines.get(0);
+                    }
+                }
+            }
             if (!CodeUtils.getLineFromCode(FileUtils.getCodeFromFile(suspicious._testSrcPath, testClassName),assertLine).contains("assert")){
                 assertLine = -1;
             }

@@ -15,6 +15,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 
 
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.*;
@@ -29,10 +30,20 @@ public class BoundaryGenerator {
         List<String> keywords = new ArrayList<>();
         if (exceptionVariable.name.length() == 1){
             //keywords.add("factorial");
-            keywords.add(suspicious.functionnameWithoutParam());
-
+            String variableName = suspicious.functionnameWithoutParam();
+            String keyword = "";
+            for (Character ch: variableName.toCharArray()){
+                if(!((ch<='Z')&&(ch>='A'))){
+                    keyword += ch;
+                    continue;
+                }
+                break;
+            }
+            keywords.add(keyword);
         }
+
         List<BoundaryInfo> variableBoundary = SearchBoundaryFilter.getBoundary(exceptionVariable, project, keywords);
+
         List<String> intervals = exceptionVariable.getBoundaryIntervals(variableBoundary);
         if (intervals == null) {
             return null;
@@ -55,6 +66,8 @@ public class BoundaryGenerator {
         }
         return new ArrayList<>();
     }
+
+
 
     private static String replaceSpecialNumber(String ifString){
         ifString = ifString.replace(String.valueOf(Integer.MIN_VALUE),"Integer.MIN_VALUE");
@@ -84,7 +97,7 @@ public class BoundaryGenerator {
             return "";
         }
         if (variable.variable.variableName.equals("this")){
-            return "this.equals("+intervals.get(0)+")";
+            return intervals.get(0);
         }
         if (variable.variable.variableName.equals("return")){
             return intervals.get(0);

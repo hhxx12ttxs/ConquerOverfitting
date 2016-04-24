@@ -81,7 +81,10 @@ public class ReturnCapturer {
         String exception = throwString.substring(throwString.lastIndexOf(" ")+1, throwString.lastIndexOf("()"));
         String exceptionClass = CodeUtils.getClassNameOfImportClass(code, exception);
         if (exceptionClass.equals("")){
-            return throwString;
+            exceptionClass = CodeUtils.getClassNameOfImportClass(_classCode, exception);
+            if (exceptionClass.equals("")){
+                return throwString;
+            }
         }
         String exceptionCode = FileUtils.getCodeFromFile(_classSrcPath, exceptionClass);
         List<Integer> paramCount = CodeUtils.getMethodParamsCountInCode(exceptionCode, exception);
@@ -93,7 +96,7 @@ public class ReturnCapturer {
         for (int i=1; i< minParamCount; i++){
             param += ",null";
         }
-        return throwString.replace("()","("+param+")");
+        return "import "+exceptionClass+";"+"///"+throwString.replace("()","("+param+")");
     }
 
 

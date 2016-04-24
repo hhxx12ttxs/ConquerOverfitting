@@ -1,30 +1,26 @@
-package cn.edu.pku.sei.plde.conqueroverfitting.Entirety;
+package cn.edu.pku.sei.plde.conqueroverfitting.main;
 
-import cn.edu.pku.sei.plde.conqueroverfitting.boundary.BoundaryGenerator;
-import cn.edu.pku.sei.plde.conqueroverfitting.boundary.BoundarySorter;
-import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.BoundaryInfo;
-import cn.edu.pku.sei.plde.conqueroverfitting.fix.*;
+import cn.edu.pku.sei.plde.conqueroverfitting.fix.SuspiciousFixer;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Localization;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Suspicious;
-import cn.edu.pku.sei.plde.conqueroverfitting.sort.VariableSort;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.ExceptionVariable;
-import cn.edu.pku.sei.plde.conqueroverfitting.trace.TraceResult;
-import cn.edu.pku.sei.plde.conqueroverfitting.trace.filter.SearchBoundaryFilter;
-import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeEnum;
-import cn.edu.pku.sei.plde.conqueroverfitting.utils.CodeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.FileUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.TestUtils;
-import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
-import org.junit.Test;
+import org.joda.convert.FromString;
 
 import java.io.File;
-import java.util.*;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 /**
- * Created by yanrunfa on 16/2/21.
+ * Created by yanrunfa on 16/4/23.
  */
-public class EntiretyTest {
-    private final  String PATH_OF_DEFECTS4J = "/home/yanrunfa/Documents/defects4j/tmp/";
+public class MainProcess {
+
+    private String PATH_OF_DEFECTS4J = "/Users/yanrunfa/Documents/defects4j/tmp/";
     private String classpath = System.getProperty("user.dir")+"/project/classpath/";
     private String classSrc = System.getProperty("user.dir")+"/project/classSrc/";
     private String testClasspath = System.getProperty("user.dir")+"/project/testClasspath";
@@ -32,12 +28,41 @@ public class EntiretyTest {
     private List<String> libPath = new ArrayList<>();
     public long startMili=System.currentTimeMillis();
     public List<Suspicious> triedSuspicious = new ArrayList<>();
-    @Test
-    public void testEntirety() throws Exception{
-        String project = setWorkDirectory("Math",82);
+
+
+    public MainProcess(String path){
+        if (!path.endsWith("/")){
+            path += "/";
+        }
+        PATH_OF_DEFECTS4J = path;
+    }
+
+    public void mainProcess(String projectType, int projectNumber) throws Exception{
+        String project = setWorkDirectory(projectType,projectNumber);
+        libPath.add(FromString.class.getProtectionDomain().getCodeSource().getLocation().getFile());
+        if (!checkProjectDirectory()){
+            System.out.println("Main Process: set work directory error at project "+projectType+"-"+projectNumber);
+            return;
+        }
         Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc,libPath);
         List<Suspicious> suspiciouses = localization.getSuspiciousLite();
         suspiciousLoop(suspiciouses, project);
+    }
+
+    private boolean checkProjectDirectory(){
+        if (!new File(classpath).exists()){
+            return false;
+        }
+        if (!new File(classSrc).exists()){
+            return false;
+        }
+        if (!new File(testClasspath).exists()){
+            return false;
+        }
+        if (!new File(testClassSrc).exists()){
+            return false;
+        }
+        return true;
     }
 
     public void suspiciousLoop(List<Suspicious> suspiciouses, String project) {
@@ -74,7 +99,7 @@ public class EntiretyTest {
 
     public boolean isFixSuccess(Suspicious suspicious, Map<ExceptionVariable,List<String>> boundarys, String project){
         System.out.println("Fix Success One Place");
-        printCollectingMessage(suspicious, boundarys);
+
         if (TestUtils.getFailTestNumInProject(project) > 0){
             Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc,libPath);
             List<Suspicious> suspiciouses = localization.getSuspiciousLite(false);
@@ -82,20 +107,29 @@ public class EntiretyTest {
             return true;
         }
         else {
+            printCollectingMessage(project, suspicious);
             System.out.println("Fix All Place Success");
             return true;
         }
     }
 
-    public void printCollectingMessage(Suspicious suspicious, Map<ExceptionVariable, List<String>> boundarys){
-        System.out.println("True Test Num: "+suspicious.trueTestNums());
-        System.out.println("True Assert Num: "+suspicious.trueAssertNums());
-        List<String> sv = new ArrayList<>();
-        for (Map.Entry<ExceptionVariable, List<String>> entry: boundarys.entrySet()){
-            sv.addAll(entry.getValue());
+    public void printCollectingMessage(String project, Suspicious suspicious){
+        File recordPackage = new File(System.getProperty("user.dir")+"/patch/");
+        recordPackage.mkdirs();
+        File recordFile = new File(recordPackage.getAbsolutePath()+"/"+project);
+        try {
+            if (!recordFile.exists()){
+                recordFile.createNewFile();
+            }
+            FileWriter writer = new FileWriter(recordFile,true);
+            writer.write("===========================================\n");
+            writer.write("True Test Num: "+suspicious.trueTestNums()+"\n");
+            writer.write("True Assert Num: "+suspicious.trueAssertNums()+"\n");
+            writer.write("Whole Cost Time: "+(System.currentTimeMillis()-startMili)/1000+"\n");
+            writer.close();
+        } catch (IOException e){
+            e.printStackTrace();
         }
-        System.out.println("Suspicious Variable: "+ sv);
-        System.out.println("Cost Time: "+(System.currentTimeMillis()-startMili)/1000);
     }
 
 
@@ -200,18 +234,4 @@ public class EntiretyTest {
         }
         return project;
     }
-
-
-    @Test
-    public void testGetBoundary(){
-        VariableInfo variableInfo = new VariableInfo("n", TypeEnum.INT,true, null);
-        TraceResult result = new TraceResult(false);
-        result.put("n","1");
-        ExceptionVariable variable = new ExceptionVariable(variableInfo, result);
-        List<BoundaryInfo> boundaryInfos = SearchBoundaryFilter.getBoundary(variable,"Math",Arrays.asList("factorial","17"));
-        for (BoundaryInfo boundaryInfo: boundaryInfos){
-            System.out.println(boundaryInfo.value);
-        }
-    }
-
 }

@@ -16,6 +16,7 @@ public class Patch {
     public final List<Integer> _patchLines = new ArrayList<>();
     public final List<String> _patchString = new ArrayList<>();
     public String _addonFunction = "";
+    public String _addonImport = "";
 
 
 
@@ -38,6 +39,10 @@ public class Patch {
             _addonFunction = _addonFunction.replace(addonFunctionName, "patch_method");
             fixString = fixString.split(">>>")[0];
             fixString = fixString.replace(addonFunctionName, "patch_method");
+        }
+        if (fixString.contains("///")){
+            _addonImport = fixString.split("///")[0];
+            fixString = fixString.split("///")[1];
         }
         for (String ifString: ifStrings){
             _patchString.add(generatePatchString(ifString, fixString));

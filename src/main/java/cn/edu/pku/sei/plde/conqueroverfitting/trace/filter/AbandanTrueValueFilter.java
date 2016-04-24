@@ -134,16 +134,22 @@ public class AbandanTrueValueFilter {
         String code = FileUtils.getCodeFromFile(suspicious._srcPath, suspicious.classname());
         if (CodeUtils.hasMethod(code,"equals")){
             Set<String> equalVariable = CodeUtils.getEqualVariableInSource(FileUtils.getFileAddressOfJava(suspicious._srcPath, suspicious.classname()));
+            if (equalVariable.size() == 0){
+                return new ArrayList<>();
+            }
             for (TraceResult traceResult: traceResults){
-                if (traceResult.getTestResult()){
-                    continue;
-                }
+                //if (traceResult.getTestResult()){
+                //    continue;
+                //}
                 String valueName = suspicious.classname().substring(suspicious.classname().lastIndexOf(".")+1);
                 valueName+="(";
                 for (String variable: equalVariable){
                     List<String> value = traceResult.get(variable);
                     if (value == null){
                         value = traceResult.get("get"+variable.substring(0,1).toUpperCase()+variable.substring(1)+"()");
+                        if (value == null){
+                            continue;
+                        }
                     }
                     valueName += value.get(0);
                     valueName +=",";
@@ -268,6 +274,7 @@ public class AbandanTrueValueFilter {
                 List<String> value = trueValues.containsKey(infoKey)?appandList(trueValues.get(infoKey),traceResult.get(key)):traceResult.get(key);
                 trueValues.put(infoKey, value);
             }
+
         }
         return trueValues;
     }
@@ -288,6 +295,7 @@ public class AbandanTrueValueFilter {
                 List<String> value = trueValues.containsKey(infoKey)?appandList(trueValues.get(infoKey),traceResult.get(key)):traceResult.get(key);
                 trueValues.put(infoKey, value);
             }
+
         }
         return trueValues;
     }

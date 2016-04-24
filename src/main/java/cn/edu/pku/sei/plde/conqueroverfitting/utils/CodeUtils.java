@@ -695,6 +695,31 @@ public class CodeUtils {
         return  classname.substring(classname.lastIndexOf(".") + 1).equals(function);
     }
 
+    public static void addImportToFile(File file, String addingImport){
+        File newFile = new File(file.getAbsolutePath()+".temp");
+        try {
+            if (!newFile.exists()) {
+                newFile.createNewFile();
+            }
+            FileOutputStream outputStream = new FileOutputStream(newFile);
+            BufferedReader reader = new BufferedReader(new FileReader(file));
+            String lineString = null;
+            while ((lineString = reader.readLine()) != null) {
+                if (lineString.startsWith("package")){
+                    lineString = lineString+addingImport;
+                }
+                outputStream.write((lineString + "\n").getBytes());
+            }
+            outputStream.close();
+            reader.close();
+        } catch (IOException e){
+            e.printStackTrace();
+        }
+        if (file.delete()){
+            newFile.renameTo(file);
+        }
+    }
+
     public static void addMethodToFile(File file, String addingCode, String className){
         File newFile = new File(file.getAbsolutePath()+".temp");
         try {
@@ -740,8 +765,7 @@ public class CodeUtils {
             while ((lineString = reader.readLine()) != null) {
                 line++;
                 if (targetLine.contains(line + 1)) {
-                    if ((!lineString.contains(";") && !lineString.contains(":") && !lineString.contains("{") && !lineString.contains("}")) ||
-                            lineString.contains("return ")) {
+                    if ((!lineString.contains(";") && !lineString.contains(":") && !lineString.contains("{") && !lineString.contains("}"))|| lineString.contains("return ") || lineString.contains("throw ")){
                         outputStream.write(addingCode.getBytes());
                         writedMap.put(line+1, true);
 

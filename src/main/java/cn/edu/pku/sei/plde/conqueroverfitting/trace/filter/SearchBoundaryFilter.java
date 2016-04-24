@@ -4,7 +4,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.boundary.BoundaryCollect;
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.BoundaryFilter;
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.BoundaryInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.gatherer.GathererJava;
-import cn.edu.pku.sei.plde.conqueroverfitting.gatherer.GathererJavaGithub;
+import cn.edu.pku.sei.plde.conqueroverfitting.gatherer.GathererJava;
 import cn.edu.pku.sei.plde.conqueroverfitting.main.Config;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.ExceptionVariable;
 import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeEnum;
@@ -72,7 +72,7 @@ public class SearchBoundaryFilter {
 
         if (!simpleCodePackage.exists() && !complexCodePackage.exists()) {
             if (!codePackage.exists()){
-                GathererJavaGithub gathererJava = new GathererJavaGithub(keywords, StringUtils.join(keywords, "-"),project);
+                GathererJava gathererJava = new GathererJava(keywords, StringUtils.join(keywords, "-"),project);
                 gathererJava.searchCode();
             }
             if (!codePackage.exists()) {
@@ -88,7 +88,7 @@ public class SearchBoundaryFilter {
                 if (filteredList.size() == 0 && !info.isSimpleType){
                     filteredList = BoundaryFilter.getBoundaryWithType(boundaryList, info.getStringType());
                 }
-                return filteredList;
+                return boundaryList;
             }
         }
 
@@ -97,7 +97,7 @@ public class SearchBoundaryFilter {
             codePackage = new File("experiment/searchcode/" + StringUtils.join(keywords,"-"));
             if (!codePackage.exists()){
 
-                GathererJavaGithub gathererJava = new GathererJavaGithub(keywords, StringUtils.join(keywords,"-"),getProjectFullName(project));
+                GathererJava gathererJava = new GathererJava(keywords, StringUtils.join(keywords,"-"),getProjectFullName(project));
                 gathererJava.searchCode();
                 if (!codePackage.exists()) {
                     codePackage.mkdirs();
@@ -111,7 +111,7 @@ public class SearchBoundaryFilter {
                 filteredList = BoundaryFilter.getBoundaryWithType(boundaryList, info.getStringType());
             }
             if (filteredList.size() != 0){
-                return filteredList;
+                return boundaryList;
             }
 
         }
@@ -121,7 +121,7 @@ public class SearchBoundaryFilter {
         //keywords.remove(valueType);
         codePackage = new File("experiment/searchcode/" + StringUtils.join(keywords,"-"));
         if (!codePackage.exists()){
-            GathererJavaGithub gathererJava = new GathererJavaGithub(keywords, StringUtils.join(keywords,"-"),"joda-time");
+            GathererJava gathererJava = new GathererJava(keywords, StringUtils.join(keywords,"-"),"joda-time");
             gathererJava.searchCode();
             if (!codePackage.exists()) {
                 codePackage.mkdirs();
@@ -133,7 +133,7 @@ public class SearchBoundaryFilter {
         //if (filteredList.size() == 0 && !info.isSimpleType){
         //    filteredList = BoundaryFilter.getBoundaryWithType(boundaryList, info.getStringType());
         //}
-        return filteredList;
+        return boundaryList;
     }
     private static String getProjectFullName(String project){
         if (project.startsWith("Math")){
