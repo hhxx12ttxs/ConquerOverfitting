@@ -69,7 +69,7 @@ public class BoundaryCollectTest {
     }
 
     @Test
-    public void testTime9() {
+    public void Math93() {
         String path = "experiment//searchcode//if-factorial-int";
         BoundaryCollect boundaryCollect = new BoundaryCollect(path);
 //        ArrayList<BoundaryInfo> boundaryList = boundaryCollect.getBoundaryList();
