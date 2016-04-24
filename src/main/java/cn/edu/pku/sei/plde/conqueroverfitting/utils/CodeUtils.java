@@ -492,7 +492,7 @@ public class CodeUtils {
         return result;
     }
 
-    public static String getMethodString(String code, String methodName, int methodStartLine){
+    public static String getMethodString(String code, String methodName, int methodLine){
         methodName = methodName.trim();
         ASTParser parser = ASTParser.newParser(AST.JLS4);
         parser.setSource(code.toCharArray());
@@ -501,7 +501,7 @@ public class CodeUtils {
         for (MethodDeclaration method : declarations) {
             int startLine = unit.getLineNumber(method.getStartPosition()) -1;
             int endLine = unit.getLineNumber(method.getStartPosition()+method.getLength()) -1;
-            if (startLine <= methodStartLine && endLine >= methodStartLine){
+            if (startLine <= methodLine && endLine >= methodLine){
                 return method.toString();
             }
         }
