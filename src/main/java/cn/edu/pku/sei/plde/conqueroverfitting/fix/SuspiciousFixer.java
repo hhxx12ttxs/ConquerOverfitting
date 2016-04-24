@@ -287,6 +287,14 @@ public class SuspiciousFixer {
                 assertLine = -1;
             }
             String fixString = fixCapturer.getFixFrom(testClassName, testMethodName, assertLine, suspicious.classname(), suspicious.functionnameWithoutParam());
+
+            if (CodeUtils.isValue(fixString)){
+                String ifStatement = ifString.getKey();
+                if (!ifStringFilter(ifStatement)){
+                    return false;
+                }
+
+            }
             if (suspicious._isConstructor && fixString.contains("return")){
                 continue;
             }
@@ -309,4 +317,21 @@ public class SuspiciousFixer {
         return finalErrorNums != -1;
     }
 
+
+    private static boolean ifStringFilter(String ifStatement){
+        if (ifStatement.contains("==") || ifStatement.contains("!=") || ifStatement.contains("equals")){
+            return true;
+        }
+        if (ifStatement.contains("MAX_VALUE") && ifStatement.contains("MIN_VALUE")){
+            return true;
+        }
+        if (ifStatement.contains("&&") && ifStatement.contains(">=") && ifStatement.contains("<=") && !ifStatement.contains("||")){
+            String statement1 = ifStatement.split("&&")[0];
+            String statement2 = ifStatement.split("&&")[1];
+            statement1 = statement1.contains(">=")?statement1.split(">=")[1]:statement1.split("<=")[1];
+            statement2 = statement2.contains(">=")?statement2.split(">=")[1]:statement2.split("<=")[1];
+            return statement1.trim().equals(statement2);
+        }
+        return false;
+    }
 }
