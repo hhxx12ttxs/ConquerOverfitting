@@ -131,13 +131,13 @@ public class MethodOneFixer {
             if (!backups.containsKey(targetClassFile)){
                 backups.put(targetClassFile, classBackup);
             }
+            CodeUtils.addCodeToFile(targetJavaFile, patch._patchString.get(0), patch._patchLines);
             if (!patch._addonFunction.equals("")){
                 CodeUtils.addMethodToFile(targetJavaFile, patch._addonFunction, patch._className.substring(patch._className.lastIndexOf(".")+1));
             }
             if (!patch._addonImport.equals("")){
                 CodeUtils.addImportToFile(targetJavaFile, patch._addonImport);
             }
-            CodeUtils.addCodeToFile(targetJavaFile, patch._patchString.get(0), patch._patchLines);
             tobeCompile.add(targetJavaFile);
         }
         for (File javaFile: tobeCompile){
