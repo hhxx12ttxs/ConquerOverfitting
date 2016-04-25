@@ -106,7 +106,10 @@ public class ExceptionExtractor {
         }
         VariableSort variableSort = new VariableSort(variables, statement);
         List<List<String>> sortedVariable = variableSort.getSortVariable();
-        return variableConverse(sortedVariable, exceptionVariables);
+        if (sortedVariable.size() == 0){
+            return new ArrayList<>();
+        }
+        return variableConverse(Arrays.asList(sortedVariable.get(0)), exceptionVariables);
     }
 
     private static List<List<ExceptionVariable>> variableConverse(List<List<String>> sortedVariable, List<ExceptionVariable> exceptionVariables){
