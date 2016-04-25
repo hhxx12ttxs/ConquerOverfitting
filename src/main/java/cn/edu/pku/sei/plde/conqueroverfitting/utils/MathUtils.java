@@ -414,6 +414,18 @@ public class MathUtils {
 
 
         }
+//        public BoundaryWithFreq(TypeEnum variableSimpleType, boolean isSimpleType,
+//        String otherType, String value, int leftClose, int rightClose, int freq) {
+        if(wrongValue < boundaryWithFreqsCopy.get(0).dvalue){
+            interval.add(new BoundaryWithFreq(TypeEnum.DOUBLE, true, null, "Integer.MIN_VALUE", 1, 0, 1));
+            interval.add(boundaryWithFreqsCopy.get(0));
+            return interval;
+        }
+        if(wrongValue > boundaryWithFreqsCopy.get(size - 1).dvalue){
+            interval.add(boundaryWithFreqsCopy.get(size - 1));
+            interval.add(new BoundaryWithFreq(TypeEnum.DOUBLE, true, null, "Integer.MAX_VALUE", 0, 1, 1));
+            return interval;
+        }
         return interval;
     }
 }
@@ -426,12 +438,10 @@ class ComparatorBounaryWithFreqs implements Comparator {
         BoundaryWithFreq boundaryWithFreq0 = (BoundaryWithFreq) arg0;
         BoundaryWithFreq boundaryWithFreq1 = (BoundaryWithFreq) arg1;
         if(boundaryWithFreq0.isSimpleType && boundaryWithFreq1.isSimpleType) {
-            double value1 = Double.parseDouble(boundaryWithFreq0.value);
-            double value2 = Double.parseDouble(boundaryWithFreq1.value);
-            if (value1 < value2) {
+            if (boundaryWithFreq0.dvalue < boundaryWithFreq1.dvalue) {
                 return -1;
             }
-            if (value1 == value2) {
+            if (boundaryWithFreq0.dvalue == boundaryWithFreq1.dvalue) {
                 return 0;
             }
         }

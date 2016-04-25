@@ -12,6 +12,7 @@ public class BoundaryWithFreq {
     public boolean isSimpleType = false;
     public String otherType;
     public String value;
+    public double dvalue;
     public int leftClose;
     public int rightClose;
     public int freq;
@@ -22,6 +23,31 @@ public class BoundaryWithFreq {
         this.isSimpleType = isSimpleType;
         this.otherType = otherType;
         this.value = value;
+        try{
+            if(isSimpleType) {
+                dvalue = Double.parseDouble(value);
+            }
+        }catch (Exception e){
+            if(value.equals("Integer.MIN_VALUE")){
+                dvalue = Integer.MIN_VALUE;
+            }
+            if(value.equals("Integer.MAX_VALUE")){
+                dvalue = Integer.MAX_VALUE;
+            }
+            if(value.equals("Double.MIN_VALUE")){
+                dvalue = Double.MIN_VALUE;
+            }
+            if(value.equals("Double.MAX_VALUE")){
+                dvalue = Double.MAX_VALUE;
+            }
+            if(value.equals("Long.MIN_VALUE")){
+                dvalue = Long.MIN_VALUE;
+            }
+            if(value.equals("Long.MAX_VALUE")){
+                dvalue = Long.MAX_VALUE;
+            }
+
+        }
         this.leftClose = leftClose;//[k
         this.rightClose = rightClose;//k]
         this.freq = freq;
