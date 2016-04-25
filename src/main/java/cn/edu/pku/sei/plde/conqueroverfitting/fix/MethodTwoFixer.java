@@ -47,11 +47,11 @@ public class MethodTwoFixer {
         _errorTestNum = errorTestNum;
     }
 
-    public boolean fix(Map<String, List<String>> ifStrings, String project){
-        return fix(ifStrings, _errorLines, project);
+    public boolean fix(Map<String, List<String>> ifStrings, String project, boolean debug){
+        return fix(ifStrings, _errorLines, project, debug);
     }
 
-    public boolean fix(Map<String, List<String>> ifStrings, Set<Integer> errorLines, String project){
+    public boolean fix(Map<String, List<String>> ifStrings, Set<Integer> errorLines, String project, boolean debug){
         for (Map.Entry<String, List<String>> entry: ifStrings.entrySet()){
             for (int errorLine: errorLines){
                 List<Integer> ifLines = getIfLine(errorLine);
@@ -68,7 +68,7 @@ public class MethodTwoFixer {
                         String lastLineString = CodeUtils.getLineFromCode(_code, startLine-1);
                         boolean result = false;
                         if (!LineUtils.isIfAndElseIfLine(lastLineString)) {
-                            result = fixWithAddIf(startLine, endLine, getIfStatementFromString(ifString),entry.getKey(), false, project);
+                            result = fixWithAddIf(startLine, endLine, getIfStatementFromString(ifString),entry.getKey(), false, project, debug);
                         }
                         else {
                             if (getIfStringFromStatement(ifString).contains(getIfStringFromStatement(lastLineString))){
@@ -77,10 +77,10 @@ public class MethodTwoFixer {
                             String ifEnd = lastLineString.substring(lastLineString.lastIndexOf(')'));
                             lastLineString = lastLineString.substring(0, lastLineString.lastIndexOf(')'));
                             String ifStatement =lastLineString+ "&&" +getIfStringFromStatement(getIfStatementFromString(ifString)) + ifEnd;
-                            result = fixWithAddIf(startLine-1, endLine, ifStatement,entry.getKey(),  true, project);
+                            result = fixWithAddIf(startLine-1, endLine, ifStatement,entry.getKey(),  true, project, debug);
                             if (!result){
                                 ifStatement =lastLineString+ "||" +getIfStringFromStatement(ifString) + ifEnd;
-                                result = fixWithAddIf(startLine-1, endLine, ifStatement,entry.getKey(),  true, project);
+                                result = fixWithAddIf(startLine-1, endLine, ifStatement,entry.getKey(),  true, project, debug);
                             }
                         }
                         if (result){
@@ -104,7 +104,7 @@ public class MethodTwoFixer {
         return ifStatement.substring(ifStatement.indexOf('(')+1, ifStatement.lastIndexOf(')'));
     }
 
-    private boolean fixWithAddIf(int ifStartLine, int ifEndLine, String ifStatement,String testMessage, boolean replace, String project){
+    private boolean fixWithAddIf(int ifStartLine, int ifEndLine, String ifStatement,String testMessage, boolean replace, String project, boolean debug){
         String testClassName = testMessage.split("#")[0];
         String testMethodName = testMessage.split("#")[1];
         int assertLine = Integer.valueOf(testMessage.split("#")[2]);
@@ -138,6 +138,10 @@ public class MethodTwoFixer {
             int errorTestNumAfterFix = TestUtils.getFailTestNumInProject(project);
             if (errorTestNumAfterFix < _errorTestNum){
                 System.out.println(" fix success");
+                if (debug){
+                    FileUtils.copyFile(classBackup, targetClassFile);
+                    FileUtils.copyFile(javaBackup, targetJavaFile);
+                }
                 return true;
             }
         }

@@ -60,11 +60,11 @@ public class SuspiciousFixer {
                     for (Map.Entry<String,List<ExceptionVariable>> assertEchelon: classifyWithAssert(echelon).entrySet()){
                         boundarys.put(assertEchelon.getKey(), getIfStrings(echelon));
                     }
-                    if (fixMethodTwo(suspicious, boundarys, project, entry.getKey(),errorTestNum)){
+                    if (fixMethodTwo(suspicious, boundarys, project, entry.getKey(),errorTestNum, false)){
                         printPatchMessage(suspicious, project, getAllBoundarys(boundarys.values()), exceptionVariables, echelon);
                         return true;
                     }
-                    if (fixMethodOne(suspicious, boundarys, project, entry.getKey(),errorTestNum)){
+                    if (fixMethodOne(suspicious, boundarys, project, entry.getKey(),errorTestNum, false)){
                         printPatchMessage(suspicious, project, getAllBoundarys(boundarys.values()), exceptionVariables, echelon);
                         return true;
                     }
@@ -74,19 +74,19 @@ public class SuspiciousFixer {
                         for (Map.Entry<String,List<ExceptionVariable>> assertEchelon: classifyWithAssert(Arrays.asList(exceptionVariable)).entrySet()){
                             boundarys.put(assertEchelon.getKey(), getIfStrings(assertEchelon.getValue()));
                         }
-                        if (!fixMethodTwo(suspicious, boundarys, project, entry.getKey(),errorTestNum) &&
-                                !fixMethodOne(suspicious, boundarys, project, entry.getKey(),errorTestNum)){
+                        if (!fixMethodTwo(suspicious, boundarys, project, entry.getKey(),errorTestNum, true) &&
+                                !fixMethodOne(suspicious, boundarys, project, entry.getKey(),errorTestNum, true)){
                             aEchelon.remove(exceptionVariable);
                         }
                     }
                     for (Map.Entry<String,List<ExceptionVariable>> assertEchelon: classifyWithAssert(aEchelon).entrySet()){
                         boundarys.put(assertEchelon.getKey(), getIfStrings(aEchelon));
                     }
-                    if (fixMethodTwo(suspicious, boundarys, project, entry.getKey(),errorTestNum)){
+                    if (fixMethodTwo(suspicious, boundarys, project, entry.getKey(),errorTestNum, false)){
                         printPatchMessage(suspicious, project, getAllBoundarys(boundarys.values()), exceptionVariables, echelon);
                         return true;
                     }
-                    if (fixMethodOne(suspicious, boundarys, project, entry.getKey(),errorTestNum)){
+                    if (fixMethodOne(suspicious, boundarys, project, entry.getKey(),errorTestNum, false)){
                         printPatchMessage(suspicious, project, getAllBoundarys(boundarys.values()), exceptionVariables, echelon);
                         return true;
                     }
@@ -255,16 +255,16 @@ public class SuspiciousFixer {
     }
 
 
-    public static boolean fixMethodTwo(Suspicious suspicious, Map<String, List<String>> ifStrings, String project, int errorLine, int errorTestNum){
+    public static boolean fixMethodTwo(Suspicious suspicious, Map<String, List<String>> ifStrings, String project, int errorLine, int errorTestNum, boolean debug){
         if (ifStrings.size() == 0){
             return false;
         }
         MethodTwoFixer fixer = new MethodTwoFixer(suspicious, errorTestNum);
-        return fixer.fix(ifStrings, Sets.newHashSet(errorLine), project);
+        return fixer.fix(ifStrings, Sets.newHashSet(errorLine), project, debug);
     }
 
 
-    public static boolean fixMethodOne(Suspicious suspicious,Map<String, List<String>> ifStrings, String project, int errorLine, int errorTestNum) {
+    public static boolean fixMethodOne(Suspicious suspicious,Map<String, List<String>> ifStrings, String project, int errorLine, int errorTestNum, boolean debug) {
         if (ifStrings.size() == 0){
             return false;
         }
@@ -289,10 +289,18 @@ public class SuspiciousFixer {
             String fixString = fixCapturer.getFixFrom(testClassName, testMethodName, assertLine, suspicious.classname(), suspicious.functionnameWithoutParam());
 
             if (CodeUtils.isValue(fixString)){
-                String ifStatement = ifString.getKey();
-                if (!ifStringFilter(ifStatement)){
+                List<String> ifStatement = ifString.getValue();
+                List<String> bannedStatement = new ArrayList<>();
+                for (String statemnt: ifStatement){
+                    if (!ifStringFilter(statemnt)){
+                        bannedStatement.add(statemnt);
+                    }
+                }
+                ifStatement.removeAll(bannedStatement);
+                if (ifStatement.size() == 0){
                     return false;
                 }
+
 
             }
             if (suspicious._isConstructor && fixString.contains("return")){
@@ -310,11 +318,17 @@ public class SuspiciousFixer {
             }
             boolean result = methodOneFixer.addPatch(patch);
             if (result){
+                if (debug){
+                    return true;
+                }
                 break;
             }
         }
-        int finalErrorNums = methodOneFixer.fix();
-        return finalErrorNums != -1;
+        if (!debug){
+            int finalErrorNums = methodOneFixer.fix();
+            return finalErrorNums != -1;
+        }
+        return false;
     }
 
 
@@ -324,6 +338,13 @@ public class SuspiciousFixer {
         }
         if (ifStatement.contains("MAX_VALUE") && ifStatement.contains("MIN_VALUE")){
             return true;
+        }
+        ifStatement = ifStatement.substring(ifStatement.indexOf("(")+1, ifStatement.lastIndexOf(")"));
+        if (ifStatement.startsWith("(")){
+            ifStatement = ifStatement.substring(1);
+        }
+        if (ifStatement.endsWith(")")){
+            ifStatement = ifStatement.substring(0, ifStatement.length()-1);
         }
         if (ifStatement.contains("&&") && ifStatement.contains(">=") && ifStatement.contains("<=") && !ifStatement.contains("||")){
             String statement1 = ifStatement.split("&&")[0];
