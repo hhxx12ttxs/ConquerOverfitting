@@ -248,6 +248,7 @@ public class ExceptionVariable {
             }
             return result;
         }
+
         if (MathUtils.isNumberType(type)) {
             if (valueList.size() == 1 && (valueList.get(0).equals("NaN") || boundaryInfos.size() == 0)){
                 result.put(valueList, valueList.get(0));
@@ -266,6 +267,7 @@ public class ExceptionVariable {
             }
             return result;
         }
+
         for (String value: valueList){
             result.put(Arrays.asList(value), value);
         }

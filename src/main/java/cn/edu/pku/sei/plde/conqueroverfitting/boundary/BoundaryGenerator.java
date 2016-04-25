@@ -43,47 +43,47 @@ public class BoundaryGenerator {
             keywords.add(keyword);
         }
 
+
         List<BoundaryWithFreq> variableBoundary = SearchBoundaryFilter.getBoundary(exceptionVariable, project, keywords);
-        ArrayList<BoundaryWithFreq> intervalss = new ArrayList<>();
-        if (MathUtils.isNumberType(exceptionVariable.type)){
+
+        Map<List<String>, String> intervals = new HashMap<>();
+        if (MathUtils.isNumberType(exceptionVariable.type) && exceptionVariable.values.size() <=5){
             for (String value: exceptionVariable.values){
-                intervalss.addAll(MathUtils.generateInterval(variableBoundary, Double.valueOf(value)));
+                ArrayList<BoundaryWithFreq> intervalss;
+                try {
+                    intervalss = MathUtils.generateInterval(variableBoundary, Double.valueOf(value));
+                }catch (Exception e){
+                    intervals.put(Arrays.asList(value), "["+value+"-"+value+"]");
+                    e.printStackTrace();
+                    continue;
+                }
+                String left = intervalss.get(0).value;
+                if (intervalss.get(0).leftClose >= intervalss.get(0).rightClose){
+                    left = "["+left;
+                }
+                String right = intervalss.get(1).value;
+                if (intervalss.get(1).rightClose >= intervalss.get(1).leftClose){
+                    right = right + "]";
+                }
+                intervals.put(Arrays.asList(value), left+"-"+right);
             }
         }
         else {
+            List<BoundaryInfo> boundaryInfo = SearchBoundaryFilter.getBoundaryInfo(exceptionVariable, project, keywords);
+            intervals = exceptionVariable.getBoundaryIntervals(boundaryInfo);
+        }
 
-        }
-        List<BoundaryInfo> boundaryInfo = SearchBoundaryFilter.getBoundaryInfo(exceptionVariable, project, keywords);
-        Map<List<String>, String> intervals = exceptionVariable.getBoundaryIntervals(boundaryInfo);
-        if (intervals == null) {
-            return new ArrayList<>();
-        }
 
         List<String> returnList = new ArrayList<>();
         for (Map.Entry<List<String>, String> entry: intervals.entrySet()){
             String interval = entry.getValue();
             List<String> value = entry.getKey();
             String ifString = generateWithSingleWord(exceptionVariable,interval,value);
-            ifString = replaceSpecialNumber(ifString);
             if (!ifString.equals("")){
                 returnList.add(ifString);
             }
         }
         return returnList;
-    }
-
-
-
-    private static String replaceSpecialNumber(String ifString){
-        ifString = ifString.replace(String.valueOf(Integer.MIN_VALUE),"Integer.MIN_VALUE");
-        ifString = ifString.replace(String.valueOf(Integer.MAX_VALUE),"Integer.MAX_VALUE");
-        ifString = ifString.replace(String.valueOf(Long.MIN_VALUE),"Long.MIN_VALUE");
-        ifString = ifString.replace(String.valueOf(Long.MAX_VALUE),"Long.MAX_VALUE");
-        ifString = ifString.replace(String.valueOf(Double.MIN_VALUE),"Double.MIN_VALUE");
-        ifString = ifString.replace(String.valueOf(Double.MAX_VALUE),"Double.MAX_VALUE");
-        ifString = ifString.replace(String.valueOf(Short.MIN_VALUE),"Short.MIN_VALUE");
-        ifString = ifString.replace(String.valueOf(Short.MAX_VALUE),"Short.MAX_VALUE");
-        return ifString;
     }
 
 
@@ -125,15 +125,15 @@ public class BoundaryGenerator {
             }
             boolean biggestClose = false;
             boolean smallestClose = false;
-            String biggest = intervals.split("-")[1];
-            String smallest = intervals.split("-")[0];
-            if (biggest.endsWith("]")){
+            String biggest = intervals.split("-")[0];
+            String smallest = intervals.split("-")[1];
+            if (biggest.startsWith("[")){
                 biggestClose = true;
-                biggest = biggest.substring(0, biggest.length()-1);
+                biggest = biggest.substring(1);
             }
-            if (smallest.startsWith("[")){
+            if (smallest.endsWith("]")){
                 smallestClose = true;
-                smallest = smallest.substring(1);
+                smallest = smallest.substring(0, smallest.length()-1);
             }
             double biggestBoundary;
             double smallestBoundary;

@@ -133,7 +133,7 @@ public class MethodTwoFixer {
         Asserts asserts = new Asserts(_classpath,_classSrcPath, _testClassPath, _testSrcPath, testClassName, testMethodName);
         int errAssertAfterFix = asserts.errorNum();
         int errAssertBeforeFix = _suspicious._assertsMap.get(testClassName+"#"+testMethodName).errorNum();
-        System.out.print("Method 2 try patch: "+ifStatement);
+        System.out.print("Method 2 try patch: "+ifStatement+" in line: "+ifStartLine);
         if (errAssertAfterFix < errAssertBeforeFix || errAssertAfterFix == 0) {
             int errorTestNumAfterFix = TestUtils.getFailTestNumInProject(project);
             if (errorTestNumAfterFix < _errorTestNum){

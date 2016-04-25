@@ -55,8 +55,7 @@ public class SuspiciousFixer {
             List<List<ExceptionVariable>> echelons = extractor.sort();
             for (List<ExceptionVariable> echelon: echelons){
                 Map<String, List<String>> boundarys = new HashMap<>();
-                List<ExceptionVariable> aEchelon = new ArrayList<>(echelon);
-                if (aEchelon.size() == 1){
+                if (sortWithVariable(echelon).size() == 1){
                     for (Map.Entry<String,List<ExceptionVariable>> assertEchelon: classifyWithAssert(echelon).entrySet()){
                         boundarys.put(assertEchelon.getKey(), getIfStrings(echelon));
                     }
@@ -70,6 +69,7 @@ public class SuspiciousFixer {
                     }
                 }
                 else {
+                    List<ExceptionVariable> aEchelon = sortWithVariable(echelon);
                     for (ExceptionVariable exceptionVariable: echelon){
                         for (Map.Entry<String,List<ExceptionVariable>> assertEchelon: classifyWithAssert(Arrays.asList(exceptionVariable)).entrySet()){
                             boundarys.put(assertEchelon.getKey(), getIfStrings(assertEchelon.getValue()));
@@ -95,6 +95,19 @@ public class SuspiciousFixer {
             }
         }
         return false;
+    }
+
+    private List<ExceptionVariable> sortWithVariable(List<ExceptionVariable> variables){
+        Map<String,ExceptionVariable> result = new HashMap<>();
+        for (ExceptionVariable exceptionVariable: variables){
+            if (!result.containsKey(exceptionVariable.name)){
+                result.put(exceptionVariable.name, exceptionVariable);
+            }
+            else {
+                result.get(exceptionVariable.name).values.addAll(exceptionVariable.values);
+            }
+        }
+        return new ArrayList<>(result.values());
     }
 
     private Set<String> getAllBoundarys(Collection<List<String>> boundarys){
@@ -194,7 +207,7 @@ public class SuspiciousFixer {
             }
         }
         for (List<String> list: combineIntervals(result)){
-            returnList.add(getIfStatementFromBoundary(list));
+            returnList.add(replaceSpecialNumber(getIfStatementFromBoundary(list)));
         }
         return returnList;
     }
@@ -204,7 +217,9 @@ public class SuspiciousFixer {
         List<String> result = new ArrayList<>();
         for (Map.Entry<ExceptionVariable, ArrayList<String>> entry: boundarysMap.entrySet()){
             if (!MathUtils.isNumberType(entry.getKey().type) || entry.getValue().size() <= 1){
-                result.addAll(entry.getValue());
+                for (String value: entry.getValue()){
+                    returnList.add(Arrays.asList(value));
+                }
                 continue;
             }
             ArrayList<Interval> intervals = new ArrayList<>();
@@ -336,8 +351,17 @@ public class SuspiciousFixer {
         if (ifStatement.contains("==") || ifStatement.contains("!=") || ifStatement.contains("equals")){
             return true;
         }
-        if (ifStatement.contains("MAX_VALUE") && ifStatement.contains("MIN_VALUE")){
+        if (ifStatement.contains("MAX_VALUE") || ifStatement.contains("MIN_VALUE")){
             return true;
+        }
+        if (ifStatement.contains(">") && !ifStatement.contains("<")){
+            return true;
+        }
+        if (ifStatement.contains("<") && !ifStatement.contains(">")){
+            return true;
+        }
+        if (!ifStatement.contains("(") || !ifStatement.contains(")")){
+            return false;
         }
         ifStatement = ifStatement.substring(ifStatement.indexOf("(")+1, ifStatement.lastIndexOf(")"));
         if (ifStatement.startsWith("(")){
@@ -354,5 +378,19 @@ public class SuspiciousFixer {
             return statement1.trim().equals(statement2);
         }
         return false;
+    }
+
+    private static String replaceSpecialNumber(String ifString){
+        ifString = ifString.replace(String.valueOf(Integer.MIN_VALUE),"Integer.MIN_VALUE");
+        ifString = ifString.replace(String.valueOf(Integer.MAX_VALUE),"Integer.MAX_VALUE");
+        ifString = ifString.replace("-2.147483648E9","Integer.MIN_VALUE");
+        ifString = ifString.replace("2.147483647E9","Integer.MAX_VALUE");
+        ifString = ifString.replace(String.valueOf(Long.MIN_VALUE),"Long.MIN_VALUE");
+        ifString = ifString.replace(String.valueOf(Long.MAX_VALUE),"Long.MAX_VALUE");
+        ifString = ifString.replace(String.valueOf(Double.MIN_VALUE),"Double.MIN_VALUE");
+        ifString = ifString.replace(String.valueOf(Double.MAX_VALUE),"Double.MAX_VALUE");
+        ifString = ifString.replace(String.valueOf(Short.MIN_VALUE),"Short.MIN_VALUE");
+        ifString = ifString.replace(String.valueOf(Short.MAX_VALUE),"Short.MAX_VALUE");
+        return ifString;
     }
 }

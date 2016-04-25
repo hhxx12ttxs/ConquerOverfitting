@@ -51,7 +51,8 @@ public class Main {
     }
 
     private static void fixProject(String project, String path) throws Exception{
-        if (!project.replace("_","-").contains("-")){
+        project = project.replace("_","-");
+        if (!project.contains("-")){
             System.out.println("Main: cannot recognize project name \""+project+"\"");
             return;
         }

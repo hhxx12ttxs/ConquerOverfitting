@@ -8,6 +8,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.localization.Suspicious;
 import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.*;
 import com.google.common.collect.Sets;
+import com.sun.org.apache.bcel.internal.classfile.Code;
 import javassist.NotFoundException;
 import org.apache.commons.collections.ArrayStack;
 import org.apache.commons.lang.StringUtils;
@@ -84,7 +85,7 @@ public class ErrorLineTracer {
 
     private List<Integer> getErrorLine(int defaultErrorLine){
         List<Integer> result = new ArrayList<>();
-        result.addAll(errorLineInConstructor(code));
+        result.addAll(errorLineInConstructor(code, defaultErrorLine));
         result.addAll(errorLineInForLoop(code, methodName));
 
         List<Integer> lines = getErrorLineFromAssert(asserts);
@@ -131,11 +132,23 @@ public class ErrorLineTracer {
 
 
 
-    private List<Integer> errorLineInConstructor(String code){
+    private List<Integer> errorLineInConstructor(String code, int defaultLine){
+        List<Integer> result = new ArrayList<>();
         if (CodeUtils.isConstructor(classname, methodName)) {
-            return CodeUtils.getReturnLine(code, methodName, CodeUtils.getConstructorParamsCount(methodNameWithParam));
+            result.addAll(CodeUtils.getReturnLine(code, methodName, CodeUtils.getConstructorParamsCount(methodNameWithParam)));
+            //List<Integer> methodLine = CodeUtils.getSingleMethodLine(code, methodName, defaultLine);
+            //int startLine = methodLine.get(0);
+            //while (!CodeUtils.getLineFromCode(code, startLine).contains("{")){
+            //    startLine++;
+            //}
+            //startLine++;
+            //if (CodeUtils.getLineFromCode(code, startLine).contains("super")){
+            //    startLine++;
+            //}
+            //result.add(startLine);
         }
-        return new ArrayList<>();
+
+        return result;
     }
 
     private int errorLineOutOfSwitch(int defaultErrorLine, String code){

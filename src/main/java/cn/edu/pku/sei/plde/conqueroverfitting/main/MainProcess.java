@@ -31,6 +31,7 @@ public class MainProcess {
     public long startMili=System.currentTimeMillis();
     public List<Suspicious> triedSuspicious = new ArrayList<>();
 
+    private long startLine;
 
     public MainProcess(String path){
         if (!path.endsWith("/")){
@@ -41,6 +42,7 @@ public class MainProcess {
 
     public boolean mainProcess(String projectType, int projectNumber) throws Exception{
         String project = setWorkDirectory(projectType,projectNumber);
+        startLine = System.currentTimeMillis();
         libPath.add(FromString.class.getProtectionDomain().getCodeSource().getLocation().getFile());
         if (!checkProjectDirectory()){
             System.out.println("Main Process: set work directory error at project "+projectType+"-"+projectNumber);
@@ -80,6 +82,12 @@ public class MainProcess {
                 continue;
             }
             try {
+                if ((System.currentTimeMillis()-startLine)/1000 >1800){
+                    return false;
+                }
+                if (triedSuspicious.size()>5){
+                    return false;
+                }
                 if (fixSuspicious(suspicious, project)){
                     return true;
                 }
@@ -102,12 +110,8 @@ public class MainProcess {
 
     public boolean isFixSuccess(Suspicious suspicious, Map<ExceptionVariable,List<String>> boundarys, String project){
         System.out.println("Fix Success One Place");
-
         if (TestUtils.getFailTestNumInProject(project) > 0){
-            Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc,libPath);
-            List<Suspicious> suspiciouses = localization.getSuspiciousLite(false);
-            suspiciousLoop(suspiciouses, project);
-            return true;
+           return false;
         }
         else {
             printCollectingMessage(project, suspicious);

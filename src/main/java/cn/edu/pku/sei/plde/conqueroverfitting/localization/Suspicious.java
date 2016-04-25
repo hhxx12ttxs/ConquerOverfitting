@@ -106,6 +106,12 @@ public class Suspicious implements Serializable{
         return result;
     }
 
+    public void setErrorLines(Set<Integer> lines){
+        this._lines.clear();
+        for (int line: lines){
+            this._lines.add(String.valueOf(line));
+        }
+    }
 
 
     public int getDefaultErrorLine() {
@@ -114,6 +120,9 @@ public class Suspicious implements Serializable{
             for (String test : _tests) {
                 try {
                     String testTrace = TestUtils.getTestTrace(_classpath, _testClasspath, test.split("#")[0], test.split("#")[1]);
+                    if (testTrace == null){
+                        continue;
+                    }
                     for (String line : testTrace.split("\n")) {
                         if (line.contains(classname()+".") && line.contains("(") && line.contains(")")) {
                             if (_defaultErrorLine!= -1){
