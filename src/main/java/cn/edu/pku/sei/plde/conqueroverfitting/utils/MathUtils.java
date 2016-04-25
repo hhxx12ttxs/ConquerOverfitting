@@ -2,6 +2,7 @@ package cn.edu.pku.sei.plde.conqueroverfitting.utils;
 
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.BoundaryWithFreq;
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.Interval;
+import cn.edu.pku.sei.plde.conqueroverfitting.log.Log;
 import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeEnum;
 import org.apache.commons.lang.StringUtils;
 
@@ -354,7 +355,25 @@ public class MathUtils {
             BoundaryWithFreq boundaryWithFreq = it.next();
             if(boundaryWithFreq.isSimpleType){
                 try {
-                    Double.parseDouble(boundaryWithFreq.value);
+                    if(boundaryWithFreq.value.contains("L")){
+                        boundaryWithFreq.value = boundaryWithFreq.value.replace("L", "");
+                    }
+                    if(boundaryWithFreq.value.contains("l")){
+                        boundaryWithFreq.value = boundaryWithFreq.value.replace("l", "");
+                    }
+                    if(boundaryWithFreq.value.contains("D")){
+                        boundaryWithFreq.value =  boundaryWithFreq.value.replace("D", "");
+                    }
+                    if(boundaryWithFreq.value.contains("d")){
+                        boundaryWithFreq.value =  boundaryWithFreq.value.replace("d", "");
+                    }
+                    if(boundaryWithFreq.value.contains("F")){
+                        boundaryWithFreq.value = boundaryWithFreq.value.replace("F", "");
+                    }
+                    if(boundaryWithFreq.value.contains("f")){
+                        boundaryWithFreq.value = boundaryWithFreq.value.replace("f", "");
+                    }
+                    boundaryWithFreq.dvalue = Double.parseDouble(boundaryWithFreq.value);
                 }catch (Exception e){
                    it.remove();
                     continue;
@@ -363,12 +382,24 @@ public class MathUtils {
             if (!(boundaryWithFreq.isSimpleType &&
                     (boundaryWithFreq.variableSimpleType == TypeEnum.INT ||
                             boundaryWithFreq.variableSimpleType == TypeEnum.DOUBLE ||
-                            boundaryWithFreq.variableSimpleType == TypeEnum.FLOAT))) {
+                            boundaryWithFreq.variableSimpleType == TypeEnum.FLOAT || boundaryWithFreq.variableSimpleType == TypeEnum.DOUBLE.LONG))) {
                 it.remove();
             }
         }
 
+
+
         Collections.sort(boundaryWithFreqsCopy, new ComparatorBounaryWithFreqs());
+
+//        Log log = new Log("log//if-double-elitismRate-copy.log");
+//        for(BoundaryWithFreq boundaryInfo : boundaryWithFreqsCopy){
+//            log.logSignLine("begin");
+//            //log.logStr("name: " + boundaryInfo.name);
+//            log.logStr("value: " + boundaryInfo.dvalue);
+//            log.logStr("type: " + boundaryInfo.variableSimpleType);
+//            log.logStr("is " + boundaryInfo.isSimpleType);
+//            log.logSignLine("end");
+//        }
 
         ArrayList<BoundaryWithFreq> interval = new ArrayList<BoundaryWithFreq>();
 
@@ -418,11 +449,28 @@ public class MathUtils {
 //        String otherType, String value, int leftClose, int rightClose, int freq) {
         if(wrongValue < boundaryWithFreqsCopy.get(0).dvalue){
             interval.add(new BoundaryWithFreq(TypeEnum.DOUBLE, true, null, "Integer.MIN_VALUE", 1, 0, 1));
-            interval.add(boundaryWithFreqsCopy.get(0));
+            BoundaryWithFreq boundaryWithFreq1 = boundaryWithFreqsCopy.get(0);
+            if (boundaryWithFreq1.leftClose > boundaryWithFreq1.rightClose) {
+                boundaryWithFreq1.leftClose = 1;
+                boundaryWithFreq1.rightClose = 0;
+            } else {
+                boundaryWithFreq1.leftClose = 0;
+                boundaryWithFreq1.rightClose = 1;
+            }
+            interval.add(boundaryWithFreq1);
             return interval;
         }
         if(wrongValue > boundaryWithFreqsCopy.get(size - 1).dvalue){
-            interval.add(boundaryWithFreqsCopy.get(size - 1));
+            BoundaryWithFreq boundaryWithFreq0 = boundaryWithFreqsCopy.get(0);
+
+            if (boundaryWithFreq0.leftClose >= boundaryWithFreq0.rightClose) {
+                boundaryWithFreq0.leftClose = 1;
+                boundaryWithFreq0.rightClose = 0;
+            } else {
+                boundaryWithFreq0.leftClose = 0;
+                boundaryWithFreq0.rightClose = 1;
+            }
+            interval.add(boundaryWithFreq0);
             interval.add(new BoundaryWithFreq(TypeEnum.DOUBLE, true, null, "Integer.MAX_VALUE", 0, 1, 1));
             return interval;
         }

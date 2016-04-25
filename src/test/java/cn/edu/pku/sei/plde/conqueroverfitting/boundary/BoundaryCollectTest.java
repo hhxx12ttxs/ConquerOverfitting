@@ -122,12 +122,12 @@ public class BoundaryCollectTest {
 
     @Test
     public void testMath37() {
-        String path = "experiment//searchcode//math-double-real";
+        String path = "experiment//searchcode//if-double-elitismRate";
         BoundaryCollect boundaryCollect = new BoundaryCollect(path);
         ArrayList<BoundaryInfo> boundaryList = boundaryCollect.getBoundaryList();
 
         assertNotNull(boundaryList);
-        Log log = new Log("log//boundary-math-double-real.log");
+        Log log = new Log("log//if-double-elitismRate.log");
         for(BoundaryInfo boundaryInfo : boundaryList){
             log.logSignLine("begin");
             log.logStr("name: " + boundaryInfo.name);
