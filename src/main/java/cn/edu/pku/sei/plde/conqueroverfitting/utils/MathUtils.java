@@ -395,12 +395,12 @@ public class MathUtils {
                         boundaryWithFreq.value = "Long.MAX_VALUE";
                         boundaryWithFreq.dvalue = Long.MAX_VALUE;
                     } else {
-                        System.out.println("dvalue: " + boundaryWithFreq.dvalue);
-                        System.out.println("value: " + boundaryWithFreq.value);
-                        System.out.println("type: " + boundaryWithFreq.variableSimpleType);
-                        System.out.println("is " + boundaryWithFreq.isSimpleType);
-                        System.out.println("left " + boundaryWithFreq.leftClose);
-                        System.out.println("right " + boundaryWithFreq.rightClose);
+//                        System.out.println("dvalue: " + boundaryWithFreq.dvalue);
+//                        System.out.println("value: " + boundaryWithFreq.value);
+//                        System.out.println("type: " + boundaryWithFreq.variableSimpleType);
+//                        System.out.println("is " + boundaryWithFreq.isSimpleType);
+//                        System.out.println("left " + boundaryWithFreq.leftClose);
+//                        System.out.println("right " + boundaryWithFreq.rightClose);
                         it.remove();
                     }
                     continue;
@@ -418,18 +418,18 @@ public class MathUtils {
 
         Collections.sort(boundaryWithFreqsCopy, new ComparatorBounaryWithFreqs());
 
-        Log log = new Log("log//if-int-lcm-copy.log");
-        for (BoundaryWithFreq boundaryInfo : boundaryWithFreqsCopy) {
-            log.logSignLine("begin");
-            //log.logStr("name: " + boundaryInfo.name);
-            log.logStr("dvalue: " + boundaryInfo.dvalue);
-            log.logStr("value: " + boundaryInfo.value);
-            log.logStr("type: " + boundaryInfo.variableSimpleType);
-            log.logStr("is " + boundaryInfo.isSimpleType);
-            log.logStr("left " + boundaryInfo.leftClose);
-            log.logStr("right " + boundaryInfo.rightClose);
-            log.logSignLine("end");
-        }
+//        Log log = new Log("log//if-int-lcm-copy.log");
+//        for (BoundaryWithFreq boundaryInfo : boundaryWithFreqsCopy) {
+//            log.logSignLine("begin");
+//            //log.logStr("name: " + boundaryInfo.name);
+//            log.logStr("dvalue: " + boundaryInfo.dvalue);
+//            log.logStr("value: " + boundaryInfo.value);
+//            log.logStr("type: " + boundaryInfo.variableSimpleType);
+//            log.logStr("is " + boundaryInfo.isSimpleType);
+//            log.logStr("left " + boundaryInfo.leftClose);
+//            log.logStr("right " + boundaryInfo.rightClose);
+//            log.logSignLine("end");
+//        }
 
         ArrayList<BoundaryWithFreq> interval = new ArrayList<BoundaryWithFreq>();
 
