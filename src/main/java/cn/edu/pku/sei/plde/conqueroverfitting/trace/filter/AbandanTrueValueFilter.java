@@ -240,6 +240,9 @@ public class AbandanTrueValueFilter {
             if (var.values.size() == 0){
                 continue;
             }
+            if (var.type.equals("STRING")){
+                continue;
+            }
             cleanedVariable.add(var);
         }
         return cleanedVariable;
