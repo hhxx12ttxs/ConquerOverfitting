@@ -135,17 +135,17 @@ public class ErrorLineTracer {
     private List<Integer> errorLineInConstructor(String code, int defaultLine){
         List<Integer> result = new ArrayList<>();
         if (CodeUtils.isConstructor(classname, methodName)) {
-            //result.addAll(CodeUtils.getReturnLine(code, methodName, CodeUtils.getConstructorParamsCount(methodNameWithParam)));
-            List<Integer> methodLine = CodeUtils.getSingleMethodLine(code, methodName, defaultLine);
-            int startLine = methodLine.get(0);
-            while (!CodeUtils.getLineFromCode(code, startLine).contains("{")){
-                startLine++;
-            }
-            startLine++;
-            if (CodeUtils.getLineFromCode(code, startLine).contains("super")){
-                startLine++;
-            }
-            result.add(startLine);
+            result.addAll(CodeUtils.getReturnLine(code, methodName, CodeUtils.getConstructorParamsCount(methodNameWithParam)));
+            //List<Integer> methodLine = CodeUtils.getSingleMethodLine(code, methodName, defaultLine);
+            //int startLine = methodLine.get(0);
+            //while (!CodeUtils.getLineFromCode(code, startLine).contains("{")){
+            //    startLine++;
+            //}
+            //startLine++;
+            //if (CodeUtils.getLineFromCode(code, startLine).contains("super")){
+            //    startLine++;
+            //}
+            //result.add(startLine);
         }
 
         return result;

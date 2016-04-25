@@ -47,6 +47,9 @@ public class MethodOneFixer {
         File javaBackup = FileUtils.copyFile(targetJavaFile.getAbsolutePath(), FileUtils.tempJavaPath(patch._className,"MethodOneFixer"));
         File classBackup = FileUtils.copyFile(targetClassFile.getAbsolutePath(), FileUtils.tempClassPath(patch._className,"MethodOneFixer"));
 
+        int minErrorTest = _errorTestNum;
+        String truePatchString = "";
+        int truePatchLine = 0;
         String code = FileUtils.getCodeFromFile(javaBackup);
         for (String patchString: patch._patchString){
             if (patchString.equals("")){
@@ -80,24 +83,30 @@ public class MethodOneFixer {
                 Asserts asserts = new Asserts(_classpath,_classSrcPath, _testClassPath, _testSrcPath, patch._testClassName, patch._testMethodName);
                 int errAssertNumAfterFix = asserts.errorNum();
                 int errAssertBeforeFix = _suspicious._assertsMap.get(patch._testClassName+"#"+patch._testMethodName).errorNum();
-
                 if (errAssertNumAfterFix < errAssertBeforeFix){
                     int errorTestAterFix = TestUtils.getFailTestNumInProject(_project);
-                    if (errorTestAterFix < _errorTestNum){
-                        patch._patchString.clear();
-                        patch._patchString.add(patchString);
-                        patch._patchLines.clear();
-                        patch._patchLines.add(patchLine);
-                        _patches.add(patch);
+                    if (errorTestAterFix < minErrorTest){
+                        minErrorTest = errorTestAterFix;
+                        truePatchLine = patchLine;
+                        truePatchString = patchString;
                         FileUtils.copyFile(classBackup, targetClassFile);
                         FileUtils.copyFile(javaBackup, targetJavaFile);
-                        System.out.println("MethodOneFixer: fix success");
-                        return true;
                     }
                 }
-                System.out.println("MethodOneFixer: fix fail");
             }
         }
+        if (minErrorTest < _errorTestNum){
+            patch._patchString.clear();
+            patch._patchString.add(truePatchString);
+            patch._patchLines.clear();
+            patch._patchLines.add(truePatchLine);
+            _patches.add(patch);
+            System.out.println("MethodOneFixer: fix success");
+            return true;
+        }else {
+            System.out.println("MethodOneFixer: fix fail");
+        }
+
         FileUtils.copyFile(classBackup, targetClassFile);
         FileUtils.copyFile(javaBackup, targetJavaFile);
         return false;

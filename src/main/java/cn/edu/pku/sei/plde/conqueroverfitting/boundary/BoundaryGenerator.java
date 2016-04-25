@@ -54,6 +54,7 @@ public class BoundaryGenerator {
                     intervalss = MathUtils.generateInterval(variableBoundary, Double.valueOf(value));
                 }catch (Exception e){
                     intervals.put(Arrays.asList(value), "["+value+"-"+value+"]");
+                    e.printStackTrace();
                     continue;
                 }
                 String left = intervalss.get(0).value;
@@ -84,10 +85,6 @@ public class BoundaryGenerator {
         }
         return returnList;
     }
-
-
-
-
 
 
     private static String generateWithSingleWord(ExceptionVariable variable, String intervals,List<String> valueStrings) {

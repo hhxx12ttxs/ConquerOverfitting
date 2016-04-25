@@ -351,7 +351,13 @@ public class SuspiciousFixer {
         if (ifStatement.contains("==") || ifStatement.contains("!=") || ifStatement.contains("equals")){
             return true;
         }
-        if (ifStatement.contains("MAX_VALUE") && ifStatement.contains("MIN_VALUE")){
+        if (ifStatement.contains("MAX_VALUE") || ifStatement.contains("MIN_VALUE")){
+            return true;
+        }
+        if (ifStatement.contains(">") && !ifStatement.contains("<")){
+            return true;
+        }
+        if (ifStatement.contains("<") && !ifStatement.contains(">")){
             return true;
         }
         if (!ifStatement.contains("(") || !ifStatement.contains(")")){
