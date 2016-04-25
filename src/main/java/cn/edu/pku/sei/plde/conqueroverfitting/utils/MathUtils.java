@@ -462,7 +462,7 @@ public class MathUtils {
             return interval;
         }
         if (wrongValue > boundaryWithFreqsCopy.get(size - 1).dvalue) {
-            BoundaryWithFreq boundaryWithFreq0 = boundaryWithFreqsCopy.get(0);
+            BoundaryWithFreq boundaryWithFreq0 = boundaryWithFreqsCopy.get(size - 1);
 
             if (boundaryWithFreq0.leftClose == 0 && boundaryWithFreq0.rightClose != 0) {
                 boundaryWithFreq0.leftClose = 0;
