@@ -27,11 +27,18 @@ import java.util.*;
  * Created by yanrunfa on 16/2/21.
  */
 public class EntiretyTest {
-    private final  String PATH_OF_DEFECTS4J = "/home/yanrunfa/Documents/defects4j/tmp/";
-    private String classpath = System.getProperty("user.dir")+"/project/classpath/";
-    private String classSrc = System.getProperty("user.dir")+"/project/classSrc/";
-    private String testClasspath = System.getProperty("user.dir")+"/project/testClasspath";
-    private String testClassSrc = System.getProperty("user.dir")+"/project/testClassSrc/";
+    //private final  String PATH_OF_DEFECTS4J = "/home/yanrunfa/Documents/defects4j/tmp/";
+//    private String classpath = System.getProperty("user.dir")+"/project/classpath/";
+//    private String classSrc = System.getProperty("user.dir")+"/project/classSrc/";
+//    private String testClasspath = System.getProperty("user.dir")+"/project/testClasspath";
+//    private String testClassSrc = System.getProperty("user.dir")+"/project/testClassSrc/";
+
+    private final  String PATH_OF_DEFECTS4J = "/home/yjxxtd/software/defects4j-projects";
+    String projectPath = "/home/yjxxtd/software/defects4j-projects/";
+    private String classpath = projectPath +"classpath/";
+    private String classSrc = projectPath +"classSrc/";
+    private String testClasspath = projectPath +"testClasspath";
+    private String testClassSrc = projectPath +"testClassSrc/";
     private List<String> libPath = new ArrayList<>();
     public long startMili=System.currentTimeMillis();
     public List<Suspicious> triedSuspicious = new ArrayList<>();
@@ -113,7 +120,7 @@ public class EntiretyTest {
         if (!projectDir.exists()){
             projectDir.mkdirs();
         }
-        String project = projectName+"-"+number;
+        String project = projectName+"_"+number;
         /* 四个整个项目需要的参数 */
 
         if ((projectName.equals("Math") && number>=85) || (projectName.equals("Lang") && (number == 39 || number == 49))){
@@ -165,8 +172,10 @@ public class EntiretyTest {
         //Math,Time
         if (projectName.equals("Math") || projectName.equals("Lang")){
             FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project,projectDir.getAbsolutePath());
-            classpath = projectDir.getAbsolutePath()+"/"+project +"/target/classes/";
-            testClasspath = projectDir.getAbsolutePath()+"/"+project +"/target/test-classes/";
+//            classpath = projectDir.getAbsolutePath()+"/"+project +"/target/classes/";
+//            testClasspath = projectDir.getAbsolutePath()+"/"+project +"/target/test-classes/";
+            classpath = projectPath +"/"+project +"/target/classes/";
+            testClasspath = projectPath +"/"+project +"/target/test-classes/";
             classSrc = projectDir.getAbsolutePath()+"/"+project +"/src/main/java/";
             testClassSrc = projectDir.getAbsolutePath()+"/"+project +"/src/test/java/";
             FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project+"/src/test/resources/",System.getProperty("user.dir")+"/src/test");
