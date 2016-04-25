@@ -2,7 +2,6 @@ package cn.edu.pku.sei.plde.conqueroverfitting.utils;
 
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.BoundaryWithFreq;
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.Interval;
-import cn.edu.pku.sei.plde.conqueroverfitting.log.Log;
 import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeEnum;
 import org.apache.commons.lang.StringUtils;
 
@@ -353,29 +352,29 @@ public class MathUtils {
         Iterator<BoundaryWithFreq> it = boundaryWithFreqsCopy.iterator();
         while (it.hasNext()) {
             BoundaryWithFreq boundaryWithFreq = it.next();
-            if(boundaryWithFreq.isSimpleType){
+            if (boundaryWithFreq.isSimpleType) {
                 try {
-                    if(boundaryWithFreq.value.contains("L")){
+                    if (boundaryWithFreq.value.contains("L")) {
                         boundaryWithFreq.value = boundaryWithFreq.value.replace("L", "");
                     }
-                    if(boundaryWithFreq.value.contains("l")){
+                    if (boundaryWithFreq.value.contains("l")) {
                         boundaryWithFreq.value = boundaryWithFreq.value.replace("l", "");
                     }
-                    if(boundaryWithFreq.value.contains("D")){
-                        boundaryWithFreq.value =  boundaryWithFreq.value.replace("D", "");
+                    if (boundaryWithFreq.value.contains("D")) {
+                        boundaryWithFreq.value = boundaryWithFreq.value.replace("D", "");
                     }
-                    if(boundaryWithFreq.value.contains("d")){
-                        boundaryWithFreq.value =  boundaryWithFreq.value.replace("d", "");
+                    if (boundaryWithFreq.value.contains("d")) {
+                        boundaryWithFreq.value = boundaryWithFreq.value.replace("d", "");
                     }
-                    if(boundaryWithFreq.value.contains("F")){
+                    if (boundaryWithFreq.value.contains("F")) {
                         boundaryWithFreq.value = boundaryWithFreq.value.replace("F", "");
                     }
-                    if(boundaryWithFreq.value.contains("f")){
+                    if (boundaryWithFreq.value.contains("f")) {
                         boundaryWithFreq.value = boundaryWithFreq.value.replace("f", "");
                     }
                     boundaryWithFreq.dvalue = Double.parseDouble(boundaryWithFreq.value);
-                }catch (Exception e){
-                   it.remove();
+                } catch (Exception e) {
+                    it.remove();
                     continue;
                 }
             }
@@ -386,7 +385,6 @@ public class MathUtils {
                 it.remove();
             }
         }
-
 
 
         Collections.sort(boundaryWithFreqsCopy, new ComparatorBounaryWithFreqs());
@@ -420,21 +418,10 @@ public class MathUtils {
                 BoundaryWithFreq boundaryWithFreq1 = boundaryWithFreqsCopy.get(i + 1);
                 if (Double.parseDouble(boundaryWithFreq0.value) < wrongValue && Double.parseDouble(boundaryWithFreq1.value) > wrongValue) {
 
-                    if (boundaryWithFreq0.leftClose >= boundaryWithFreq0.rightClose) {
-                        boundaryWithFreq0.leftClose = 1;
-                        boundaryWithFreq0.rightClose = 0;
-                    } else {
-                        boundaryWithFreq0.leftClose = 0;
-                        boundaryWithFreq0.rightClose = 1;
-                    }
 
-                    if (boundaryWithFreq1.leftClose > boundaryWithFreq1.rightClose) {
-                        boundaryWithFreq1.leftClose = 1;
-                        boundaryWithFreq1.rightClose = 0;
-                    } else {
-                        boundaryWithFreq1.leftClose = 0;
-                        boundaryWithFreq1.rightClose = 1;
-                    }
+                    boundaryWithFreq0.leftClose = 0;
+
+                    boundaryWithFreq1.rightClose = 0;
 
                     interval.add(boundaryWithFreq0);
                     interval.add(boundaryWithFreq1);
@@ -447,29 +434,17 @@ public class MathUtils {
         }
 //        public BoundaryWithFreq(TypeEnum variableSimpleType, boolean isSimpleType,
 //        String otherType, String value, int leftClose, int rightClose, int freq) {
-        if(wrongValue < boundaryWithFreqsCopy.get(0).dvalue){
+        if (wrongValue < boundaryWithFreqsCopy.get(0).dvalue) {
             interval.add(new BoundaryWithFreq(TypeEnum.DOUBLE, true, null, "Integer.MIN_VALUE", 1, 0, 1));
             BoundaryWithFreq boundaryWithFreq1 = boundaryWithFreqsCopy.get(0);
-            if (boundaryWithFreq1.leftClose > boundaryWithFreq1.rightClose) {
-                boundaryWithFreq1.leftClose = 1;
-                boundaryWithFreq1.rightClose = 0;
-            } else {
-                boundaryWithFreq1.leftClose = 0;
-                boundaryWithFreq1.rightClose = 1;
-            }
+            boundaryWithFreq1.rightClose = 0;
             interval.add(boundaryWithFreq1);
             return interval;
         }
-        if(wrongValue > boundaryWithFreqsCopy.get(size - 1).dvalue){
+        if (wrongValue > boundaryWithFreqsCopy.get(size - 1).dvalue) {
             BoundaryWithFreq boundaryWithFreq0 = boundaryWithFreqsCopy.get(0);
 
-            if (boundaryWithFreq0.leftClose >= boundaryWithFreq0.rightClose) {
-                boundaryWithFreq0.leftClose = 1;
-                boundaryWithFreq0.rightClose = 0;
-            } else {
-                boundaryWithFreq0.leftClose = 0;
-                boundaryWithFreq0.rightClose = 1;
-            }
+            boundaryWithFreq0.leftClose = 0;
             interval.add(boundaryWithFreq0);
             interval.add(new BoundaryWithFreq(TypeEnum.DOUBLE, true, null, "Integer.MAX_VALUE", 0, 1, 1));
             return interval;
@@ -485,7 +460,7 @@ class ComparatorBounaryWithFreqs implements Comparator {
 
         BoundaryWithFreq boundaryWithFreq0 = (BoundaryWithFreq) arg0;
         BoundaryWithFreq boundaryWithFreq1 = (BoundaryWithFreq) arg1;
-        if(boundaryWithFreq0.isSimpleType && boundaryWithFreq1.isSimpleType) {
+        if (boundaryWithFreq0.isSimpleType && boundaryWithFreq1.isSimpleType) {
             if (boundaryWithFreq0.dvalue < boundaryWithFreq1.dvalue) {
                 return -1;
             }
