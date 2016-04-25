@@ -110,6 +110,25 @@ public class MathUtilsTest {
         System.out.println("17xx " + boundaryWithFreqArrayList.get(0).value + boundaryWithFreqArrayList.get(0).leftClose);
         System.out.println("17xx " + boundaryWithFreqArrayList.get(1).value + boundaryWithFreqArrayList.get(1).rightClose);
 
+//        String path = "experiment//searchcode//if-int-lcm";
+//        BoundaryCollect boundaryCollect = new BoundaryCollect(path);
+//        boundaryWithFreqs = boundaryCollect.getBoundaryWithFreqList();
+
+//        Log log = new Log("log//if-int-lcm.log");
+//        for(BoundaryWithFreq boundaryInfo : boundaryWithFreqs){
+//            log.logSignLine("begin");
+//            //log.logStr("name: " + boundaryInfo.name);
+//            log.logStr("value: " + boundaryInfo.value);
+//            log.logStr("type: " + boundaryInfo.variableSimpleType);
+//            log.logSignLine("end");
+//        }
+
+//        ArrayList<BoundaryWithFreq> boundaryWithFreqArrayList = MathUtils.generateInterval(boundaryWithFreqs, Integer.MIN_VALUE);
+//
+//        System.out.println("17xx " + boundaryWithFreqArrayList.get(0).value + boundaryWithFreqArrayList.get(0).leftClose);
+//        System.out.println("17xx " + boundaryWithFreqArrayList.get(1).value + boundaryWithFreqArrayList.get(1).rightClose);
+
+
         //boundaryWithFreqArrayList = MathUtils.generateInterval(boundaryWithFreqs, 18.0);
 
         //System.out.println("18xx " + boundaryWithFreqArrayList.get(0).value + boundaryWithFreqArrayList.get(0).leftClose);

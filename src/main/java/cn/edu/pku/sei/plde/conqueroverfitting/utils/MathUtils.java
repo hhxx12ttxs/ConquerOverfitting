@@ -374,9 +374,37 @@ public class MathUtils {
                         boundaryWithFreq.value = boundaryWithFreq.value.replace("f", "");
                     }
                     boundaryWithFreq.dvalue = Double.parseDouble(boundaryWithFreq.value);
+
                 } catch (Exception e) {
-                    it.remove();
+                    if (boundaryWithFreq.value.equals("Integer.MIN_VALUE") || boundaryWithFreq.value.equals("Integer.MIN_VAUE")) {
+                        boundaryWithFreq.value = "Integer.MIN_VALUE";
+                        boundaryWithFreq.dvalue = Integer.MIN_VALUE;
+                    } else if (boundaryWithFreq.value.equals("Integer.MAX_VALUE") || boundaryWithFreq.value.equals("Integer.MAX_VAUE")) {
+                        boundaryWithFreq.value = "Integer.MAX_VALUE";
+                        boundaryWithFreq.dvalue = Integer.MAX_VALUE;
+                    } else if (boundaryWithFreq.value.equals("Double.MIN_VALUE") || boundaryWithFreq.value.equals("Double.MIN_VAUE")) {
+                        boundaryWithFreq.value = "Double.MIN_VALUE";
+                        boundaryWithFreq.dvalue = Double.MIN_VALUE;
+                    } else if (boundaryWithFreq.value.equals("Double.MAX_VALUE") || boundaryWithFreq.value.equals("Double.MAX_VAUE")) {
+                        boundaryWithFreq.value = "Double.MAX_VALUE";
+                        boundaryWithFreq.dvalue = Double.MAX_VALUE;
+                    } else if (boundaryWithFreq.value.equals("Long.MIN_VALUE") || boundaryWithFreq.value.equals("Long.MIN_VAUE")) {
+                        boundaryWithFreq.value = "Long.MIN_VALUE";
+                        boundaryWithFreq.dvalue = Long.MIN_VALUE;
+                    } else if (boundaryWithFreq.value.equals("Long.MAX_VALUE") || boundaryWithFreq.value.equals("Long.MAX_VAUE")) {
+                        boundaryWithFreq.value = "Long.MAX_VALUE";
+                        boundaryWithFreq.dvalue = Long.MAX_VALUE;
+                    } else {
+                        System.out.println("dvalue: " + boundaryWithFreq.dvalue);
+                        System.out.println("value: " + boundaryWithFreq.value);
+                        System.out.println("type: " + boundaryWithFreq.variableSimpleType);
+                        System.out.println("is " + boundaryWithFreq.isSimpleType);
+                        System.out.println("left " + boundaryWithFreq.leftClose);
+                        System.out.println("right " + boundaryWithFreq.rightClose);
+                        it.remove();
+                    }
                     continue;
+
                 }
             }
             if (!(boundaryWithFreq.isSimpleType &&
@@ -390,11 +418,12 @@ public class MathUtils {
 
         Collections.sort(boundaryWithFreqsCopy, new ComparatorBounaryWithFreqs());
 
-        Log log = new Log("log//if-double-elitismRate-copy.log");
+        Log log = new Log("log//if-int-lcm-copy.log");
         for (BoundaryWithFreq boundaryInfo : boundaryWithFreqsCopy) {
             log.logSignLine("begin");
             //log.logStr("name: " + boundaryInfo.name);
-            log.logStr("value: " + boundaryInfo.dvalue);
+            log.logStr("dvalue: " + boundaryInfo.dvalue);
+            log.logStr("value: " + boundaryInfo.value);
             log.logStr("type: " + boundaryInfo.variableSimpleType);
             log.logStr("is " + boundaryInfo.isSimpleType);
             log.logStr("left " + boundaryInfo.leftClose);
@@ -406,7 +435,7 @@ public class MathUtils {
 
         int size = boundaryWithFreqsCopy.size();
         for (BoundaryWithFreq boundaryWithFreq : boundaryWithFreqsCopy) {
-            if (Double.parseDouble(boundaryWithFreq.value) == wrongValue) {
+            if (boundaryWithFreq.dvalue == wrongValue) {
 
                 boundaryWithFreq.leftClose = 1;
                 boundaryWithFreq.rightClose = 1;
@@ -419,7 +448,7 @@ public class MathUtils {
             for (int i = 0; i < size - 1; i++) {
                 BoundaryWithFreq boundaryWithFreq0 = boundaryWithFreqsCopy.get(i);
                 BoundaryWithFreq boundaryWithFreq1 = boundaryWithFreqsCopy.get(i + 1);
-                if (Double.parseDouble(boundaryWithFreq0.value) < wrongValue && Double.parseDouble(boundaryWithFreq1.value) > wrongValue) {
+                if (boundaryWithFreq0.dvalue < wrongValue && boundaryWithFreq1.dvalue > wrongValue) {
                     if (boundaryWithFreq0.leftClose == 0 && boundaryWithFreq0.rightClose != 0) {
                         boundaryWithFreq0.leftClose = 0;
                     } else if (boundaryWithFreq0.leftClose != 0 && boundaryWithFreq0.rightClose == 0) {
