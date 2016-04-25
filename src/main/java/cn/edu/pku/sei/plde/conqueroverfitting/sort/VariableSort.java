@@ -40,16 +40,16 @@ public class VariableSort {
         topologicalSort();
         removeControlDependency();
 
-        if(sortVariable.size() >= 1) {
-            List<String> firstOrder = sortVariable.get(0);
-            Iterator<String> it = firstOrder.iterator();
-            while(it.hasNext()){
-                String var = it.next();
-                if(!allVariableInMethod.contains(var)){
-                    it.remove();
-                }
-            }
-        }
+//        if(sortVariable.size() >= 1) {
+//            List<String> firstOrder = sortVariable.get(0);
+//            Iterator<String> it = firstOrder.iterator();
+//            while(it.hasNext()){
+//                String var = it.next();
+//                if(!allVariableInMethod.contains(var)){
+//                    it.remove();
+//                }
+//            }
+//        }
     }
 
     public List<List<String>> getSortVariable() {
