@@ -67,7 +67,7 @@ public class Main {
         String projectType = project.split("-")[0];
         int projectNumber = Integer.valueOf(project.split("-")[1]);
         MainProcess process = new MainProcess(path);
-        boolean result = process.mainProcess(projectType, projectNumber);
+        boolean result = process.mainProcess(projectType, projectNumber, path);
         File recordPackage = new File(System.getProperty("user.dir")+"/patch/");
         recordPackage.mkdirs();
         File main = new File(recordPackage.getAbsolutePath()+"/"+"Log");

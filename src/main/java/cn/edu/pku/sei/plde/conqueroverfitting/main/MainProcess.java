@@ -40,7 +40,8 @@ public class MainProcess {
         PATH_OF_DEFECTS4J = path;
     }
 
-    public boolean mainProcess(String projectType, int projectNumber) throws Exception{
+    public boolean mainProcess(String projectType, int projectNumber, String path) throws Exception{
+        PATH_OF_DEFECTS4J = path;
         String project = setWorkDirectory(projectType,projectNumber);
         startLine = System.currentTimeMillis();
         libPath.add(FromString.class.getProtectionDomain().getCodeSource().getLocation().getFile());
