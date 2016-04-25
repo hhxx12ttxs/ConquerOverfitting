@@ -3,42 +3,41 @@
     <output-path>$PROJECT_DIR$/out/artifacts/ConquerOverfitting_jar</output-path>
     <root id="archive" name="ConquerOverfitting.jar">
       <element id="module-output" name="ConquerOverfitting" />
-      <element id="module-test-output" name="ConquerOverfitting" />
-      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/eclipse/text/org.eclipse.text/3.5.101/org.eclipse.text-3.5.101.jar" path-in-jar="/" />
-      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/eclipse/core/org.eclipse.core.expressions/3.4.300/org.eclipse.core.expressions-3.4.300.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/eclipse/equinox/org.eclipse.equinox.preferences/3.4.1/org.eclipse.equinox.preferences-3.4.1.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/eclipse/core/org.eclipse.core.contenttype/3.4.100/org.eclipse.core.contenttype-3.4.100.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/eclipse/core/org.eclipse.core.jobs/3.5.100/org.eclipse.core.jobs-3.5.100.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/eclipse/equinox/org.eclipse.equinox.common/3.6.0/org.eclipse.equinox.common-3.6.0.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/eclipse/core/org.eclipse.core.resources/3.7.100/org.eclipse.core.resources-3.7.100.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/eclipse/core/org.eclipse.core.filesystem/1.3.100/org.eclipse.core.filesystem-1.3.100.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/eclipse/core/org.eclipse.core.expressions/3.4.300/org.eclipse.core.expressions-3.4.300.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/eclipse/core/org.eclipse.core.runtime/3.7.0/org.eclipse.core.runtime-3.7.0.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/eclipse/osgi/org.eclipse.osgi/3.7.1/org.eclipse.osgi-3.7.1.jar" path-in-jar="/" />
-      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/eclipse/equinox/org.eclipse.equinox.preferences/3.4.1/org.eclipse.equinox.preferences-3.4.1.jar" path-in-jar="/" />
-      <element id="extracted-dir" path="$PROJECT_DIR$/lib/htmlparser.jar" path-in-jar="/" />
-      <element id="extracted-dir" path="$PROJECT_DIR$/lib/joda-convert-1.1.jar" path-in-jar="/" />
-      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/eclipse/equinox/org.eclipse.equinox.registry/3.5.101/org.eclipse.equinox.registry-3.5.101.jar" path-in-jar="/" />
-      <element id="extracted-dir" path="$PROJECT_DIR$/lib/commons-logging-1.2.jar" path-in-jar="/" />
-      <element id="extracted-dir" path="$PROJECT_DIR$/lib/httpclient-4.5.1.jar" path-in-jar="/" />
-      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/eclipse/jdt/org.eclipse.jdt.core/3.7.1/org.eclipse.jdt.core-3.7.1.jar" path-in-jar="/" />
-      <element id="library" level="project" name="commons-codec-1.9" />
       <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/eclipse/core/org.eclipse.core.commands/3.6.0/org.eclipse.core.commands-3.6.0.jar" path-in-jar="/" />
-      <element id="extracted-dir" path="$PROJECT_DIR$/lib/infra-0.1.jar" path-in-jar="/" />
-      <element id="extracted-dir" path="$PROJECT_DIR$/lib/slf4j-api-1.7.13.jar" path-in-jar="/" />
-      <element id="extracted-dir" path="$PROJECT_DIR$/lib/slf4j-jdk14-1.7.13.jar" path-in-jar="/" />
-      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/eclipse/core/org.eclipse.core.resources/3.7.100/org.eclipse.core.resources-3.7.100.jar" path-in-jar="/" />
-      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/eclipse/equinox/org.eclipse.equinox.app/1.3.100/org.eclipse.equinox.app-1.3.100.jar" path-in-jar="/" />
-      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/eclipse/core/org.eclipse.core.contenttype/3.4.100/org.eclipse.core.contenttype-3.4.100.jar" path-in-jar="/" />
-      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/junit/junit/3.8.1/junit-3.8.1.jar" path-in-jar="/" />
-      <element id="extracted-dir" path="$PROJECT_DIR$/lib/htmllexer.jar" path-in-jar="/" />
-      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/eclipse/core/org.eclipse.core.filesystem/1.3.100/org.eclipse.core.filesystem-1.3.100.jar" path-in-jar="/" />
-      <element id="extracted-dir" path="$PROJECT_DIR$/lib/httpcore-4.4.3.jar" path-in-jar="/" />
-      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/eclipse/equinox/org.eclipse.equinox.common/3.6.0/org.eclipse.equinox.common-3.6.0.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$PROJECT_DIR$/lib/com.gzoltar-0.1.1.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$PROJECT_DIR$/lib/commons-beanutils.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$PROJECT_DIR$/lib/commons-codec-1.4.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$PROJECT_DIR$/lib/commons-httpclient-3.0.1.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/lib/commons-io-2.5.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$PROJECT_DIR$/lib/commons-lang-2.5.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/lib/commons-logging-1.2.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/lib/easymock-3.4.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$PROJECT_DIR$/lib/ezmorph.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/lib/htmllexer.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/lib/htmlparser.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/lib/httpclient-4.5.1.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/lib/httpcore-4.4.3.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/lib/infra-0.1.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/lib/joda-convert-1.1.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$PROJECT_DIR$/lib/json-lib-2.2.2-jdk15.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/lib/RunTestAgent.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/lib/slf4j-api-1.7.13.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/lib/slf4j-jdk14-1.7.13.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$PROJECT_DIR$/lib/slicer.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$PROJECT_DIR$/lib/tracer.jar" path-in-jar="/" />
-      <element id="extracted-dir" path="$PROJECT_DIR$/lib/RunTestAgent.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/eclipse/equinox/org.eclipse.equinox.registry/3.5.101/org.eclipse.equinox.registry-3.5.101.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/eclipse/text/org.eclipse.text/3.5.101/org.eclipse.text-3.5.101.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/eclipse/equinox/org.eclipse.equinox.app/1.3.100/org.eclipse.equinox.app-1.3.100.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/eclipse/jdt/org.eclipse.jdt.core/3.7.1/org.eclipse.jdt.core-3.7.1.jar" path-in-jar="/" />
     </root>
   </artifact>
 </component>

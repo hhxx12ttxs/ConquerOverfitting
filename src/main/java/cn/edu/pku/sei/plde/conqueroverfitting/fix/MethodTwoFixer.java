@@ -29,6 +29,9 @@ public class MethodTwoFixer {
     private int _methodStartLine;
     private int _methodEndLine;
     private int _errorTestNum;
+    public String correctPatch;
+    public int correctStartLine;
+    public int correctEndLine;
 
     public MethodTwoFixer(Suspicious suspicious, int errorTestNum){
         _suspicious = suspicious;
@@ -64,6 +67,7 @@ public class MethodTwoFixer {
                     }
                     int blockStartLine = ifLines.get(0);
                     int blockEndLine = ifLines.get(1);
+                    String ifStatement="";
                     for (int endLine: getLinesCanAdd(blockStartLine, blockEndLine,_code)) {
                         String lastLineString = CodeUtils.getLineFromCode(_code, blockStartLine-1);
                         boolean result = false;
@@ -76,7 +80,7 @@ public class MethodTwoFixer {
                             }
                             String ifEnd = lastLineString.substring(lastLineString.lastIndexOf(')'));
                             lastLineString = lastLineString.substring(0, lastLineString.lastIndexOf(')'));
-                            String ifStatement =lastLineString+ "&&" +getIfStringFromStatement(getIfStatementFromString(ifString)) + ifEnd;
+                            ifStatement =lastLineString+ "&&" +getIfStringFromStatement(getIfStatementFromString(ifString)) + ifEnd;
                             result = fixWithAddIf(blockStartLine-1, endLine, ifStatement,entry.getKey(),  true, project, debug);
                             if (!result){
                                 ifStatement =lastLineString+ "||" +getIfStringFromStatement(ifString) + ifEnd;
@@ -84,6 +88,9 @@ public class MethodTwoFixer {
                             }
                         }
                         if (result){
+                            correctPatch = ifStatement;
+                            correctStartLine = blockStartLine-1;
+                            correctEndLine = endLine;
                             return true;
                         }
                     }

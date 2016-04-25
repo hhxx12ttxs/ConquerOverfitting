@@ -126,10 +126,10 @@ public class MainProcess {
                 recordFile.createNewFile();
             }
             FileWriter writer = new FileWriter(recordFile,true);
-            writer.write("===========================================\n");
+            writer.write("Whole Cost Time: "+(System.currentTimeMillis()-startMili)/1000+"\n");
             writer.write("True Test Num: "+suspicious.trueTestNums()+"\n");
             writer.write("True Assert Num: "+suspicious.trueAssertNums()+"\n");
-            writer.write("Whole Cost Time: "+(System.currentTimeMillis()-startMili)/1000+"\n");
+            writer.write("====================================================================\n\n");
             writer.close();
         } catch (IOException e){
             e.printStackTrace();

@@ -22,6 +22,9 @@ import java.util.Map;
 public class Main {
 
     public static void main(String[] args){
+        if (args.length == 0){
+            System.out.println("Hello world");
+        }
         String path = args[0];
         File file = new File(path);
         File [] sub_files = file.listFiles();
@@ -73,7 +76,7 @@ public class Main {
                 main.createNewFile();
             }
             FileWriter writer = new FileWriter(main, true);
-            writer.write("project "+project+(result?"Success":"Fail"));
+            writer.write("project "+project+(result?"Success":"Fail")+"\n");
             writer.close();
         }catch (IOException e){
             e.printStackTrace();

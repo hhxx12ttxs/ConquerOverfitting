@@ -86,14 +86,15 @@ public class SuspiciousFixer {
             for (Map.Entry<String, List<ExceptionVariable>> assertEchelon : classifyWithAssert(echelon).entrySet()) {
                 boundarys.put(assertEchelon.getKey(), getIfStrings(echelon));
             }
-            if (fixMethodTwo(suspicious, boundarys, project, line, errorTestNum, false)) {
-                printPatchMessage(suspicious, project, getAllBoundarys(boundarys.values()), exceptionVariables, echelon);
+            String methodOneResult = fixMethodTwo(suspicious, boundarys, project, line, errorTestNum, false);
+            if (!methodOneResult.equals("")) {
+                printPatchMessage(suspicious, project, methodOneResult, exceptionVariables, echelon, line);
                 return true;
             }
-            if (fixMethodOne(suspicious, boundarys, project, line, errorTestNum, false)) {
-                printPatchMessage(suspicious, project, getAllBoundarys(boundarys.values()), exceptionVariables, echelon);
+            String methodTwoResult = fixMethodOne(suspicious, boundarys, project, line, errorTestNum, false);
+            if (!methodTwoResult.equals("")) {
+                printPatchMessage(suspicious, project, methodTwoResult, exceptionVariables, echelon, line);
                 return true;
-
             }
         }
         return false;
@@ -120,7 +121,7 @@ public class SuspiciousFixer {
         return sets;
     }
 
-    private void printPatchMessage(Suspicious suspicious,String project, Set<String> boundarys, List<ExceptionVariable> exceptionVariables, List<ExceptionVariable> echelon){
+    private void printPatchMessage(Suspicious suspicious,String project, String boundary, List<ExceptionVariable> exceptionVariables, List<ExceptionVariable> echelon, int line){
         File recordPackage = new File(System.getProperty("user.dir")+"/patch/");
         recordPackage.mkdirs();
         File recordFile = new File(recordPackage.getAbsolutePath()+"/"+project);
@@ -129,23 +130,23 @@ public class SuspiciousFixer {
                 recordFile.createNewFile();
             }
             FileWriter writer = new FileWriter(recordFile,true);
-            writer.write("==================================\n");
-            writer.write("boundary of suspicious: "+suspicious.classname()+"#"+suspicious.functionnameWithoutParam()+"\n");
-            for (String boundary: boundarys){
-                writer.write(boundary+"\n");
-            }
-            writer.write("\n");
-            writer.write("suspicious variable of suspicious before sort: "+suspicious.classname()+"#"+suspicious.functionnameWithoutParam()+"\n");
+            writer.write("====================================================\n");
+            writer.write("boundary of suspicious: "+suspicious.classname()+"#"+suspicious.functionnameWithoutParam()+"#"+line+"\n");
+
+            writer.write(boundary+"\n");
+
+            writer.write("---------------------------------------------------\n");
+            writer.write("suspicious variable of suspicious before sort: "+suspicious.classname()+"#"+suspicious.functionnameWithoutParam()+"#"+line+"\n");
             for (ExceptionVariable variable: exceptionVariables){
                 writer.write(variable.name+" = "+variable.values.toString()+"\n");
             }
-            writer.write("\n");
-            writer.write("variable echelon of suspicious before search: "+suspicious.classname()+"#"+suspicious.functionnameWithoutParam()+"\n");
+            writer.write("---------------------------------------------------\n");
+            writer.write("variable echelon of suspicious before search: "+suspicious.classname()+"#"+suspicious.functionnameWithoutParam()+"#"+line+"\n");
             for (ExceptionVariable variable: echelon){
                 writer.write(variable.name+" = "+variable.values.toString()+"\n");
             }
-            writer.write("==================================\n");
-            writer.write("Search Boundary Cost Time: "+searchTime+"\n");
+            writer.write("====================================================\n\n");
+            writer.write("Search Boundary Cost Time: "+searchTime/1000+"\n");
             writer.close();
         } catch (IOException e){
             e.printStackTrace();
@@ -210,6 +211,9 @@ public class SuspiciousFixer {
             }
         }
         for (List<String> list: combineIntervals(result)){
+            if (getIfStatementFromBoundary(list).contains("==") && getIfStatementFromBoundary(list).contains("!=")){
+                continue;
+            }
             returnList.add(replaceSpecialNumber(getIfStatementFromBoundary(list)));
         }
         return returnList;
@@ -229,9 +233,6 @@ public class SuspiciousFixer {
             ArrayList<Interval> intervals = new ArrayList<>();
             for (String interval: entry.getValue()){
                 if (interval.contains("||")){
-                    if (interval.contains("==") && interval.contains("!=")){
-                        continue;
-                    }
                     intervals.add(new Interval(interval.split("||")[0]));
                     intervals.add(new Interval(interval.split("||")[1]));
                 }
@@ -277,18 +278,21 @@ public class SuspiciousFixer {
     }
 
 
-    public static boolean fixMethodTwo(Suspicious suspicious, Map<String, List<String>> ifStrings, String project, int errorLine, int errorTestNum, boolean debug){
+    public static String fixMethodTwo(Suspicious suspicious, Map<String, List<String>> ifStrings, String project, int errorLine, int errorTestNum, boolean debug){
         if (ifStrings.size() == 0){
-            return false;
+            return "";
         }
         MethodTwoFixer fixer = new MethodTwoFixer(suspicious, errorTestNum);
-        return fixer.fix(ifStrings, Sets.newHashSet(errorLine), project, debug);
+        if (fixer.fix(ifStrings, Sets.newHashSet(errorLine), project, debug)){
+            return fixer.correctPatch+"["+fixer.correctStartLine+","+fixer.correctEndLine+"]";
+        }
+        return "";
     }
 
 
-    public static boolean fixMethodOne(Suspicious suspicious,Map<String, List<String>> ifStrings, String project, int errorLine, int errorTestNum, boolean debug) {
+    public static String fixMethodOne(Suspicious suspicious,Map<String, List<String>> ifStrings, String project, int errorLine, int errorTestNum, boolean debug) {
         if (ifStrings.size() == 0){
-            return false;
+            return "";
         }
         ReturnCapturer fixCapturer = new ReturnCapturer(suspicious._classpath,suspicious._srcPath, suspicious._testClasspath, suspicious._testSrcPath);
         MethodOneFixer methodOneFixer = new MethodOneFixer(suspicious, project,errorTestNum);
@@ -320,7 +324,7 @@ public class SuspiciousFixer {
                 }
                 ifStatement.removeAll(bannedStatement);
                 if (ifStatement.size() == 0){
-                    return false;
+                    return "";
                 }
 
 
@@ -340,17 +344,11 @@ public class SuspiciousFixer {
             }
             boolean result = methodOneFixer.addPatch(patch);
             if (result){
-                if (debug){
-                    return true;
-                }
                 break;
             }
         }
-        if (!debug){
-            int finalErrorNums = methodOneFixer.fix();
-            return finalErrorNums != -1;
-        }
-        return false;
+        int finalErrorNums = methodOneFixer.fix();
+        return methodOneFixer._patches.get(0)._patchString.get(0);
     }
 
 

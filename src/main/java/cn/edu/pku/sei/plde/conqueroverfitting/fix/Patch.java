@@ -54,7 +54,7 @@ public class Patch {
     private String generatePatchString(String ifString, String fixString){
         String patchString = "";
         for (String _if: ifString.split("\n")){
-            patchString += _if + "{" + fixString + "}\n";
+            patchString += _if + "{" + fixString + "}";
         }
         return patchString;
     }

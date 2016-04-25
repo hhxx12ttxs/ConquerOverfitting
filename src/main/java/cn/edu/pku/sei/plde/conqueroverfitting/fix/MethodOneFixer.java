@@ -29,7 +29,7 @@ public class MethodOneFixer {
     private Suspicious _suspicious;
     private int _errorTestNum;
     private String _project;
-    private List<Patch> _patches = new ArrayList<>();
+    public List<Patch> _patches = new ArrayList<>();
 
     public MethodOneFixer(Suspicious suspicious, String project, int errorTestNum){
         _suspicious = suspicious;
@@ -96,6 +96,8 @@ public class MethodOneFixer {
                         }
                     }
                 }
+                FileUtils.copyFile(classBackup, targetClassFile);
+                FileUtils.copyFile(javaBackup, targetJavaFile);
             }
         }
         if (minErrorTest < _errorTestNum){

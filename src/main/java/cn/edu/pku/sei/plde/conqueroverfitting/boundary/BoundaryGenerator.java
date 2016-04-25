@@ -72,8 +72,6 @@ public class BoundaryGenerator {
             List<BoundaryInfo> boundaryInfo = SearchBoundaryFilter.getBoundaryInfo(exceptionVariable, project, keywords);
             intervals = exceptionVariable.getBoundaryIntervals(boundaryInfo);
         }
-
-
         List<String> returnList = new ArrayList<>();
         for (Map.Entry<List<String>, String> entry: intervals.entrySet()){
             String interval = entry.getValue();
