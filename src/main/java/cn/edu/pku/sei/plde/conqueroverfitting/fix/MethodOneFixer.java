@@ -47,11 +47,15 @@ public class MethodOneFixer {
         File javaBackup = FileUtils.copyFile(targetJavaFile.getAbsolutePath(), FileUtils.tempJavaPath(patch._className,"MethodOneFixer"));
         File classBackup = FileUtils.copyFile(targetClassFile.getAbsolutePath(), FileUtils.tempClassPath(patch._className,"MethodOneFixer"));
 
+        String code = FileUtils.getCodeFromFile(javaBackup);
         for (String patchString: patch._patchString){
             if (patchString.equals("")){
                 continue;
             }
             for (int patchLine: patch._patchLines){
+                if (CodeUtils.getLineFromCode(code,patchLine).contains("else")){
+                    while (CodeUtils.getLineFromCode(code, --patchLine).contains("if"));
+                }
                 FileUtils.copyFile(javaBackup, targetJavaFile);
                 CodeUtils.addCodeToFile(targetJavaFile, patchString, patchLine);
                 System.out.print("Method 1 try patch: "+patchString);

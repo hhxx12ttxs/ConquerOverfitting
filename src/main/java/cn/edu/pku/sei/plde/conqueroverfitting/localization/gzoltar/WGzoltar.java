@@ -163,25 +163,28 @@ public class WGzoltar extends GZoltar {
             if (constructors.size() == 0){
                 continue;
             }
-            ConstructorDeclarationInfo info = constructors.get(0);
-            Clazz clazz = new Clazz(packageName);
-            clazz.setSource(key.substring(key.lastIndexOf(PathUtils.getFileSeparator())+1));
-            Method method = new Method(clazz, info.methodName+"("+info.parameterNum+")");
-            Statement statement = new Statement(method,info.endPos);
-            statement.setCount(i,1);
-            statement.setCoverage(i);
-            int flag = 0;
-            for (Statement history: histories){
-                if (history.getLabel().equals(statement.getLabel())){
-                    history.setCoverage(i);
-                    history.setCount(i,1);
-                    flag = 1;
+            for (int s=0; s< constructors.size(); s++){
+                ConstructorDeclarationInfo info = constructors.get(s);
+                Clazz clazz = new Clazz(packageName);
+                clazz.setSource(key.substring(key.lastIndexOf(PathUtils.getFileSeparator())+1));
+                Method method = new Method(clazz, info.methodName+"("+info.parameterNum+")");
+                Statement statement = new Statement(method,info.endPos);
+                statement.setCount(i,1);
+                statement.setCoverage(i);
+                int flag = 0;
+                for (Statement history: histories){
+                    if (history.getLabel().equals(statement.getLabel())){
+                        history.setCoverage(i);
+                        history.setCount(i,1);
+                        flag = 1;
+                    }
                 }
+                if (flag == 1){
+                    continue;
+                }
+                result.add(statement);
             }
-            if (flag == 1){
-                continue;
-            }
-            result.add(statement);
+
         }
         histories.addAll(result);
         return result;

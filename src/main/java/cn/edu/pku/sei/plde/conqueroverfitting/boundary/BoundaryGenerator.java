@@ -78,7 +78,6 @@ public class BoundaryGenerator {
             String interval = entry.getValue();
             List<String> value = entry.getKey();
             String ifString = generateWithSingleWord(exceptionVariable,interval,value);
-            ifString = replaceSpecialNumber(ifString);
             if (!ifString.equals("")){
                 returnList.add(ifString);
             }
@@ -88,17 +87,7 @@ public class BoundaryGenerator {
 
 
 
-    private static String replaceSpecialNumber(String ifString){
-        ifString = ifString.replace(String.valueOf(Integer.MIN_VALUE),"Integer.MIN_VALUE");
-        ifString = ifString.replace(String.valueOf(Integer.MAX_VALUE),"Integer.MAX_VALUE");
-        ifString = ifString.replace(String.valueOf(Long.MIN_VALUE),"Long.MIN_VALUE");
-        ifString = ifString.replace(String.valueOf(Long.MAX_VALUE),"Long.MAX_VALUE");
-        ifString = ifString.replace(String.valueOf(Double.MIN_VALUE),"Double.MIN_VALUE");
-        ifString = ifString.replace(String.valueOf(Double.MAX_VALUE),"Double.MAX_VALUE");
-        ifString = ifString.replace(String.valueOf(Short.MIN_VALUE),"Short.MIN_VALUE");
-        ifString = ifString.replace(String.valueOf(Short.MAX_VALUE),"Short.MAX_VALUE");
-        return ifString;
-    }
+
 
 
     private static String generateWithSingleWord(ExceptionVariable variable, String intervals,List<String> valueStrings) {
@@ -139,15 +128,15 @@ public class BoundaryGenerator {
             }
             boolean biggestClose = false;
             boolean smallestClose = false;
-            String biggest = intervals.split("-")[1];
-            String smallest = intervals.split("-")[0];
-            if (biggest.endsWith("]")){
+            String biggest = intervals.split("-")[0];
+            String smallest = intervals.split("-")[1];
+            if (biggest.startsWith("[")){
                 biggestClose = true;
-                biggest = biggest.substring(0, biggest.length()-1);
+                biggest = biggest.substring(1);
             }
-            if (smallest.startsWith("[")){
+            if (smallest.endsWith("]")){
                 smallestClose = true;
-                smallest = smallest.substring(1);
+                smallest = smallest.substring(0, smallest.length()-1);
             }
             double biggestBoundary;
             double smallestBoundary;

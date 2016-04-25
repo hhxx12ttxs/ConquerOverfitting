@@ -85,6 +85,9 @@ public class MainProcess {
                 if ((System.currentTimeMillis()-startLine)/1000 >1800){
                     return false;
                 }
+                if (triedSuspicious.size()>5){
+                    return false;
+                }
                 if (fixSuspicious(suspicious, project)){
                     return true;
                 }
@@ -107,12 +110,8 @@ public class MainProcess {
 
     public boolean isFixSuccess(Suspicious suspicious, Map<ExceptionVariable,List<String>> boundarys, String project){
         System.out.println("Fix Success One Place");
-
         if (TestUtils.getFailTestNumInProject(project) > 0){
-            Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc,libPath);
-            List<Suspicious> suspiciouses = localization.getSuspiciousLite(false);
-            suspiciousLoop(suspiciouses, project);
-            return true;
+           return false;
         }
         else {
             printCollectingMessage(project, suspicious);
