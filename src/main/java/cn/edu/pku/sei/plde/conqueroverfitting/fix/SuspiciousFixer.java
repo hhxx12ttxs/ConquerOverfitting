@@ -55,16 +55,42 @@ public class SuspiciousFixer {
             List<List<ExceptionVariable>> echelons = extractor.sort();
             for (List<ExceptionVariable> echelon: echelons){
                 Map<String, List<String>> boundarys = new HashMap<>();
-                for (Map.Entry<String,List<ExceptionVariable>> assertEchelon: classifyWithAssert(echelon).entrySet()){
-                    boundarys.put(assertEchelon.getKey(), getIfStrings(echelon));
+                List<ExceptionVariable> aEchelon = new ArrayList<>(echelon);
+                if (aEchelon.size() == 1){
+                    for (Map.Entry<String,List<ExceptionVariable>> assertEchelon: classifyWithAssert(echelon).entrySet()){
+                        boundarys.put(assertEchelon.getKey(), getIfStrings(echelon));
+                    }
+                    if (fixMethodTwo(suspicious, boundarys, project, entry.getKey(),errorTestNum)){
+                        printPatchMessage(suspicious, project, getAllBoundarys(boundarys.values()), exceptionVariables, echelon);
+                        return true;
+                    }
+                    if (fixMethodOne(suspicious, boundarys, project, entry.getKey(),errorTestNum)){
+                        printPatchMessage(suspicious, project, getAllBoundarys(boundarys.values()), exceptionVariables, echelon);
+                        return true;
+                    }
                 }
-                if (fixMethodTwo(suspicious, boundarys, project, entry.getKey(),errorTestNum)){
-                    printPatchMessage(suspicious, project, getAllBoundarys(boundarys.values()), exceptionVariables, echelon);
-                    return true;
-                }
-                 if (fixMethodOne(suspicious, boundarys, project, entry.getKey(),errorTestNum)){
-                     printPatchMessage(suspicious, project, getAllBoundarys(boundarys.values()), exceptionVariables, echelon);
-                    return true;
+                else {
+                    for (ExceptionVariable exceptionVariable: echelon){
+                        for (Map.Entry<String,List<ExceptionVariable>> assertEchelon: classifyWithAssert(Arrays.asList(exceptionVariable)).entrySet()){
+                            boundarys.put(assertEchelon.getKey(), getIfStrings(assertEchelon.getValue()));
+                        }
+                        if (!fixMethodTwo(suspicious, boundarys, project, entry.getKey(),errorTestNum) &&
+                                !fixMethodOne(suspicious, boundarys, project, entry.getKey(),errorTestNum)){
+                            aEchelon.remove(exceptionVariable);
+                        }
+                    }
+                    for (Map.Entry<String,List<ExceptionVariable>> assertEchelon: classifyWithAssert(aEchelon).entrySet()){
+                        boundarys.put(assertEchelon.getKey(), getIfStrings(aEchelon));
+                    }
+                    if (fixMethodTwo(suspicious, boundarys, project, entry.getKey(),errorTestNum)){
+                        printPatchMessage(suspicious, project, getAllBoundarys(boundarys.values()), exceptionVariables, echelon);
+                        return true;
+                    }
+                    if (fixMethodOne(suspicious, boundarys, project, entry.getKey(),errorTestNum)){
+                        printPatchMessage(suspicious, project, getAllBoundarys(boundarys.values()), exceptionVariables, echelon);
+                        return true;
+                    }
+
                 }
             }
         }
@@ -261,6 +287,14 @@ public class SuspiciousFixer {
                 assertLine = -1;
             }
             String fixString = fixCapturer.getFixFrom(testClassName, testMethodName, assertLine, suspicious.classname(), suspicious.functionnameWithoutParam());
+
+            if (CodeUtils.isValue(fixString)){
+                String ifStatement = ifString.getKey();
+                if (!ifStringFilter(ifStatement)){
+                    return false;
+                }
+
+            }
             if (suspicious._isConstructor && fixString.contains("return")){
                 continue;
             }
@@ -283,4 +317,21 @@ public class SuspiciousFixer {
         return finalErrorNums != -1;
     }
 
+
+    private static boolean ifStringFilter(String ifStatement){
+        if (ifStatement.contains("==") || ifStatement.contains("!=") || ifStatement.contains("equals")){
+            return true;
+        }
+        if (ifStatement.contains("MAX_VALUE") && ifStatement.contains("MIN_VALUE")){
+            return true;
+        }
+        if (ifStatement.contains("&&") && ifStatement.contains(">=") && ifStatement.contains("<=") && !ifStatement.contains("||")){
+            String statement1 = ifStatement.split("&&")[0];
+            String statement2 = ifStatement.split("&&")[1];
+            statement1 = statement1.contains(">=")?statement1.split(">=")[1]:statement1.split("<=")[1];
+            statement2 = statement2.contains(">=")?statement2.split(">=")[1]:statement2.split("<=")[1];
+            return statement1.trim().equals(statement2);
+        }
+        return false;
+    }
 }
