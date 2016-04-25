@@ -143,6 +143,7 @@ public class MainProcess {
         libPath.add(EasyMock.class.getProtectionDomain().getCodeSource().getLocation().getFile());
         libPath.add(IOUtils.class.getProtectionDomain().getCodeSource().getLocation().getFile());
         File projectDir = new File(System.getProperty("user.dir")+"/project/");
+        System.out.println("Project Dir: "+projectDir.getAbsolutePath());
         FileUtils.deleteDirNow(projectDir.getAbsolutePath());
         if (!projectDir.exists()){
             projectDir.mkdirs();
@@ -176,7 +177,7 @@ public class MainProcess {
             FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project+"/src/test/resources/",System.getProperty("user.dir")+"/src/test");
             return project;
         }
-        if (projectName.equals("Time") && (number == 3||number == 9|| number ==15)){
+        if (projectName.equals("Time") && (number == 3||number == 9)){
             FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project,projectDir.getAbsolutePath());
             classpath = projectDir.getAbsolutePath()+"/"+project +"/target/classes/";
             testClasspath = projectDir.getAbsolutePath()+"/"+project +"/target/test-classes/";

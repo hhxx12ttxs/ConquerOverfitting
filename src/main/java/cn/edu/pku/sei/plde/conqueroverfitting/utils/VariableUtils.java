@@ -16,7 +16,9 @@ public class VariableUtils {
                 info.variableName.contains("(") ||
                 info.variableName.contains(")") ||
                 info.variableName.contains(">") ||
-                info.variableName.contains("<")) && !info.variableName.contains("()")) || info.isExpression;
+                info.variableName.contains("==") ||
+                info.variableName.contains("!=") ||
+                info.variableName.contains("<")));
 
     }
 
