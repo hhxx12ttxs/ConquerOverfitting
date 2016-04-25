@@ -197,6 +197,7 @@ public class SuspiciousFixer {
             boolean addedFlag = false;
             for (Map.Entry<ExceptionVariable, ArrayList<String>> entry: result.entrySet()){
                 if (entry.getKey().name.equals(exceptionVariable.name)){
+                    entry.getValue().removeAll(boundarys);
                     entry.getValue().addAll(boundarys);
                     addedFlag = true;
                     break;
@@ -348,7 +349,7 @@ public class SuspiciousFixer {
 
 
     private static boolean ifStringFilter(String ifStatement){
-        if (ifStatement.contains("==") || ifStatement.contains("!=") || ifStatement.contains("equals")){
+        if (ifStatement.contains("==") || ifStatement.contains("!=") || ifStatement.contains("equals") || ifStatement.contains("instanceof")){
             return true;
         }
         if (ifStatement.contains("MAX_VALUE") || ifStatement.contains("MIN_VALUE")){

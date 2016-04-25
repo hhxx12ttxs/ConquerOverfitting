@@ -222,10 +222,10 @@ public class InfoUtils {
             try {
                 MathUtils.parseStringValue(var1);
                 VariableInfo info2 = new VariableInfo(var2.trim(),TypeEnum.DOUBLE,true, null);
-                if (VariableUtils.isExpression(info)){
-                    info.isAddon = true;
-                    info.priority = 2;
-                    info.expressMethod = methodName;
+                if (VariableUtils.isExpression(info2)){
+                    info2.isAddon = true;
+                    info2.priority = 2;
+                    info2.expressMethod = methodName;
                     result.add(info2);
                 }
             } catch (Exception e2){
@@ -233,7 +233,7 @@ public class InfoUtils {
             }
         }
         VariableInfo info2 = new VariableInfo(var1.trim(),TypeEnum.DOUBLE,true, null);
-        if (VariableUtils.isExpression(info)){
+        if (VariableUtils.isExpression(info2)){
             info2.isAddon = true;
             info2.priority = 2;
             info2.expressMethod = methodName;
