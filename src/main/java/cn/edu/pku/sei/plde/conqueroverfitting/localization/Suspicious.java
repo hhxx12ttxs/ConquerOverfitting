@@ -281,7 +281,20 @@ public class Suspicious implements Serializable{
                 variableInfos.addAll(fields);
             }
         }
-        variableInfos.addAll(addonVariableInfos(line, parameters));
+        List<VariableInfo> addonVariableInfos = addonVariableInfos(line, parameters);
+        for (VariableInfo info: addonVariableInfos){
+            boolean isAdd = true;
+            for (VariableInfo existsInfo: variableInfos){
+                if (info.variableName.equals(existsInfo.variableName) && info.isExpression){
+                    existsInfo.isExpression = true;
+                    isAdd = false;
+                    break;
+                }
+            }
+            if (isAdd){
+                variableInfos.add(info);
+            }
+        }
         _variableInfo.removeAll(variableInfos);
         _variableInfo.addAll(variableInfos);
         _variableInfo = InfoUtils.filterBannedVariable(_variableInfo);

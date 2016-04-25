@@ -99,9 +99,6 @@ public class InfoUtils {
             if (info.getStringType().contains("?")){
                 continue;
             }
-            if (info.isFieldVariable && info.isSimpleType && info.variableSimpleType == TypeEnum.BOOLEAN && !info.variableName.startsWith("is") && !info.variableName.contains(".is")){
-                continue;
-            }
             if (info.getStringType().contains("<") || info.getStringType().contains(">")){
                 info.otherType = info.otherType.substring(0, info.otherType.indexOf("<"));
             }
@@ -119,12 +116,6 @@ public class InfoUtils {
             if (BANNED_METHOD_NAME.contains(info.methodName)){
                 continue;
             }
-            if (info.methodName.contains("Next")){
-                continue;
-            }
-            //if (info.methodName.startsWith("get")){
-            //    continue;
-            //}
             result.add(info);
         }
         return result;
@@ -222,23 +213,22 @@ public class InfoUtils {
             try {
                 MathUtils.parseStringValue(var1);
                 VariableInfo info2 = new VariableInfo(var2.trim(),TypeEnum.DOUBLE,true, null);
-                if (VariableUtils.isExpression(info2)){
-                    info2.isAddon = true;
-                    info2.priority = 2;
-                    info2.expressMethod = methodName;
-                    result.add(info2);
-                }
+                info2.isAddon = true;
+                info2.priority = 2;
+                info2.expressMethod = methodName;
+                info2.isExpression = true;
+                result.add(info2);
             } catch (Exception e2){
                 return result;
             }
         }
         VariableInfo info2 = new VariableInfo(var1.trim(),TypeEnum.DOUBLE,true, null);
-        if (VariableUtils.isExpression(info2)){
-            info2.isAddon = true;
-            info2.priority = 2;
-            info2.expressMethod = methodName;
-            result.add(info2);
-        }
+        info2.isAddon = true;
+        info2.priority = 2;
+        info2.expressMethod = methodName;
+        info2.isExpression = true;
+        result.add(info2);
+
         return result;
     }
 

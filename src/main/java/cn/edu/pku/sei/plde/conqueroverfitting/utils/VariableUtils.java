@@ -7,7 +7,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
  */
 public class VariableUtils {
     public static boolean isExpression(VariableInfo info){
-        return (info.variableName.contains("+") ||
+        return ((info.variableName.contains("+") ||
                 info.variableName.contains("-") ||
                 info.variableName.contains("*") ||
                 info.variableName.contains("/") ||
@@ -16,7 +16,7 @@ public class VariableUtils {
                 info.variableName.contains("(") ||
                 info.variableName.contains(")") ||
                 info.variableName.contains(">") ||
-                info.variableName.contains("<")) && !info.variableName.contains("()") ;
+                info.variableName.contains("<")) && !info.variableName.contains("()")) || info.isExpression;
 
     }
 

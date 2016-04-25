@@ -71,7 +71,7 @@ public class VariableTracer {
         for (int line: errorLines){
             List<VariableInfo> variableInfos = _suspicious.getVariableInfo(_srcPath, line);
             variableInfos.removeAll(getBannedVariables(line));
-            if (variableInfos.size() == 0 &&  methodInfos.size() == 0){
+            if (variableInfos.size() == 0 /*&&  methodInfos.size() == 0*/){
                 continue;
             }
             Map<String, Integer> commentedTestClasses = tracer._commentedTestClass;
@@ -87,7 +87,7 @@ public class VariableTracer {
                 commentedTestClasses.put(_asserts.getTrueTestFile(), -1);
             }
             for (Map.Entry<String, Integer> commentedTestClass: commentedTestClasses.entrySet()) {
-                _shellResult = traceShell(_testClassname, _classname, functionname(), commentedTestClass.getKey(), variableInfos, methodInfos, line);
+                _shellResult = traceShell(_testClassname, _classname, functionname(), commentedTestClass.getKey(), variableInfos, new ArrayList<MethodInfo>(), line);
 
                 if (_shellResult.contains(">>") && _shellResult.contains("<<")) {
                     String traceResult = analysisShellResult(_shellResult);

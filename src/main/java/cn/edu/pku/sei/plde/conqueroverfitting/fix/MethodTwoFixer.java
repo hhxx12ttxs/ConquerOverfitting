@@ -96,7 +96,7 @@ public class MethodTwoFixer {
     private static List<Integer> getLinesCanAdd(int startLine, int endLine, String code){
         List<Integer> result = new ArrayList<>();
         int braceCount = 0;
-        for (int i= startLine; i< endLine; i++){
+        for (int i= endLine; i> startLine; i--){
             String lineString = CodeUtils.getLineFromCode(code, i);
             if (braceCount == 0){
                 result.add(i);
