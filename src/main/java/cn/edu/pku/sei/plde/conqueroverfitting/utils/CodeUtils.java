@@ -4,6 +4,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.file.ReadFile;
 import cn.edu.pku.sei.plde.conqueroverfitting.jdtVisitor.ConstructorDeclarationCollectVisitor;
 import cn.edu.pku.sei.plde.conqueroverfitting.jdtVisitor.EqualFieldCollectVisitor;
 import cn.edu.pku.sei.plde.conqueroverfitting.jdtVisitor.EqualFieldCollectVisitor;
+import cn.edu.pku.sei.plde.conqueroverfitting.jdtVisitor.IdentifierCollectVisitor;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.gzoltar.StatementExt;
 import cn.edu.pku.sei.plde.conqueroverfitting.localizationInConstructor.model.ConstructorDeclarationInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.MethodInfo;
@@ -886,5 +887,21 @@ public class CodeUtils {
         }
         return false;
     }
+
+    public static Set<String> getVariableInMethod(String methodSrc, Set<String> variables){
+        ASTNode root = JDTUtils.createASTForSource(methodSrc, ASTParser.K_CLASS_BODY_DECLARATIONS);
+        IdentifierCollectVisitor identifierCollectVisitor = new IdentifierCollectVisitor();
+        root.accept(identifierCollectVisitor);
+        List<String> list = identifierCollectVisitor.getIdentifierList();
+        Iterator<String> it = variables.iterator();
+        while(it.hasNext()){
+            String var = it.next();
+            if(!list.contains(var)){
+                it.remove();
+            }
+        }
+        return variables;
+    }
+
 
 }
