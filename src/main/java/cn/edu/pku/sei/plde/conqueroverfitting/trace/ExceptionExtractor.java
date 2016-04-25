@@ -38,9 +38,13 @@ public class ExceptionExtractor {
     public List<List<ExceptionVariable>> sort(){
         List<List<ExceptionVariable>> result = new ArrayList<>();
         List<ExceptionVariable> sortList = new ArrayList<>(exceptionVariables);
+        List<Set<String>> thisValue = new ArrayList<>();
         for (ExceptionVariable exceptionVariable: exceptionVariables){
             if (exceptionVariable.name.equals("this")){
-                result.add(Arrays.asList(exceptionVariable));
+                thisValue.add(exceptionVariable.values);
+                if (!thisValue.contains(exceptionVariable.values)){
+                    result.add(Arrays.asList(exceptionVariable));
+                }
                 sortList.remove(exceptionVariable);
             }
         }

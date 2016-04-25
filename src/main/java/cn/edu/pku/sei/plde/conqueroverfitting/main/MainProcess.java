@@ -40,8 +40,7 @@ public class MainProcess {
         PATH_OF_DEFECTS4J = path;
     }
 
-    public boolean mainProcess(String projectType, int projectNumber, String path) throws Exception{
-        PATH_OF_DEFECTS4J = path;
+    public boolean mainProcess(String projectType, int projectNumber) throws Exception{
         String project = setWorkDirectory(projectType,projectNumber);
         startLine = System.currentTimeMillis();
         libPath.add(FromString.class.getProtectionDomain().getCodeSource().getLocation().getFile());
@@ -149,7 +148,7 @@ public class MainProcess {
         if (!projectDir.exists()){
             projectDir.mkdirs();
         }
-        String project = projectName+"-"+number;
+        String project = projectName+"_"+number;
         /* 四个整个项目需要的参数 */
 
         if ((projectName.equals("Math") && number>=85) || (projectName.equals("Lang") && (number == 39 || number == 49))){
