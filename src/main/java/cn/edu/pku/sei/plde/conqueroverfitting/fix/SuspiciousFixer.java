@@ -229,6 +229,9 @@ public class SuspiciousFixer {
             ArrayList<Interval> intervals = new ArrayList<>();
             for (String interval: entry.getValue()){
                 if (interval.contains("||")){
+                    if (interval.contains("==") && interval.contains("!=")){
+                        continue;
+                    }
                     intervals.add(new Interval(interval.split("||")[0]));
                     intervals.add(new Interval(interval.split("||")[1]));
                 }

@@ -53,12 +53,6 @@ public class ExceptionExtractor {
                 sortList.remove(exceptionVariable);
             }
         }
-        for (ExceptionVariable exceptionVariable: exceptionVariables){
-            if (exceptionVariable.name.equals("hasDecPoint")){
-                result.add(Arrays.asList(exceptionVariable));
-                sortList.remove(exceptionVariable);
-            }
-        }
         //for (ExceptionVariable exceptionVariable: exceptionVariables){
         //    if (VariableUtils.isExpression(exceptionVariable.variable) && sortList.contains(exceptionVariable)){
         //        result.add(Arrays.asList(exceptionVariable));

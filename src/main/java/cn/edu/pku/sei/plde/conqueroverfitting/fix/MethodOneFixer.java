@@ -91,6 +91,9 @@ public class MethodOneFixer {
                         truePatchString = patchString;
                         FileUtils.copyFile(classBackup, targetClassFile);
                         FileUtils.copyFile(javaBackup, targetJavaFile);
+                        if (errorTestAterFix == 0){
+                            break;
+                        }
                     }
                 }
             }

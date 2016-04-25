@@ -10,6 +10,7 @@ import org.apache.commons.lang.StringUtils;
 import org.junit.Test;
 
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -64,9 +65,21 @@ public class Main {
         int projectNumber = Integer.valueOf(project.split("-")[1]);
         MainProcess process = new MainProcess(path);
         boolean result = process.mainProcess(projectType, projectNumber);
+        File recordPackage = new File(System.getProperty("user.dir")+"/patch/");
+        recordPackage.mkdirs();
+        File main = new File(recordPackage.getAbsolutePath()+"/"+"Log");
+        try {
+            if (!main.exists()) {
+                main.createNewFile();
+            }
+            FileWriter writer = new FileWriter(main, true);
+            writer.write("project "+project+(result?"Success":"Fail"));
+            writer.close();
+        }catch (IOException e){
+            e.printStackTrace();
+        }
+
         if (!result){
-            File recordPackage = new File(System.getProperty("user.dir")+"/patch/");
-            recordPackage.mkdirs();
             File recordFile = new File(recordPackage.getAbsolutePath()+"/"+project);
             if (recordFile.exists()){
                 recordFile.renameTo(new File(recordFile.getName()+".fail"));

@@ -85,9 +85,6 @@ public class MainProcess {
                 if ((System.currentTimeMillis()-startLine)/1000 >1800){
                     return false;
                 }
-                if (triedSuspicious.size()>5){
-                    return false;
-                }
                 if (fixSuspicious(suspicious, project)){
                     return true;
                 }
