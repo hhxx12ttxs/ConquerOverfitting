@@ -110,7 +110,7 @@ public class Asserts {
                     result.add(lineNum);
                 }
                 if (lineString.startsWith("fail(")){
-                    int num = lineNum -1;
+                    int num = lineNum;
                     while (!CodeUtils.getLineFromCode(FileUtils.getCodeFromFile(tempJavaFile),num).trim().startsWith("try")){
                         SourceUtils.commentCodeInSourceFile(tempJavaFile, num);
                         num--;
@@ -119,7 +119,7 @@ public class Asserts {
                 else if (LineUtils.isLineInFailBlock(code, lineNum)){//如果在fail的语句内抛出异常
                     for (int i=lineNum; i< _methodEndLine; i++){
                         if (CodeUtils.getLineFromCode(code, i).trim().startsWith("fail(")){
-                            int num = i-1;
+                            int num = i;
                             while (!CodeUtils.getLineFromCode(FileUtils.getCodeFromFile(tempJavaFile),num).trim().startsWith("try")){
                                 SourceUtils.commentCodeInSourceFile(tempJavaFile, num);
                                 num--;

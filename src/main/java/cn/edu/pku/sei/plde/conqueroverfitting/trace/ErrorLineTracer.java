@@ -29,55 +29,69 @@ public class ErrorLineTracer {
     private String methodNameWithParam;
     public int methodStartLine;
     public int methodEndLine;
+    public Suspicious suspicious;
     private String code;
     public Map<String,Integer> _commentedTestClass = new HashMap<>();
 
-    public ErrorLineTracer(Asserts asserts, String classname, String methodName){
+    public ErrorLineTracer(Suspicious suspicious, Asserts asserts, String classname, String methodName){
         this.asserts = asserts;
         this.classname = classname;
+        this.suspicious = suspicious;
         this.methodName = methodName.substring(0, methodName.indexOf('('));
         this.code = FileUtils.getCodeFromFile(asserts._srcPath, classname);
         this.methodNameWithParam = methodName;
 
     }
 
-    public Set<Integer> trace(int defaultErrorLine, boolean isSuccess){
+    public List<Integer> trace(int defaultErrorLine, boolean isSuccess){
         List<Integer> methodLine =  CodeUtils.getSingleMethodLine(code, methodName, defaultErrorLine);
         if (methodLine.size() != 2){
-            return Sets.newHashSet(defaultErrorLine);
+            return Arrays.asList(defaultErrorLine);
         }
         methodStartLine = methodLine.get(0);
         methodEndLine = methodLine.get(1);
 
         List<Integer> result = new ArrayList<>();
         if (!isSuccess){
-            result.addAll(getErrorLine(defaultErrorLine));
+            List<Integer> tracedErrorLine = getErrorLine(defaultErrorLine);
+            for (int line: tracedErrorLine){
+                if (!suspicious.tracedErrorLine.contains(line)){
+                    suspicious.tracedErrorLine.add(line);
+                }
+            }
+            result.addAll(tracedErrorLine);
         }
         else {
             result.add(defaultErrorLine);
         }
-        Set<Integer> returnList = new HashSet<>();
+        List<Integer> returnList = new ArrayList<>();
         for (int line: result){
-            line = errorLineOutOfSwitch(line, code);
+            //line = errorLineOutOfSwitch(line, code);
             line = errorLineOutOfElse(line, code);
             String lineString = CodeUtils.getLineFromCode(code, line);
             if (!LineUtils.isIndependentLine(lineString)){
                 for (int i= line-1; i > 0; i--){
                     String lineIString = CodeUtils.getLineFromCode(code, i);
                     if (lineIString.contains(";") || LineUtils.isIndependentLine(lineIString)){
-                        returnList.add(i +1);
+                        if (!returnList.contains(i+1)){
+                            returnList.add(i +1);
+                        }
                         break;
                     }
                 }
             }
             else {
-                returnList.add(line);
+                if (!returnList.contains(line)){
+                    returnList.add(line);
+                }
             }
         }
         for (int i= defaultErrorLine; i> methodStartLine; i--){
             String lineString = CodeUtils.getLineFromCode(code, i);
             if (LineUtils.isIfAndElseIfLine(lineString)){
-                returnList.add(i+1);
+                if (!returnList.contains(i+1)){
+                    returnList.add(i+1);
+                }
             }
         }
         return returnList;
