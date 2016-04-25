@@ -37,7 +37,7 @@ public class EntiretyTest {
     public List<Suspicious> triedSuspicious = new ArrayList<>();
     @Test
     public void testEntirety() throws Exception{
-        String project = setWorkDirectory("Math",99);
+        String project = setWorkDirectory("Time",15);
         Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc,libPath);
         List<Suspicious> suspiciouses = localization.getSuspiciousLite();
         suspiciousLoop(suspiciouses, project);
@@ -137,7 +137,7 @@ public class EntiretyTest {
             FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project+"/src/test/resources/",System.getProperty("user.dir")+"/src/test");
             return project;
         }
-        if (projectName.equals("Time") && (number == 3||number == 9|| number ==15)){
+        if (projectName.equals("Time") && (number == 3||number == 9)){
             FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project,projectDir.getAbsolutePath());
             classpath = projectDir.getAbsolutePath()+"/"+project +"/target/classes/";
             testClasspath = projectDir.getAbsolutePath()+"/"+project +"/target/test-classes/";

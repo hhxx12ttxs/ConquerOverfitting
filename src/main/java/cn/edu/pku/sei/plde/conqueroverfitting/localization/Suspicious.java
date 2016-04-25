@@ -37,6 +37,7 @@ public class Suspicious implements Serializable{
     public final List<String> _lines;
     private List<VariableInfo> _variableInfo;
     private List<MethodInfo> _methodInfo;
+    public List<Integer> tracedErrorLine = new ArrayList<>();
     public Map<String, Asserts> _assertsMap = new HashMap<>();
     public Map<String, List<Integer>> _errorLineMap = new HashMap<>();
     private int _defaultErrorLine = -1;
