@@ -79,7 +79,7 @@ public class Main {
                 main.createNewFile();
             }
             FileWriter writer = new FileWriter(main, true);
-            writer.write("project "+project+(result?"Success":"Fail")+"\n");
+            writer.write("project "+project+" "+(result?"Success":"Fail")+"\n");
             writer.close();
         }catch (IOException e){
             e.printStackTrace();

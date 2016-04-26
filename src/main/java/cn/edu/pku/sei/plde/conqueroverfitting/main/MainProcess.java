@@ -43,7 +43,6 @@ public class MainProcess {
     public boolean mainProcess(String projectType, int projectNumber) throws Exception{
         String project = setWorkDirectory(projectType,projectNumber);
         startLine = System.currentTimeMillis();
-        libPath.add(FromString.class.getProtectionDomain().getCodeSource().getLocation().getFile());
         if (!checkProjectDirectory()){
             System.out.println("Main Process: set work directory error at project "+projectType+"-"+projectNumber);
             return false;
@@ -111,6 +110,9 @@ public class MainProcess {
         if (TestUtils.getFailTestNumInProject(project) > 0){
             Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc,libPath);
             List<Suspicious> suspiciouses = localization.getSuspiciousLite(false);
+            if (suspiciouses.size() == 0){
+                return false;
+            }
             suspiciousLoop(suspiciouses, project);
             return true;
         }
@@ -118,6 +120,7 @@ public class MainProcess {
             System.out.println("Fix All Place Success");
             return true;
         }
+
     }
 
     public void printCollectingMessage(String project, Suspicious suspicious){
@@ -151,7 +154,7 @@ public class MainProcess {
         if (!projectDir.exists()){
             projectDir.mkdirs();
         }
-        String project = projectName+"-"+number;
+        String project = projectName+"_"+number;
         /* 四个整个项目需要的参数 */
 
         if ((projectName.equals("Math") && number>=85) || (projectName.equals("Lang") && (number == 39 || number == 49))){
@@ -248,5 +251,6 @@ public class MainProcess {
         }
         return project;
     }
+
 
 }

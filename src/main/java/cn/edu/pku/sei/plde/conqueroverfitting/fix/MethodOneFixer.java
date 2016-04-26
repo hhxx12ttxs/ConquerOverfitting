@@ -3,6 +3,7 @@ package cn.edu.pku.sei.plde.conqueroverfitting.fix;
 import cn.edu.pku.sei.plde.conqueroverfitting.assertCollect.Asserts;
 import cn.edu.pku.sei.plde.conqueroverfitting.junit.JunitRunner;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Suspicious;
+import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.*;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.MethodInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
@@ -49,6 +50,7 @@ public class MethodOneFixer {
         String truePatchString = "";
         int truePatchLine = 0;
         String code = FileUtils.getCodeFromFile(javaBackup);
+        patch._patchString = TypeUtils.arrayDup(patch._patchString);
         for (String patchString: patch._patchString){
             if (patchString.equals("")){
                 continue;
