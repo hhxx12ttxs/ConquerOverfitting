@@ -81,9 +81,9 @@ public class MainProcess {
                 continue;
             }
             try {
-                if ((System.currentTimeMillis()-startLine)/1000 >1800){
-                    return false;
-                }
+                //if ((System.currentTimeMillis()-startLine)/1000 >1800){
+                //    return false;
+                //}
                 if (fixSuspicious(suspicious, project)){
                     return true;
                 }
