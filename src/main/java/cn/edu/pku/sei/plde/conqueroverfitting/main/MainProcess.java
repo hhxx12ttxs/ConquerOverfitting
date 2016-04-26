@@ -45,6 +45,19 @@ public class MainProcess {
         startLine = System.currentTimeMillis();
         if (!checkProjectDirectory()){
             System.out.println("Main Process: set work directory error at project "+projectType+"-"+projectNumber);
+            File recordPackage = new File(System.getProperty("user.dir")+"/patch/");
+            recordPackage.mkdirs();
+            File main = new File(recordPackage.getAbsolutePath()+"/"+"Log");
+            try {
+                if (!main.exists()) {
+                    main.createNewFile();
+                }
+                FileWriter writer = new FileWriter(main, true);
+                writer.write("project "+project+" path error\n");
+                writer.close();
+            }catch (IOException e){
+                e.printStackTrace();
+            }
             return false;
         }
         Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc,libPath);
@@ -81,9 +94,9 @@ public class MainProcess {
                 continue;
             }
             try {
-                //if ((System.currentTimeMillis()-startLine)/1000 >1800){
-                //    return false;
-                //}
+                if ((System.currentTimeMillis()-startLine)/1000 >3600){
+                    return false;
+                }
                 if (fixSuspicious(suspicious, project)){
                     return true;
                 }
