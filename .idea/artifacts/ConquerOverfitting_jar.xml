@@ -29,7 +29,6 @@
       <element id="extracted-dir" path="$PROJECT_DIR$/lib/infra-0.1.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$PROJECT_DIR$/lib/joda-convert-1.1.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$PROJECT_DIR$/lib/json-lib-2.2.2-jdk15.jar" path-in-jar="/" />
-      <element id="extracted-dir" path="$PROJECT_DIR$/lib/RunTestAgent.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$PROJECT_DIR$/lib/slf4j-api-1.7.13.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$PROJECT_DIR$/lib/slf4j-jdk14-1.7.13.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$PROJECT_DIR$/lib/slicer.jar" path-in-jar="/" />
