@@ -25,6 +25,7 @@ public class Main {
         if (args.length == 0){
             System.out.println("Hello world");
         }
+
         String path = args[0];
         File file = new File(path);
         File [] sub_files = file.listFiles();
@@ -41,6 +42,8 @@ public class Main {
             }
 
         }
+        new File(System.getProperty("user.dir")+"/temp/").mkdirs();
+        new File(System.getProperty("user.dir")+"/suspicious/").mkdirs();
         for (File sub_file : sub_files){
             if (sub_file.isDirectory()){
                 System.out.println("Main: fixing project "+sub_file.getName());

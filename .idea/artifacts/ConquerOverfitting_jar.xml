@@ -1,6 +1,6 @@
 <component name="ArtifactManager">
   <artifact type="jar" name="ConquerOverfitting:jar">
-    <output-path>$PROJECT_DIR$/out/artifacts/ConquerOverfitting_jar</output-path>
+    <output-path>$PROJECT_DIR$/</output-path>
     <root id="archive" name="ConquerOverfitting.jar">
       <element id="module-output" name="ConquerOverfitting" />
       <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/eclipse/equinox/org.eclipse.equinox.preferences/3.4.1/org.eclipse.equinox.preferences-3.4.1.jar" path-in-jar="/" />
