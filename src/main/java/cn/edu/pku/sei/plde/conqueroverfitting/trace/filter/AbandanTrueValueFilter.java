@@ -148,7 +148,7 @@ public class AbandanTrueValueFilter {
                 valueName+="(";
                 for (String variable: equalVariable){
                     List<String> value = traceResult.get(variable);
-                    if (value.size() == 0){
+                    if (value == null){
                         continue;
                     }
                     valueName += value.get(0);

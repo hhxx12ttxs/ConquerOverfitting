@@ -446,6 +446,9 @@ public class Suspicious implements Serializable{
             } catch (IOException e){
                 e.printStackTrace();
             }
+            if (traceResults.size()> 50){
+                break;
+            }
         }
         return traceResults;
     }
