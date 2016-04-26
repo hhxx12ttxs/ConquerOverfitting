@@ -62,13 +62,13 @@ public class MethodTwoFixer {
                     if (ifString.equals("")){
                         continue;
                     }
-                    int startLine = ifLines.get(0);
-                    int endLine = ifLines.get(1);
-                    while (startLine <= endLine) {
-                        String lastLineString = CodeUtils.getLineFromCode(_code, startLine-1);
+                    int blockStartLine = ifLines.get(0);
+                    int blockEndLine = ifLines.get(1);
+                    for (int endLine: getLinesCanAdd(blockStartLine, blockEndLine,_code)) {
+                        String lastLineString = CodeUtils.getLineFromCode(_code, blockStartLine-1);
                         boolean result = false;
                         if (!LineUtils.isIfAndElseIfLine(lastLineString)) {
-                            result = fixWithAddIf(startLine, endLine, getIfStatementFromString(ifString),entry.getKey(), false, project, debug);
+                            result = fixWithAddIf(blockStartLine, endLine, getIfStatementFromString(ifString),entry.getKey(), false, project, debug);
                         }
                         else {
                             if (getIfStringFromStatement(ifString).contains(getIfStringFromStatement(lastLineString))){
@@ -77,21 +77,34 @@ public class MethodTwoFixer {
                             String ifEnd = lastLineString.substring(lastLineString.lastIndexOf(')'));
                             lastLineString = lastLineString.substring(0, lastLineString.lastIndexOf(')'));
                             String ifStatement =lastLineString+ "&&" +getIfStringFromStatement(getIfStatementFromString(ifString)) + ifEnd;
-                            result = fixWithAddIf(startLine-1, endLine, ifStatement,entry.getKey(),  true, project, debug);
+                            result = fixWithAddIf(blockStartLine-1, endLine, ifStatement,entry.getKey(),  true, project, debug);
                             if (!result){
                                 ifStatement =lastLineString+ "||" +getIfStringFromStatement(ifString) + ifEnd;
-                                result = fixWithAddIf(startLine-1, endLine, ifStatement,entry.getKey(),  true, project, debug);
+                                result = fixWithAddIf(blockStartLine-1, endLine, ifStatement,entry.getKey(),  true, project, debug);
                             }
                         }
                         if (result){
                             return true;
                         }
-                        endLine --;
                     }
                 }
             }
         }
         return false;
+    }
+
+    private static List<Integer> getLinesCanAdd(int startLine, int endLine, String code){
+        List<Integer> result = new ArrayList<>();
+        int braceCount = 0;
+        for (int i= startLine; i< endLine; i++){
+            String lineString = CodeUtils.getLineFromCode(code, i);
+            if (braceCount == 0){
+                result.add(i);
+            }
+            braceCount += CodeUtils.countChar(lineString,'{');
+            braceCount -= CodeUtils.countChar(lineString,'}');
+        }
+        return result;
     }
 
     private String getIfStatementFromString(String ifString){

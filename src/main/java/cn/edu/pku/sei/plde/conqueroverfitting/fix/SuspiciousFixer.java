@@ -48,50 +48,52 @@ public class SuspiciousFixer {
 
     public boolean mainFixProcess(){
         ExceptionExtractor extractor = new ExceptionExtractor(suspicious);
-         for (Map.Entry<Integer, List<TraceResult>> entry: traceResultClassify(traceResults).entrySet()){
-            trueValues = AbandanTrueValueFilter.getTrueValue(entry.getValue(), suspicious.getAllInfo());
-            falseValues = AbandanTrueValueFilter.getFalseValue(entry.getValue(), suspicious.getAllInfo());
-            exceptionVariables = extractor.extract(suspicious,entry.getValue());
-            List<List<ExceptionVariable>> echelons = extractor.sort();
-            for (List<ExceptionVariable> echelon: echelons){
-                Map<String, List<String>> boundarys = new HashMap<>();
-                if (sortWithVariable(echelon).size() == 1){
-                    for (Map.Entry<String,List<ExceptionVariable>> assertEchelon: classifyWithAssert(echelon).entrySet()){
-                        boundarys.put(assertEchelon.getKey(), getIfStrings(echelon));
-                    }
-                    if (fixMethodTwo(suspicious, boundarys, project, entry.getKey(),errorTestNum, false)){
-                        printPatchMessage(suspicious, project, getAllBoundarys(boundarys.values()), exceptionVariables, echelon);
-                        return true;
-                    }
-                    if (fixMethodOne(suspicious, boundarys, project, entry.getKey(),errorTestNum, false)){
-                        printPatchMessage(suspicious, project, getAllBoundarys(boundarys.values()), exceptionVariables, echelon);
-                        return true;
-                    }
-                }
-                else {
-                    List<ExceptionVariable> aEchelon = sortWithVariable(echelon);
-                    for (ExceptionVariable exceptionVariable: echelon){
-                        for (Map.Entry<String,List<ExceptionVariable>> assertEchelon: classifyWithAssert(Arrays.asList(exceptionVariable)).entrySet()){
-                            boundarys.put(assertEchelon.getKey(), getIfStrings(assertEchelon.getValue()));
-                        }
-                        if (!fixMethodTwo(suspicious, boundarys, project, entry.getKey(),errorTestNum, true) &&
-                                !fixMethodOne(suspicious, boundarys, project, entry.getKey(),errorTestNum, true)){
-                            aEchelon.remove(exceptionVariable);
-                        }
-                    }
-                    for (Map.Entry<String,List<ExceptionVariable>> assertEchelon: classifyWithAssert(aEchelon).entrySet()){
-                        boundarys.put(assertEchelon.getKey(), getIfStrings(aEchelon));
-                    }
-                    if (fixMethodTwo(suspicious, boundarys, project, entry.getKey(),errorTestNum, false)){
-                        printPatchMessage(suspicious, project, getAllBoundarys(boundarys.values()), exceptionVariables, echelon);
-                        return true;
-                    }
-                    if (fixMethodOne(suspicious, boundarys, project, entry.getKey(),errorTestNum, false)){
-                        printPatchMessage(suspicious, project, getAllBoundarys(boundarys.values()), exceptionVariables, echelon);
-                        return true;
-                    }
+        Map<Integer, List<TraceResult>> traceResultWithLine = traceResultClassify(traceResults);
+        Map<Integer, List<TraceResult>> firstToGo = new TreeMap<Integer, List<TraceResult>>(new Comparator<Integer>() {
+            @Override
+            public int compare(Integer integer, Integer t1) {
+                return integer.compareTo(t1);
+            }
+        });
+         for (Map.Entry<Integer, List<TraceResult>> entry: traceResultWithLine.entrySet()){
+            if (suspicious.tracedErrorLine.contains(entry.getKey())){
+                firstToGo.put(entry.getKey(), entry.getValue());
+            }
+         }
+        for (Map.Entry<Integer, List<TraceResult>> entry: firstToGo.entrySet()){
+            if (fixInLineWithTraceResult(entry.getKey(), entry.getValue(), extractor)){
+                return true;
+            }
+        }
+        for (Map.Entry<Integer, List<TraceResult>> entry: traceResultWithLine.entrySet()){
+            if (firstToGo.containsKey(entry.getKey())){
+                continue;
+            }
+            if (fixInLineWithTraceResult(entry.getKey(), entry.getValue(), extractor)){
+                return true;
+            }
+        }
+        return false;
+    }
 
-                }
+    private boolean fixInLineWithTraceResult(int line, List<TraceResult> traceResults, ExceptionExtractor extractor){
+        trueValues = AbandanTrueValueFilter.getTrueValue(traceResults, suspicious.getAllInfo());
+        falseValues = AbandanTrueValueFilter.getFalseValue(traceResults, suspicious.getAllInfo());
+        exceptionVariables = extractor.extract(suspicious,traceResults);
+        List<List<ExceptionVariable>> echelons = extractor.sort();
+        for (List<ExceptionVariable> echelon: echelons) {
+            Map<String, List<String>> boundarys = new HashMap<>();
+            for (Map.Entry<String, List<ExceptionVariable>> assertEchelon : classifyWithAssert(echelon).entrySet()) {
+                boundarys.put(assertEchelon.getKey(), getIfStrings(echelon));
+            }
+            if (fixMethodTwo(suspicious, boundarys, project, line, errorTestNum, false)) {
+                printPatchMessage(suspicious, project, getAllBoundarys(boundarys.values()), exceptionVariables, echelon);
+                return true;
+            }
+            if (fixMethodOne(suspicious, boundarys, project, line, errorTestNum, false)) {
+                printPatchMessage(suspicious, project, getAllBoundarys(boundarys.values()), exceptionVariables, echelon);
+                return true;
+
             }
         }
         return false;
@@ -221,6 +223,7 @@ public class SuspiciousFixer {
                 for (String value: entry.getValue()){
                     returnList.add(Arrays.asList(value));
                 }
+                result.addAll(entry.getValue());
                 continue;
             }
             ArrayList<Interval> intervals = new ArrayList<>();
