@@ -21,28 +21,28 @@ public class MathUtils {
         if (value.startsWith("(") && value.contains(")") && !value.endsWith(")")) {
             value = value.substring(value.indexOf(")") + 1);
         }
-        if (value.equals("-0.0")) {
+        if (value.contains("-0.0")) {
             return 0.0;
         }
-        if (value.equals("Integer.MIN_VALUE")) {
+        if (value.contains("Integer.MIN_VALUE")) {
             return Integer.MIN_VALUE;
         }
-        if (value.equals("Integer.MAX_VALUE")) {
+        if (value.contains("Integer.MAX_VALUE")) {
             return Integer.MAX_VALUE;
         }
-        if (value.equals("Long.MAX_VALUE")) {
+        if (value.contains("Long.MAX_VALUE")) {
             return Long.MAX_VALUE;
         }
-        if (value.equals("Long.MIN_VALUE")) {
+        if (value.contains("Long.MIN_VALUE")) {
             return Long.MIN_VALUE;
         }
-        if (value.equals("Infinity")) {
+        if (value.contains("Infinity")) {
             return Double.POSITIVE_INFINITY;
         }
-        if (value.equals("-Infinity")) {
+        if (value.contains("-Infinity")) {
             return Double.NEGATIVE_INFINITY;
         }
-        if (value.equals("null") || value.equals("NaN")) {
+        if (value.contains("null") || value.contains("NaN")) {
             return Double.NaN;
         }
         if (value.endsWith(".0")) {
@@ -233,16 +233,16 @@ public class MathUtils {
 
 
     public static boolean isMaxMinValue(String value) {
-        return value.equals(String.valueOf(Integer.MAX_VALUE)) ||
-                value.equals(String.valueOf(Integer.MIN_VALUE)) ||
-                value.equals(String.valueOf(Double.MAX_VALUE)) ||
-                value.equals(String.valueOf(Double.MIN_VALUE)) ||
-                value.equals(String.valueOf(Long.MAX_VALUE)) ||
-                value.equals(String.valueOf(Long.MIN_VALUE)) ||
-                value.equals(String.valueOf(Short.MAX_VALUE)) ||
-                value.equals(String.valueOf(Short.MIN_VALUE)) ||
-                value.equals("-9223372036854775808") ||
-                value.equals("9223372036854775807");
+        return value.contains(String.valueOf(Integer.MAX_VALUE)) ||
+                value.contains(String.valueOf(Integer.MIN_VALUE)) ||
+                value.contains(String.valueOf(Double.MAX_VALUE)) ||
+                value.contains(String.valueOf(Double.MIN_VALUE)) ||
+                value.contains(String.valueOf(Long.MAX_VALUE)) ||
+                value.contains(String.valueOf(Long.MIN_VALUE)) ||
+                value.contains(String.valueOf(Short.MAX_VALUE)) ||
+                value.contains(String.valueOf(Short.MIN_VALUE)) ||
+                value.contains("-9223372036854775808") ||
+                value.contains("9223372036854775807");
     }
 
     public static List<Interval> mergetDoubleInterval(ArrayList<Interval> intervals) {
@@ -355,52 +355,59 @@ public class MathUtils {
             BoundaryWithFreq boundaryWithFreq = it.next();
             if (boundaryWithFreq.isSimpleType) {
                 try {
-                    if (boundaryWithFreq.value.contains("L")) {
-                        boundaryWithFreq.value = boundaryWithFreq.value.replace("L", "");
+                    int valueSize = boundaryWithFreq.value.length();
+                    if (boundaryWithFreq.value.endsWith("L")) {
+                        boundaryWithFreq.value = boundaryWithFreq.value.substring(0, valueSize - 1);
+                        //boundaryWithFreq.value = boundaryWithFreq.value.replace("L", "");
                     }
-                    if (boundaryWithFreq.value.contains("l")) {
-                        boundaryWithFreq.value = boundaryWithFreq.value.replace("l", "");
+                    if (boundaryWithFreq.value.endsWith("l")) {
+                        boundaryWithFreq.value = boundaryWithFreq.value.substring(0, valueSize - 1);
+                        //boundaryWithFreq.value = boundaryWithFreq.value.replace("l", "");
                     }
-                    if (boundaryWithFreq.value.contains("D")) {
-                        boundaryWithFreq.value = boundaryWithFreq.value.replace("D", "");
+                    if (boundaryWithFreq.value.endsWith("D")) {
+                        boundaryWithFreq.value = boundaryWithFreq.value.substring(0, valueSize - 1);
+                        //boundaryWithFreq.value = boundaryWithFreq.value.replace("D", "");
                     }
-                    if (boundaryWithFreq.value.contains("d")) {
-                        boundaryWithFreq.value = boundaryWithFreq.value.replace("d", "");
+                    if (boundaryWithFreq.value.endsWith("d")) {
+                        boundaryWithFreq.value = boundaryWithFreq.value.substring(0, valueSize - 1);
+                        //boundaryWithFreq.value = boundaryWithFreq.value.replace("d", "");
                     }
-                    if (boundaryWithFreq.value.contains("F")) {
-                        boundaryWithFreq.value = boundaryWithFreq.value.replace("F", "");
+                    if (boundaryWithFreq.value.endsWith("F")) {
+                        boundaryWithFreq.value = boundaryWithFreq.value.substring(0, valueSize - 1);
+                        //boundaryWithFreq.value = boundaryWithFreq.value.replace("F", "");
                     }
-                    if (boundaryWithFreq.value.contains("f")) {
-                        boundaryWithFreq.value = boundaryWithFreq.value.replace("f", "");
+                    if (boundaryWithFreq.value.endsWith("f")) {
+                        boundaryWithFreq.value = boundaryWithFreq.value.substring(0, valueSize - 1);
+                        //boundaryWithFreq.value = boundaryWithFreq.value.replace("f", "");
                     }
                     boundaryWithFreq.dvalue = Double.parseDouble(boundaryWithFreq.value);
 
                 } catch (Exception e) {
-                    if (boundaryWithFreq.value.equals("Integer.MIN_VALUE") || boundaryWithFreq.value.equals("Integer.MIN_VAUE")) {
+                    if (boundaryWithFreq.value.contains("Integer.MIN_VALUE") || boundaryWithFreq.value.contains("Integer.MIN_VAUE")) {
                         boundaryWithFreq.value = "Integer.MIN_VALUE";
                         boundaryWithFreq.dvalue = Integer.MIN_VALUE;
-                    } else if (boundaryWithFreq.value.equals("Integer.MAX_VALUE") || boundaryWithFreq.value.equals("Integer.MAX_VAUE")) {
+                    } else if (boundaryWithFreq.value.contains("Integer.MAX_VALUE") || boundaryWithFreq.value.contains("Integer.MAX_VAUE")) {
                         boundaryWithFreq.value = "Integer.MAX_VALUE";
                         boundaryWithFreq.dvalue = Integer.MAX_VALUE;
-                    } else if (boundaryWithFreq.value.equals("Double.MIN_VALUE") || boundaryWithFreq.value.equals("Double.MIN_VAUE")) {
+                    } else if (boundaryWithFreq.value.contains("Double.MIN_VALUE") || boundaryWithFreq.value.contains("Double.MIN_VAUE")) {
                         boundaryWithFreq.value = "Double.MIN_VALUE";
                         boundaryWithFreq.dvalue = Double.MIN_VALUE;
-                    } else if (boundaryWithFreq.value.equals("Double.MAX_VALUE") || boundaryWithFreq.value.equals("Double.MAX_VAUE")) {
+                    } else if (boundaryWithFreq.value.contains("Double.MAX_VALUE") || boundaryWithFreq.value.contains("Double.MAX_VAUE")) {
                         boundaryWithFreq.value = "Double.MAX_VALUE";
                         boundaryWithFreq.dvalue = Double.MAX_VALUE;
-                    } else if (boundaryWithFreq.value.equals("Long.MIN_VALUE") || boundaryWithFreq.value.equals("Long.MIN_VAUE")) {
+                    } else if (boundaryWithFreq.value.contains("Long.MIN_VALUE") || boundaryWithFreq.value.contains("Long.MIN_VAUE")) {
                         boundaryWithFreq.value = "Long.MIN_VALUE";
                         boundaryWithFreq.dvalue = Long.MIN_VALUE;
-                    } else if (boundaryWithFreq.value.equals("Long.MAX_VALUE") || boundaryWithFreq.value.equals("Long.MAX_VAUE")) {
+                    } else if (boundaryWithFreq.value.contains("Long.MAX_VALUE") || boundaryWithFreq.value.contains("Long.MAX_VAUE")) {
                         boundaryWithFreq.value = "Long.MAX_VALUE";
                         boundaryWithFreq.dvalue = Long.MAX_VALUE;
                     } else {
-//                        System.out.println("dvalue: " + boundaryWithFreq.dvalue);
-//                        System.out.println("value: " + boundaryWithFreq.value);
-//                        System.out.println("type: " + boundaryWithFreq.variableSimpleType);
-//                        System.out.println("is " + boundaryWithFreq.isSimpleType);
-//                        System.out.println("left " + boundaryWithFreq.leftClose);
-//                        System.out.println("right " + boundaryWithFreq.rightClose);
+                        System.out.println("dvalue: " + boundaryWithFreq.dvalue);
+                        System.out.println("value: " + boundaryWithFreq.value);
+                        System.out.println("type: " + boundaryWithFreq.variableSimpleType);
+                        System.out.println("is " + boundaryWithFreq.isSimpleType);
+                        System.out.println("left " + boundaryWithFreq.leftClose);
+                        System.out.println("right " + boundaryWithFreq.rightClose);
                         it.remove();
                     }
                     continue;
@@ -418,18 +425,18 @@ public class MathUtils {
 
         Collections.sort(boundaryWithFreqsCopy, new ComparatorBounaryWithFreqs());
 
-//        Log log = new Log("log//if-int-lcm-copy.log");
-//        for (BoundaryWithFreq boundaryInfo : boundaryWithFreqsCopy) {
-//            log.logSignLine("begin");
-//            //log.logStr("name: " + boundaryInfo.name);
-//            log.logStr("dvalue: " + boundaryInfo.dvalue);
-//            log.logStr("value: " + boundaryInfo.value);
-//            log.logStr("type: " + boundaryInfo.variableSimpleType);
-//            log.logStr("is " + boundaryInfo.isSimpleType);
-//            log.logStr("left " + boundaryInfo.leftClose);
-//            log.logStr("right " + boundaryInfo.rightClose);
-//            log.logSignLine("end");
-//        }
+        Log log = new Log("log//if-long-var1-copy.log");
+        for (BoundaryWithFreq boundaryInfo : boundaryWithFreqsCopy) {
+            log.logSignLine("begin");
+            //log.logStr("name: " + boundaryInfo.name);
+            log.logStr("dvalue: " + boundaryInfo.dvalue);
+            log.logStr("value: " + boundaryInfo.value);
+            log.logStr("type: " + boundaryInfo.variableSimpleType);
+            log.logStr("is " + boundaryInfo.isSimpleType);
+            log.logStr("left " + boundaryInfo.leftClose);
+            log.logStr("right " + boundaryInfo.rightClose);
+            log.logSignLine("end");
+        }
 
         ArrayList<BoundaryWithFreq> interval = new ArrayList<BoundaryWithFreq>();
 

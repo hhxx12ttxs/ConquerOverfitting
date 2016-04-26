@@ -13,9 +13,9 @@ public class GathererJavaTest extends TestCase {
 		long timeStart = System.currentTimeMillis();
 		ArrayList<String> keyWords = new ArrayList<String>();
 		keyWords.add("if");
-		keyWords.add("factorial");
-		keyWords.add("int");
-		GathererJava gathererJava = new GathererJava(keyWords, "if-factorial-int", "commons-lang");
+		keyWords.add("long");
+		keyWords.add("var1");
+		GathererJava gathererJava = new GathererJava(keyWords, "if-long-var1", "joda-time");
 		//new GathererJavaGithub(keyWords, "commons-math");Math
 		//new GathererJavaGithub(keyWords, "commons-lang");Lang
 		//new GathererJavaGithub(keyWords, "closure-compiler");Closure
