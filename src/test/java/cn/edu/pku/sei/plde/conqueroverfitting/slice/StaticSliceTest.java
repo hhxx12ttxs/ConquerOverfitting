@@ -2,7 +2,13 @@ package cn.edu.pku.sei.plde.conqueroverfitting.slice;
 
 import static org.junit.Assert.*;
 
+import cn.edu.pku.sei.plde.conqueroverfitting.jdtVisitor.IdentifierCollectVisitor;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.JDTUtils;
+import org.eclipse.jdt.core.dom.ASTNode;
+import org.eclipse.jdt.core.dom.ASTParser;
 import org.junit.Test;
+
+import java.util.List;
 
 /**
  * Created by jiewang on 2016/2/23.
@@ -19,4 +25,9 @@ public class StaticSliceTest {
 		assertTrue(sliceStatements.equals(expectedSliceStatements));
 	}
 
+	@Test
+	public void testVariableCollect() {
+
+
+	}
 }
