@@ -33,7 +33,7 @@ public class PathUtils {
 
 
     public static String getJunitPath(){
-        return System.getProperty("user.dir")+"/lib/com.gzoltar-0.0.1.jar";
+        return System.getProperty("user.dir")+"/lib/junit-4.10.jar";
     }
 
     public static String getPackageNameFromPath(String path){

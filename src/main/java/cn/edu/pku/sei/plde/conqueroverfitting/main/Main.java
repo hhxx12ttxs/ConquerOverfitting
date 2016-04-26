@@ -40,7 +40,7 @@ public class Main {
             } catch (Exception e){
                 e.printStackTrace();
             }
-
+            return;
         }
         new File(System.getProperty("user.dir")+"/temp/").mkdirs();
         new File(System.getProperty("user.dir")+"/suspicious/").mkdirs();
@@ -88,7 +88,7 @@ public class Main {
         if (!result){
             File recordFile = new File(recordPackage.getAbsolutePath()+"/"+project);
             if (recordFile.exists()){
-                recordFile.renameTo(new File(recordFile.getName()+".fail"));
+                recordFile.renameTo(new File(System.getProperty("user.dir")+recordFile.getName()+".fail"));
             }
         }
     }

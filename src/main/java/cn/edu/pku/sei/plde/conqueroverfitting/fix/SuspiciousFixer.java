@@ -88,12 +88,12 @@ public class SuspiciousFixer {
             }
             String methodOneResult = fixMethodTwo(suspicious, boundarys, project, line, errorTestNum, false);
             if (!methodOneResult.equals("")) {
-                printPatchMessage(suspicious, project, methodOneResult, exceptionVariables, echelon, line);
+                printPatchMessage(suspicious, project, methodOneResult, exceptionVariables, echelons, line);
                 return true;
             }
             String methodTwoResult = fixMethodOne(suspicious, boundarys, project, line, errorTestNum, false);
             if (!methodTwoResult.equals("")) {
-                printPatchMessage(suspicious, project, methodTwoResult, exceptionVariables, echelon, line);
+                printPatchMessage(suspicious, project, methodTwoResult, exceptionVariables, echelons, line);
                 return true;
             }
         }
@@ -121,7 +121,7 @@ public class SuspiciousFixer {
         return sets;
     }
 
-    private void printPatchMessage(Suspicious suspicious,String project, String boundary, List<ExceptionVariable> exceptionVariables, List<ExceptionVariable> echelon, int line){
+    private void printPatchMessage(Suspicious suspicious,String project, String boundary, List<ExceptionVariable> exceptionVariables, List<List<ExceptionVariable>> echelons, int line){
         File recordPackage = new File(System.getProperty("user.dir")+"/patch/");
         recordPackage.mkdirs();
         File recordFile = new File(recordPackage.getAbsolutePath()+"/"+project);
@@ -142,9 +142,13 @@ public class SuspiciousFixer {
             }
             writer.write("---------------------------------------------------\n");
             writer.write("variable echelon of suspicious before search: "+suspicious.classname()+"#"+suspicious.functionnameWithoutParam()+"#"+line+"\n");
-            for (ExceptionVariable variable: echelon){
-                writer.write(variable.name+" = "+variable.values.toString()+"\n");
+            for (List<ExceptionVariable> echelon: echelons){
+                for (ExceptionVariable variable: echelon){
+                    writer.write(variable.name+" = "+variable.values.toString()+"\n");
+                }
+                writer.write("///////////////////\n");
             }
+
             writer.write("====================================================\n\n");
             writer.write("Search Boundary Cost Time: "+searchTime/1000+"\n");
             writer.close();
