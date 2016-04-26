@@ -151,7 +151,7 @@ public class MainProcess {
         if (!projectDir.exists()){
             projectDir.mkdirs();
         }
-        String project = projectName+"-"+number;
+        String project = projectName+"_"+number;
         /* 四个整个项目需要的参数 */
 
         if ((projectName.equals("Math") && number>=85) || (projectName.equals("Lang") && (number == 39 || number == 49))){

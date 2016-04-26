@@ -1,6 +1,5 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.trace;
 
-import cn.edu.pku.sei.plde.conqueroverfitting.agent.Utils;
 import cn.edu.pku.sei.plde.conqueroverfitting.assertCollect.Asserts;
 import cn.edu.pku.sei.plde.conqueroverfitting.junit.JunitRunner;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Localization;
@@ -252,9 +251,9 @@ public class ErrorLineTracer {
                 for (int num: commitedAfter){
                     SourceUtils.commentCodeInSourceFile(originJavaFile, num);
                 }
-                System.out.println(Utils.shellRun(Arrays.asList("javac -Xlint:unchecked -source 1.6 -target 1.6 -cp "+ buildClasspath(Arrays.asList(PathUtils.getJunitPath())) +" -d "+ asserts._testClasspath+" "+ originJavaFile.getAbsolutePath())));
+                System.out.println(ShellUtils.shellRun(Arrays.asList("javac -Xlint:unchecked -source 1.6 -target 1.6 -cp "+ buildClasspath(Arrays.asList(PathUtils.getJunitPath())) +" -d "+ asserts._testClasspath+" "+ originJavaFile.getAbsolutePath())));
                 new File(System.getProperty("user.dir")+"/temp/"+assertLine).mkdirs();
-                System.out.println(Utils.shellRun(Arrays.asList("javac -Xlint:unchecked -source 1.6 -target 1.6 -cp "+ buildClasspath(Arrays.asList(PathUtils.getJunitPath())) +" -d "+System.getProperty("user.dir")+"/temp/"+assertLine+"/ "+ originJavaFile.getAbsolutePath())));
+                System.out.println(ShellUtils.shellRun(Arrays.asList("javac -Xlint:unchecked -source 1.6 -target 1.6 -cp "+ buildClasspath(Arrays.asList(PathUtils.getJunitPath())) +" -d "+System.getProperty("user.dir")+"/temp/"+assertLine+"/ "+ originJavaFile.getAbsolutePath())));
                 _commentedTestClass.put(FileUtils.getFileAddressOfClass(System.getProperty("user.dir")+"/temp/"+assertLine,asserts._testClassname), assertLine);
                 Localization localization = new Localization(asserts._classpath, asserts._testClasspath, asserts._testSrcPath, asserts._srcPath, asserts._testClassname);
                 suspiciouses = localization.getSuspiciousLite(false);

@@ -33,11 +33,7 @@ public class PathUtils {
 
 
     public static String getJunitPath(){
-        String junitPath = JUnitCore.class.getProtectionDomain().getCodeSource().getLocation().getFile();
-        if (System.getProperty("os.name").toLowerCase().startsWith("win") && junitPath.charAt(0) == '/') {
-            junitPath = junitPath.substring(1);
-        }
-        return junitPath;
+        return System.getProperty("user.dir")+"/lib/com.gzoltar-0.0.1.jar";
     }
 
     public static String getPackageNameFromPath(String path){
