@@ -41,10 +41,10 @@ public class ExceptionExtractor {
         List<Set<String>> thisValue = new ArrayList<>();
         for (ExceptionVariable exceptionVariable: exceptionVariables){
             if (exceptionVariable.name.equals("this")){
-                thisValue.add(exceptionVariable.values);
                 if (!thisValue.contains(exceptionVariable.values)){
                     result.add(Arrays.asList(exceptionVariable));
                 }
+                thisValue.add(exceptionVariable.values);
                 sortList.remove(exceptionVariable);
             }
         }
@@ -107,7 +107,7 @@ public class ExceptionExtractor {
         if (sortedVariable.size() == 0){
             return new ArrayList<>();
         }
-        return variableConverse(Arrays.asList(sortedVariable.get(0)), exceptionVariables);
+        return variableConverse(sortedVariable, exceptionVariables);
     }
 
     private static List<List<ExceptionVariable>> variableConverse(List<List<String>> sortedVariable, List<ExceptionVariable> exceptionVariables){

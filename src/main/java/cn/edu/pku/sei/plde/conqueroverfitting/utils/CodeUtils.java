@@ -408,6 +408,9 @@ public class CodeUtils {
             if (fieldDec.contains("=")){
                 result.add(fieldDec.split("=")[0]);
             }
+            else {
+                result.add(fieldDec);
+            }
         }
         return result;
     }

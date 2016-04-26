@@ -107,11 +107,14 @@ public class MainProcess {
 
     public boolean isFixSuccess(Suspicious suspicious, Map<ExceptionVariable,List<String>> boundarys, String project){
         System.out.println("Fix Success One Place");
+        printCollectingMessage(project, suspicious);
         if (TestUtils.getFailTestNumInProject(project) > 0){
-           return false;
+            Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc,libPath);
+            List<Suspicious> suspiciouses = localization.getSuspiciousLite(false);
+            suspiciousLoop(suspiciouses, project);
+            return true;
         }
         else {
-            printCollectingMessage(project, suspicious);
             System.out.println("Fix All Place Success");
             return true;
         }
@@ -148,7 +151,7 @@ public class MainProcess {
         if (!projectDir.exists()){
             projectDir.mkdirs();
         }
-        String project = projectName+"_"+number;
+        String project = projectName+"-"+number;
         /* 四个整个项目需要的参数 */
 
         if ((projectName.equals("Math") && number>=85) || (projectName.equals("Lang") && (number == 39 || number == 49))){

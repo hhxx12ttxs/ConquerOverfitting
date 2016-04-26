@@ -348,7 +348,10 @@ public class SuspiciousFixer {
             }
         }
         int finalErrorNums = methodOneFixer.fix();
-        return methodOneFixer._patches.get(0)._patchString.get(0);
+        if (finalErrorNums != -1){
+            return methodOneFixer._patches.get(0)._patchString.get(0);
+        }
+        return "";
     }
 
 

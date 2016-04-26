@@ -148,12 +148,6 @@ public class AbandanTrueValueFilter {
                 valueName+="(";
                 for (String variable: equalVariable){
                     List<String> value = traceResult.get(variable);
-                    if (value == null){
-                        value = traceResult.get("get"+variable.substring(0,1).toUpperCase()+variable.substring(1)+"()");
-                        if (value == null){
-                            continue;
-                        }
-                    }
                     valueName += value.get(0);
                     valueName +=",";
                 }
@@ -161,6 +155,9 @@ public class AbandanTrueValueFilter {
                     valueName = valueName.substring(0, valueName.length()-1);
                 }
                 valueName+=")";
+                if (valueName.contains("()")){
+                    continue;
+                }
                 VariableInfo thisInfo = getVariableInfoWithName(vars, "this");
                 ExceptionVariable exceptionVariable = new ExceptionVariable(thisInfo, traceResult, Arrays.asList(valueName));
                 result.add(exceptionVariable);
