@@ -20,6 +20,7 @@ public class VariableSort {
     private Map<String, Integer> inDegree;
     private List<List<String>> sortVariable;
 
+    private Set<String> allVariableInMethod;
     public VariableSort(Set<String> suspiciousVariableSet, String statements) {
         this.suspiciousVariableSet = suspiciousVariableSet;
         this.statements = statements;
@@ -27,6 +28,8 @@ public class VariableSort {
         this.statementList = new ArrayList<String>();
         this.dependencyMap = new HashMap<String, Set<String>>();
         this.inDegree = new HashMap<String, Integer>();
+        this.allVariableInMethod = new HashSet<String>();
+
         sortVariable = new ArrayList<List<String>>();
         for (String variable : suspiciousVariableSet) {
             inDegree.put(variable, 0);
@@ -36,6 +39,17 @@ public class VariableSort {
         getDependency();
         topologicalSort();
         removeControlDependency();
+
+        if(sortVariable.size() >= 1) {
+            List<String> firstOrder = sortVariable.get(0);
+            Iterator<String> it = firstOrder.iterator();
+            while(it.hasNext()){
+                String var = it.next();
+                if(!allVariableInMethod.contains(var)){
+                    it.remove();
+                }
+            }
+        }
     }
 
     public List<List<String>> getSortVariable() {
@@ -118,6 +132,7 @@ public class VariableSort {
                 for (String identifier : identifierInRightHand) {
                     rightHandSet.add(identifier);
                 }
+                allVariableInMethod.addAll(rightHandSet);
                 ifVariableStack.push(rightHandSet);
             }
 
@@ -142,6 +157,8 @@ public class VariableSort {
             String oper = getOper(statement);
             int index = statement.indexOf(oper);
             String leftHand = getLeftHand(statement, index);
+
+            allVariableInMethod.add(leftHand);
 
             if(sortVariable.size() >= 1 && sortVariable.get(0).contains(leftHand)){
                 for(Set<String> set : ifVariableStack){
@@ -171,6 +188,7 @@ public class VariableSort {
             String oper = getOper(statement);
             int index = statement.indexOf(oper);
             String leftHand = getLeftHand(statement, index);
+            allVariableInMethod.add(leftHand);
 
             if (leftHands.contains(leftHand)) {
                 continue;
@@ -185,6 +203,7 @@ public class VariableSort {
                     continue;
                 }
                 rightHandSet.add(identifier);
+                allVariableInMethod.addAll(rightHandSet);
             }
 
             if (rightHandSet.size() == 0) {

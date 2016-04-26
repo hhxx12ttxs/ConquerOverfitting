@@ -125,6 +125,7 @@ public class VariableSortTest {
         Set<String> suspiciousVariableSet = new HashSet<String>();
         suspiciousVariableSet.add("x");
         suspiciousVariableSet.add("y");
+        suspiciousVariableSet.add("w");
         String statements = "         if ((x == null) || (y == null)) {\n" +
                 "            return !((x == null) ^ (y == null));\n" +
                 "        }\n" +
