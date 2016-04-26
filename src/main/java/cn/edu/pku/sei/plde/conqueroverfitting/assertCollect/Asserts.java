@@ -281,7 +281,7 @@ public class Asserts {
         List<String> assertLines = new ArrayList<>(_asserts);
         for (int assertLine: errorAssertLines){
             String assertString = CodeUtils.getWholeLineFromCode(_code, assertLine);
-            if (assertString.contains("fail();")){
+            if (assertString.contains("fail(")){
                 assertString += assertLine;
             }
             assertLines.remove(assertString);
@@ -300,6 +300,12 @@ public class Asserts {
                 String lineString = CodeUtils.getLineFromCode(_code, i);
                 if (!lineSet.contains(i) && LineUtils.isCommentable(lineString)){
                     SourceUtils.commentCodeInSourceFile(tempJavaFile, i);
+                    if (lineString.contains("fail(") && LineUtils.isLineInFailBlock(_code,i)){
+                        int j = i-1;
+                        while (!CodeUtils.getLineFromCode(_code, j).contains("try {")){
+                            SourceUtils.commentCodeInSourceFile(tempJavaFile, j--);
+                        }
+                    }
                 }
             }
             System.out.println(ShellUtils.shellRun(Arrays.asList("javac -Xlint:unchecked -source 1.6 -target 1.6 -cp "+ buildClasspath(Arrays.asList(PathUtils.getJunitPath(),_testClasspath,_classpath)) +" "+ tempJavaFile.getAbsolutePath())));

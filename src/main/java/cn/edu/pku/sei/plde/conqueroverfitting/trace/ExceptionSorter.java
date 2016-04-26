@@ -176,7 +176,7 @@ public class ExceptionSorter {
             variableName = variableName.substring(0,variableName.indexOf("."));
         }
         for (int i = 0; i < _methodCode.length; i++){
-            if (_methodCode[i].matches(".*"+variableName+"\\s*=.*") && !_methodCode[i].matches(".*\".*"+variableName+"\\s*=.*")){
+            if (_methodCode[i].matches(".*"+variableName+"\\s*=.*") && !_methodCode[i].matches(".*\".*"+variableName+"\\s*=.*") && !_methodCode[i].contains("==")){
                 returnLine = i;
             }
             else if (_methodCode[i].trim().contains(variableName) && VariableUtils.isExpression(info) && LineUtils.isBoundaryLine(_methodCode[i])){

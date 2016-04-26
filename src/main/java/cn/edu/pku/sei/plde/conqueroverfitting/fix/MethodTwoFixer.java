@@ -87,7 +87,7 @@ public class MethodTwoFixer {
                             }
                         }
                         if (result){
-                            correctPatch = ifStatement;
+                            correctPatch = ifString;
                             correctStartLine = blockStartLine-1;
                             correctEndLine = endLine;
                             return true;

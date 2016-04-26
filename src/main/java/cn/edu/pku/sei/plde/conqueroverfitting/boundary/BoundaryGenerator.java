@@ -44,10 +44,10 @@ public class BoundaryGenerator {
         }
 
 
-        List<BoundaryWithFreq> variableBoundary = SearchBoundaryFilter.getBoundary(exceptionVariable, project, keywords);
 
         Map<List<String>, String> intervals = new HashMap<>();
         if (MathUtils.isNumberType(exceptionVariable.type) && exceptionVariable.values.size() <=5){
+            List<BoundaryWithFreq> variableBoundary = SearchBoundaryFilter.getBoundary(exceptionVariable, project, keywords);
             for (String value: exceptionVariable.values){
                 ArrayList<BoundaryWithFreq> intervalss;
                 try {
@@ -174,7 +174,7 @@ public class BoundaryGenerator {
             }
         }
 
-        if (variable.variable.variableName.contains("==") || variable.variable.variableName.contains(">") || variable.variable.variableName.contains("<")){
+        if (variable.variable.variableName.contains("==")||variable.variable.variableName.contains("!=") || variable.variable.variableName.contains(">") || variable.variable.variableName.contains("<")){
             if (intervals.equals("true")){
                 return variable.variable.variableName;
             }

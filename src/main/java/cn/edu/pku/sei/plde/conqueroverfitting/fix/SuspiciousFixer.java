@@ -142,11 +142,13 @@ public class SuspiciousFixer {
             }
             writer.write("---------------------------------------------------\n");
             writer.write("variable echelon of suspicious before search: "+suspicious.classname()+"#"+suspicious.functionnameWithoutParam()+"#"+line+"\n");
+            int echelonsNum = 0;
             for (List<ExceptionVariable> echelon: echelons){
+                writer.write("////////////////Echelon "+ ++echelonsNum+"////////////");
                 for (ExceptionVariable variable: echelon){
                     writer.write(variable.name+" = "+variable.values.toString()+"\n");
                 }
-                writer.write("///////////////////\n");
+
             }
 
             writer.write("====================================================\n\n");

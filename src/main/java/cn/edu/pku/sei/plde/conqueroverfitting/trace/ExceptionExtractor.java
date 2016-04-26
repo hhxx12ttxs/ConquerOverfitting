@@ -57,12 +57,6 @@ public class ExceptionExtractor {
                 sortList.remove(exceptionVariable);
             }
         }
-        //for (ExceptionVariable exceptionVariable: exceptionVariables){
-        //    if (VariableUtils.isExpression(exceptionVariable.variable) && sortList.contains(exceptionVariable)){
-        //        result.add(Arrays.asList(exceptionVariable));
-        //        sortList.remove(exceptionVariable);
-        //    }
-        //}
         if (hasTrueTraceResult(traceResults)){
             result.addAll(sortWithMethodOne(sortList, traceResults, suspicious));
         }
@@ -107,7 +101,10 @@ public class ExceptionExtractor {
         if (sortedVariable.size() == 0){
             return new ArrayList<>();
         }
-        return variableConverse(sortedVariable, exceptionVariables);
+        if (sortedVariable.size()>1){
+            return variableConverse(Arrays.asList(sortedVariable.get(0), sortedVariable.get(1)),exceptionVariables);
+        }
+        return variableConverse(Arrays.asList(sortedVariable.get(0)), exceptionVariables);
     }
 
     private static List<List<ExceptionVariable>> variableConverse(List<List<String>> sortedVariable, List<ExceptionVariable> exceptionVariables){
