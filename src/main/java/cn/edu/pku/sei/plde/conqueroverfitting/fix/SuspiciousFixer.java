@@ -133,7 +133,7 @@ public class SuspiciousFixer {
             writer.write("====================================================\n");
             writer.write("boundary of suspicious: "+suspicious.classname()+"#"+suspicious.functionnameWithoutParam()+"#"+line+"\n");
 
-            writer.write(boundary+"\n");
+            writer.write(replaceSpecialNumber(boundary)+"\n");
 
             writer.write("---------------------------------------------------\n");
             writer.write("suspicious variable of suspicious before sort: "+suspicious.classname()+"#"+suspicious.functionnameWithoutParam()+"#"+line+"\n");
