@@ -904,6 +904,7 @@ public class CodeUtils {
 
 
     public static String spreadFor(String code){
+        code = "public class Test { " + code + "}";
         ASTParser parser = ASTParser.newParser(AST.JLS3);
         Map<?, ?> options = JavaCore.getOptions();
         JavaCore.setComplianceOptions(JavaCore.VERSION_1_7, options);
