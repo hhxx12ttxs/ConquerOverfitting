@@ -26,20 +26,12 @@ public class PathUtils {
     }
 
     public static String getAgentPath(){
-        String agentPath =  RunTestAgent.class.getProtectionDomain().getCodeSource().getLocation().getFile();
-        if (System.getProperty("os.name").toLowerCase().startsWith("win") && agentPath.charAt(0) == '/') {
-            agentPath = agentPath.substring(1);
-        }
-        return agentPath;
+        return System.getProperty("user.dir")+"/lib/RunTestAgent.jar";
     }
 
 
     public static String getJunitPath(){
-        String junitPath = JUnitCore.class.getProtectionDomain().getCodeSource().getLocation().getFile();
-        if (System.getProperty("os.name").toLowerCase().startsWith("win") && junitPath.charAt(0) == '/') {
-            junitPath = junitPath.substring(1);
-        }
-        return junitPath;
+        return System.getProperty("user.dir")+"/lib/junit-4.10.jar";
     }
 
     public static String getPackageNameFromPath(String path){

@@ -146,6 +146,6 @@ class RunFixProcess implements Callable<Boolean> {
                 recordFile.renameTo(new File(System.getProperty("user.dir")+recordFile.getName()+".fail"));
             }
         }
-        return result;
+        return true;
     }
 }

@@ -88,6 +88,7 @@ public class SuspiciousFixer {
             String methodOneResult = fixMethodTwo(suspicious, boundarys, project, line, errorTestNum, false);
             printPatchMessage(suspicious, project, methodOneResult, exceptionVariables, echelons, line);
             if (!methodOneResult.equals("")) {
+                printHistoryBoundary(boundarys, methodOneResult);
                 return true;
             }
             if (!onlyMethod1){
