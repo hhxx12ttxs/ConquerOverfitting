@@ -173,7 +173,7 @@ public class Localization  {
 
         RecordUtils recordUtils = new RecordUtils(project,"RawLocalization");
         for (StatementExt statementExt: statements){
-            recordUtils.write(getClassAddressFromStatement(statementExt)+"#"+getFunctionNameFromStatement(statementExt)+"#"+getLineNumberFromStatement(statementExt));
+            recordUtils.write(getClassAddressFromStatement(statementExt)+"#"+getFunctionNameFromStatement(statementExt)+"#"+getLineNumberFromStatement(statementExt)+"\n");
         }
         recordUtils.close();
         for (int i=0; i< 2; i++){

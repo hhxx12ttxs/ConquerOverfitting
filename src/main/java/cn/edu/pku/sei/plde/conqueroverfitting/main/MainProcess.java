@@ -49,7 +49,7 @@ public class MainProcess {
             System.out.println("Main Process: set work directory error at project "+projectType+"-"+projectNumber);
             File recordPackage = new File(System.getProperty("user.dir")+"/patch/");
             recordPackage.mkdirs();
-            File main = new File(recordPackage.getAbsolutePath()+"/"+"Log");
+            File main = new File(recordPackage.getAbsolutePath()+"/"+"FixResult.log");
             try {
                 if (!main.exists()) {
                     main.createNewFile();
@@ -120,14 +120,14 @@ public class MainProcess {
     public boolean fixSuspicious(Suspicious suspicious, String project) throws Exception{
         SuspiciousFixer fixer = new SuspiciousFixer(suspicious, project);
         if (fixer.mainFixProcess()){
-            return isFixSuccess(suspicious, fixer.boundarysMap, project);
+            printCollectingMessage(project, suspicious);
+            return isFixSuccess( project);
         }
         return false;
     }
 
-    public boolean isFixSuccess(Suspicious suspicious, Map<ExceptionVariable,List<String>> boundarys, String project){
+    public boolean isFixSuccess( String project){
         System.out.println("Fix Success One Place");
-        printCollectingMessage(project, suspicious);
         if (TestUtils.getFailTestNumInProject(project) > 0){
             Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc,libPath, project);
             List<Suspicious> suspiciouses = localization.getSuspiciousLite(false);
@@ -169,10 +169,10 @@ public class MainProcess {
         /* 四个整个项目需要的参数 */
         FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project,projectDir.getAbsolutePath());
         List<String> paths = PathUtils.getSrcPath(project);
-        classpath = PATH_OF_DEFECTS4J+project+paths.get(0);
-        testClasspath = PATH_OF_DEFECTS4J+project+paths.get(1);
-        classSrc = PATH_OF_DEFECTS4J+project+paths.get(2);
-        testClassSrc = PATH_OF_DEFECTS4J + project + paths.get(3);
+        classpath = projectDir+"/"+project+paths.get(0);
+        testClasspath = projectDir+"/"+project+paths.get(1);
+        classSrc = projectDir+"/"+project+paths.get(2);
+        testClassSrc = projectDir+"/"+ project + paths.get(3);
         FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project+"/src/test/resources/",System.getProperty("user.dir")+"/src/test");
         File libPkg = new File(projectDir.getAbsolutePath()+"/"+project+"/lib/");
         if (libPkg.exists() && libPkg.list() != null){

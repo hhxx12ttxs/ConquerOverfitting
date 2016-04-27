@@ -34,6 +34,8 @@ public class SuspiciousFixer {
     private String project;
     private int errorTestNum;
     private long searchTime = 0;
+    private List<String> methodOneHistory = new ArrayList<>();
+    private List<String> methodTwoHistory = new ArrayList<>();
     public SuspiciousFixer(Suspicious suspicious, String project){
         this.suspicious = suspicious;
         this.project = project;
@@ -58,7 +60,7 @@ public class SuspiciousFixer {
             }
          }
         for (Map.Entry<Integer, List<TraceResult>> entry: firstToGo.entrySet()){
-            if (fixInLineWithTraceResult(entry.getKey(), entry.getValue(), extractor)){
+            if (fixInLineWithTraceResult(entry.getKey(), entry.getValue(), extractor, false)){
                 return true;
             }
         }
@@ -66,14 +68,14 @@ public class SuspiciousFixer {
             if (firstToGo.containsKey(entry.getKey())){
                 continue;
             }
-            if (fixInLineWithTraceResult(entry.getKey(), entry.getValue(), extractor)){
+            if (fixInLineWithTraceResult(entry.getKey(), entry.getValue(), extractor, true)){
                 return true;
             }
         }
         return false;
     }
 
-    private boolean fixInLineWithTraceResult(int line, List<TraceResult> traceResults, ExceptionExtractor extractor){
+    private boolean fixInLineWithTraceResult(int line, List<TraceResult> traceResults, ExceptionExtractor extractor, boolean onlyMethod1){
         trueValues = AbandanTrueValueFilter.getTrueValue(traceResults, suspicious.getAllInfo());
         falseValues = AbandanTrueValueFilter.getFalseValue(traceResults, suspicious.getAllInfo());
         exceptionVariables = extractor.extract(suspicious,traceResults);
@@ -88,11 +90,13 @@ public class SuspiciousFixer {
             if (!methodOneResult.equals("")) {
                 return true;
             }
-            String methodTwoResult = fixMethodOne(suspicious, boundarys, project, line, errorTestNum, false);
-            printPatchMessage(suspicious, project, methodTwoResult, exceptionVariables, echelons, line);
-            if (!methodTwoResult.equals("")) {
-                printHistoryBoundary(boundarys, methodTwoResult);
-                return true;
+            if (!onlyMethod1){
+                String methodTwoResult = fixMethodOne(suspicious, boundarys, project, line, errorTestNum, false);
+                printPatchMessage(suspicious, project, methodTwoResult, exceptionVariables, echelons, line);
+                if (!methodTwoResult.equals("")) {
+                    printHistoryBoundary(boundarys, methodTwoResult);
+                    return true;
+                }
             }
         }
         return false;
@@ -157,7 +161,10 @@ public class SuspiciousFixer {
             List<String> ifStrings = entry.getValue();
             writer.write("====================================================\n");
             writer.write("Tried ifStrings With AssertMessage:"+assertString+"\n");
-            for (String ifString: ifStrings){
+            for (String ifString: methodOneHistory){
+                writer.write(ifString+"\n");
+            }
+            for (String ifString: methodTwoHistory){
                 writer.write(ifString+"\n");
             }
             writer.write("====================================================\n\n");
@@ -290,7 +297,7 @@ public class SuspiciousFixer {
     }
 
 
-    public static String fixMethodTwo(Suspicious suspicious, Map<String, List<String>> ifStrings, String project, int errorLine, int errorTestNum, boolean debug){
+    public String fixMethodTwo(Suspicious suspicious, Map<String, List<String>> ifStrings, String project, int errorLine, int errorTestNum, boolean debug){
         if (ifStrings.size() == 0){
             return "";
         }
@@ -298,11 +305,12 @@ public class SuspiciousFixer {
         if (fixer.fix(ifStrings, Sets.newHashSet(errorLine), project, debug)){
             return fixer.correctPatch+"["+fixer.correctStartLine+","+fixer.correctEndLine+"]";
         }
+        methodTwoHistory  = fixer.triedPatch;
         return "";
     }
 
 
-    public static String fixMethodOne(Suspicious suspicious,Map<String, List<String>> ifStrings, String project, int errorLine, int errorTestNum, boolean debug) {
+    public String fixMethodOne(Suspicious suspicious,Map<String, List<String>> ifStrings, String project, int errorLine, int errorTestNum, boolean debug) {
         if (ifStrings.size() == 0){
             return "";
         }
@@ -360,6 +368,7 @@ public class SuspiciousFixer {
             }
         }
         int finalErrorNums = methodOneFixer.fix();
+        methodOneHistory = methodOneFixer.triedPatch;
         if (finalErrorNums != -1){
             return methodOneFixer._patches.get(0)._patchString.get(0);
         }

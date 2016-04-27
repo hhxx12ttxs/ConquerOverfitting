@@ -27,6 +27,7 @@ public class MethodTwoFixer {
     private String _methodCode;
     private Set<Integer> _errorLines;
     private int _methodStartLine;
+    public List<String> triedPatch = new ArrayList<>();
     private int _methodEndLine;
     private int _errorTestNum;
     public String correctPatch;
@@ -88,6 +89,7 @@ public class MethodTwoFixer {
                                 ifStatement =lastLineString+ "||" +getIfStringFromStatement(ifString) + ifEnd;
                                 result = fixWithAddIf(blockStartLine-1, endLine, ifStatement,entry.getKey(),  true, project, debug);
                             }
+                            triedPatch.add(ifStatement);
                         }
                         if (result){
                             correctPatch = ifString;

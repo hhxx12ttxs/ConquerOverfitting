@@ -315,7 +315,10 @@ public class VariableTracer {
             return;
         }
         String code = FileUtils.getCodeFromFile(_testSrcPath, _testClassname);
-        List<Integer> methodLine = CodeUtils.getSingleMethodLine(code, _testMethodName);
+        String methodString = CodeUtils.getMethodString(code,_testMethodName);
+        String spreadString = CodeUtils.spreadFor(methodString);
+        System.out.println(spreadString);
+        /*
         if (methodLine.size() != 2){
             return;
         }
@@ -328,10 +331,9 @@ public class VariableTracer {
             String lineString = CodeUtils.getLineFromCode(code, i);
             if (LineUtils.isForLoopLine(lineString)) {
                 isInFor = true;
-                forStatement += lineString+"\n";
             }
             if (isInFor){
-                forStatement +=lineString;
+                forStatement +=lineString+"\n";
                 SourceUtils.commentCodeInSourceFile(sourceFile, i);
                 braceCount += CodeUtils.countChar(lineString, '{');
                 braceCount -= CodeUtils.countChar(lineString, '}');
@@ -350,7 +352,7 @@ public class VariableTracer {
 
                 }
             }
-        }
+        }*/
     }
 
 }
