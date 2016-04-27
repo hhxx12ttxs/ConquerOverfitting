@@ -37,8 +37,8 @@ public class EntiretyTest {
     public List<Suspicious> triedSuspicious = new ArrayList<>();
     @Test
     public void testEntirety() throws Exception{
-        String project = setWorkDirectory("Math",47);
-        Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc,libPath);
+        String project = setWorkDirectory("Math",3);
+        Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc,libPath, project);
         List<Suspicious> suspiciouses = localization.getSuspiciousLite();
         suspiciousLoop(suspiciouses, project);
     }
@@ -79,7 +79,7 @@ public class EntiretyTest {
         System.out.println("Fix Success One Place");
         printCollectingMessage(suspicious, boundarys);
         if (TestUtils.getFailTestNumInProject(project) > 0){
-            Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc,libPath);
+            Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc,libPath, project);
             List<Suspicious> suspiciouses = localization.getSuspiciousLite(false);
             if (suspiciouses.size() == 0){
                 return false;

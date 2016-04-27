@@ -133,6 +133,9 @@ public class ReturnCapturer {
     }
 
     private String fixTest() throws Exception{
+        if (!_functionCode.contains("{") || _functionCode.contains("}")){
+            return "";
+        }
         String functionBody = _functionCode.substring(_functionCode.indexOf('{')+1,_functionCode.lastIndexOf('}'));
         String[] functionLines = functionBody.split("\n");
         boolean annotationFlag = false;

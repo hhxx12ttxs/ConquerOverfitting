@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.*;
 
 /**
  * Created by yanrunfa on 16/2/21.
@@ -56,7 +57,90 @@ public class Main {
             }
         }
     }
+    private static void fixProject(String project, String path) throws Exception{
+        project = project.replace("_","-");
+        if (!project.contains("-")){
+            System.out.println("Main: cannot recognize project name \""+project+"\"");
+            return;
+        }
+        if (!StringUtils.isNumeric(project.split("-")[1])){
+            System.out.println("Main: cannot recognize project name \""+project+"\"");
+            return;
+        }
+        int timeout = 3600;
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
+        Future<Boolean> future = executorService.submit(new RunFixProcess(path, project));
+        try {
+            future.get(timeout, TimeUnit.SECONDS);
+        } catch (InterruptedException e){
+            processPatchFile(project);
+            future.cancel(true);
+        } catch (ExecutionException e){
+            processPatchFile(project);
+            future.cancel(true);
+        } catch (TimeoutException e){
+            processPatchFile(project);
+            future.cancel(true);
+        } finally {
+            System.out.println("Finish Fix "+project);
+        }
+    }
 
+
+    private static void processPatchFile(String project){
+        File recordFile = new File(System.getProperty("user.dir")+"/patch/"+project);
+        if (recordFile.exists()){
+            recordFile.renameTo(new File(System.getProperty("user.dir")+recordFile.getName()+".fail"));
+        }
+    }
+}
+
+
+class RunFixProcess implements Callable<Boolean> {
+    public String path;
+    public String projectType;
+    public String project;
+    public int projectNumber;
+
+    public RunFixProcess(String path, String project){
+        this.path = path;
+        this.project = project;
+        this.projectType = project.split("-")[0];
+        this.projectNumber = Integer.valueOf(project.split("-")[1]);
+    }
+
+    public Boolean call(){
+        MainProcess process = new MainProcess(path);
+        boolean result;
+        if (Thread.interrupted()){
+            return false;
+        }
+        try {
+            result = process.mainProcess(projectType, projectNumber);
+        } catch (Exception e){
+            e.printStackTrace();
+            result = false;
+        }
+        File main = new File(System.getProperty("user.dir")+"/"+"FixResult.log");
+        try {
+            if (!main.exists()) {
+                main.createNewFile();
+            }
+            FileWriter writer = new FileWriter(main, true);
+            writer.write("project "+project+" "+(result?"Success":"Fail")+"\n");
+            writer.close();
+        }catch (IOException e){
+            e.printStackTrace();
+        }
+
+        if (!result){
+            File recordFile = new File(System.getProperty("user.dir")+"/patch/"+project);
+            if (recordFile.exists()){
+                recordFile.renameTo(new File(System.getProperty("user.dir")+recordFile.getName()+".fail"));
+            }
+        }
+        return result;
+    }
     private static void fixProject(String project, String path) throws Exception{
         project = project.replace("_","-");
         if (!project.contains("-")){
