@@ -159,7 +159,7 @@ public class Localization  {
         }
         RecordUtils recordUtils = new RecordUtils(project,"Localization");
         for (Suspicious suspicious: result){
-            recordUtils.write(suspicious.classname()+"#"+suspicious.functionnameWithoutParam()+"#"+suspicious.getDefaultErrorLine());
+            recordUtils.write(suspicious.classname()+"#"+suspicious.functionnameWithoutParam()+"#"+suspicious.getDefaultErrorLine()+"\n");
         }
         recordUtils.close();
         return result;

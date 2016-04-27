@@ -1,5 +1,6 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.utils;
 
+import cn.edu.pku.sei.plde.conqueroverfitting.agent.RunTestAgent;
 import org.junit.runner.JUnitCore;
 
 import java.io.IOException;
@@ -25,16 +26,20 @@ public class PathUtils {
     }
 
     public static String getAgentPath(){
-        //String agentPath =  RunTestAgent.class.getProtectionDomain().getCodeSource().getLocation().getFile();
-        //if (System.getProperty("os.name").toLowerCase().startsWith("win") && agentPath.charAt(0) == '/') {
-        //    agentPath = agentPath.substring(1);
-        //}
-        return System.getProperty("user.dir")+"/lib/RunTestAgent.jar";
+        String agentPath =  RunTestAgent.class.getProtectionDomain().getCodeSource().getLocation().getFile();
+        if (System.getProperty("os.name").toLowerCase().startsWith("win") && agentPath.charAt(0) == '/') {
+            agentPath = agentPath.substring(1);
+        }
+        return agentPath;
     }
 
 
     public static String getJunitPath(){
-        return System.getProperty("user.dir")+"/lib/junit-4.10.jar";
+        String junitPath = JUnitCore.class.getProtectionDomain().getCodeSource().getLocation().getFile();
+        if (System.getProperty("os.name").toLowerCase().startsWith("win") && junitPath.charAt(0) == '/') {
+            junitPath = junitPath.substring(1);
+        }
+        return junitPath;
     }
 
     public static String getPackageNameFromPath(String path){

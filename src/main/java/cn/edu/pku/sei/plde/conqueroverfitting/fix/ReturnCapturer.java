@@ -133,11 +133,11 @@ public class ReturnCapturer {
     }
 
     private String fixTest() throws Exception{
-        if (!_functionCode.contains("{") || _functionCode.contains("}")){
-            return "";
-        }
-        String functionBody = _functionCode.substring(_functionCode.indexOf('{')+1,_functionCode.lastIndexOf('}'));
-        String[] functionLines = functionBody.split("\n");
+        //if (!_functionCode.contains("{") || _functionCode.contains("}")){
+        //    return "";
+        //}
+        //String functionBody = _functionCode.substring(_functionCode.indexOf('{')+1,_functionCode.lastIndexOf('}'));
+        String[] functionLines = _functionCode.split("\n");
         boolean annotationFlag = false;
         int errorLineIndex = 0;
         if (_errorLineNum > 0){
@@ -171,7 +171,7 @@ public class ReturnCapturer {
                 return exceptionProcessing(detectingLine);
             }
             if (detectingLine.contains("assert")){
-                return assertProcessing(detectingLine, functionBody);
+                return assertProcessing(detectingLine, _functionCode);
             }
         }
         //No Assert And Throw Exception Found

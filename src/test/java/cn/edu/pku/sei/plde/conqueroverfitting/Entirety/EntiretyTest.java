@@ -37,7 +37,7 @@ public class EntiretyTest {
     public List<Suspicious> triedSuspicious = new ArrayList<>();
     @Test
     public void testEntirety() throws Exception{
-        String project = setWorkDirectory("Math",3);
+        String project = setWorkDirectory("Math",61);
         Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc,libPath, project);
         List<Suspicious> suspiciouses = localization.getSuspiciousLite();
         suspiciousLoop(suspiciouses, project);

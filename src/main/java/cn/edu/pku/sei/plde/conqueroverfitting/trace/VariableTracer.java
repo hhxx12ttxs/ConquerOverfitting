@@ -61,6 +61,9 @@ public class VariableTracer {
         _testClassname = testClassname;
         _testMethodName = testMethodName;
         _functionname = functionname;
+        if (!isSuccess){
+            spreadForLoop();
+        }
         _asserts = new Asserts(_classpath,_srcPath,_testClasspath,_testSrcPath,testClassname,testMethodName, _suspicious._libPath);
         List<MethodInfo> methodInfos = _suspicious.getMethodInfo(_srcPath);
         ErrorLineTracer tracer = new ErrorLineTracer(_suspicious,_asserts, _classname, _functionname);
@@ -304,6 +307,50 @@ public class VariableTracer {
             }
         }
         return result;
+    }
+
+    private void spreadForLoop(){
+        File sourceFile = new File(FileUtils.getFileAddressOfJava(_testSrcPath, _testClassname));
+        if (!sourceFile.exists()){
+            return;
+        }
+        String code = FileUtils.getCodeFromFile(_testSrcPath, _testClassname);
+        List<Integer> methodLine = CodeUtils.getSingleMethodLine(code, _testMethodName);
+        if (methodLine.size() != 2){
+            return;
+        }
+        int methodStartLine = methodLine.get(0);
+        int methodEndLine = methodLine.get(1);
+        String forStatement = "";
+        int braceCount = 0;
+        boolean isInFor = false;
+        for (int i= methodStartLine; i< methodEndLine; i++){
+            String lineString = CodeUtils.getLineFromCode(code, i);
+            if (LineUtils.isForLoopLine(lineString)) {
+                isInFor = true;
+                forStatement += lineString+"\n";
+            }
+            if (isInFor){
+                forStatement +=lineString;
+                SourceUtils.commentCodeInSourceFile(sourceFile, i);
+                braceCount += CodeUtils.countChar(lineString, '{');
+                braceCount -= CodeUtils.countChar(lineString, '}');
+                if (braceCount == 0){
+                    isInFor = false;
+                    String spreadString = CodeUtils.spreadFor(forStatement);
+                    if (spreadString == null){
+                        break;
+                    }
+                    SourceUtils.insertCodeToSourceFile(sourceFile,spreadString,i+1);
+                    try {
+                        System.out.println(ShellUtils.shellRun(Arrays.asList("javac -Xlint:unchecked -source 1.6 -target 1.6 -cp "+ buildClasspath(Arrays.asList(PathUtils.getJunitPath(),_testClasspath,_classpath)) +" -d "+_testClasspath+" "+ sourceFile.getAbsolutePath())));
+                    }catch (IOException e){
+                        return;
+                    }
+
+                }
+            }
+        }
     }
 
 }

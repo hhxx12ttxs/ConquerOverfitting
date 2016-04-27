@@ -12,7 +12,10 @@ import org.junit.Test;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.text.Format;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
@@ -127,7 +130,9 @@ class RunFixProcess implements Callable<Boolean> {
                 main.createNewFile();
             }
             FileWriter writer = new FileWriter(main, true);
-            writer.write("project "+project+" "+(result?"Success":"Fail")+"\n");
+            Format format = new SimpleDateFormat("yyyyMMdd");
+            System.out.println();
+            writer.write("project "+project+" "+(result?"Success":"Fail")+"Time:"+format.format(new Date())+"\n");
             writer.close();
         }catch (IOException e){
             e.printStackTrace();
