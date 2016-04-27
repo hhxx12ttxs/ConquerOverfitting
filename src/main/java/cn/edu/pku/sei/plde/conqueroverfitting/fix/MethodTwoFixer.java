@@ -1,10 +1,10 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.fix;
 
-import cn.edu.pku.sei.plde.conqueroverfitting.agent.Utils;
 import cn.edu.pku.sei.plde.conqueroverfitting.assertCollect.Asserts;
 import cn.edu.pku.sei.plde.conqueroverfitting.junit.JunitRunner;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Suspicious;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.common.support.Factory;
+import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.*;
 import org.apache.commons.lang.StringUtils;
 
@@ -54,14 +54,16 @@ public class MethodTwoFixer {
         return fix(ifStrings, _errorLines, project, debug);
     }
 
-    public boolean fix(Map<String, List<String>> ifStrings, Set<Integer> errorLines, String project, boolean debug){
-        for (Map.Entry<String, List<String>> entry: ifStrings.entrySet()){
+    public boolean fix(Map<String, List<String>> boundarys, Set<Integer> errorLines, String project, boolean debug){
+        for (Map.Entry<String, List<String>> entry: boundarys.entrySet()){
+            List<String> ifStrings = entry.getValue();
+            ifStrings = TypeUtils.arrayDup(ifStrings);
             for (int errorLine: errorLines){
                 List<Integer> ifLines = getIfLine(errorLine);
                 if (ifLines.size()!=2){
                     continue;
                 }
-                for (String ifString: entry.getValue()){
+                for (String ifString: ifStrings){
                     if (ifString.equals("")){
                         continue;
                     }
@@ -88,7 +90,7 @@ public class MethodTwoFixer {
                             }
                         }
                         if (result){
-                            correctPatch = ifStatement;
+                            correctPatch = ifString;
                             correctStartLine = blockStartLine-1;
                             correctEndLine = endLine;
                             return true;
@@ -141,7 +143,7 @@ public class MethodTwoFixer {
 
         try {
             targetClassFile.delete();
-            System.out.println(Utils.shellRun(Arrays.asList("javac -Xlint:unchecked -source 1.6 -target 1.6 -cp "+ buildClasspath(Arrays.asList(PathUtils.getJunitPath())) +" -d "+_classpath+" "+ targetJavaFile.getAbsolutePath())));
+            System.out.println(ShellUtils.shellRun(Arrays.asList("javac -Xlint:unchecked -source 1.6 -target 1.6 -cp "+ buildClasspath(Arrays.asList(PathUtils.getJunitPath())) +" -d "+_classpath+" "+ targetJavaFile.getAbsolutePath())));
         }
         catch (IOException e){
             FileUtils.copyFile(classBackup, targetClassFile);

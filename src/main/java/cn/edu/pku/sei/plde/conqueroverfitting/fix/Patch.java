@@ -14,7 +14,7 @@ public class Patch {
     public final String _testMethodName;
     public final String _className;
     public final List<Integer> _patchLines = new ArrayList<>();
-    public final List<String> _patchString = new ArrayList<>();
+    public List<String> _patchString = new ArrayList<>();
     public String _addonFunction = "";
     public String _addonImport = "";
 

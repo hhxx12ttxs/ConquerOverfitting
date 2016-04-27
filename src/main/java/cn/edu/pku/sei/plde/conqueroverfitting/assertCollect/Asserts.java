@@ -1,7 +1,4 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.assertCollect;
-
-import cn.edu.pku.sei.plde.conqueroverfitting.agent.CommentAssertTransformer;
-import cn.edu.pku.sei.plde.conqueroverfitting.agent.Utils;
 import cn.edu.pku.sei.plde.conqueroverfitting.slice.StaticSlice;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.*;
 import com.sun.org.apache.bcel.internal.classfile.Code;
@@ -135,7 +132,7 @@ public class Asserts {
                     break;
                 }
                 SourceUtils.commentCodeInSourceFile(tempJavaFile,lineNum);
-                System.out.println(Utils.shellRun(Arrays.asList("javac -Xlint:unchecked -source 1.6 -target 1.6 -cp "+ buildClasspath(Arrays.asList(PathUtils.getJunitPath(),_testClasspath,_classpath)) +" -d "+_testClasspath+" "+ tempJavaFile.getAbsolutePath())));
+                System.out.println(ShellUtils.shellRun(Arrays.asList("javac -Xlint:unchecked -source 1.6 -target 1.6 -cp "+ buildClasspath(Arrays.asList(PathUtils.getJunitPath(),_testClasspath,_classpath)) +" -d "+_testClasspath+" "+ tempJavaFile.getAbsolutePath())));
             }
             catch (NotFoundException e){
                 System.out.println("ERROR: Cannot Find Source File: " + _testClassname + " in temp file package\n");
@@ -284,7 +281,7 @@ public class Asserts {
         List<String> assertLines = new ArrayList<>(_asserts);
         for (int assertLine: errorAssertLines){
             String assertString = CodeUtils.getWholeLineFromCode(_code, assertLine);
-            if (assertString.contains("fail();")){
+            if (assertString.contains("fail(")){
                 assertString += assertLine;
             }
             assertLines.remove(assertString);
@@ -303,9 +300,15 @@ public class Asserts {
                 String lineString = CodeUtils.getLineFromCode(_code, i);
                 if (!lineSet.contains(i) && LineUtils.isCommentable(lineString)){
                     SourceUtils.commentCodeInSourceFile(tempJavaFile, i);
+                    if (lineString.contains("fail(") && LineUtils.isLineInFailBlock(_code,i)){
+                        int j = i-1;
+                        while (!CodeUtils.getLineFromCode(_code, j).contains("try {")){
+                            SourceUtils.commentCodeInSourceFile(tempJavaFile, j--);
+                        }
+                    }
                 }
             }
-            System.out.println(Utils.shellRun(Arrays.asList("javac -Xlint:unchecked -source 1.6 -target 1.6 -cp "+ buildClasspath(Arrays.asList(PathUtils.getJunitPath(),_testClasspath,_classpath)) +" "+ tempJavaFile.getAbsolutePath())));
+            System.out.println(ShellUtils.shellRun(Arrays.asList("javac -Xlint:unchecked -source 1.6 -target 1.6 -cp "+ buildClasspath(Arrays.asList(PathUtils.getJunitPath(),_testClasspath,_classpath)) +" "+ tempJavaFile.getAbsolutePath())));
         } catch (IOException e){
             e.printStackTrace();
             return "";

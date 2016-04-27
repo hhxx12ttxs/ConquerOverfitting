@@ -25,6 +25,7 @@ public class Main {
         if (args.length == 0){
             System.out.println("Hello world");
         }
+
         String path = args[0];
         File file = new File(path);
         File [] sub_files = file.listFiles();
@@ -39,8 +40,10 @@ public class Main {
             } catch (Exception e){
                 e.printStackTrace();
             }
-
+            return;
         }
+        new File(System.getProperty("user.dir")+"/temp/").mkdirs();
+        new File(System.getProperty("user.dir")+"/suspicious/").mkdirs();
         for (File sub_file : sub_files){
             if (sub_file.isDirectory()){
                 System.out.println("Main: fixing project "+sub_file.getName());
@@ -76,7 +79,7 @@ public class Main {
                 main.createNewFile();
             }
             FileWriter writer = new FileWriter(main, true);
-            writer.write("project "+project+(result?"Success":"Fail")+"\n");
+            writer.write("project "+project+" "+(result?"Success":"Fail")+"\n");
             writer.close();
         }catch (IOException e){
             e.printStackTrace();
@@ -85,7 +88,7 @@ public class Main {
         if (!result){
             File recordFile = new File(recordPackage.getAbsolutePath()+"/"+project);
             if (recordFile.exists()){
-                recordFile.renameTo(new File(recordFile.getName()+".fail"));
+                recordFile.renameTo(new File(System.getProperty("user.dir")+recordFile.getName()+".fail"));
             }
         }
     }

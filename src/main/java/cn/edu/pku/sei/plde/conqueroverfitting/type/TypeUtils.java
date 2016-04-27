@@ -120,4 +120,18 @@ public class TypeUtils {
     public static boolean isArrayFromName(String name){
         return name.endsWith("[i]");
     }
+
+
+    public static List<String> arrayDup(List<String> array){
+        List<String> result = new ArrayList<>();
+        if (array == null){
+            return new ArrayList<>();
+        }
+        for (String value: array){
+            if (!result.contains(value)){
+                result.add(value);
+            }
+        }
+        return result;
+    }
 }

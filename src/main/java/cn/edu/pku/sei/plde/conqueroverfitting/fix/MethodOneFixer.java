@@ -1,10 +1,9 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.fix;
 
-import cn.edu.pku.sei.plde.conqueroverfitting.agent.RunTestAgent;
-import cn.edu.pku.sei.plde.conqueroverfitting.agent.Utils;
 import cn.edu.pku.sei.plde.conqueroverfitting.assertCollect.Asserts;
 import cn.edu.pku.sei.plde.conqueroverfitting.junit.JunitRunner;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Suspicious;
+import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.*;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.MethodInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
@@ -51,6 +50,7 @@ public class MethodOneFixer {
         String truePatchString = "";
         int truePatchLine = 0;
         String code = FileUtils.getCodeFromFile(javaBackup);
+        patch._patchString = TypeUtils.arrayDup(patch._patchString);
         for (String patchString: patch._patchString){
             if (patchString.equals("")){
                 continue;
@@ -70,7 +70,7 @@ public class MethodOneFixer {
                 }
                 try {
                     targetClassFile.delete();
-                    System.out.println(Utils.shellRun(Arrays.asList("javac -Xlint:unchecked -source 1.6 -target 1.6 -cp "+ buildClasspath(Arrays.asList(PathUtils.getJunitPath())) +" -d "+_classpath+" "+ targetJavaFile.getAbsolutePath())));
+                    System.out.println(ShellUtils.shellRun(Arrays.asList("javac -Xlint:unchecked -source 1.6 -target 1.6 -cp "+ buildClasspath(Arrays.asList(PathUtils.getJunitPath())) +" -d "+_classpath+" "+ targetJavaFile.getAbsolutePath())));
                 }
                 catch (IOException e){
                     System.out.println("fix fail");
@@ -147,7 +147,7 @@ public class MethodOneFixer {
         }
         for (File javaFile: tobeCompile){
             try {
-                System.out.println(Utils.shellRun(Arrays.asList("javac -Xlint:unchecked -source 1.6 -target 1.6 -cp "+ buildClasspath(Arrays.asList(PathUtils.getJunitPath())) +" -d "+_classpath+" "+ javaFile.getAbsolutePath())));
+                System.out.println(ShellUtils.shellRun(Arrays.asList("javac -Xlint:unchecked -source 1.6 -target 1.6 -cp "+ buildClasspath(Arrays.asList(PathUtils.getJunitPath())) +" -d "+_classpath+" "+ javaFile.getAbsolutePath())));
             }
             catch (IOException e){
                 return -1;

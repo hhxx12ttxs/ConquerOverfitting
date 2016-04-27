@@ -43,7 +43,6 @@ public class MainProcess {
     public boolean mainProcess(String projectType, int projectNumber) throws Exception{
         String project = setWorkDirectory(projectType,projectNumber);
         startLine = System.currentTimeMillis();
-        libPath.add(FromString.class.getProtectionDomain().getCodeSource().getLocation().getFile());
         if (!checkProjectDirectory()){
             System.out.println("Main Process: set work directory error at project "+projectType+"-"+projectNumber);
             return false;
@@ -82,9 +81,9 @@ public class MainProcess {
                 continue;
             }
             try {
-                if ((System.currentTimeMillis()-startLine)/1000 >1800){
-                    return false;
-                }
+                //if ((System.currentTimeMillis()-startLine)/1000 >1800){
+                //    return false;
+                //}
                 if (fixSuspicious(suspicious, project)){
                     return true;
                 }
@@ -107,14 +106,21 @@ public class MainProcess {
 
     public boolean isFixSuccess(Suspicious suspicious, Map<ExceptionVariable,List<String>> boundarys, String project){
         System.out.println("Fix Success One Place");
+        printCollectingMessage(project, suspicious);
         if (TestUtils.getFailTestNumInProject(project) > 0){
-           return false;
+            Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc,libPath);
+            List<Suspicious> suspiciouses = localization.getSuspiciousLite(false);
+            if (suspiciouses.size() == 0){
+                return false;
+            }
+            suspiciousLoop(suspiciouses, project);
+            return true;
         }
         else {
-            printCollectingMessage(project, suspicious);
             System.out.println("Fix All Place Success");
             return true;
         }
+
     }
 
     public void printCollectingMessage(String project, Suspicious suspicious){
@@ -245,5 +251,6 @@ public class MainProcess {
         }
         return project;
     }
+
 
 }

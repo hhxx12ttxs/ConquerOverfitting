@@ -1,6 +1,5 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.trace;
 
-import cn.edu.pku.sei.plde.conqueroverfitting.agent.Utils;
 import cn.edu.pku.sei.plde.conqueroverfitting.assertCollect.Asserts;
 import cn.edu.pku.sei.plde.conqueroverfitting.junit.JunitRunner;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Localization;
