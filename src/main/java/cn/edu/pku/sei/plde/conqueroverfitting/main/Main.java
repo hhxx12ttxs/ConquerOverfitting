@@ -29,7 +29,8 @@ public class Main {
         if (args.length == 0){
             System.out.println("Hello world");
         }
-
+        new File(System.getProperty("user.dir")+"/temp/").mkdirs();
+        new File(System.getProperty("user.dir")+"/suspicious/").mkdirs();
         String path = args[0];
         File file = new File(path);
         File [] sub_files = file.listFiles();
@@ -46,8 +47,6 @@ public class Main {
             }
             return;
         }
-        new File(System.getProperty("user.dir")+"/temp/").mkdirs();
-        new File(System.getProperty("user.dir")+"/suspicious/").mkdirs();
         for (File sub_file : sub_files){
             if (sub_file.isDirectory()){
                 System.out.println("Main: fixing project "+sub_file.getName());
@@ -76,12 +75,15 @@ public class Main {
         try {
             future.get(timeout, TimeUnit.SECONDS);
         } catch (InterruptedException e){
+            e.printStackTrace();
             processPatchFile(project);
             future.cancel(true);
         } catch (ExecutionException e){
+            e.printStackTrace();
             processPatchFile(project);
             future.cancel(true);
         } catch (TimeoutException e){
+            e.printStackTrace();
             processPatchFile(project);
             future.cancel(true);
         } finally {
@@ -145,40 +147,5 @@ class RunFixProcess implements Callable<Boolean> {
             }
         }
         return result;
-    }
-    private static void fixProject(String project, String path) throws Exception{
-        project = project.replace("_","-");
-        if (!project.contains("-")){
-            System.out.println("Main: cannot recognize project name \""+project+"\"");
-            return;
-        }
-        if (!StringUtils.isNumeric(project.split("-")[1])){
-            System.out.println("Main: cannot recognize project name \""+project+"\"");
-            return;
-        }
-        String projectType = project.split("-")[0];
-        int projectNumber = Integer.valueOf(project.split("-")[1]);
-        MainProcess process = new MainProcess(path);
-        boolean result = process.mainProcess(projectType, projectNumber);
-        File recordPackage = new File(System.getProperty("user.dir")+"/patch/");
-        recordPackage.mkdirs();
-        File main = new File(recordPackage.getAbsolutePath()+"/"+"Log");
-        try {
-            if (!main.exists()) {
-                main.createNewFile();
-            }
-            FileWriter writer = new FileWriter(main, true);
-            writer.write("project "+project+" "+(result?"Success":"Fail")+"\n");
-            writer.close();
-        }catch (IOException e){
-            e.printStackTrace();
-        }
-
-        if (!result){
-            File recordFile = new File(recordPackage.getAbsolutePath()+"/"+project);
-            if (recordFile.exists()){
-                recordFile.renameTo(new File(System.getProperty("user.dir")+recordFile.getName()+".fail"));
-            }
-        }
     }
 }

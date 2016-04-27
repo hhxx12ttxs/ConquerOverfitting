@@ -64,6 +64,9 @@ public class MainProcess {
         }
         Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc,libPath, project);
         List<Suspicious> suspiciouses = localization.getSuspiciousLite();
+        if (suspiciouses.size() == 0){
+            System.out.println("no suspicious found\n");
+        }
         return suspiciousLoop(suspiciouses, project);
     }
 
