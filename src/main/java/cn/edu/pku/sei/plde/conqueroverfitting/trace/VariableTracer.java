@@ -63,9 +63,9 @@ public class VariableTracer {
         _testClassname = testClassname;
         _testMethodName = testMethodName;
         _functionname = functionname;
-        if (!isSuccess){
-            spreadForLoop();
-        }
+        //if (!isSuccess){
+        //    spreadForLoop();
+        //}
         _asserts = new Asserts(_classpath,_srcPath,_testClasspath,_testSrcPath,testClassname,testMethodName, _suspicious._libPath);
         List<MethodInfo> methodInfos = _suspicious.getMethodInfo(_srcPath);
         ErrorLineTracer tracer = new ErrorLineTracer(_suspicious,_asserts, _classname, _functionname);
