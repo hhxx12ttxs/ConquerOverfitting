@@ -2,7 +2,12 @@ package cn.edu.pku.sei.plde.conqueroverfitting.utils;
 
 import org.junit.Test;
 import static org.junit.Assert.*;
+
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import cn.edu.pku.sei.plde.conqueroverfitting.jdtVisitor.IdentifierCollectVisitor;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.JDTUtils;
@@ -15,15 +20,50 @@ import org.junit.Test;
 public class CodeUtilsTest {
     @Test
     public void testGetVariableInMethod(){
-        String methodSrc = "\tpublic int method(int c){\n" +
-                "\t\tint a = f(d);\n" +
-                "\t\treturn b.e;\n" +
-                "\t}";
-        Set<String> suspiciousVariables = new HashSet<String>();
-        suspiciousVariables.add("a");
-        suspiciousVariables.add("g");
-        CodeUtils.getVariableInMethod(methodSrc, suspiciousVariables);
-        assertTrue(suspiciousVariables.size() == 1);
-        assertTrue(suspiciousVariables.contains("a"));
+//        String methodSrc = "\tpublic int method(int c){\n" +
+//                "\t\tint a = f(d);\n" +
+//                "\t\treturn b.e;\n" +
+//                "\t}";
+//        Set<String> suspiciousVariables = new HashSet<String>();
+//        suspiciousVariables.add("a");
+//        suspiciousVariables.add("g");
+//        CodeUtils.getVariableInMethod(methodSrc, suspiciousVariables);
+//        assertTrue(suspiciousVariables.size() == 1);
+//        assertTrue(suspiciousVariables.contains("a"));
+//
+//        List<String> list = new ArrayList<String>();
+//        for(int i = 1; i <= 106; i ++){
+//            list.add("Math_" + i);
+//        }
+//        for(int i = 1; i <= 27; i ++){
+//            list.add("Time_" + i);
+//        }
+//        for(int i = 1; i <= 26; i ++){
+//            list.add("Chart_" + i);
+//        }
+//        for(int i = 1; i <= 65; i ++){
+//            list.add("Lang_" + i);
+//        }
+//        for(int i = 1; i <= 133; i ++){
+//            list.add("Closure_" + i);
+//        }
+//        FileWriter fw = null;
+//        try {
+//            fw = new FileWriter("compile.sh");
+//            for(String str : list) {
+//                fw.write("cd " + str + "\n");
+//                fw.write("defects4j compile" + "\n");
+//                fw.write("cd .." + "\n");
+//            }
+//        } catch (Exception e) {
+//            System.out.println(e.toString());
+//        } finally {
+//            if (fw != null)
+//                try {
+//                    fw.close();
+//                } catch (IOException e) {
+//                    throw new RuntimeException("关闭失败！");
+//                }
+//        }
     }
 }
