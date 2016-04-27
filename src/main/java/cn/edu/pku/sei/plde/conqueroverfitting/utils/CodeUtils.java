@@ -15,14 +15,10 @@ import org.apache.commons.collections.ArrayStack;
 import org.apache.commons.collections.map.HashedMap;
 import org.apache.commons.lang.StringUtils;
 import org.eclipse.core.internal.utils.FileUtil;
+
+import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.dom.*;
-import org.eclipse.jdt.core.dom.ASTNode;
-import org.eclipse.jdt.core.dom.Block;
-import org.eclipse.jdt.core.dom.FieldDeclaration;
-import org.eclipse.jdt.core.dom.MethodDeclaration;
-import org.eclipse.jdt.core.dom.Statement;
-import org.eclipse.jdt.core.dom.TypeDeclaration;
-import org.eclipse.jdt.internal.compiler.ast.*;
+
 import org.eclipse.jdt.internal.core.dom.NaiveASTFlattener;
 import org.omg.CORBA.Object;
 import org.omg.PortableInterceptor.SYSTEM_EXCEPTION;
@@ -907,4 +903,125 @@ public class CodeUtils {
     }
 
 
+    public static String spreadFor(String code){
+        ASTParser parser = ASTParser.newParser(AST.JLS3);
+        Map<?, ?> options = JavaCore.getOptions();
+        JavaCore.setComplianceOptions(JavaCore.VERSION_1_7, options);
+        parser.setCompilerOptions(options);
+        parser.setSource(code.toCharArray());
+        parser.setKind(ASTParser.K_COMPILATION_UNIT);
+        parser.setResolveBindings(true);
+        CompilationUnit cu = (CompilationUnit) parser.createAST(null);
+        DummyVisitor dummyVisitor = new DummyVisitor();
+        cu.accept(dummyVisitor);
+        return dummyVisitor.spreadCode;
+    }
+}
+
+class DummyVisitor extends ASTVisitor {
+
+    public String spreadCode;
+
+    public boolean visit(MethodDeclaration methodDeclaration) {
+
+        Block mBody = methodDeclaration.getBody();
+
+        List<Statement> statementList = mBody.statements();
+        List<Statement> newStatements = new ArrayList<>();
+        for (Statement statement : statementList) {
+            if (statement instanceof ForStatement) {
+                newStatements.addAll(decomposeForStatement((ForStatement) statement));
+            } else {
+                AST ast = AST.newAST(AST.JLS3);
+                Statement s = (Statement) ASTNode.copySubtree(ast, statement);
+                newStatements.add(s);
+            }
+        }
+
+        mBody.statements().clear();
+        AST originAST = mBody.getAST();
+        for (Statement statement : newStatements) {
+            Statement s = (Statement) ASTNode.copySubtree(originAST, statement);
+            mBody.statements().add(s);
+        }
+
+        spreadCode = methodDeclaration.toString();
+
+        return true;
+    }
+
+    private List<Statement> decomposeForStatement(ForStatement forStatement) {
+        List<Statement> statementList = new ArrayList<>();
+
+        Expression initializer = (Expression) forStatement.initializers().get(0);
+        Expression condition = (Expression) forStatement.getExpression();
+        Expression update = (Expression) forStatement.updaters().get(0);
+
+
+        VariableDeclarationExpression vds = (VariableDeclarationExpression)initializer;
+        VariableDeclarationFragment vdf = (VariableDeclarationFragment) vds.fragments().get(0);
+        String varName = vdf.getName().toString();
+        int init = Integer.parseInt(vdf.getInitializer().toString());
+        int end = Integer.parseInt(((InfixExpression)condition).getRightOperand().toString());
+        int step = 1;
+
+
+        Block block = (Block) forStatement.getBody();
+        List<Statement> sl = block.statements();
+        int curvalue = init;
+        for (int curValue = init; curvalue < end; curvalue += step) {
+            for (Statement statement : sl) {
+                statement = (Statement) ASTNode.copySubtree(statement.getAST(), statement);
+                statement.accept(new ReplaceVisitor(varName, curvalue));
+                statementList.add((Statement) ASTNode.copySubtree(AST.newAST(AST.JLS3), statement));
+            }
+        }
+        return statementList;
+    }
+}
+
+class ReplaceVisitor extends ASTVisitor {
+    private String varName;
+    private Expression updateExp;
+
+    public ReplaceVisitor(String varName, int value) {
+        this.varName = varName;
+        updateExp = AST.newAST(AST.JLS3).newNumberLiteral(String.valueOf(value));
+    }
+
+    public boolean visit(InfixExpression exp){
+
+        Expression lexp = exp.getLeftOperand();
+        Expression rexp = exp.getRightOperand();
+
+        if(lexp.toString().equals(varName)){
+            exp.setLeftOperand((Expression) ASTNode.copySubtree(lexp.getAST(), updateExp));
+        }
+        if(rexp.toString().equals(varName)){
+            exp.setRightOperand((Expression) ASTNode.copySubtree(rexp.getAST(), updateExp));
+        }
+
+        return true;
+    }
+
+    public boolean visit(MethodInvocation methodInvovation){
+
+        List<Expression> arguments = methodInvovation.arguments();
+        List<Expression> newArgs = new ArrayList<>();
+        AST ast = AST.newAST(AST.JLS3);
+        for(Expression exp : arguments){
+            if(exp.toString().equals(varName)){
+                newArgs.add((Expression) ASTNode.copySubtree(ast, updateExp));
+            } else{
+                newArgs.add(exp);
+            }
+        }
+
+        methodInvovation.arguments().clear();
+        for(Expression exp : newArgs){
+            methodInvovation.arguments().add(ASTNode.copySubtree(methodInvovation.getAST(), exp));
+        }
+
+        return true;
+    }
 }
