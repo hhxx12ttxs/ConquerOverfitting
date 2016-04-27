@@ -19,6 +19,7 @@ import sun.misc.BASE64Encoder;
 
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
 
 /**
  * Created by yanrunfa on 16/2/19.
@@ -317,8 +318,13 @@ public class VariableTracer {
         }
         String code = FileUtils.getCodeFromFile(_testSrcPath, _testClassname);
         String methodString = CodeUtils.getMethodString(code,_testMethodName);
-        String spreadString = CodeUtils.spreadFor(methodString);
-        if (spreadString == null){
+        String spreadString;
+        try {
+             spreadString = CodeUtils.spreadFor(methodString);
+        } catch (Exception e){
+            return;
+        }
+        if (spreadString == null || spreadString.equals("")){
             return;
         }
         List<Integer> methodLine = CodeUtils.getSingleMethodLine(code, _testMethodName);
