@@ -111,20 +111,58 @@ public class MathUtilsTest {
 //        System.out.println("17xx " + boundaryWithFreqArrayList.get(1).value + boundaryWithFreqArrayList.get(1).rightClose);
 
 
-        String path = "experiment//searchcode//if-long-var1";
+//        String path = "experiment//searchcode//if-Complex";
+//        BoundaryCollect boundaryCollect = new BoundaryCollect(path);
+//        boundaryWithFreqs = boundaryCollect.getBoundaryWithFreqList();
+//
+//        Log log = new Log("log//if-Complex.log");
+//        for(BoundaryWithFreq boundaryInfo : boundaryWithFreqs){
+//            log.logSignLine("begin");
+//            //log.logStr("name: " + boundaryInfo.name);
+//            log.logStr("value: " + boundaryInfo.value);
+//            log.logStr("type: " + boundaryInfo.variableSimpleType);
+//            log.logStr("freq " + boundaryInfo.freq);
+//            log.logStr("isSimpleType " + boundaryInfo.isSimpleType);
+//            log.logStr("otherType " + boundaryInfo.otherType);
+//            log.logStr("variableSimpleType " + boundaryInfo.variableSimpleType);
+//            log.logSignLine("end");
+//        }
+//
+//        String path = "experiment//searchcode//if-INT-months";
+//        BoundaryCollect boundaryCollect = new BoundaryCollect(path);
+//        boundaryWithFreqs = boundaryCollect.getBoundaryWithFreqList();
+//
+//        Log log = new Log("log//if-INT-months.log");
+//        for(BoundaryWithFreq boundaryInfo : boundaryWithFreqs){
+//            log.logSignLine("begin");
+//            //log.logStr("name: " + boundaryInfo.name);
+//            log.logStr("value: " + boundaryInfo.value);
+//            log.logStr("type: " + boundaryInfo.variableSimpleType);
+//            log.logStr("freq " + boundaryInfo.freq);
+//            log.logStr("isSimpleType " + boundaryInfo.isSimpleType);
+//            log.logStr("otherType " + boundaryInfo.otherType);
+//            log.logStr("variableSimpleType " + boundaryInfo.variableSimpleType);
+//            log.logSignLine("end");
+//        }
+
+        String path = "experiment//searchcode//if-INT-months";
         BoundaryCollect boundaryCollect = new BoundaryCollect(path);
         boundaryWithFreqs = boundaryCollect.getBoundaryWithFreqList();
 
-        Log log = new Log("log//if-long-var1.log");
+        Log log = new Log("log//if-INT-months.log");
         for(BoundaryWithFreq boundaryInfo : boundaryWithFreqs){
             log.logSignLine("begin");
             //log.logStr("name: " + boundaryInfo.name);
             log.logStr("value: " + boundaryInfo.value);
             log.logStr("type: " + boundaryInfo.variableSimpleType);
+            log.logStr("freq " + boundaryInfo.freq);
+            log.logStr("isSimpleType " + boundaryInfo.isSimpleType);
+            log.logStr("otherType " + boundaryInfo.otherType);
+            log.logStr("variableSimpleType " + boundaryInfo.variableSimpleType);
             log.logSignLine("end");
         }
 
-        ArrayList<BoundaryWithFreq> boundaryWithFreqArrayList = MathUtils.generateInterval(boundaryWithFreqs, Long.MIN_VALUE);
+        ArrayList<BoundaryWithFreq> boundaryWithFreqArrayList = MathUtils.generateInterval(boundaryWithFreqs, 1);
 
         System.out.println("17xx " + boundaryWithFreqArrayList.get(0).value + boundaryWithFreqArrayList.get(0).leftClose);
         System.out.println("17xx " + boundaryWithFreqArrayList.get(1).value + boundaryWithFreqArrayList.get(1).rightClose);
