@@ -130,7 +130,7 @@ public class SearchBoundaryFilter {
             keywords.add(info.expressMethod);
             keywords.remove(valueType);
         }
-        else if (!info.variableName.equals("this") && info.variableName.length()>1){
+        else if (!info.variableName.equals("this") &&!VariableUtils.isExpression(info)&& info.variableName.length()>1){
             keywords.add(info.variableName.replace(" ",""));
         }
 
