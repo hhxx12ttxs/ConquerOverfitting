@@ -1,6 +1,7 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.trace;
 
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.BoundaryInfo;
+import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.BoundaryWithFreq;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.filter.AbandanTrueValueFilter;
 import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeEnum;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.CodeUtils;
@@ -224,15 +225,14 @@ public class ExceptionVariable {
     }
 
 
-    public Map<List<String>, String> getBoundaryIntervals(List<BoundaryInfo> boundaryInfos){
+    public Map<List<String>, String> getBoundaryIntervals(List<BoundaryWithFreq> boundaryInfos){
         List<String> valueList = new ArrayList<>(values);
         Map<List<String>, String> result = new HashMap<>();
-        boundaryInfos = boundaryFilter(boundaryInfos);
         if (name.equals("this")){
             String thisValue = values.iterator().next();
             thisValue = thisValue.substring(thisValue.indexOf('(')+1, thisValue.lastIndexOf(')'));
             String[] thisValues = thisValue.contains(",")?thisValue.split(","):new String[]{thisValue};
-            for (BoundaryInfo info: boundaryInfos){
+            for (BoundaryWithFreq info: boundaryInfos){
                 if (info.value.contains("new "+type) && info.value.contains("(") && info.value.contains(")") && !info.value.endsWith("(")){
                     String newValue = info.value.substring(info.value.indexOf('(')+1, info.value.lastIndexOf(')'));
                     String[] newValues = newValue.contains(",")?newValue.split(","):new String[]{newValue};
