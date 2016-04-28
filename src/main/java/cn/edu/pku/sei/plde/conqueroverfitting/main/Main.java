@@ -39,6 +39,7 @@ public class Main {
             return;
         }
         if (args.length == 2){
+
             String projectName = args[1];
             try {
                 fixProject(projectName, path);
@@ -47,6 +48,7 @@ public class Main {
             }
             return;
         }
+        deleteTempFile();
         for (File sub_file : sub_files){
             if (sub_file.isDirectory()){
                 System.out.println("Main: fixing project "+sub_file.getName());
@@ -69,7 +71,7 @@ public class Main {
             System.out.println("Main: cannot recognize project name \""+project+"\"");
             return;
         }
-        int timeout = 3600;
+        int timeout = 1200;
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         Future<Boolean> future = executorService.submit(new RunFixProcess(path, project));
         try {
@@ -97,6 +99,24 @@ public class Main {
         if (recordFile.exists()){
             recordFile.renameTo(new File(System.getProperty("user.dir")+recordFile.getName()+".fail"));
         }
+    }
+
+
+    private static void deleteTempFile(){
+        FileUtils.deleteDirNow(System.getProperty("user.dir")+"/patch");
+        FileUtils.deleteDirNow(System.getProperty("user.dir")+"/patch_source");
+        FileUtils.deleteDirNow(System.getProperty("user.dir")+"/Localization");
+        FileUtils.deleteDirNow(System.getProperty("user.dir")+"/RuntimeMessage");
+        FileUtils.deleteDirNow(System.getProperty("user.dir")+"/RawLocalization");
+        File log = new File(System.getProperty("user.dir")+"/FixResult.log");
+        if (log.exists()){
+            log.delete();
+        }
+
+    }
+
+    private static void backupPackage(String packageName){
+
     }
 }
 
@@ -132,9 +152,9 @@ class RunFixProcess implements Callable<Boolean> {
                 main.createNewFile();
             }
             FileWriter writer = new FileWriter(main, true);
-            Format format = new SimpleDateFormat("yyyyMMdd");
+            Format format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
             System.out.println();
-            writer.write("project "+project+" "+(result?"Success":"Fail")+"Time:"+format.format(new Date())+"\n");
+            writer.write("project "+project+" "+(result?"Success":"Fail")+" Time:"+format.format(new Date())+"\n");
             writer.close();
         }catch (IOException e){
             e.printStackTrace();

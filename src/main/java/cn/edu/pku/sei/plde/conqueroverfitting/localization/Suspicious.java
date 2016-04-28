@@ -420,8 +420,8 @@ public class Suspicious implements Serializable{
         return _methodInfo;
     }
 
-    public List<TraceResult> getTraceResult() {
-        VariableTracer tracer = new VariableTracer(_srcPath, _testSrcPath, this);
+    public List<TraceResult> getTraceResult(String project) {
+        VariableTracer tracer = new VariableTracer(_srcPath, _testSrcPath, this, project);
         List<TraceResult> traceResults = new ArrayList<TraceResult>();
         List<String> trueTests = new ArrayList<>(_tests);
         trueTests.removeAll(_failTests);

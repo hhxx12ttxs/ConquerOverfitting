@@ -40,6 +40,19 @@ public class LineUtils {
         return false;
     }
 
+    public static boolean isLineInFor(String code, int lineNum){
+        int braceCount = 0;
+        for (int i=lineNum-1; i>0; i--){
+            String lineString = CodeUtils.getLineFromCode(code, i);
+            braceCount += CodeUtils.countChar(lineString, '{');
+            braceCount -= CodeUtils.countChar(lineString, '}');
+            if (isBoundaryLine(lineString) && braceCount == 1){
+                return isForLoopLine(lineString);
+            }
+        }
+        return false;
+    }
+
     public static boolean isLineInFailBlock(String code, int lineNum){
         int braceCount = 0;
         for (int i= lineNum; i< code.split("\n").length; i++){
