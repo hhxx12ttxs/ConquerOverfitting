@@ -74,6 +74,7 @@ public class Main {
         int timeout = 3600;
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         Future<Boolean> future = executorService.submit(new RunFixProcess(path, project));
+
         try {
             future.get(timeout, TimeUnit.SECONDS);
         } catch (InterruptedException e){
@@ -98,6 +99,18 @@ public class Main {
         File recordFile = new File(System.getProperty("user.dir")+"/patch/"+project);
         if (recordFile.exists()){
             recordFile.renameTo(new File(System.getProperty("user.dir")+recordFile.getName()+".fail"));
+        }
+        try {
+            File main = new File(System.getProperty("user.dir")+"/"+"FixResult.log");
+            if (!main.exists()){
+                main.createNewFile();
+            }
+            FileWriter writer = new FileWriter(main, true);
+            Format format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            writer.write("project "+project+" Timeout At :"+format.format(new Date())+"\n");
+            writer.close();
+        } catch (IOException e){
+            e.printStackTrace();
         }
     }
 
@@ -155,26 +168,21 @@ class RunFixProcess implements Callable<Boolean> {
         if (Thread.interrupted()){
             return false;
         }
+        File main = new File(System.getProperty("user.dir")+"/"+"FixResult.log");
+
         try {
+            FileWriter writer = new FileWriter(main, true);
+            Format format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            writer.write("project "+project+"begin Time:"+format.format(new Date())+"\n");
+            writer.close();
             result = process.mainProcess(projectType, projectNumber);
+            writer = new FileWriter(main, true);
+            writer.write("project "+project+" "+(result?"Success":"Fail")+" Time:"+format.format(new Date())+"\n");
+            writer.close();
         } catch (Exception e){
             e.printStackTrace();
             result = false;
         }
-        File main = new File(System.getProperty("user.dir")+"/"+"FixResult.log");
-        try {
-            if (!main.exists()) {
-                main.createNewFile();
-            }
-            FileWriter writer = new FileWriter(main, true);
-            Format format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-            System.out.println();
-            writer.write("project "+project+" "+(result?"Success":"Fail")+" Time:"+format.format(new Date())+"\n");
-            writer.close();
-        }catch (IOException e){
-            e.printStackTrace();
-        }
-
         if (!result){
             File recordFile = new File(System.getProperty("user.dir")+"/patch/"+project);
             if (recordFile.exists()){

@@ -88,25 +88,13 @@ public class SuspiciousFixer {
                 boundarys.put(assertEchelon.getKey(), ifStrings);
             }
             boolean method1FixSuccess = false;
-            File sourceFile = new File(FileUtils.getFileAddressOfJava(suspicious._srcPath, suspicious.classname()));
-            File classFile = new File(FileUtils.getFileAddressOfClass(suspicious._classpath, suspicious.classname()));
-            File sourceBackup = SourceUtils.backupSource(suspicious._srcPath,suspicious.classname());
-            File classBackup = SourceUtils.backupClass(suspicious._classpath, suspicious.classname());
-            File sourceBackupAfterFix = null;
-            File classBackupAfterFix = null;
             if (!onlyMethod2){
                 String methodOneResult = fixMethodOne(suspicious, boundarys, project, line, errorTestNum, false);
                 RecordUtils.printRuntimeMessage(suspicious, project, exceptionVariables, echelons, line);
                 if (!methodOneResult.equals("")) {
                     printHistoryBoundary(boundarys, methodOneResult);
                     method1FixSuccess = true;
-                    sourceBackupAfterFix = SourceUtils.backupSource(suspicious._srcPath,suspicious.classname());
-                    classBackupAfterFix = SourceUtils.backupClass(suspicious._classpath, suspicious.classname());
                 }
-            }
-            if (method1FixSuccess){
-                FileUtils.copyFile(sourceBackup, sourceFile);
-                FileUtils.copyFile(classBackup, classFile);
             }
             String methodTwoResult = fixMethodTwo(suspicious, boundarys, project, line, errorTestNum, false);
             RecordUtils.printRuntimeMessage(suspicious, project, exceptionVariables, echelons, line);
@@ -115,12 +103,7 @@ public class SuspiciousFixer {
                 return true;
             }
             else if (method1FixSuccess){
-                if (sourceBackupAfterFix!=null){
-                    FileUtils.copyFile(sourceBackupAfterFix, sourceFile);
-                }
-                if (classBackupAfterFix!=null){
-                    FileUtils.copyFile(classBackupAfterFix, classFile);
-                }
+                String methodOneResult = fixMethodOne(suspicious, boundarys, project, line, errorTestNum, false);
                 return true;
             }
         }
