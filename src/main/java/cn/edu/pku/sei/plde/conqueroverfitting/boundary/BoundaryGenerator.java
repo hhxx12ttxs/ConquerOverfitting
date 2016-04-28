@@ -32,7 +32,10 @@ public class BoundaryGenerator {
 
         List<String> intervals = new ArrayList<>();
         if (MathUtils.isNumberType(exceptionVariable.type)){
-            List<BoundaryWithFreq> variableBoundary = SearchBoundaryFilter.getBoundary(exceptionVariable, project, suspicious);
+            List<BoundaryWithFreq> variableBoundary = new ArrayList<>();
+            if (!MathUtils.allMaxMinValue(exceptionVariable.values)){
+                variableBoundary = SearchBoundaryFilter.getBoundary(exceptionVariable, project, suspicious);
+            }
             for (String value: exceptionVariable.values){
                 if (MathUtils.isMaxMinValue(value)){
                     intervals.add(value);
@@ -41,7 +44,7 @@ public class BoundaryGenerator {
                 try {
                     ArrayList<BoundaryWithFreq> intervalss = MathUtils.generateInterval(variableBoundary, Double.valueOf(value));
                     if (intervalss == null  || intervalss.size() == 0){
-                        continue;
+                        return new ArrayList<>();
                     }
                     intervals.add(intervalss.get(0).value);
                 }catch (Exception e){
@@ -60,8 +63,14 @@ public class BoundaryGenerator {
             }
         }
         else {
-            List<BoundaryWithFreq> variableBoundary = SearchBoundaryFilter.getBoundary(exceptionVariable, project, suspicious);
+            List<BoundaryWithFreq> variableBoundary = new ArrayList<>();
+            if (!allSpecificValue(exceptionVariable.values)){
+                variableBoundary = SearchBoundaryFilter.getBoundary(exceptionVariable, project, suspicious);
+            }
             for (String value : exceptionVariable.values) {
+                if (exceptionVariable.name.endsWith(".null") &&value.equals("false")){
+                    continue;
+                }
                 if (value.equals("true") || value.equals("false") || value.equals("null")) {
                     intervals.add(value);
                     continue;
@@ -77,6 +86,15 @@ public class BoundaryGenerator {
             }
         }
         return returnList;
+    }
+
+    private static boolean allSpecificValue(Set<String> values){
+        for (String value: values){
+            if (!value.equals("null") && !value.equals("true") && !value.equals("false")){
+                return false;
+            }
+        }
+        return true;
     }
 
 

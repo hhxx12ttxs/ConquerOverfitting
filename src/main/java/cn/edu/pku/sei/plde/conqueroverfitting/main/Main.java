@@ -1,23 +1,13 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.main;
 
-import cn.edu.pku.sei.plde.conqueroverfitting.fix.SuspiciousFixer;
-import cn.edu.pku.sei.plde.conqueroverfitting.localization.Localization;
-import cn.edu.pku.sei.plde.conqueroverfitting.localization.Suspicious;
-import cn.edu.pku.sei.plde.conqueroverfitting.trace.ExceptionVariable;
-import cn.edu.pku.sei.plde.conqueroverfitting.utils.FileUtils;
-import cn.edu.pku.sei.plde.conqueroverfitting.utils.TestUtils;
 import org.apache.commons.lang.StringUtils;
-import org.junit.Test;
 
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.text.Format;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
-import java.util.Map;
 import java.util.concurrent.*;
 
 /**

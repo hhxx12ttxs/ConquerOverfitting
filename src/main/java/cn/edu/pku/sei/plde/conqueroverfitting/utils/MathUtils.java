@@ -245,6 +245,21 @@ public class MathUtils {
                 value.contains("9223372036854775807");
     }
 
+
+    public static boolean allMaxMinValue(List<String> values){
+        for (String value: values){
+            if (!isMaxMinValue(value)){
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public static boolean allMaxMinValue(Set<String> values){
+        return allMaxMinValue(new ArrayList<String>(values));
+    }
+
+
     public static List<Interval> mergetDoubleInterval(ArrayList<Interval> intervals) {
         Collections.sort(intervals, new Comparator<Interval>() {
             @Override
