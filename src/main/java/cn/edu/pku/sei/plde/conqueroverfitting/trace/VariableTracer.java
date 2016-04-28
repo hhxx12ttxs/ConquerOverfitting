@@ -65,9 +65,7 @@ public class VariableTracer {
         _testClassname = testClassname;
         _testMethodName = testMethodName;
         _functionname = functionname;
-        //if (!isSuccess){
-        //    spreadForLoop();
-        //}
+
         _asserts = new Asserts(_classpath,_srcPath,_testClasspath,_testSrcPath,testClassname,testMethodName, _suspicious._libPath,_project);
         List<MethodInfo> methodInfos = _suspicious.getMethodInfo(_srcPath);
         ErrorLineTracer tracer = new ErrorLineTracer(_suspicious,_asserts, _classname, _functionname);
@@ -105,7 +103,6 @@ public class VariableTracer {
         }
         _suspicious._assertsMap.put(_testClassname+"#"+_testMethodName, _asserts);
         _suspicious._errorLineMap.put(_testClassname+"#"+_testMethodName, new ArrayList<>(errorLines));
-        //results.addAll(getAddonResult(_suspicious.getAllInfo()));
         deleteTempFile();
         return results;
     }

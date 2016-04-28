@@ -44,6 +44,12 @@ public class SearchBoundaryFilter {
         if (variableName.endsWith("[i]")){
             variableName = variableName.substring(0, variableName.indexOf("["));
         }
+        if (variableName.endsWith(".null")){
+            variableName = variableName.substring(0, variableName.lastIndexOf("."));
+        }
+        if (variableName.endsWith(".Comparable")){
+            variableName = variableName.substring(0, variableName.lastIndexOf("."));
+        }
         String valueType = info.isSimpleType?info.getStringType().toLowerCase():info.getStringType();
         ArrayList<String> keywords = new ArrayList<String>();
         keywords.add("if");
