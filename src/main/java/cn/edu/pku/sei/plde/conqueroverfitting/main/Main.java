@@ -29,12 +29,24 @@ public class Main {
             return;
         }
         if (args.length == 2){
-
-            String projectName = args[1];
-            try {
-                fixProject(projectName, path);
-            } catch (Exception e){
-                e.printStackTrace();
+            if (args[1].contains(":")){
+                for (String name: args[1].split(":")){
+                    System.out.println("Main: fixing project "+name);
+                    try {
+                        fixProject(name, path);
+                    }
+                    catch (Exception e){
+                        e.printStackTrace();
+                    }
+                }
+            }
+            else {
+                String projectName = args[1];
+                try {
+                    fixProject(projectName, path);
+                } catch (Exception e){
+                    e.printStackTrace();
+                }
             }
             return;
         }

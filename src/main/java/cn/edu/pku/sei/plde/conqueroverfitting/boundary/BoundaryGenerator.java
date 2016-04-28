@@ -36,7 +36,7 @@ public class BoundaryGenerator {
         if (MathUtils.isNumberType(exceptionVariable.type)){
             List<BoundaryWithFreq> variableBoundary = new ArrayList<>();
             if (!MathUtils.allMaxMinValue(exceptionVariable.values)){
-                while (lastSearchTime!=0 && (System.currentTimeMillis()-lastSearchTime)/1000< 60);
+                //while (lastSearchTime!=0 && (System.currentTimeMillis()-lastSearchTime)/1000< 60);
                 variableBoundary = SearchBoundaryFilter.getBoundary(exceptionVariable, project, suspicious);
                 lastSearchTime = System.currentTimeMillis();
             }
@@ -69,7 +69,7 @@ public class BoundaryGenerator {
         else {
             List<BoundaryWithFreq> variableBoundary = new ArrayList<>();
             if (!allSpecificValue(exceptionVariable.values)){
-                while (lastSearchTime!=0 && (System.currentTimeMillis()-lastSearchTime)/1000< 60);
+                //while (lastSearchTime!=0 && (System.currentTimeMillis()-lastSearchTime)/1000< 60);
                 variableBoundary = SearchBoundaryFilter.getBoundary(exceptionVariable, project, suspicious);
                 lastSearchTime = System.currentTimeMillis();
             }

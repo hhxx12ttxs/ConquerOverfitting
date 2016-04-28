@@ -37,7 +37,10 @@ public class AbandanTrueValueFilter {
                 if (entry.getKey().contains(".Comparable")){
                     continue;
                 }
-                if (entry.getKey().contains(".null") && entry.getValue().contains("false")){
+                if (entry.getKey().contains(".null") && entry.getValue().contains("false") && entry.getValue().size() > 1){
+                    entry.getValue().remove("false");
+                }
+                else if (entry.getKey().contains(".null") && entry.getValue().contains("false")){
                     continue;
                 }
 
