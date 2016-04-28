@@ -25,6 +25,10 @@ public class BoundaryWithFreq {
         this.value = value;
         try{
             if(isSimpleType) {
+                int valueSize = value.length();
+                if (value.endsWith("L") || value.endsWith("l") || value.endsWith("D") || value.endsWith("d") || value.endsWith("F") || value.endsWith("f")) {
+                    this.value = value.substring(0, valueSize - 1);
+                }
                 dvalue = Double.parseDouble(value);
             }
         }catch (Exception e){
