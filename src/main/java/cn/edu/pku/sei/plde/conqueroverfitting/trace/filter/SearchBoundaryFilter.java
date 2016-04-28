@@ -4,8 +4,8 @@ import cn.edu.pku.sei.plde.conqueroverfitting.boundary.BoundaryCollect;
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.BoundaryFilter;
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.BoundaryInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.BoundaryWithFreq;
-import cn.edu.pku.sei.plde.conqueroverfitting.gatherer.GathererJava;
-import cn.edu.pku.sei.plde.conqueroverfitting.gatherer.GathererJava;
+import cn.edu.pku.sei.plde.conqueroverfitting.gatherer.GathererJavaGithub;
+import cn.edu.pku.sei.plde.conqueroverfitting.gatherer.GathererJavaGithub;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Suspicious;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.ExceptionVariable;
 import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeEnum;
@@ -78,9 +78,9 @@ public class SearchBoundaryFilter {
 
         File codePackage = new File("experiment/searchcode/" + StringUtils.join(keywords,"-"));
         if (!codePackage.exists()){
-            GathererJava gathererJava = new GathererJava(keywords, StringUtils.join(keywords, "-"),getProjectFullName(project));
+            GathererJavaGithub GathererJavaGithub = new GathererJavaGithub(keywords, StringUtils.join(keywords, "-"),getProjectFullName(project));
             try {
-                gathererJava.searchCode();
+                GathererJavaGithub.searchCode();
             } catch (Exception e){
                 e.printStackTrace();
             }
@@ -98,9 +98,9 @@ public class SearchBoundaryFilter {
             keywords.remove(variableName);
             codePackage = new File("experiment/searchcode/" + StringUtils.join(keywords,"-"));
             if (!codePackage.exists()){
-                GathererJava gathererJava = new GathererJava(keywords, StringUtils.join(keywords,"-"),getProjectFullName(project));
+                GathererJavaGithub GathererJavaGithub = new GathererJavaGithub(keywords, StringUtils.join(keywords,"-"),getProjectFullName(project));
                 try {
-                    gathererJava.searchCode();
+                    GathererJavaGithub.searchCode();
                 } catch (Exception e){
                     e.printStackTrace();
                 }
@@ -116,9 +116,9 @@ public class SearchBoundaryFilter {
         keywords.remove(valueType);
         codePackage = new File("experiment/searchcode/" + StringUtils.join(keywords,"-"));
         if (!codePackage.exists()){
-            GathererJava gathererJava = new GathererJava(keywords, StringUtils.join(keywords,"-"),getProjectFullName(project));
+            GathererJavaGithub GathererJavaGithub = new GathererJavaGithub(keywords, StringUtils.join(keywords,"-"),getProjectFullName(project));
             try {
-                gathererJava.searchCode();
+                GathererJavaGithub.searchCode();
             } catch (Exception e){
                 e.printStackTrace();
             }
@@ -163,8 +163,8 @@ public class SearchBoundaryFilter {
 
         if (!simpleCodePackage.exists() && !complexCodePackage.exists()) {
             if (!codePackage.exists()){
-                GathererJava gathererJava = new GathererJava(keywords, StringUtils.join(keywords, "-"),getProjectFullName(project));
-                gathererJava.searchCode();
+                GathererJavaGithub GathererJavaGithub = new GathererJavaGithub(keywords, StringUtils.join(keywords, "-"),getProjectFullName(project));
+                GathererJavaGithub.searchCode();
             }
             if (!codePackage.exists()) {
                 codePackage.mkdirs();
@@ -184,8 +184,8 @@ public class SearchBoundaryFilter {
             keywords.remove(info.variableName);
             codePackage = new File("experiment/searchcode/" + StringUtils.join(keywords,"-"));
             if (!codePackage.exists()){
-                GathererJava gathererJava = new GathererJava(keywords, StringUtils.join(keywords,"-"),getProjectFullName(project));
-                gathererJava.searchCode();
+                GathererJavaGithub GathererJavaGithub = new GathererJavaGithub(keywords, StringUtils.join(keywords,"-"),getProjectFullName(project));
+                GathererJavaGithub.searchCode();
                 if (!codePackage.exists()) {
                     codePackage.mkdirs();
                 }
@@ -203,8 +203,8 @@ public class SearchBoundaryFilter {
         //keywords.remove(valueType);
         codePackage = new File("experiment/searchcode/" + StringUtils.join(keywords,"-"));
         if (!codePackage.exists()){
-            GathererJava gathererJava = new GathererJava(keywords, StringUtils.join(keywords,"-"),getProjectFullName(project));
-            gathererJava.searchCode();
+            GathererJavaGithub GathererJavaGithub = new GathererJavaGithub(keywords, StringUtils.join(keywords,"-"),getProjectFullName(project));
+            GathererJavaGithub.searchCode();
             if (!codePackage.exists()) {
                 codePackage.mkdirs();
             }
