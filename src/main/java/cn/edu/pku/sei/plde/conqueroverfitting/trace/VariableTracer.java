@@ -13,11 +13,13 @@ import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 
 import javassist.NotFoundException;
 import org.apache.commons.beanutils.converters.IntegerArrayConverter;
+import org.apache.commons.collections.buffer.CircularFifoBuffer;
 import org.apache.commons.lang.StringUtils;
 import sun.misc.BASE64Encoder;
 
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
 
 /**
  * Created by yanrunfa on 16/2/19.
@@ -61,6 +63,9 @@ public class VariableTracer {
         _testClassname = testClassname;
         _testMethodName = testMethodName;
         _functionname = functionname;
+        //if (!isSuccess){
+        //    spreadForLoop();
+        //}
         _asserts = new Asserts(_classpath,_srcPath,_testClasspath,_testSrcPath,testClassname,testMethodName, _suspicious._libPath);
         List<MethodInfo> methodInfos = _suspicious.getMethodInfo(_srcPath);
         ErrorLineTracer tracer = new ErrorLineTracer(_suspicious,_asserts, _classname, _functionname);
@@ -304,6 +309,42 @@ public class VariableTracer {
             }
         }
         return result;
+    }
+
+    private void spreadForLoop(){
+        File sourceFile = new File(FileUtils.getFileAddressOfJava(_testSrcPath, _testClassname));
+        if (!sourceFile.exists()){
+            return;
+        }
+        String code = FileUtils.getCodeFromFile(_testSrcPath, _testClassname);
+        String methodString = CodeUtils.getMethodString(code,_testMethodName);
+        String spreadString;
+        try {
+             spreadString = CodeUtils.spreadFor(methodString);
+        } catch (Exception e){
+            return;
+        }
+        if (spreadString == null || spreadString.equals("")){
+            return;
+        }
+        List<Integer> methodLine = CodeUtils.getSingleMethodLine(code, _testMethodName);
+        if (methodLine.size() != 2){
+            return;
+        }
+        int methodStartLine = methodLine.get(0);
+        int methodEndLine = methodLine.get(1);
+        for (int i= methodStartLine; i< methodEndLine; i++){
+            SourceUtils.commentCodeInSourceFile(sourceFile, i);
+            if (CodeUtils.getLineFromCode(code, i+1).contains("}")){
+                SourceUtils.commentCodeInSourceFile(sourceFile, i+1);
+            }
+        }
+        SourceUtils.insertCodeToSourceFile(sourceFile,spreadString,methodStartLine);
+        try {
+            System.out.println(ShellUtils.shellRun(Arrays.asList("javac -Xlint:unchecked -source 1.6 -target 1.6 -cp "+ buildClasspath(Arrays.asList(PathUtils.getJunitPath(),_testClasspath,_classpath)) +" -d "+_testClasspath+" "+ sourceFile.getAbsolutePath())));
+        } catch (IOException e){
+            e.printStackTrace();
+        }
     }
 
 }

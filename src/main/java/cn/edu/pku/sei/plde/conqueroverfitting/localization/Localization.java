@@ -4,6 +4,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.assertCollect.Asserts;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.gzoltar.StatementExt;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.CodeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.FileUtils;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.RecordUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.TestUtils;
 import com.gzoltar.core.components.Statement;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.common.SuspiciousField;
@@ -28,15 +29,17 @@ public class Localization  {
     public String[] testClasses;
     public String testSrcPath;
     public String srcPath;
+    public String project;
     public List<String> libPaths = new ArrayList<>();
 
     /**
      * @param classPath the path of project's class file
      * @param testClassPath the path of project's test class file
      */
-    public Localization(String classPath, String testClassPath, String testSrcPath, String srcPath, List<String> libPaths) {
+    public Localization(String classPath, String testClassPath, String testSrcPath, String srcPath, List<String> libPaths, String project) {
         this(classPath, testClassPath, testSrcPath, srcPath);
         this.libPaths = libPaths;
+        this.project = project;
     }
 
 
@@ -154,6 +157,11 @@ public class Localization  {
             e.printStackTrace();
             return new ArrayList<Suspicious>();
         }
+        RecordUtils recordUtils = new RecordUtils(project,"Localization");
+        for (Suspicious suspicious: result){
+            recordUtils.write(suspicious.classname()+"#"+suspicious.functionnameWithoutParam()+"#"+suspicious.getDefaultErrorLine()+"\n");
+        }
+        recordUtils.close();
         return result;
     }
 
@@ -162,6 +170,12 @@ public class Localization  {
         Map<String, String> errorLineMap = new HashMap<>();
         Map<String, String> testTraceMap = new HashMap<>();
         String packageName = "";
+
+        RecordUtils recordUtils = new RecordUtils(project,"RawLocalization");
+        for (StatementExt statementExt: statements){
+            recordUtils.write(getClassAddressFromStatement(statementExt)+"#"+getFunctionNameFromStatement(statementExt)+"#"+getLineNumberFromStatement(statementExt)+"\n");
+        }
+        recordUtils.close();
         for (int i=0; i< 2; i++){
             String[] test = testClasses[0].split("\\.");
             packageName += test[i];

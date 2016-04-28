@@ -258,9 +258,9 @@ public class CodeUtils {
     }
 
     public static List<String> getAssertInTest(String testSrcPath, String testClassname, String testMethodName){
-         String code = FileUtils.getCodeFromFile(FileUtils.getFileAddressOfJava(testSrcPath, testClassname));
-         return getAssertInTest(code, testMethodName);
-     }
+        String code = FileUtils.getCodeFromFile(FileUtils.getFileAddressOfJava(testSrcPath, testClassname));
+        return getAssertInTest(code, testMethodName);
+    }
 
     public static String getLineFromCode(String code, int line){
         int lineNum = 0;
@@ -445,7 +445,7 @@ public class CodeUtils {
     public static List<String> getAllMethodName(String code, boolean getInnerClassMethod){
         List<String> result = new ArrayList<>();
         for (MethodDeclaration method : getAllMethod(code, getInnerClassMethod)) {
-           result.add(method.getName().getIdentifier());
+            result.add(method.getName().getIdentifier());
         }
         return result;
     }

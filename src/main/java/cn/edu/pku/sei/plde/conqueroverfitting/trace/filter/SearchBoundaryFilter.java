@@ -111,7 +111,7 @@ public class SearchBoundaryFilter {
         }
         BoundaryCollect boundaryCollect = new BoundaryCollect(codePackage.getAbsolutePath());
         List<BoundaryInfo> boundaryList = boundaryCollect.getBoundaryList();
-        //FileUtils.deleteDir(simpleCodePackage);
+        FileUtils.deleteDir(simpleCodePackage); 
         return boundaryList;
     }
 

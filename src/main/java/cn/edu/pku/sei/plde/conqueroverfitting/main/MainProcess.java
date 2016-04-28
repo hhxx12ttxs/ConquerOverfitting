@@ -5,6 +5,8 @@ import cn.edu.pku.sei.plde.conqueroverfitting.localization.Localization;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Suspicious;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.ExceptionVariable;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.FileUtils;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.PathUtils;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.RecordUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.TestUtils;
 import org.apache.commons.io.IOUtils;
 import org.easymock.EasyMock;
@@ -47,7 +49,7 @@ public class MainProcess {
             System.out.println("Main Process: set work directory error at project "+projectType+"-"+projectNumber);
             File recordPackage = new File(System.getProperty("user.dir")+"/patch/");
             recordPackage.mkdirs();
-            File main = new File(recordPackage.getAbsolutePath()+"/"+"Log");
+            File main = new File(recordPackage.getAbsolutePath()+"/"+"FixResult.log");
             try {
                 if (!main.exists()) {
                     main.createNewFile();
@@ -60,26 +62,35 @@ public class MainProcess {
             }
             return false;
         }
-        Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc,libPath);
+        Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc,libPath, project);
         List<Suspicious> suspiciouses = localization.getSuspiciousLite();
+        if (suspiciouses.size() == 0){
+            System.out.println("no suspicious found\n");
+        }
         return suspiciousLoop(suspiciouses, project);
     }
 
+
     private boolean checkProjectDirectory(){
-        if (!new File(classpath).exists()){
-            return false;
+            if (!new File(classpath).exists()){
+                System.out.println("Classpath :"+classpath+" do not exist!");
+                return false;
+            }
+            if (!new File(classSrc).exists()){
+                System.out.println("ClassSourcePath :"+classSrc+" do not exist!");
+                return false;
+            }
+            if (!new File(testClasspath).exists()){
+                System.out.println("TestClassPath :"+testClasspath+" do not exist!");
+                return false;
+            }
+            if (!new File(testClassSrc).exists()){
+                System.out.println("TestSourcePath :"+testClassSrc+" do not exist!");
+                return false;
+            }
+            return true;
         }
-        if (!new File(classSrc).exists()){
-            return false;
-        }
-        if (!new File(testClasspath).exists()){
-            return false;
-        }
-        if (!new File(testClassSrc).exists()){
-            return false;
-        }
-        return true;
-    }
+
 
     public boolean suspiciousLoop(List<Suspicious> suspiciouses, String project) {
         for (Suspicious suspicious: suspiciouses){
@@ -112,16 +123,16 @@ public class MainProcess {
     public boolean fixSuspicious(Suspicious suspicious, String project) throws Exception{
         SuspiciousFixer fixer = new SuspiciousFixer(suspicious, project);
         if (fixer.mainFixProcess()){
-            return isFixSuccess(suspicious, fixer.boundarysMap, project);
+            printCollectingMessage(project, suspicious);
+            return isFixSuccess( project);
         }
         return false;
     }
 
-    public boolean isFixSuccess(Suspicious suspicious, Map<ExceptionVariable,List<String>> boundarys, String project){
+    public boolean isFixSuccess( String project){
         System.out.println("Fix Success One Place");
-        printCollectingMessage(project, suspicious);
         if (TestUtils.getFailTestNumInProject(project) > 0){
-            Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc,libPath);
+            Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc,libPath, project);
             List<Suspicious> suspiciouses = localization.getSuspiciousLite(false);
             if (suspiciouses.size() == 0){
                 return false;
@@ -137,22 +148,12 @@ public class MainProcess {
     }
 
     public void printCollectingMessage(String project, Suspicious suspicious){
-        File recordPackage = new File(System.getProperty("user.dir")+"/patch/");
-        recordPackage.mkdirs();
-        File recordFile = new File(recordPackage.getAbsolutePath()+"/"+project);
-        try {
-            if (!recordFile.exists()){
-                recordFile.createNewFile();
-            }
-            FileWriter writer = new FileWriter(recordFile,true);
-            writer.write("Whole Cost Time: "+(System.currentTimeMillis()-startMili)/1000+"\n");
-            writer.write("True Test Num: "+suspicious.trueTestNums()+"\n");
-            writer.write("True Assert Num: "+suspicious.trueAssertNums()+"\n");
-            writer.write("====================================================================\n\n");
-            writer.close();
-        } catch (IOException e){
-            e.printStackTrace();
-        }
+        RecordUtils writer = new RecordUtils(project,"RuntimeMessage");
+        writer.write("Whole Cost Time: "+(System.currentTimeMillis()-startMili)/1000+"\n");
+        writer.write("True Test Num: "+suspicious.trueTestNums()+"\n");
+        writer.write("True Assert Num: "+suspicious.trueAssertNums()+"\n");
+        writer.write("====================================================================\n\n");
+        writer.close();
     }
 
 
@@ -169,98 +170,28 @@ public class MainProcess {
         }
         String project = projectName+"_"+number;
         /* 四个整个项目需要的参数 */
-
-        if ((projectName.equals("Math") && number>=85) || (projectName.equals("Lang") && (number == 39 || number == 49))){
-            FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project,projectDir.getAbsolutePath());
-            classpath = projectDir.getAbsolutePath()+"/"+project +"/target/classes/";
-            testClasspath = projectDir.getAbsolutePath()+"/"+project +"/target/test-classes/";
-            classSrc = projectDir.getAbsolutePath()+"/"+project +"/src/java/";
-            testClassSrc = projectDir.getAbsolutePath()+"/"+project +"/src/test/";
-            return project;
-        }
-
-        if ((projectName.equals("Lang") && number == 55)){
-            FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project,projectDir.getAbsolutePath());
-            classpath = projectDir.getAbsolutePath()+"/"+project +"/target/classes/";
-            testClasspath = projectDir.getAbsolutePath()+"/"+project +"/target/tests/";
-            classSrc = projectDir.getAbsolutePath()+"/"+project +"/src/java/";
-            testClassSrc = projectDir.getAbsolutePath()+"/"+project +"/src/test/";
-            return project;
-        }
-        if ((projectName.equals("Lang") && (number ==13))){
-            FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project,projectDir.getAbsolutePath());
-            classpath = projectDir.getAbsolutePath()+"/"+project +"/target/classes/";
-            testClasspath = projectDir.getAbsolutePath()+"/"+project +"/target/tests/";
-            classSrc = projectDir.getAbsolutePath()+"/"+project +"/src/main/java/";
-            testClassSrc = projectDir.getAbsolutePath()+"/"+project +"/src/test/java/";
-            FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project+"/src/test/resources/",System.getProperty("user.dir")+"/src/test");
-            return project;
-        }
-        if (projectName.equals("Time") && (number == 3||number == 9)){
-            FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project,projectDir.getAbsolutePath());
-            classpath = projectDir.getAbsolutePath()+"/"+project +"/target/classes/";
-            testClasspath = projectDir.getAbsolutePath()+"/"+project +"/target/test-classes/";
-            classSrc = projectDir.getAbsolutePath()+"/"+project +"/src/main/java/";
-            testClassSrc = projectDir.getAbsolutePath()+"/"+project +"/src/test/java/";
-            FileUtils.deleteDirNow(System.getProperty("user.dir")+"/src/test/resources");
-            FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project+"/src/test/resources/",System.getProperty("user.dir")+"/src/test/resources/");
-            return project;
-        }
-        if (projectName.equals("Time")){
-            FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project,projectDir.getAbsolutePath());
-            classpath = projectDir.getAbsolutePath()+"/"+project +"/build/classes/";
-            testClasspath = projectDir.getAbsolutePath()+"/"+project +"/build/tests/";
-            classSrc = projectDir.getAbsolutePath()+"/"+project +"/src/main/java/";
-            testClassSrc = projectDir.getAbsolutePath()+"/"+project +"/src/test/java/";
-            FileUtils.deleteDirNow(System.getProperty("user.dir")+"/src/test/resources");
-            FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project+"/src/test/resources/",System.getProperty("user.dir")+"/src/test");
-            return project;
-        }
-        //Math,Time
-        if (projectName.equals("Math") || projectName.equals("Lang")){
-            FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project,projectDir.getAbsolutePath());
-            classpath = projectDir.getAbsolutePath()+"/"+project +"/target/classes/";
-            testClasspath = projectDir.getAbsolutePath()+"/"+project +"/target/test-classes/";
-            classSrc = projectDir.getAbsolutePath()+"/"+project +"/src/main/java/";
-            testClassSrc = projectDir.getAbsolutePath()+"/"+project +"/src/test/java/";
-            FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project+"/src/test/resources/",System.getProperty("user.dir")+"/src/test");
-            return project;
-        }
-        if (projectName.equals("Closure")){
-            FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project,projectDir.getAbsolutePath());
-            classpath = projectDir.getAbsolutePath()+"/"+project +"/build/classes/";
-            testClasspath = projectDir.getAbsolutePath()+"/"+project +"/build/test/";
-            classSrc = projectDir.getAbsolutePath()+"/"+project +"/src/";
-            testClassSrc = projectDir.getAbsolutePath()+"/"+project +"/test/";
-            File libPkg = new File(projectDir.getAbsolutePath()+"/"+project+"/lib/");
+        FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project,projectDir.getAbsolutePath());
+        List<String> paths = PathUtils.getSrcPath(project);
+        classpath = projectDir+"/"+project+paths.get(0);
+        testClasspath = projectDir+"/"+project+paths.get(1);
+        classSrc = projectDir+"/"+project+paths.get(2);
+        testClassSrc = projectDir+"/"+ project + paths.get(3);
+        FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project+"/src/test/resources/",System.getProperty("user.dir")+"/src/test");
+        File libPkg = new File(projectDir.getAbsolutePath()+"/"+project+"/lib/");
+        if (libPkg.exists() && libPkg.list() != null){
             for (String p: libPkg.list()){
                 if (p.endsWith(".jar")){
                     libPath.add(libPkg.getAbsolutePath()+"/"+p);
                 }
             }
-            libPkg = new File(projectDir.getAbsolutePath()+"/"+project+"/build/lib/");
+        }
+        libPkg = new File(projectDir.getAbsolutePath()+"/"+project+"/build/lib/");
+        if (libPkg.exists() && libPkg.list() != null){
             for (String p: libPkg.list()){
                 if (p.endsWith(".jar")){
                     libPath.add(libPkg.getAbsolutePath()+"/"+p);
                 }
             }
-            return project;
-        }
-        if (projectName.equals("Chart")){
-            FileUtils.copyDirectory(PATH_OF_DEFECTS4J+project,projectDir.getAbsolutePath());
-            classpath = projectDir.getAbsolutePath()+"/"+project +"/build/";
-            testClasspath = projectDir.getAbsolutePath()+"/"+project +"/build-tests/";
-            classSrc = projectDir.getAbsolutePath()+"/"+project +"/source/";
-            testClassSrc = projectDir.getAbsolutePath()+"/"+project +"/tests/";
-            File libPkg = new File(PATH_OF_DEFECTS4J+project+"/lib/");
-            if (libPkg.list() != null){
-                for (String p: libPkg.list()){
-                    if (p.endsWith(".jar")){
-                        libPath.add(libPkg.getAbsolutePath()+"/"+p);
-                    }
-                }
-            }
-            return project;
         }
         return project;
     }

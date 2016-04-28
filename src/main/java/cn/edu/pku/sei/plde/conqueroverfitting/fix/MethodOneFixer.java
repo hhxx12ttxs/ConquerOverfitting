@@ -29,6 +29,7 @@ public class MethodOneFixer {
     private int _errorTestNum;
     private String _project;
     public List<Patch> _patches = new ArrayList<>();
+    public List<String> triedPatch = new ArrayList<>();
 
     public MethodOneFixer(Suspicious suspicious, String project, int errorTestNum){
         _suspicious = suspicious;
@@ -61,6 +62,7 @@ public class MethodOneFixer {
                 }
                 FileUtils.copyFile(javaBackup, targetJavaFile);
                 CodeUtils.addCodeToFile(targetJavaFile, patchString, patchLine);
+                triedPatch.add(patchString);
                 System.out.print("Method 1 try patch: "+patchString);
                 if (!patch._addonFunction.equals("")){
                     CodeUtils.addMethodToFile(targetJavaFile, patch._addonFunction, patch._className.substring(patch._className.lastIndexOf(".")+1));
