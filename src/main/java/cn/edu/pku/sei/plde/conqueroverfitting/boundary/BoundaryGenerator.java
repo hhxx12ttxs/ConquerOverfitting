@@ -12,6 +12,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.CodeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.InfoUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.MathUtils;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.VariableUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 
 
@@ -30,7 +31,6 @@ public class BoundaryGenerator {
     public static List<String> generate(Suspicious suspicious, ExceptionVariable exceptionVariable, Map<VariableInfo, List<String>> trueValues, Map<VariableInfo, List<String>> falseValues, String project) {
         List<String> keywords = new ArrayList<>();
         if (exceptionVariable.name.length() == 1){
-            //keywords.add("factorial");
             String variableName = suspicious.functionnameWithoutParam();
             String keyword = "";
             for (Character ch: variableName.toCharArray()){
