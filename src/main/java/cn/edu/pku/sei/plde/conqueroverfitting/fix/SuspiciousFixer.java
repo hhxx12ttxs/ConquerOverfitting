@@ -36,6 +36,7 @@ public class SuspiciousFixer {
     private long searchTime = 0;
     private List<String> methodOneHistory = new ArrayList<>();
     private List<String> methodTwoHistory = new ArrayList<>();
+    private List<String> bannedHistory = new ArrayList<>();
     public SuspiciousFixer(Suspicious suspicious, String project){
         this.suspicious = suspicious;
         this.project = project;
@@ -83,9 +84,9 @@ public class SuspiciousFixer {
         for (List<ExceptionVariable> echelon: echelons) {
             Map<String, List<String>> boundarys = new HashMap<>();
             for (Map.Entry<String, List<ExceptionVariable>> assertEchelon : classifyWithAssert(echelon).entrySet()) {
-                boundarys.put(assertEchelon.getKey(), getIfStrings(echelon));
+                List<String> ifStrings = getIfStrings(echelon);
+                boundarys.put(assertEchelon.getKey(), ifStrings);
             }
-
             boolean method1FixSuccess = false;
             File sourceFile = new File(FileUtils.getFileAddressOfJava(suspicious._srcPath, suspicious.classname()));
             File classFile = new File(FileUtils.getFileAddressOfClass(suspicious._classpath, suspicious.classname()));
@@ -265,6 +266,7 @@ public class SuspiciousFixer {
                     }
                 }
                 entry.getValue().removeAll(bannedIfString);
+                bannedHistory.addAll(bannedIfString);
             }
         }
         MethodTwoFixer fixer = new MethodTwoFixer(suspicious, errorTestNum);
@@ -294,6 +296,7 @@ public class SuspiciousFixer {
                     }
                 }
                 entry.getValue().removeAll(bannedIfString);
+                bannedHistory.addAll(bannedIfString);
             }
 
             String testClassName = entry.getKey().split("#")[0];
@@ -322,6 +325,7 @@ public class SuspiciousFixer {
                     }
                 }
                 ifStatement.removeAll(bannedStatement);
+                bannedHistory.addAll(bannedStatement);
                 if (ifStatement.size() == 0){
                     return "";
                 }
@@ -417,6 +421,11 @@ public class SuspiciousFixer {
                 writer.write(ifString+"\n");
             }
             for (String ifString: methodTwoHistory){
+                writer.write(ifString+"\n");
+            }
+            writer.write("====================================================\n");
+            writer.write("Banned ifStrings With AssertMessage:"+assertString+"\n");
+            for (String ifString: bannedHistory){
                 writer.write(ifString+"\n");
             }
             writer.write("====================================================\n\n");

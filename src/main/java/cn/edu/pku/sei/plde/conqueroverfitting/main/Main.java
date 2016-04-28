@@ -71,7 +71,7 @@ public class Main {
             System.out.println("Main: cannot recognize project name \""+project+"\"");
             return;
         }
-        int timeout = 1200;
+        int timeout = 3600;
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         Future<Boolean> future = executorService.submit(new RunFixProcess(path, project));
         try {
@@ -103,11 +103,11 @@ public class Main {
 
 
     private static void deleteTempFile(){
-        FileUtils.deleteDirNow(System.getProperty("user.dir")+"/patch");
-        FileUtils.deleteDirNow(System.getProperty("user.dir")+"/patch_source");
-        FileUtils.deleteDirNow(System.getProperty("user.dir")+"/Localization");
-        FileUtils.deleteDirNow(System.getProperty("user.dir")+"/RuntimeMessage");
-        FileUtils.deleteDirNow(System.getProperty("user.dir")+"/RawLocalization");
+        backupPackage(System.getProperty("user.dir")+"/patch");
+        backupPackage(System.getProperty("user.dir")+"/patch_source");
+        backupPackage(System.getProperty("user.dir")+"/Localization");
+        backupPackage(System.getProperty("user.dir")+"/RuntimeMessage");
+        backupPackage(System.getProperty("user.dir")+"/RawLocalization");
         File log = new File(System.getProperty("user.dir")+"/FixResult.log");
         if (log.exists()){
             log.delete();
@@ -115,8 +115,23 @@ public class Main {
 
     }
 
-    private static void backupPackage(String packageName){
-
+    private static void backupPackage(String packagePath){
+        File file = new File(packagePath);
+        if (!file.exists()){
+            return;
+        }
+        if (!file.isDirectory()){
+            return;
+        }
+        if (file.listFiles() == null){
+            return;
+        }
+        File [] sub_files = file.listFiles();
+        for (File sub_file: sub_files){
+            if (sub_file.isFile()){
+                sub_file.renameTo(new File(sub_file.getAbsolutePath()+".old"));
+            }
+        }
     }
 }
 

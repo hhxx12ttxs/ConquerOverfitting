@@ -157,7 +157,6 @@ public class MethodTwoFixer {
         File javaBackup = FileUtils.copyFile(targetJavaFile.getAbsolutePath(), FileUtils.tempJavaPath(_className,"MethodTwoFixer"));
         File classBackup = FileUtils.copyFile(targetClassFile.getAbsolutePath(), FileUtils.tempClassPath(_className,"MethodTwoFixer"));
         SourceUtils.insertIfStatementToSourceFile(targetJavaFile, ifStatement, ifStartLine, ifEndLine, replace);
-        RecordUtils.recordIf(_code, ifStatement,ifStartLine,ifEndLine,replace,project);
         try {
             targetClassFile.delete();
             System.out.println(ShellUtils.shellRun(Arrays.asList("javac -Xlint:unchecked -source 1.6 -target 1.6 -cp "+ buildClasspath(Arrays.asList(PathUtils.getJunitPath())) +" -d "+_classpath+" "+ targetJavaFile.getAbsolutePath())));
@@ -185,6 +184,7 @@ public class MethodTwoFixer {
                     FileUtils.copyFile(classBackup, targetClassFile);
                     FileUtils.copyFile(javaBackup, targetJavaFile);
                 }
+                RecordUtils.recordIf(_code, ifStatement,ifStartLine,ifEndLine,replace,project);
                 return true;
             }
         }

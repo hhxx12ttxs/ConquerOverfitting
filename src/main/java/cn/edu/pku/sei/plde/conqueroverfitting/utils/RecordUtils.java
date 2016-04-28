@@ -79,9 +79,9 @@ public class RecordUtils {
             FileWriter writer = new FileWriter(patchSource, false);
             writer.write(code);
             writer.close();
-            patch = "*****************************patch begin****************************\n"
+            patch = "***********************************************************************patch begin*********************************************************************\n"
                     + patch+ "\n" +
-                    "*****************************patch end*****************************\n";
+                    "************************************************************************patch end****************************************************************\n";
             CodeUtils.addCodeToFile(patchSource,patch,line);
         } catch (IOException e){
             e.printStackTrace();
@@ -103,7 +103,7 @@ public class RecordUtils {
             FileWriter writer = new FileWriter(patchSource, false);
             writer.write(code);
             writer.close();
-            ifString ="*****************************patch begin****************************\n"+ ifString+"\n";
+            ifString ="***********************************************************************patch begin*****************************************************************\n"+ ifString+"\n";
             SourceUtils.insertIfStatementToSourceFile(patchSource, ifString, startLine,endLine, replace);
             if (replace){
                 int braceCount = 0;
@@ -117,10 +117,10 @@ public class RecordUtils {
                     }
                 }
                 CodeUtils.addCodeToFile(patchSource,
-                       "******************************patch end********************************\n",endLine+1);
+                       "**************************************************************patch end****************************************************************\n",endLine+1);
             }else {
                 CodeUtils.addCodeToFile(patchSource,
-                        "******************************patch end********************************\n",endLine+3);
+                        "*****************************************************************patch end***************************************************************\n",endLine+3);
             }
         } catch (IOException e){
             e.printStackTrace();
