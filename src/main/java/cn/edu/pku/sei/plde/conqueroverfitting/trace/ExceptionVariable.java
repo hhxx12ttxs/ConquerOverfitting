@@ -224,9 +224,9 @@ public class ExceptionVariable {
         return small+"-"+big;
     }
 
-    public Map<List<String>, String> getBoundaryIntervals(List<BoundaryWithFreq> boundaryInfos){
+    public List<String> getBoundaryIntervals(List<BoundaryWithFreq> boundaryInfos){
         List<String> valueList = new ArrayList<>(values);
-        Map<List<String>, String> result = new HashMap<>();
+        List<String> result = new ArrayList<>();
         if (name.equals("this")){
             String thisValue = values.iterator().next();
             thisValue = thisValue.substring(thisValue.indexOf('(')+1, thisValue.lastIndexOf(')'));
@@ -237,38 +237,18 @@ public class ExceptionVariable {
                     String[] newValues = newValue.contains(",")?newValue.split(","):new String[]{newValue};
                     if (judgeTheSame(newValues, thisValues)){
                         if (traceResult.getTestResult()){
-                            result.put(Arrays.asList(thisValue),"!this.equals("+info.value+")");
+                            result.add("!this.equals("+info.value+")");
                         }
                         else {
-                            result.put(Arrays.asList(thisValue),"this.equals("+info.value+")");
+                            result.add("this.equals("+info.value+")");
                         }
                     }
                 }
             }
             return result;
         }
-        /*
-        if (MathUtils.isNumberType(type)) {
-            if (valueList.size() == 1 && (valueList.get(0).equals("NaN") || boundaryInfos.size() == 0)){
-                result.put(valueList, valueList.get(0));
-            }
-            if (valueList.size()>5){
-                String intervals = getIntervalWithValue(valueList, boundaryInfos);
-                result.put(valueList,intervals);
-            }
-            else {
-                for (String value: valueList){
-                    String intervals = getIntervalWithValue(Arrays.asList(value), boundaryInfos);
-                    if (intervals != null){
-                        result.put(Arrays.asList(value), intervals);
-                    }
-                }
-            }
-            return result;
-        }
-        */
         for (String value: valueList){
-            result.put(Arrays.asList(value), value);
+            result.add(value);
         }
         return result;
     }

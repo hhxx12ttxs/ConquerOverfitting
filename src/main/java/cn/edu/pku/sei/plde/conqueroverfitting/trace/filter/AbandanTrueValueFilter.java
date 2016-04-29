@@ -37,14 +37,15 @@ public class AbandanTrueValueFilter {
                 if (entry.getKey().contains(".Comparable")){
                     continue;
                 }
+                if (entry.getKey().contains(".null") && entry.getValue().contains("false")){
+                    continue;
+                }
 
                 VariableInfo variableInfo = getVariableInfoWithName(vars, entry.getKey());
-                //可能没有找到
                 if (variableInfo == null){
                     System.out.println("WARNING: AbandonTrueValueFilter#abandon: Connot Find VariableInfo With Variable Name "+entry.getKey());
                     continue;
                 }
-
 
                 //对于数组，把没在正确值中出现的元素加入怀疑值列表
                 if (TypeUtils.isArrayFromName(variableInfo.variableName)){

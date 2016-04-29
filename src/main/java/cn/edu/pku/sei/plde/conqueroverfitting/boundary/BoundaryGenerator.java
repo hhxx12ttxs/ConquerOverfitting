@@ -30,20 +30,20 @@ public class BoundaryGenerator {
 
     public static List<String> generate(Suspicious suspicious, ExceptionVariable exceptionVariable, Map<VariableInfo, List<String>> trueValues, Map<VariableInfo, List<String>> falseValues, String project) {
 
-        Map<List<String>, String> intervals = new HashMap<>();
+        List<String> intervals = new ArrayList<>();
         if (MathUtils.isNumberType(exceptionVariable.type)){
             List<BoundaryWithFreq> variableBoundary = SearchBoundaryFilter.getBoundary(exceptionVariable, project, suspicious);
             for (String value: exceptionVariable.values){
                 if (MathUtils.isMaxMinValue(value)){
-                    intervals.put(Arrays.asList(value), value);
+                    intervals.add(value);
                     continue;
                 }
                 try {
                     ArrayList<BoundaryWithFreq> intervalss = MathUtils.generateInterval(variableBoundary, Double.valueOf(value));
-                    if (intervalss == null){
+                    if (intervalss == null  || intervalss.size() == 0){
                         continue;
                     }
-                    intervals.put(Arrays.asList(value), intervalss.get(0).value);
+                    intervals.add(intervalss.get(0).value);
                 }catch (Exception e){
                     continue;
                 }
@@ -63,17 +63,15 @@ public class BoundaryGenerator {
             List<BoundaryWithFreq> variableBoundary = SearchBoundaryFilter.getBoundary(exceptionVariable, project, suspicious);
             for (String value : exceptionVariable.values) {
                 if (value.equals("true") || value.equals("false") || value.equals("null")) {
-                    intervals.put(Arrays.asList(value), value);
+                    intervals.add(value);
                     continue;
                 }
                 intervals = exceptionVariable.getBoundaryIntervals(variableBoundary);
             }
         }
         List<String> returnList = new ArrayList<>();
-        for (Map.Entry<List<String>, String> entry: intervals.entrySet()){
-            String interval = entry.getValue();
-            List<String> value = entry.getKey();
-            String ifString = generateWithSingleWord(exceptionVariable,interval,value);
+        for (String interval: intervals){
+            String ifString = generateWithSingleWord(exceptionVariable,interval);
             if (!ifString.equals("")){
                 returnList.add(ifString);
             }
@@ -82,7 +80,7 @@ public class BoundaryGenerator {
     }
 
 
-    private static String generateWithSingleWord(ExceptionVariable variable, String intervals,List<String> valueStrings) {
+    private static String generateWithSingleWord(ExceptionVariable variable, String intervals) {
         if (variable.variable.variableName.equals("this")){
             return intervals;
         }
@@ -118,6 +116,7 @@ public class BoundaryGenerator {
                     return variable.variable.variableName + "==" + intervals;
                 }
             }
+            /*
             boolean biggestClose = false;
             boolean smallestClose = false;
             String biggest = intervals.split("-")[0];
@@ -168,9 +167,8 @@ public class BoundaryGenerator {
             }
             if (interval.size() == 2) {
                 return generateWithTwoInterval(interval);
-            }
+            }*/
         }
-
         if (variable.variable.variableName.contains("==")||variable.variable.variableName.contains("!=") || variable.variable.variableName.contains(">") || variable.variable.variableName.contains("<")){
             if (intervals.equals("true")){
                 return variable.variable.variableName;
