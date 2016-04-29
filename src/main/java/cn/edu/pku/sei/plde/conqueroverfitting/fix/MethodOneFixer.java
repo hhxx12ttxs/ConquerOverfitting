@@ -82,7 +82,7 @@ public class MethodOneFixer {
                     System.out.println("MethodOneFixer: fix fail because of compile fail");
                     continue;
                 }
-                Asserts asserts = new Asserts(_classpath,_classSrcPath, _testClassPath, _testSrcPath, patch._testClassName, patch._testMethodName);
+                Asserts asserts = new Asserts(_classpath,_classSrcPath, _testClassPath, _testSrcPath, patch._testClassName, patch._testMethodName, _project);
                 int errAssertNumAfterFix = asserts.errorNum();
                 int errAssertBeforeFix = _suspicious._assertsMap.get(patch._testClassName+"#"+patch._testMethodName).errorNum();
                 if (errAssertNumAfterFix < errAssertBeforeFix){
@@ -91,6 +91,7 @@ public class MethodOneFixer {
                         minErrorTest = errorTestAterFix;
                         truePatchLine = patchLine;
                         truePatchString = patchString;
+                        RecordUtils.recordIfReturn(code,patchString, patchLine, _project);
                         FileUtils.copyFile(classBackup, targetClassFile);
                         FileUtils.copyFile(javaBackup, targetJavaFile);
                         if (errorTestAterFix == 0){

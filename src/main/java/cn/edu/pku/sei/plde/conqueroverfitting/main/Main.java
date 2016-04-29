@@ -39,6 +39,7 @@ public class Main {
             return;
         }
         if (args.length == 2){
+
             String projectName = args[1];
             try {
                 fixProject(projectName, path);
@@ -47,6 +48,7 @@ public class Main {
             }
             return;
         }
+        deleteTempFile();
         for (File sub_file : sub_files){
             if (sub_file.isDirectory()){
                 System.out.println("Main: fixing project "+sub_file.getName());
@@ -72,6 +74,7 @@ public class Main {
         int timeout = 3600;
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         Future<Boolean> future = executorService.submit(new RunFixProcess(path, project));
+
         try {
             future.get(timeout, TimeUnit.SECONDS);
         } catch (InterruptedException e){
@@ -97,6 +100,51 @@ public class Main {
         if (recordFile.exists()){
             recordFile.renameTo(new File(System.getProperty("user.dir")+recordFile.getName()+".fail"));
         }
+        try {
+            File main = new File(System.getProperty("user.dir")+"/"+"FixResult.log");
+            if (!main.exists()){
+                main.createNewFile();
+            }
+            FileWriter writer = new FileWriter(main, true);
+            Format format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            writer.write("project "+project+" Timeout At :"+format.format(new Date())+"\n");
+            writer.close();
+        } catch (IOException e){
+            e.printStackTrace();
+        }
+    }
+
+
+    private static void deleteTempFile(){
+        backupPackage(System.getProperty("user.dir")+"/patch");
+        backupPackage(System.getProperty("user.dir")+"/patch_source");
+        backupPackage(System.getProperty("user.dir")+"/Localization");
+        backupPackage(System.getProperty("user.dir")+"/RuntimeMessage");
+        backupPackage(System.getProperty("user.dir")+"/RawLocalization");
+        File log = new File(System.getProperty("user.dir")+"/FixResult.log");
+        if (log.exists()){
+            log.delete();
+        }
+
+    }
+
+    private static void backupPackage(String packagePath){
+        File file = new File(packagePath);
+        if (!file.exists()){
+            return;
+        }
+        if (!file.isDirectory()){
+            return;
+        }
+        if (file.listFiles() == null){
+            return;
+        }
+        File [] sub_files = file.listFiles();
+        for (File sub_file: sub_files){
+            if (sub_file.isFile()){
+                sub_file.renameTo(new File(sub_file.getAbsolutePath()+".old"));
+            }
+        }
     }
 }
 
@@ -120,26 +168,21 @@ class RunFixProcess implements Callable<Boolean> {
         if (Thread.interrupted()){
             return false;
         }
+        File main = new File(System.getProperty("user.dir")+"/"+"FixResult.log");
+
         try {
+            FileWriter writer = new FileWriter(main, true);
+            Format format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            writer.write("project "+project+"begin Time:"+format.format(new Date())+"\n");
+            writer.close();
             result = process.mainProcess(projectType, projectNumber);
+            writer = new FileWriter(main, true);
+            writer.write("project "+project+" "+(result?"Success":"Fail")+" Time:"+format.format(new Date())+"\n");
+            writer.close();
         } catch (Exception e){
             e.printStackTrace();
             result = false;
         }
-        File main = new File(System.getProperty("user.dir")+"/"+"FixResult.log");
-        try {
-            if (!main.exists()) {
-                main.createNewFile();
-            }
-            FileWriter writer = new FileWriter(main, true);
-            Format format = new SimpleDateFormat("yyyyMMdd");
-            System.out.println();
-            writer.write("project "+project+" "+(result?"Success":"Fail")+"Time:"+format.format(new Date())+"\n");
-            writer.close();
-        }catch (IOException e){
-            e.printStackTrace();
-        }
-
         if (!result){
             File recordFile = new File(System.getProperty("user.dir")+"/patch/"+project);
             if (recordFile.exists()){
