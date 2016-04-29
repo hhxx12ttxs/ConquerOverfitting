@@ -1,15 +1,31 @@
 ****************************************   begin   ****************************************
+value: 0
+type: INT
+freq 157
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
 value: null
 type: NULL
-freq 1820
+freq 44
 isSimpleType true
 otherType null
 variableSimpleType NULL
 ****************************************   end   ****************************************
 ****************************************   begin   ****************************************
-value: 0
+value: true
+type: BOOLEAN
+freq 39
+isSimpleType true
+otherType null
+variableSimpleType BOOLEAN
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: 7096
 type: INT
-freq 980
+freq 24
 isSimpleType true
 otherType null
 variableSimpleType INT
@@ -17,253 +33,29 @@ variableSimpleType INT
 ****************************************   begin   ****************************************
 value: 1
 type: INT
-freq 231
+freq 10
 isSimpleType true
 otherType null
 variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: new Complex(Double.NaN,Double.NaN)
+type: null
+freq 10
+isSimpleType true
+otherType null
+variableSimpleType null
 ****************************************   end   ****************************************
 ****************************************   begin   ****************************************
 value: 2
 type: INT
-freq 87
-isSimpleType true
-otherType null
-variableSimpleType INT
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: -1
-type: INT
-freq 75
-isSimpleType true
-otherType null
-variableSimpleType INT
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: false
-type: BOOLEAN
-freq 66
-isSimpleType true
-otherType null
-variableSimpleType BOOLEAN
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: 3
-type: SHORT
-freq 55
-isSimpleType true
-otherType null
-variableSimpleType SHORT
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: 4
-type: INT
-freq 40
-isSimpleType true
-otherType null
-variableSimpleType INT
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: ""
-type: STRING
-freq 28
-isSimpleType true
-otherType null
-variableSimpleType STRING
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: true
-type: BOOLEAN
-freq 23
-isSimpleType true
-otherType null
-variableSimpleType BOOLEAN
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: 'F'
-type: CHARACTER
-freq 20
-isSimpleType true
-otherType null
-variableSimpleType CHARACTER
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: 5
-type: INT
-freq 19
-isSimpleType true
-otherType null
-variableSimpleType INT
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: -2
-type: INT
-freq 18
-isSimpleType true
-otherType null
-variableSimpleType INT
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: 100
-type: INT
-freq 17
-isSimpleType true
-otherType null
-variableSimpleType INT
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: 'D'
-type: CHARACTER
-freq 16
-isSimpleType true
-otherType null
-variableSimpleType CHARACTER
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: '\0'
-type: CHARACTER
-freq 14
-isSimpleType true
-otherType null
-variableSimpleType CHARACTER
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: 'O'
-type: CHARACTER
-freq 14
-isSimpleType true
-otherType null
-variableSimpleType CHARACTER
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: 0x00000001
-type: INT
-freq 11
-isSimpleType true
-otherType null
-variableSimpleType INT
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: 0x00000002
-type: INT
-freq 11
-isSimpleType true
-otherType null
-variableSimpleType INT
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: 0x00000004
-type: INT
-freq 11
-isSimpleType true
-otherType null
-variableSimpleType INT
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: 0x00000008
-type: INT
-freq 11
-isSimpleType true
-otherType null
-variableSimpleType INT
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: FastList.newInstance()
-type: null
 freq 8
 isSimpleType true
 otherType null
-variableSimpleType null
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: 10
-type: INT
-freq 7
-isSimpleType true
-otherType null
 variableSimpleType INT
 ****************************************   end   ****************************************
 ****************************************   begin   ****************************************
-value: 16
-type: INT
-freq 7
-isSimpleType true
-otherType null
-variableSimpleType INT
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: 256
-type: INT
-freq 7
-isSimpleType true
-otherType null
-variableSimpleType INT
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: new HashMap()
-type: null
-freq 7
-isSimpleType true
-otherType null
-variableSimpleType null
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: 8
-type: INT
-freq 6
-isSimpleType true
-otherType null
-variableSimpleType INT
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: kQuadsPerBuffer * kVertsPerQuad * kCoordsPerVertVerts
-type: INT
-freq 6
-isSimpleType true
-otherType null
-variableSimpleType INT
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: kQuadsPerBuffer * kVertsPerQuad * kCoordsPerVertTex
-type: INT
-freq 6
-isSimpleType true
-otherType null
-variableSimpleType INT
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: kTotalBufferSizeCoordsVerts * 4
-type: INT
-freq 6
-isSimpleType true
-otherType null
-variableSimpleType INT
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: kTotalBufferSizeCoordsTex * 4
-type: INT
-freq 6
-isSimpleType true
-otherType null
-variableSimpleType INT
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: kCoordsPerVertVerts * 4
-type: INT
-freq 6
-isSimpleType true
-otherType null
-variableSimpleType INT
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: kCoordsPerVertTex * 4
-type: INT
-freq 6
-isSimpleType true
-otherType null
-variableSimpleType INT
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: new char[1]
+value: {{ComplexField.ONE,ComplexField.ZERO,ComplexField.ZERO,ComplexField.ZERO},{ComplexField.ZERO,ComplexField.ONE,ComplexField.ZERO,ComplexField.ZERO},{ComplexField.ZERO,ComplexField.ZERO,ComplexField.MINUS_ONE,ComplexField.ZERO},{ComplexField.ZERO,ComplexField.ZERO,ComplexField.ZERO,ComplexField.MINUS_ONE}}
 type: null
 freq 6
 isSimpleType true
@@ -271,7 +63,7 @@ otherType null
 variableSimpleType null
 ****************************************   end   ****************************************
 ****************************************   begin   ****************************************
-value: new CharSequenceIterator()
+value: {{ComplexField.ZERO,ComplexField.ZERO,ComplexField.ZERO,ComplexField.ONE},{ComplexField.ZERO,ComplexField.ZERO,ComplexField.ONE,ComplexField.ZERO},{ComplexField.ZERO,ComplexField.MINUS_ONE,ComplexField.ZERO,ComplexField.ZERO},{ComplexField.MINUS_ONE,ComplexField.ZERO,ComplexField.ZERO,ComplexField.ZERO}}
 type: null
 freq 6
 isSimpleType true
@@ -279,145 +71,153 @@ otherType null
 variableSimpleType null
 ****************************************   end   ****************************************
 ****************************************   begin   ****************************************
-value: 6
-type: INT
+value: {{ComplexField.ZERO,ComplexField.ZERO,ComplexField.ZERO,ComplexField.I},{ComplexField.ZERO,ComplexField.ZERO,ComplexField.MINUS_I,ComplexField.ZERO},{ComplexField.ZERO,ComplexField.MINUS_I,ComplexField.ZERO,ComplexField.ZERO},{ComplexField.I,ComplexField.ZERO,ComplexField.ZERO,ComplexField.ZERO}}
+type: null
 freq 6
 isSimpleType true
 otherType null
-variableSimpleType INT
+variableSimpleType null
 ****************************************   end   ****************************************
 ****************************************   begin   ****************************************
-value: FastMap.newInstance()
+value: {{ComplexField.ZERO,ComplexField.ZERO,ComplexField.ONE,ComplexField.ZERO},{ComplexField.ZERO,ComplexField.ZERO,ComplexField.ZERO,ComplexField.MINUS_ONE},{ComplexField.MINUS_ONE,ComplexField.ZERO,ComplexField.ZERO,ComplexField.ZERO},{ComplexField.ZERO,ComplexField.ONE,ComplexField.ZERO,ComplexField.ZERO}}
 type: null
-freq 5
+freq 6
 isSimpleType true
 otherType null
 variableSimpleType null
 ****************************************   end   ****************************************
 ****************************************   begin   ****************************************
-value: new ArrayList()
+value: {{ComplexField.ZERO,ComplexField.ZERO,ComplexField.ONE,ComplexField.ZERO},{ComplexField.ZERO,ComplexField.ZERO,ComplexField.ZERO,ComplexField.ONE},{ComplexField.ONE,ComplexField.ZERO,ComplexField.ZERO,ComplexField.ZERO},{ComplexField.ZERO,ComplexField.ONE,ComplexField.ZERO,ComplexField.ZERO}}
 type: null
-freq 5
+freq 6
 isSimpleType true
 otherType null
 variableSimpleType null
 ****************************************   end   ****************************************
 ****************************************   begin   ****************************************
-value: new ArrayList<String>()
+value: {{ComplexField.ZERO,ComplexField.ZERO,ComplexField.ZERO,ComplexField.I},{ComplexField.ZERO,ComplexField.ZERO,ComplexField.MINUS_I,ComplexField.ZERO},{ComplexField.ZERO,ComplexField.I,ComplexField.ZERO,ComplexField.ZERO},{ComplexField.MINUS_I,ComplexField.ZERO,ComplexField.ZERO,ComplexField.ZERO}}
 type: null
-freq 5
+freq 6
 isSimpleType true
 otherType null
 variableSimpleType null
 ****************************************   end   ****************************************
 ****************************************   begin   ****************************************
-value: '\n'
-type: CHARACTER
-freq 5
-isSimpleType true
-otherType null
-variableSimpleType CHARACTER
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: new Complex(1,0)
+value: {{ComplexField.ZERO,ComplexField.ZERO,ComplexField.I,ComplexField.ZERO},{ComplexField.ZERO,ComplexField.ZERO,ComplexField.ZERO,ComplexField.MINUS_I},{ComplexField.I,ComplexField.ZERO,ComplexField.ZERO,ComplexField.ZERO},{ComplexField.ZERO,ComplexField.MINUS_I,ComplexField.ZERO,ComplexField.ZERO}}
 type: null
-freq 5
+freq 6
 isSimpleType true
 otherType null
 variableSimpleType null
 ****************************************   end   ****************************************
 ****************************************   begin   ****************************************
-value: 20
+value: {{ComplexField.I,ComplexField.ZERO,ComplexField.ZERO,ComplexField.ZERO},{ComplexField.ZERO,ComplexField.I,ComplexField.ZERO,ComplexField.ZERO},{ComplexField.ZERO,ComplexField.ZERO,ComplexField.MINUS_I,ComplexField.ZERO},{ComplexField.ZERO,ComplexField.ZERO,ComplexField.ZERO,ComplexField.MINUS_I}}
+type: null
+freq 6
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: {{ComplexField.ZERO,ComplexField.ZERO,ComplexField.ZERO,ComplexField.MINUS_I},{ComplexField.ZERO,ComplexField.ZERO,ComplexField.MINUS_I,ComplexField.ZERO},{ComplexField.ZERO,ComplexField.MINUS_I,ComplexField.ZERO,ComplexField.ZERO},{ComplexField.MINUS_I,ComplexField.ZERO,ComplexField.ZERO,ComplexField.ZERO}}
+type: null
+freq 6
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: {{ComplexField.ZERO,ComplexField.ZERO,ComplexField.I,ComplexField.ZERO},{ComplexField.ZERO,ComplexField.ZERO,ComplexField.ZERO,ComplexField.I},{ComplexField.MINUS_I,ComplexField.ZERO,ComplexField.ZERO,ComplexField.ZERO},{ComplexField.ZERO,ComplexField.MINUS_I,ComplexField.ZERO,ComplexField.ZERO}}
+type: null
+freq 6
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: new GammaMatrix(y0_D)
+type: null
+freq 6
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: new GammaMatrix(y1_D)
+type: null
+freq 6
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: new GammaMatrix(y2_D)
+type: null
+freq 6
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: new GammaMatrix(y3_D)
+type: null
+freq 6
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: new GammaMatrix(y5_D)
+type: null
+freq 6
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: new GammaMatrix(y0_M)
+type: null
+freq 6
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: new GammaMatrix(y1_M)
+type: null
+freq 6
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: new GammaMatrix(y2_M)
+type: null
+freq 6
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: new GammaMatrix(y3_M)
+type: null
+freq 6
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: new GammaMatrix(y5_M)
+type: null
+freq 6
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: 7090
 type: INT
-freq 5
-isSimpleType true
-otherType null
-variableSimpleType INT
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: new PropertyAccessor()
-type: null
-freq 4
-isSimpleType true
-otherType null
-variableSimpleType null
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: LogFactory.getLog(getClass())
-type: null
-freq 4
-isSimpleType true
-otherType null
-variableSimpleType null
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: new LinkedHashMap<String,PropertyMappingDefinition>()
-type: null
-freq 4
-isSimpleType true
-otherType null
-variableSimpleType null
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: new HashMap<String,ComplexType>()
-type: null
-freq 4
-isSimpleType true
-otherType null
-variableSimpleType null
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: "shape"
-type: STRING
-freq 4
-isSimpleType true
-otherType null
-variableSimpleType STRING
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: "real"
-type: STRING
-freq 4
-isSimpleType true
-otherType null
-variableSimpleType STRING
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: "imag"
-type: STRING
-freq 4
-isSimpleType true
-otherType null
-variableSimpleType STRING
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: "imaginary"
-type: STRING
-freq 4
-isSimpleType true
-otherType null
-variableSimpleType STRING
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: Debug.debug("TextRenderer")
-type: BOOLEAN
-freq 4
-isSimpleType true
-otherType null
-variableSimpleType BOOLEAN
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: 7
-type: INT
-freq 4
-isSimpleType true
-otherType null
-variableSimpleType INT
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: 152
-type: INT
-freq 4
+freq 6
 isSimpleType true
 otherType null
 variableSimpleType INT
@@ -425,93 +225,13 @@ variableSimpleType INT
 ****************************************   begin   ****************************************
 value: new Complex(0,0)
 type: null
-freq 4
+freq 5
 isSimpleType true
 otherType null
 variableSimpleType null
 ****************************************   end   ****************************************
 ****************************************   begin   ****************************************
-value: new Complex(0,1)
-type: null
-freq 4
-isSimpleType true
-otherType null
-variableSimpleType null
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: "is"
-type: STRING
-freq 4
-isSimpleType true
-otherType null
-variableSimpleType STRING
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: new TextField()
-type: null
-freq 3
-isSimpleType true
-otherType null
-variableSimpleType null
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: '1'
-type: CHARACTER
-freq 3
-isSimpleType true
-otherType null
-variableSimpleType CHARACTER
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: '!'
-type: CHARACTER
-freq 3
-isSimpleType true
-otherType null
-variableSimpleType CHARACTER
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: "xmlns"
-type: STRING
-freq 3
-isSimpleType true
-otherType null
-variableSimpleType STRING
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: "xsd"
-type: STRING
-freq 3
-isSimpleType true
-otherType null
-variableSimpleType STRING
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: "i18n"
-type: STRING
-freq 3
-isSimpleType true
-otherType null
-variableSimpleType STRING
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: new HashSet<JsFunction>()
-type: null
-freq 3
-isSimpleType true
-otherType null
-variableSimpleType null
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: new Stack<JsFunction>()
-type: null
-freq 3
-isSimpleType true
-otherType null
-variableSimpleType null
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: 32768
+value: 3
 type: INT
 freq 2
 isSimpleType true
@@ -519,143 +239,7 @@ otherType null
 variableSimpleType INT
 ****************************************   end   ****************************************
 ****************************************   begin   ****************************************
-value: new Random()
-type: null
-freq 2
-isSimpleType true
-otherType null
-variableSimpleType null
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: '@'
-type: CHARACTER
-freq 2
-isSimpleType true
-otherType null
-variableSimpleType CHARACTER
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: '_'
-type: CHARACTER
-freq 2
-isSimpleType true
-otherType null
-variableSimpleType CHARACTER
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: LoggerFactory.getLogger(MappingProcessor.class)
-type: null
-freq 2
-isSimpleType true
-otherType null
-variableSimpleType null
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: new MappedFieldsTracker()
-type: null
-freq 2
-isSimpleType true
-otherType null
-variableSimpleType null
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: new PrimitiveOrWrapperConverter()
-type: null
-freq 2
-isSimpleType true
-otherType null
-variableSimpleType null
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: new ArrayList<Object>()
-type: null
-freq 2
-isSimpleType true
-otherType null
-variableSimpleType null
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: new HashSet<String>()
-type: null
-freq 2
-isSimpleType true
-otherType null
-variableSimpleType null
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: LogUtils.getL7dLogger(SchemaJavascriptBuilder.class)
-type: null
-freq 2
-isSimpleType true
-otherType null
-variableSimpleType null
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: new Color(0,127,0)
-type: null
-freq 2
-isSimpleType true
-otherType null
-variableSimpleType null
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: new Color(127,0,0)
-type: null
-freq 2
-isSimpleType true
-otherType null
-variableSimpleType null
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: new Color(0,0,191)
-type: null
-freq 2
-isSimpleType true
-otherType null
-variableSimpleType null
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: new HashMap<Integer,GradientPaint>()
-type: null
-freq 2
-isSimpleType true
-otherType null
-variableSimpleType null
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: "List.evenRowBackgroundPainter"
-type: STRING
-freq 2
-isSimpleType true
-otherType null
-variableSimpleType STRING
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: "List.oddRowBackgroundPainter"
-type: STRING
-freq 2
-isSimpleType true
-otherType null
-variableSimpleType STRING
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: new Color(0x0f1,0x0f6,0x0fe)
-type: null
-freq 2
-isSimpleType true
-otherType null
-variableSimpleType null
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: new Color(0x0ff,0x0ff,0x0ff)
-type: null
-freq 2
-isSimpleType true
-otherType null
-variableSimpleType null
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: 77
+value: 50
 type: INT
 freq 2
 isSimpleType true
@@ -663,55 +247,7 @@ otherType null
 variableSimpleType INT
 ****************************************   end   ****************************************
 ****************************************   begin   ****************************************
-value: PyType.fromClass(PyMultiarray.class)
-type: null
-freq 2
-isSimpleType true
-otherType null
-variableSimpleType null
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: "PyMultiarray methods:\n" + " astype(typecode)]\n" + " itemsize()\n"+ " byteswapped()\n"+ " copy()\n"+ " typecode()\n"+ " iscontiguous()\n"+ " tostring()\n"+ " tolist()\n"
-type: STRING
-freq 2
-isSimpleType true
-otherType null
-variableSimpleType STRING
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: "__doc__"
-type: STRING
-freq 2
-isSimpleType true
-otherType null
-variableSimpleType STRING
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: "flat"
-type: STRING
-freq 2
-isSimpleType true
-otherType null
-variableSimpleType STRING
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: " , "
-type: STRING
-freq 2
-isSimpleType true
-otherType null
-variableSimpleType STRING
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: new GLU()
-type: null
-freq 2
-isSimpleType true
-otherType null
-variableSimpleType null
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: 128
+value: Integer.MIN_VALUE
 type: INT
 freq 2
 isSimpleType true
@@ -719,15 +255,7 @@ otherType null
 variableSimpleType INT
 ****************************************   end   ****************************************
 ****************************************   begin   ****************************************
-value: '^'
-type: CHARACTER
-freq 2
-isSimpleType true
-otherType null
-variableSimpleType CHARACTER
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: 255
+value: Integer.MAX_VALUE
 type: INT
 freq 2
 isSimpleType true
@@ -735,66 +263,386 @@ otherType null
 variableSimpleType INT
 ****************************************   end   ****************************************
 ****************************************   begin   ****************************************
-value: new EventListenerList()
-type: null
+value: 25
+type: INT
 freq 2
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: 20
+type: INT
+freq 2
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y5_
+type: null
+freq 1
 isSimpleType true
 otherType null
 variableSimpleType null
 ****************************************   end   ****************************************
 ****************************************   begin   ****************************************
-value: "document lock failure"
-type: STRING
-freq 2
+value: Y1_
+type: null
+freq 1
 isSimpleType true
 otherType null
-variableSimpleType STRING
+variableSimpleType null
 ****************************************   end   ****************************************
 ****************************************   begin   ****************************************
-value: "document location failure"
-type: STRING
-freq 2
+value: Y2_
+type: null
+freq 1
 isSimpleType true
 otherType null
-variableSimpleType STRING
+variableSimpleType null
 ****************************************   end   ****************************************
 ****************************************   begin   ****************************************
-value: "paragraph"
-type: STRING
-freq 2
+value: Y3_
+type: null
+freq 1
 isSimpleType true
 otherType null
-variableSimpleType STRING
+variableSimpleType null
 ****************************************   end   ****************************************
 ****************************************   begin   ****************************************
-value: "content"
-type: STRING
-freq 2
+value: Y0_
+type: null
+freq 1
 isSimpleType true
 otherType null
-variableSimpleType STRING
+variableSimpleType null
 ****************************************   end   ****************************************
 ****************************************   begin   ****************************************
-value: "section"
-type: STRING
-freq 2
+value: LoggerFactory.getLogger(FourierUtil.class)
+type: null
+freq 1
 isSimpleType true
 otherType null
-variableSimpleType STRING
+variableSimpleType null
 ****************************************   end   ****************************************
 ****************************************   begin   ****************************************
-value: "bidi level"
-type: STRING
-freq 2
+value: 3.141592
+type: DOUBLE
+freq 1
 isSimpleType true
 otherType null
-variableSimpleType STRING
+variableSimpleType DOUBLE
 ****************************************   end   ****************************************
 ****************************************   begin   ****************************************
-value: "$ename"
-type: STRING
-freq 2
+value: Y5_
+type: null
+freq 1
 isSimpleType true
 otherType null
-variableSimpleType STRING
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y1_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y2_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y3_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y0_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y5_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y1_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y2_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y3_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y0_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y5_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y1_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y2_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y3_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y0_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: new Complex(0,1,UtilMath.PI_2,1)
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: new Complex(0,-1,3 * UtilMath.PI_2,1)
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: new Complex(-1,0,Math.PI,1)
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: new Complex(1,0,0,1)
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: new Complex(0,0,0,0)
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: {{Complex.ZERO,Complex.ZERO,Complex.ZERO,Complex.ZERO},{Complex.ZERO,Complex.ZERO,Complex.ZERO,Complex.ZERO},{Complex.ZERO,Complex.ZERO,Complex.ZERO,ComplexField.MINUS_I},{Complex.ZERO,Complex.ZERO,Complex.I,Complex.ZERO}}
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: {{Complex.ZERO,Complex.ZERO,Complex.ZERO,Complex.ZERO},{Complex.ZERO,Complex.ZERO,Complex.ZERO,Complex.I},{Complex.ZERO,Complex.ZERO,Complex.ZERO,Complex.ZERO},{Complex.ZERO,ComplexField.MINUS_I,Complex.ZERO,Complex.ZERO}}
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: {{Complex.ZERO,Complex.ZERO,Complex.ZERO,Complex.ZERO},{Complex.ZERO,Complex.ZERO,ComplexField.MINUS_I,Complex.ZERO},{Complex.ZERO,Complex.I,Complex.ZERO,Complex.ZERO},{Complex.ZERO,Complex.ZERO,Complex.ZERO,Complex.ZERO}}
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: {{Complex.ZERO,ComplexField.MINUS_I,Complex.ZERO,Complex.ZERO},{ComplexField.MINUS_I,Complex.ZERO,Complex.ZERO,Complex.ZERO},{Complex.ZERO,Complex.ZERO,Complex.ZERO,Complex.ZERO},{Complex.ZERO,Complex.ZERO,Complex.ZERO,Complex.ZERO}}
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: {{Complex.ZERO,Complex.ZERO,ComplexField.MINUS_I,Complex.ZERO},{Complex.ZERO,Complex.ZERO,Complex.ZERO,Complex.ZERO},{ComplexField.MINUS_I,Complex.ZERO,Complex.ZERO,Complex.ZERO},{Complex.ZERO,Complex.ZERO,Complex.ZERO,Complex.ZERO}}
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: {{Complex.ZERO,Complex.ZERO,Complex.ZERO,ComplexField.MINUS_I},{Complex.ZERO,Complex.ZERO,Complex.ZERO,Complex.ZERO},{Complex.ZERO,Complex.ZERO,Complex.ZERO,Complex.ZERO},{ComplexField.MINUS_I,Complex.ZERO,Complex.ZERO,Complex.ZERO}}
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: {new ComplexSquareMatrix(t1),new ComplexSquareMatrix(t2),new ComplexSquareMatrix(t3),new ComplexSquareMatrix(t4),new ComplexSquareMatrix(t5),new ComplexSquareMatrix(t6)}
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: new DecimalFormat("#.###")
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y5_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y1_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y2_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y3_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y0_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y5_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y1_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y2_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y3_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y0_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: 100
+type: INT
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType INT
 ****************************************   end   ****************************************
