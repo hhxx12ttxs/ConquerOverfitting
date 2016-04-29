@@ -121,6 +121,7 @@ public class MathUtilsTest {
             //log.logStr("name: " + boundaryInfo.name);
             log.logStr("value: " + boundaryInfo.value);
             log.logStr("type: " + boundaryInfo.variableSimpleType);
+            log.logStr("freq " + boundaryInfo.freq);
             log.logSignLine("end");
         }
 
