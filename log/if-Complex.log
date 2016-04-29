@@ -1,0 +1,800 @@
+****************************************   begin   ****************************************
+value: 1
+type: INT
+freq 231
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: "IDL:"
+type: STRING
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType STRING
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: LogUtils.getL7dLogger(WSDLToCorbaHelper.class)
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: new TreeSet<String>(Arrays.asList(DISCRIMINATORTYPES))
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: new HashMap<QName,CorbaTypeImpl>()
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: 0
+type: INT
+freq 980
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: ":1"
+type: STRING
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType STRING
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: new String[]{"long","short","boolean","char"}
+type: STRING
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType STRING
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: new CorbaPrimitiveMap()
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: -1
+type: INT
+freq 75
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: false
+type: BOOLEAN
+freq 66
+isSimpleType true
+otherType null
+variableSimpleType BOOLEAN
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: new PropertyAccessor()
+type: null
+freq 4
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: nul
+type: NULL
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************

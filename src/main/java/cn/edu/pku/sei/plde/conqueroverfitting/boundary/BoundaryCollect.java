@@ -13,6 +13,7 @@ import org.eclipse.jdt.core.dom.ASTParser;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Iterator;
 
 public class BoundaryCollect {
     private String rootPath;
@@ -53,32 +54,18 @@ public class BoundaryCollect {
     public ArrayList<BoundaryWithFreq> getBoundaryWithFreqList() {
 
         ArrayList<BoundaryWithFreq> boundaryWithFreqs = new ArrayList<BoundaryWithFreq>();
+        System.out.println("size = " + boundaryWithFreqs.size());
         for (BoundaryInfo boundaryInfo : boundaryList) {
             boolean flag = false;
             for (BoundaryWithFreq boundaryWithFreq : boundaryWithFreqs) {
-                if (boundaryInfo.isSimpleType && boundaryWithFreq.isSimpleType) {
-                    if (boundaryWithFreq.variableSimpleType == null) {
-                        continue;
-                    }
-                    if (boundaryWithFreq.variableSimpleType.equals(boundaryInfo.variableSimpleType) &&
-                            boundaryWithFreq.value.equals(boundaryInfo.value)) {
-                        boundaryWithFreq.freq++;
-                        boundaryWithFreq.leftClose += boundaryInfo.leftClose;
-                        boundaryWithFreq.rightClose += boundaryInfo.rightClose;
-                        flag = true;
-                        break;
-                    }
 
-                } else if (!boundaryInfo.isSimpleType && !boundaryWithFreq.isSimpleType) {
-                    if (boundaryWithFreq.otherType.equals(boundaryInfo.otherType) &&
-                            boundaryWithFreq.value.equals(boundaryInfo.value)) {
-                        boundaryWithFreq.freq++;
-                        boundaryWithFreq.leftClose += boundaryInfo.leftClose;
-                        boundaryWithFreq.rightClose += boundaryInfo.rightClose;
-                        flag = true;
-                        break;
-                    }
+                if(boundaryWithFreq.value.equals(boundaryInfo.value)){
 
+                    boundaryWithFreq.freq++;
+                    boundaryWithFreq.leftClose += boundaryInfo.leftClose;
+                    boundaryWithFreq.rightClose += boundaryInfo.rightClose;
+                    flag = true;
+                    break;
                 }
             }
             if (!flag) {
@@ -88,6 +75,12 @@ public class BoundaryCollect {
         }
 
         Collections.sort(boundaryWithFreqs, new ComparatorBounaryWithFreqs());
+
+//        int size = boundaryWithFreqs.size();
+//
+//        for(int i = 100; i < size; i ++){
+//            boundaryWithFreqs.remove(100);
+//        }
 
         return boundaryWithFreqs;
     }
@@ -99,12 +92,12 @@ class ComparatorBounaryWithFreqs implements Comparator {
 
         BoundaryWithFreq boundaryWithFreq0 = (BoundaryWithFreq) arg0;
         BoundaryWithFreq boundaryWithFreq1 = (BoundaryWithFreq) arg1;
-            if (boundaryWithFreq0.freq < boundaryWithFreq1.freq) {
+            if (boundaryWithFreq0.freq > boundaryWithFreq1.freq) {
                 return -1;
             }
             if (boundaryWithFreq0.freq == boundaryWithFreq1.freq) {
                 return 0;
             }
-        return 1;
+        return -1;
     }
 }
