@@ -54,7 +54,7 @@ public class BoundaryCollect {
     public ArrayList<BoundaryWithFreq> getBoundaryWithFreqList() {
 
         ArrayList<BoundaryWithFreq> boundaryWithFreqs = new ArrayList<BoundaryWithFreq>();
-        System.out.println("size = " + boundaryWithFreqs.size());
+        //System.out.println("size = " + boundaryWithFreqs.size());
         for (BoundaryInfo boundaryInfo : boundaryList) {
             boolean flag = false;
             for (BoundaryWithFreq boundaryWithFreq : boundaryWithFreqs) {
@@ -76,11 +76,11 @@ public class BoundaryCollect {
 
         Collections.sort(boundaryWithFreqs, new ComparatorBounaryWithFreqs());
 
-//        int size = boundaryWithFreqs.size();
-//
-//        for(int i = 100; i < size; i ++){
-//            boundaryWithFreqs.remove(100);
-//        }
+        int size = boundaryWithFreqs.size();
+
+        for(int i = 100; i < size; i ++){
+            boundaryWithFreqs.remove(100);
+        }
 
         return boundaryWithFreqs;
     }
@@ -98,6 +98,6 @@ class ComparatorBounaryWithFreqs implements Comparator {
             if (boundaryWithFreq0.freq == boundaryWithFreq1.freq) {
                 return 0;
             }
-        return -1;
+        return 1;
     }
 }

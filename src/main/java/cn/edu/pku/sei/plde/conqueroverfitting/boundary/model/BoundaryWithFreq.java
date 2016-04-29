@@ -24,12 +24,15 @@ public class BoundaryWithFreq {
         this.otherType = otherType;
         this.value = value;
         try{
+
             if(isSimpleType) {
-                int valueSize = value.length();
-                if (value.endsWith("L") || value.endsWith("l") || value.endsWith("D") || value.endsWith("d") || value.endsWith("F") || value.endsWith("f")) {
-                    this.value = value.substring(0, valueSize - 1);
+                if(!value.equals("null")) {
+                    int valueSize = value.length();
+                    if (value.endsWith("L") || value.endsWith("l") || value.endsWith("D") || value.endsWith("d") || value.endsWith("F") || value.endsWith("f")) {
+                        this.value = value.substring(0, valueSize - 1);
+                    }
+                    dvalue = Double.parseDouble(value);
                 }
-                dvalue = Double.parseDouble(value);
             }
         }catch (Exception e){
             if(value.equals("Integer.MIN_VALUE") || value.equals("Integer.MIN_VAUE")){
