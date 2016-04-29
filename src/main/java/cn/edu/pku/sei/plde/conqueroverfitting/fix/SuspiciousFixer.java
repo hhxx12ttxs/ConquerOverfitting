@@ -4,6 +4,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.boundary.BoundaryGenerator;
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.Interval;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Localization;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Suspicious;
+import cn.edu.pku.sei.plde.conqueroverfitting.localization.common.container.map.DoubleMap;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.ExceptionExtractor;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.ExceptionVariable;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.TraceResult;
@@ -305,7 +306,7 @@ public class SuspiciousFixer {
                 List<String> ifStatement = entry.getValue();
                 List<String> bannedStatement = new ArrayList<>();
                 for (String statemnt: ifStatement){
-                    if (!ifStringFilter(statemnt) && ifStatement.contains(statemnt)){
+                    if (!ifStringFilter(statemnt)){
                         bannedStatement.add(statemnt);
                     }
                 }

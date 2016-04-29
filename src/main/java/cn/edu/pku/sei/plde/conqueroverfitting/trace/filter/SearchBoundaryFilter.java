@@ -57,7 +57,7 @@ public class SearchBoundaryFilter {
         keywords.add(valueType);
         if (VariableUtils.isExpression(info)){
             keywords.add(info.expressMethod);
-            keywords.remove(valueType);
+            keywords.remove(variableName);
         }
         if (variableName.length() == 1){
             String methodName = suspicious.functionnameWithoutParam();
@@ -69,37 +69,41 @@ public class SearchBoundaryFilter {
                 }
                 break;
             }
-            variableName = keyword;
+            keywords.remove(variableName);
             keywords.remove(valueType);
         }
-        else if (!variableName.equals("this") && variableName.length()>1){
+        if (!variableName.equals("this") && !VariableUtils.isExpression(info) && variableName.length() > 1){
             keywords.add(variableName.replace(" ",""));
         }
 
         File codePackage = new File("experiment/searchcode/" + StringUtils.join(keywords,"-"));
-        File simpleCodePackage = new File("experiment/searchcode/" + StringUtils.join(Arrays.asList("if",variableName),"-"));
-        File complexCodePackage = new File("experiment/searchcode/" + StringUtils.join(Arrays.asList("if",info.getStringType()),"-"));
-
-        if (!simpleCodePackage.exists() && !complexCodePackage.exists()) {
-            if (!codePackage.exists()){
-                GathererJava gathererJava = new GathererJava(keywords, StringUtils.join(keywords, "-"),getProjectFullName(project));
+        if (!codePackage.exists()){
+            GathererJava gathererJava = new GathererJava(keywords, StringUtils.join(keywords, "-"),getProjectFullName(project));
+            try {
                 gathererJava.searchCode();
+            } catch (Exception e){
+                e.printStackTrace();
             }
-            if (!codePackage.exists()) {
-                codePackage.mkdirs();
-            }
-            if (codePackage.list().length > 30){
+        }
+        if (codePackage.exists()) {
+            if (codePackage.list().length > 30 || VariableUtils.isExpression(info)){
                 BoundaryCollect boundaryCollect = new BoundaryCollect(codePackage.getAbsolutePath());
                 List<BoundaryWithFreq> boundaryList = boundaryCollect.getBoundaryWithFreqList();
                 return boundaryList;
             }
         }
+
+
         if (!info.isSimpleType) {
             keywords.remove(variableName);
             codePackage = new File("experiment/searchcode/" + StringUtils.join(keywords,"-"));
             if (!codePackage.exists()){
                 GathererJava gathererJava = new GathererJava(keywords, StringUtils.join(keywords,"-"),getProjectFullName(project));
-                gathererJava.searchCode();
+                try {
+                    gathererJava.searchCode();
+                } catch (Exception e){
+                    e.printStackTrace();
+                }
                 if (!codePackage.exists()) {
                     codePackage.mkdirs();
                 }
@@ -113,7 +117,11 @@ public class SearchBoundaryFilter {
         codePackage = new File("experiment/searchcode/" + StringUtils.join(keywords,"-"));
         if (!codePackage.exists()){
             GathererJava gathererJava = new GathererJava(keywords, StringUtils.join(keywords,"-"),getProjectFullName(project));
-            gathererJava.searchCode();
+            try {
+                gathererJava.searchCode();
+            } catch (Exception e){
+                e.printStackTrace();
+            }
             if (!codePackage.exists()) {
                 codePackage.mkdirs();
             }
