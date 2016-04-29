@@ -33,12 +33,19 @@ public class AbandanTrueValueFilter {
             }
 
             for (Map.Entry<String, List<String>> entry: traceResult.getResultMap().entrySet()){
+                // ban instanceof variable
+                if (entry.getKey().contains(".Comparable")){
+                    continue;
+                }
+
                 VariableInfo variableInfo = getVariableInfoWithName(vars, entry.getKey());
                 //可能没有找到
                 if (variableInfo == null){
                     System.out.println("WARNING: AbandonTrueValueFilter#abandon: Connot Find VariableInfo With Variable Name "+entry.getKey());
                     continue;
                 }
+
+
                 //对于数组，把没在正确值中出现的元素加入怀疑值列表
                 if (TypeUtils.isArrayFromName(variableInfo.variableName)){
                     List<String> falseValues = new ArrayList<>();
@@ -48,7 +55,6 @@ public class AbandanTrueValueFilter {
                             falseValues.add(value);
                         }
                     }
-
                     if (falseValues.size() != 0){
                         ExceptionVariable variable = new ExceptionVariable(variableInfo, traceResult, falseValues);
                         if (!exceptionValues.contains(variable)){
@@ -72,62 +78,14 @@ public class AbandanTrueValueFilter {
                 if (!exceptionValues.contains(variable)){
                     exceptionValues.add(variable);
                 }
-
             }
         }
-
         exceptionValues = cleanVariables(exceptionValues);
         if (exceptionValues.size() != 0){
             exceptionValues.addAll(getThis(suspicious, vars, traceResults));
             return exceptionValues;
         }
         exceptionValues.addAll(levelTwoCandidate);
-        //如果没有第一等级怀疑变量，寻找第二等级怀疑变量
-        for (ExceptionVariable variable: levelTwoCandidate){
-            /*
-            //优先级大于1的第二等级怀疑变量
-            if (variable.variable.priority > 1){
-                if (!exceptionValues.contains(variable)){
-                    exceptionValues.add(variable);
-                }            }
-            if (variable.variable.getStringType().equals("BOOLEAN")
-                    && trueVariable.containsKey(variable.variable)
-                    && falseVariable.containsKey(variable.variable)){
-                //对于bool变量，如过正确值只有一个而错误值有两个，将与正确值相反的那个作为第二等级怀疑变量。
-                if (trueVariable.get(variable.variable).size() == 1 && variable.values.size() == 2){
-                    variable.values.clear();
-                    if (trueVariable.get(variable.variable).get(0).equals("true")){
-                        variable.values.add("false");
-                    }
-                    else {
-                        variable.values.add("true");
-                    }
-                    variable.level = 2;
-                    if (!exceptionValues.contains(variable)){
-                        exceptionValues.add(variable);
-                    }                }
-                //对于bool变量，如过正确值只有两个而错误值有一个，将该错误值作为第二等级怀疑变量。
-                if (trueVariable.get(variable.variable).size() == 2 && variable.values.size() == 1){
-                    variable.level = 2;
-                    if (!exceptionValues.contains(variable)){
-                        exceptionValues.add(variable);
-                    }
-                }
-            }
-            //如果值中有max，min之类的值，将该错误值作为第二等级变量
-            for (String value: variable.values){
-                if (MathUtils.isMaxMinValue(value)){
-                    variable.values.clear();
-                    variable.values.add(value);
-                    variable.level = 2;
-                    if (!exceptionValues.contains(variable)){
-                        exceptionValues.add(variable);
-                    }
-                    break;
-                }
-            }
-            */
-        }
         exceptionValues.addAll(getThis(suspicious, vars, traceResults));
         return exceptionValues;
     }
@@ -141,9 +99,6 @@ public class AbandanTrueValueFilter {
                 return new ArrayList<>();
             }
             for (TraceResult traceResult: traceResults){
-                //if (traceResult.getTestResult()){
-                //    continue;
-                //}
                 String valueName = suspicious.classname().substring(suspicious.classname().lastIndexOf(".")+1);
                 valueName+="(";
                 for (String variable: equalVariable){
@@ -209,7 +164,7 @@ public class AbandanTrueValueFilter {
                                 count++;
                             }
                         }
-                        //if (count < valueArray.length){
+
                         if (count == 0 ){
                             exceptionValues.get(infoKey).add(value);
                         }

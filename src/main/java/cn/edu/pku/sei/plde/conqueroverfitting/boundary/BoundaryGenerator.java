@@ -12,6 +12,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.CodeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.InfoUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.MathUtils;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.VariableUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 
 
@@ -28,35 +29,25 @@ import java.util.regex.Matcher;
 public class BoundaryGenerator {
 
     public static List<String> generate(Suspicious suspicious, ExceptionVariable exceptionVariable, Map<VariableInfo, List<String>> trueValues, Map<VariableInfo, List<String>> falseValues, String project) {
-        List<String> keywords = new ArrayList<>();
-        if (exceptionVariable.name.length() == 1){
-            //keywords.add("factorial");
-            String variableName = suspicious.functionnameWithoutParam();
-            String keyword = "";
-            for (Character ch: variableName.toCharArray()){
-                if(!((ch<='Z')&&(ch>='A'))){
-                    keyword += ch;
-                    continue;
-                }
-                break;
-            }
-            keywords.add(keyword);
-        }
-
-
 
         Map<List<String>, String> intervals = new HashMap<>();
-        if (MathUtils.isNumberType(exceptionVariable.type) && exceptionVariable.values.size() <=5){
-            List<BoundaryWithFreq> variableBoundary = SearchBoundaryFilter.getBoundary(exceptionVariable, project, keywords);
+        if (MathUtils.isNumberType(exceptionVariable.type)){
+            List<BoundaryWithFreq> variableBoundary = SearchBoundaryFilter.getBoundary(exceptionVariable, project, suspicious);
             for (String value: exceptionVariable.values){
-                ArrayList<BoundaryWithFreq> intervalss;
-                try {
-                    intervalss = MathUtils.generateInterval(variableBoundary, Double.valueOf(value));
-                }catch (Exception e){
-                    intervals.put(Arrays.asList(value), "["+value+"-"+value+"]");
-                    e.printStackTrace();
+                if (MathUtils.isMaxMinValue(value)){
+                    intervals.put(Arrays.asList(value), value);
                     continue;
                 }
+                try {
+                    ArrayList<BoundaryWithFreq> intervalss = MathUtils.generateInterval(variableBoundary, Double.valueOf(value));
+                    if (intervalss == null){
+                        continue;
+                    }
+                    intervals.put(Arrays.asList(value), intervalss.get(0).value);
+                }catch (Exception e){
+                    continue;
+                }
+                /*
                 String left = intervalss.get(0).value;
                 if (intervalss.get(0).leftClose >= intervalss.get(0).rightClose){
                     left = "["+left;
@@ -65,12 +56,18 @@ public class BoundaryGenerator {
                 if (intervalss.get(1).rightClose >= intervalss.get(1).leftClose){
                     right = right + "]";
                 }
-                intervals.put(Arrays.asList(value), left+"-"+right);
+                */
             }
         }
         else {
-            List<BoundaryInfo> boundaryInfo = SearchBoundaryFilter.getBoundaryInfo(exceptionVariable, project, keywords);
-            intervals = exceptionVariable.getBoundaryIntervals(boundaryInfo);
+            List<BoundaryWithFreq> variableBoundary = SearchBoundaryFilter.getBoundary(exceptionVariable, project, suspicious);
+            for (String value : exceptionVariable.values) {
+                if (value.equals("true") || value.equals("false") || value.equals("null")) {
+                    intervals.put(Arrays.asList(value), value);
+                    continue;
+                }
+                intervals = exceptionVariable.getBoundaryIntervals(variableBoundary);
+            }
         }
         List<String> returnList = new ArrayList<>();
         for (Map.Entry<List<String>, String> entry: intervals.entrySet()){
