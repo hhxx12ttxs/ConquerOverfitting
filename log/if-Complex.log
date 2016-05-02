@@ -1,0 +1,648 @@
+****************************************   begin   ****************************************
+value: 0
+type: INT
+freq 157
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: null
+type: NULL
+freq 44
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: true
+type: BOOLEAN
+freq 39
+isSimpleType true
+otherType null
+variableSimpleType BOOLEAN
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: 7096
+type: INT
+freq 24
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: 1
+type: INT
+freq 10
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: new Complex(Double.NaN,Double.NaN)
+type: null
+freq 10
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: 2
+type: INT
+freq 8
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: {{ComplexField.ONE,ComplexField.ZERO,ComplexField.ZERO,ComplexField.ZERO},{ComplexField.ZERO,ComplexField.ONE,ComplexField.ZERO,ComplexField.ZERO},{ComplexField.ZERO,ComplexField.ZERO,ComplexField.MINUS_ONE,ComplexField.ZERO},{ComplexField.ZERO,ComplexField.ZERO,ComplexField.ZERO,ComplexField.MINUS_ONE}}
+type: null
+freq 6
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: {{ComplexField.ZERO,ComplexField.ZERO,ComplexField.ZERO,ComplexField.ONE},{ComplexField.ZERO,ComplexField.ZERO,ComplexField.ONE,ComplexField.ZERO},{ComplexField.ZERO,ComplexField.MINUS_ONE,ComplexField.ZERO,ComplexField.ZERO},{ComplexField.MINUS_ONE,ComplexField.ZERO,ComplexField.ZERO,ComplexField.ZERO}}
+type: null
+freq 6
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: {{ComplexField.ZERO,ComplexField.ZERO,ComplexField.ZERO,ComplexField.I},{ComplexField.ZERO,ComplexField.ZERO,ComplexField.MINUS_I,ComplexField.ZERO},{ComplexField.ZERO,ComplexField.MINUS_I,ComplexField.ZERO,ComplexField.ZERO},{ComplexField.I,ComplexField.ZERO,ComplexField.ZERO,ComplexField.ZERO}}
+type: null
+freq 6
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: {{ComplexField.ZERO,ComplexField.ZERO,ComplexField.ONE,ComplexField.ZERO},{ComplexField.ZERO,ComplexField.ZERO,ComplexField.ZERO,ComplexField.MINUS_ONE},{ComplexField.MINUS_ONE,ComplexField.ZERO,ComplexField.ZERO,ComplexField.ZERO},{ComplexField.ZERO,ComplexField.ONE,ComplexField.ZERO,ComplexField.ZERO}}
+type: null
+freq 6
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: {{ComplexField.ZERO,ComplexField.ZERO,ComplexField.ONE,ComplexField.ZERO},{ComplexField.ZERO,ComplexField.ZERO,ComplexField.ZERO,ComplexField.ONE},{ComplexField.ONE,ComplexField.ZERO,ComplexField.ZERO,ComplexField.ZERO},{ComplexField.ZERO,ComplexField.ONE,ComplexField.ZERO,ComplexField.ZERO}}
+type: null
+freq 6
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: {{ComplexField.ZERO,ComplexField.ZERO,ComplexField.ZERO,ComplexField.I},{ComplexField.ZERO,ComplexField.ZERO,ComplexField.MINUS_I,ComplexField.ZERO},{ComplexField.ZERO,ComplexField.I,ComplexField.ZERO,ComplexField.ZERO},{ComplexField.MINUS_I,ComplexField.ZERO,ComplexField.ZERO,ComplexField.ZERO}}
+type: null
+freq 6
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: {{ComplexField.ZERO,ComplexField.ZERO,ComplexField.I,ComplexField.ZERO},{ComplexField.ZERO,ComplexField.ZERO,ComplexField.ZERO,ComplexField.MINUS_I},{ComplexField.I,ComplexField.ZERO,ComplexField.ZERO,ComplexField.ZERO},{ComplexField.ZERO,ComplexField.MINUS_I,ComplexField.ZERO,ComplexField.ZERO}}
+type: null
+freq 6
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: {{ComplexField.I,ComplexField.ZERO,ComplexField.ZERO,ComplexField.ZERO},{ComplexField.ZERO,ComplexField.I,ComplexField.ZERO,ComplexField.ZERO},{ComplexField.ZERO,ComplexField.ZERO,ComplexField.MINUS_I,ComplexField.ZERO},{ComplexField.ZERO,ComplexField.ZERO,ComplexField.ZERO,ComplexField.MINUS_I}}
+type: null
+freq 6
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: {{ComplexField.ZERO,ComplexField.ZERO,ComplexField.ZERO,ComplexField.MINUS_I},{ComplexField.ZERO,ComplexField.ZERO,ComplexField.MINUS_I,ComplexField.ZERO},{ComplexField.ZERO,ComplexField.MINUS_I,ComplexField.ZERO,ComplexField.ZERO},{ComplexField.MINUS_I,ComplexField.ZERO,ComplexField.ZERO,ComplexField.ZERO}}
+type: null
+freq 6
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: {{ComplexField.ZERO,ComplexField.ZERO,ComplexField.I,ComplexField.ZERO},{ComplexField.ZERO,ComplexField.ZERO,ComplexField.ZERO,ComplexField.I},{ComplexField.MINUS_I,ComplexField.ZERO,ComplexField.ZERO,ComplexField.ZERO},{ComplexField.ZERO,ComplexField.MINUS_I,ComplexField.ZERO,ComplexField.ZERO}}
+type: null
+freq 6
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: new GammaMatrix(y0_D)
+type: null
+freq 6
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: new GammaMatrix(y1_D)
+type: null
+freq 6
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: new GammaMatrix(y2_D)
+type: null
+freq 6
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: new GammaMatrix(y3_D)
+type: null
+freq 6
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: new GammaMatrix(y5_D)
+type: null
+freq 6
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: new GammaMatrix(y0_M)
+type: null
+freq 6
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: new GammaMatrix(y1_M)
+type: null
+freq 6
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: new GammaMatrix(y2_M)
+type: null
+freq 6
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: new GammaMatrix(y3_M)
+type: null
+freq 6
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: new GammaMatrix(y5_M)
+type: null
+freq 6
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: 7090
+type: INT
+freq 6
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: new Complex(0,0)
+type: null
+freq 5
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: 3
+type: INT
+freq 2
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: 50
+type: INT
+freq 2
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Integer.MIN_VALUE
+type: INT
+freq 2
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Integer.MAX_VALUE
+type: INT
+freq 2
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: 25
+type: INT
+freq 2
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: 20
+type: INT
+freq 2
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y5_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y1_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y2_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y3_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y0_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: LoggerFactory.getLogger(FourierUtil.class)
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: 3.141592
+type: DOUBLE
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType DOUBLE
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y5_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y1_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y2_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y3_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y0_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y5_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y1_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y2_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y3_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y0_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y5_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y1_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y2_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y3_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y0_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: new Complex(0,1,UtilMath.PI_2,1)
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: new Complex(0,-1,3 * UtilMath.PI_2,1)
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: new Complex(-1,0,Math.PI,1)
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: new Complex(1,0,0,1)
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: new Complex(0,0,0,0)
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: {{Complex.ZERO,Complex.ZERO,Complex.ZERO,Complex.ZERO},{Complex.ZERO,Complex.ZERO,Complex.ZERO,Complex.ZERO},{Complex.ZERO,Complex.ZERO,Complex.ZERO,ComplexField.MINUS_I},{Complex.ZERO,Complex.ZERO,Complex.I,Complex.ZERO}}
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: {{Complex.ZERO,Complex.ZERO,Complex.ZERO,Complex.ZERO},{Complex.ZERO,Complex.ZERO,Complex.ZERO,Complex.I},{Complex.ZERO,Complex.ZERO,Complex.ZERO,Complex.ZERO},{Complex.ZERO,ComplexField.MINUS_I,Complex.ZERO,Complex.ZERO}}
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: {{Complex.ZERO,Complex.ZERO,Complex.ZERO,Complex.ZERO},{Complex.ZERO,Complex.ZERO,ComplexField.MINUS_I,Complex.ZERO},{Complex.ZERO,Complex.I,Complex.ZERO,Complex.ZERO},{Complex.ZERO,Complex.ZERO,Complex.ZERO,Complex.ZERO}}
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: {{Complex.ZERO,ComplexField.MINUS_I,Complex.ZERO,Complex.ZERO},{ComplexField.MINUS_I,Complex.ZERO,Complex.ZERO,Complex.ZERO},{Complex.ZERO,Complex.ZERO,Complex.ZERO,Complex.ZERO},{Complex.ZERO,Complex.ZERO,Complex.ZERO,Complex.ZERO}}
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: {{Complex.ZERO,Complex.ZERO,ComplexField.MINUS_I,Complex.ZERO},{Complex.ZERO,Complex.ZERO,Complex.ZERO,Complex.ZERO},{ComplexField.MINUS_I,Complex.ZERO,Complex.ZERO,Complex.ZERO},{Complex.ZERO,Complex.ZERO,Complex.ZERO,Complex.ZERO}}
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: {{Complex.ZERO,Complex.ZERO,Complex.ZERO,ComplexField.MINUS_I},{Complex.ZERO,Complex.ZERO,Complex.ZERO,Complex.ZERO},{Complex.ZERO,Complex.ZERO,Complex.ZERO,Complex.ZERO},{ComplexField.MINUS_I,Complex.ZERO,Complex.ZERO,Complex.ZERO}}
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: {new ComplexSquareMatrix(t1),new ComplexSquareMatrix(t2),new ComplexSquareMatrix(t3),new ComplexSquareMatrix(t4),new ComplexSquareMatrix(t5),new ComplexSquareMatrix(t6)}
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: new DecimalFormat("#.###")
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y5_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y1_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y2_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y3_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y0_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y5_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y1_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y2_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y3_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: Y0_
+type: null
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+value: 100
+type: INT
+freq 1
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************

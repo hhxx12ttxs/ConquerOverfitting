@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 package me.prettyprint.hom;
 
 import java.beans.IntrospectionException;
@@ -72,5 +73,42 @@ public class KeyDefinition {
     return !isComplexKey() && !idPropertyMap.isEmpty();
   }
 
+=======
+public class Complex extends Number
+{
+  double imaginary;
+
+  public Complex ( double re
+                 , double im)
+  {
+    super( re);
+    imaginary = im;
+  }
+
+  Number add ( Number operand)
+  {
+    if (operand instanceof Complex)
+    { Complex cmplx = (Complex) operand;
+      return new Complex( real + cmplx.real, imaginary + cmplx.imaginary);
+    }
+    else
+    { return new Complex( real + operand.real, imaginary);
+    }
+  }
+
+  Number multiply ( Number operand)
+  {
+    if (operand instanceof Complex)
+    { Complex cmplx = (Complex) operand;
+      return
+        new Complex
+          ( real * cmplx.real - imaginary * cmplx.imaginary
+          , real * cmplx.imaginary + imaginary * cmplx.real);
+    }
+    else
+    { return new Complex( real * operand.real, imaginary * operand.real);
+    }
+  }
+>>>>>>> 76aa07461566a5976980e6696204781271955163
 }
 

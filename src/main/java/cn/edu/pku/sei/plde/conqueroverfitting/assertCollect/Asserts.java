@@ -34,8 +34,9 @@ public class Asserts {
     public int _assertNums;
     public List<String> _asserts;
     public Map<String, Integer> _assertLineMap;
+    public String _project;
 
-    public Asserts(String classpath, String srcPath, String testClasspath, String testSrcPath, String testClassname, String testMethodName, List<String> libPath) {
+    public Asserts(String classpath, String srcPath, String testClasspath, String testSrcPath, String testClassname, String testMethodName, List<String> libPath, String project) {
         _libPath = libPath;
         _classpath = classpath;
         _srcPath = srcPath;
@@ -43,6 +44,7 @@ public class Asserts {
         _testClasspath = testClasspath;
         _testSrcPath = testSrcPath;
         _testMethodName = testMethodName;
+        _project = project;
         _code = FileUtils.getCodeFromFile(_testSrcPath, _testClassname);
         if (!_code.contains(_testMethodName) && _code.contains(" extends ")){
             String extendsClass = _code.split(" extends ")[1].substring(0, _code.split(" extends ")[1].indexOf("{"));
@@ -71,8 +73,8 @@ public class Asserts {
         _errorAssertLines = getErrorAssertLine();
     }
 
-    public Asserts(String classpath, String srcPath,  String testClasspath, String testSrcPath, String testClassname, String testMethodName){
-        this(classpath, srcPath, testClasspath, testSrcPath, testClassname, testMethodName, new ArrayList<String>());
+    public Asserts(String classpath, String srcPath,  String testClasspath, String testSrcPath, String testClassname, String testMethodName, String project){
+        this(classpath, srcPath, testClasspath, testSrcPath, testClassname, testMethodName, new ArrayList<String>(), project);
     }
 
     private List<Integer> getErrorAssertLine(){
@@ -104,6 +106,10 @@ public class Asserts {
                 String code = FileUtils.getCodeFromFile(tempJavaFile);
                 String lineString = CodeUtils.getLineFromCode(code,lineNum).trim();
                 if (AssertUtils.isAssertLine(lineString, code)){
+                    if (LineUtils.isLineInFor(code, lineNum)){
+                        RecordUtils.record("Assert In For: "+_project+" Test: "+_testClassname+"#"+_testMethodName+"#"+lineNum, "assertInFor");
+                    }
+
                     result.add(lineNum);
                 }
                 if (lineString.startsWith("fail(")){

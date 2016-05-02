@@ -17,7 +17,11 @@
  * under the License.
  */
 
+<<<<<<< HEAD
 package org.elasticsearch.search.facet.datehistogram;
+=======
+package org.elasticsearch.search.facet.histogram.unbounded;
+>>>>>>> 76aa07461566a5976980e6696204781271955163
 
 import org.elasticsearch.common.CacheRecycler;
 import org.elasticsearch.common.io.stream.StreamInput;
@@ -26,6 +30,11 @@ import org.elasticsearch.common.trove.ExtTLongObjectHashMap;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentBuilderString;
 import org.elasticsearch.search.facet.Facet;
+<<<<<<< HEAD
+=======
+import org.elasticsearch.search.facet.histogram.HistogramFacet;
+import org.elasticsearch.search.facet.histogram.InternalHistogramFacet;
+>>>>>>> 76aa07461566a5976980e6696204781271955163
 
 import java.io.IOException;
 import java.util.*;
@@ -33,9 +42,15 @@ import java.util.*;
 /**
  *
  */
+<<<<<<< HEAD
 public class InternalFullDateHistogramFacet extends InternalDateHistogramFacet {
 
     private static final String STREAM_TYPE = "fdHistogram";
+=======
+public class InternalFullHistogramFacet extends InternalHistogramFacet {
+
+    private static final String STREAM_TYPE = "fHistogram";
+>>>>>>> 76aa07461566a5976980e6696204781271955163
 
     public static void registerStreams() {
         Streams.registerStream(STREAM, STREAM_TYPE);
@@ -58,15 +73,24 @@ public class InternalFullDateHistogramFacet extends InternalDateHistogramFacet {
      * A histogram entry representing a single entry within the result of a histogram facet.
      */
     public static class FullEntry implements Entry {
+<<<<<<< HEAD
         private final long time;
+=======
+        long key;
+>>>>>>> 76aa07461566a5976980e6696204781271955163
         long count;
         long totalCount;
         double total;
         double min = Double.POSITIVE_INFINITY;
         double max = Double.NEGATIVE_INFINITY;
 
+<<<<<<< HEAD
         public FullEntry(long time, long count, double min, double max, long totalCount, double total) {
             this.time = time;
+=======
+        public FullEntry(long key, long count, double min, double max, long totalCount, double total) {
+            this.key = key;
+>>>>>>> 76aa07461566a5976980e6696204781271955163
             this.count = count;
             this.min = min;
             this.max = max;
@@ -75,6 +99,7 @@ public class InternalFullDateHistogramFacet extends InternalDateHistogramFacet {
         }
 
         @Override
+<<<<<<< HEAD
         public long time() {
             return time;
         }
@@ -82,6 +107,15 @@ public class InternalFullDateHistogramFacet extends InternalDateHistogramFacet {
         @Override
         public long getTime() {
             return time();
+=======
+        public long key() {
+            return key;
+        }
+
+        @Override
+        public long getKey() {
+            return key();
+>>>>>>> 76aa07461566a5976980e6696204781271955163
         }
 
         @Override
@@ -116,9 +150,12 @@ public class InternalFullDateHistogramFacet extends InternalDateHistogramFacet {
 
         @Override
         public double mean() {
+<<<<<<< HEAD
             if (totalCount == 0) {
                 return totalCount;
             }
+=======
+>>>>>>> 76aa07461566a5976980e6696204781271955163
             return total / totalCount;
         }
 
@@ -156,10 +193,17 @@ public class InternalFullDateHistogramFacet extends InternalDateHistogramFacet {
     boolean cachedEntries;
     Collection<FullEntry> entries;
 
+<<<<<<< HEAD
     private InternalFullDateHistogramFacet() {
     }
 
     public InternalFullDateHistogramFacet(String name, ComparatorType comparatorType, ExtTLongObjectHashMap<InternalFullDateHistogramFacet.FullEntry> entries, boolean cachedEntries) {
+=======
+    private InternalFullHistogramFacet() {
+    }
+
+    public InternalFullHistogramFacet(String name, ComparatorType comparatorType, ExtTLongObjectHashMap<InternalFullHistogramFacet.FullEntry> entries, boolean cachedEntries) {
+>>>>>>> 76aa07461566a5976980e6696204781271955163
         this.name = name;
         this.comparatorType = comparatorType;
         this.tEntries = entries;
@@ -217,7 +261,11 @@ public class InternalFullDateHistogramFacet extends InternalDateHistogramFacet {
     public Facet reduce(String name, List<Facet> facets) {
         if (facets.size() == 1) {
             // we need to sort it
+<<<<<<< HEAD
             InternalFullDateHistogramFacet internalFacet = (InternalFullDateHistogramFacet) facets.get(0);
+=======
+            InternalFullHistogramFacet internalFacet = (InternalFullHistogramFacet) facets.get(0);
+>>>>>>> 76aa07461566a5976980e6696204781271955163
             List<FullEntry> entries = internalFacet.entries();
             Collections.sort(entries, comparatorType.comparator());
             internalFacet.releaseCache();
@@ -227,9 +275,15 @@ public class InternalFullDateHistogramFacet extends InternalDateHistogramFacet {
         ExtTLongObjectHashMap<FullEntry> map = CacheRecycler.popLongObjectMap();
 
         for (Facet facet : facets) {
+<<<<<<< HEAD
             InternalFullDateHistogramFacet histoFacet = (InternalFullDateHistogramFacet) facet;
             for (FullEntry fullEntry : histoFacet.entries) {
                 FullEntry current = map.get(fullEntry.time);
+=======
+            InternalFullHistogramFacet histoFacet = (InternalFullHistogramFacet) facet;
+            for (FullEntry fullEntry : histoFacet.entries) {
+                FullEntry current = map.get(fullEntry.key);
+>>>>>>> 76aa07461566a5976980e6696204781271955163
                 if (current != null) {
                     current.count += fullEntry.count;
                     current.total += fullEntry.total;
@@ -241,7 +295,11 @@ public class InternalFullDateHistogramFacet extends InternalDateHistogramFacet {
                         current.max = fullEntry.max;
                     }
                 } else {
+<<<<<<< HEAD
                     map.put(fullEntry.time, fullEntry);
+=======
+                    map.put(fullEntry.key, fullEntry);
+>>>>>>> 76aa07461566a5976980e6696204781271955163
                 }
             }
             histoFacet.releaseCache();
@@ -262,7 +320,11 @@ public class InternalFullDateHistogramFacet extends InternalDateHistogramFacet {
         CacheRecycler.pushLongObjectMap(map);
 
         // just initialize it as already ordered facet
+<<<<<<< HEAD
         InternalFullDateHistogramFacet ret = new InternalFullDateHistogramFacet();
+=======
+        InternalFullHistogramFacet ret = new InternalFullHistogramFacet();
+>>>>>>> 76aa07461566a5976980e6696204781271955163
         ret.name = name;
         ret.comparatorType = comparatorType;
         ret.entries = ordered;
@@ -272,7 +334,11 @@ public class InternalFullDateHistogramFacet extends InternalDateHistogramFacet {
     static final class Fields {
         static final XContentBuilderString _TYPE = new XContentBuilderString("_type");
         static final XContentBuilderString ENTRIES = new XContentBuilderString("entries");
+<<<<<<< HEAD
         static final XContentBuilderString TIME = new XContentBuilderString("time");
+=======
+        static final XContentBuilderString KEY = new XContentBuilderString("key");
+>>>>>>> 76aa07461566a5976980e6696204781271955163
         static final XContentBuilderString COUNT = new XContentBuilderString("count");
         static final XContentBuilderString TOTAL = new XContentBuilderString("total");
         static final XContentBuilderString TOTAL_COUNT = new XContentBuilderString("total_count");
@@ -284,11 +350,19 @@ public class InternalFullDateHistogramFacet extends InternalDateHistogramFacet {
     @Override
     public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
         builder.startObject(name);
+<<<<<<< HEAD
         builder.field(Fields._TYPE, TYPE);
         builder.startArray(Fields.ENTRIES);
         for (Entry entry : entries()) {
             builder.startObject();
             builder.field(Fields.TIME, entry.time());
+=======
+        builder.field(Fields._TYPE, HistogramFacet.TYPE);
+        builder.startArray(Fields.ENTRIES);
+        for (Entry entry : entries) {
+            builder.startObject();
+            builder.field(Fields.KEY, entry.key());
+>>>>>>> 76aa07461566a5976980e6696204781271955163
             builder.field(Fields.COUNT, entry.count());
             builder.field(Fields.MIN, entry.min());
             builder.field(Fields.MAX, entry.max());
@@ -302,8 +376,13 @@ public class InternalFullDateHistogramFacet extends InternalDateHistogramFacet {
         return builder;
     }
 
+<<<<<<< HEAD
     public static InternalFullDateHistogramFacet readHistogramFacet(StreamInput in) throws IOException {
         InternalFullDateHistogramFacet facet = new InternalFullDateHistogramFacet();
+=======
+    public static InternalFullHistogramFacet readHistogramFacet(StreamInput in) throws IOException {
+        InternalFullHistogramFacet facet = new InternalFullHistogramFacet();
+>>>>>>> 76aa07461566a5976980e6696204781271955163
         facet.readFrom(in);
         return facet;
     }
@@ -327,7 +406,11 @@ public class InternalFullDateHistogramFacet extends InternalDateHistogramFacet {
         out.writeByte(comparatorType.id());
         out.writeVInt(entries.size());
         for (FullEntry entry : entries) {
+<<<<<<< HEAD
             out.writeLong(entry.time);
+=======
+            out.writeLong(entry.key);
+>>>>>>> 76aa07461566a5976980e6696204781271955163
             out.writeVLong(entry.count);
             out.writeDouble(entry.min);
             out.writeDouble(entry.max);

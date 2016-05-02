@@ -1,5 +1,9 @@
 /*
+<<<<<<< HEAD
  * Copyright 2012 ZXing authors
+=======
+ * Copyright (C) 2014 The CyanogenMod Project
+>>>>>>> 76aa07461566a5976980e6696204781271955163
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,6 +17,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+<<<<<<< HEAD
 
 package com.google.zxing.pdf417.decoder.ec;
 
@@ -184,5 +189,85 @@ public final class ErrorCorrection {
     }
     return result;
   }
+=======
+package com.android.settings.profiles.actions.item;
+
+import android.app.StreamSettings;
+import android.content.Context;
+import android.media.AudioManager;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.TextView;
+
+import com.android.settings.R;
+import com.android.settings.profiles.actions.ItemListAdapter;
+
+public class VolumeStreamItem implements Item {
+    private int mStreamId;
+    private StreamSettings mStreamSettings;
+
+    public VolumeStreamItem(int streamId, StreamSettings streamSettings) {
+        mStreamId = streamId;
+        mStreamSettings = streamSettings;
+    }
+
+    @Override
+    public ItemListAdapter.RowType getRowType() {
+        return ItemListAdapter.RowType.VOLUME_STREAM_ITEM;
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return true;
+    }
+
+    @Override
+    public View getView(LayoutInflater inflater, View convertView, ViewGroup parent) {
+        View view;
+        if (convertView == null) {
+            view = inflater.inflate(R.layout.list_two_line_item, parent, false);
+            // Do some initialization
+        } else {
+            view = convertView;
+        }
+
+        Context context = inflater.getContext();
+        final AudioManager am = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+
+        TextView text = (TextView) view.findViewById(R.id.title);
+        text.setText(getNameForStream(mStreamId));
+
+        TextView desc = (TextView) view.findViewById(R.id.summary);
+        int denominator = mStreamSettings.getValue();
+        int numerator = am.getStreamMaxVolume(mStreamId);
+        desc.setText(context.getResources().getString(R.string.volume_override_summary,
+                denominator, numerator));
+
+        return view;
+    }
+
+    public static int getNameForStream(int stream) {
+        switch (stream) {
+            case AudioManager.STREAM_ALARM:
+                return R.string.alarm_volume_title;
+            case AudioManager.STREAM_MUSIC:
+                return R.string.media_volume_title;
+            case AudioManager.STREAM_RING:
+                return R.string.incoming_call_volume_title;
+            case AudioManager.STREAM_NOTIFICATION:
+                return R.string.notification_volume_title;
+            default: return 0;
+        }
+    }
+
+    public int getStreamType() {
+        return mStreamId;
+    }
+
+    public StreamSettings getSettings() {
+        return mStreamSettings;
+    }
+>>>>>>> 76aa07461566a5976980e6696204781271955163
 }
 

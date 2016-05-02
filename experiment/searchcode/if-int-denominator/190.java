@@ -1,6 +1,10 @@
 /*   
  *   Remuco - A remote control system for media players.
+<<<<<<< HEAD
  *   Copyright (C) 2006-2009 by the Remuco team, see AUTHORS.
+=======
+ *   Copyright (C) 2006-2010 by the Remuco team, see AUTHORS.
+>>>>>>> 76aa07461566a5976980e6696204781271955163
  *
  *   This file is part of Remuco.
  *
@@ -18,7 +22,11 @@
  *   along with Remuco.  If not, see <http://www.gnu.org/licenses/>.
  *   
  */
+<<<<<<< HEAD
 package remuco.ui;
+=======
+package remuco.client.jme.ui;
+>>>>>>> 76aa07461566a5976980e6696204781271955163
 
 import java.io.IOException;
 import java.util.Vector;
@@ -27,12 +35,21 @@ import javax.microedition.lcdui.Font;
 import javax.microedition.lcdui.Graphics;
 import javax.microedition.lcdui.Image;
 
+<<<<<<< HEAD
 import remuco.Config;
 import remuco.OptionDescriptor;
 import remuco.ui.screenies.Screeny;
 import remuco.ui.screenies.ScreenyException;
 import remuco.util.Log;
 import remuco.util.Tools;
+=======
+import remuco.client.common.util.Log;
+import remuco.client.common.util.Tools;
+import remuco.client.jme.Config;
+import remuco.client.jme.OptionDescriptor;
+import remuco.client.jme.ui.screenies.Screeny;
+import remuco.client.jme.ui.screenies.ScreenyException;
+>>>>>>> 76aa07461566a5976980e6696204781271955163
 
 public final class Theme {
 

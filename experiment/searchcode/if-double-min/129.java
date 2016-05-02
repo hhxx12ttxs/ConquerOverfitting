@@ -17,6 +17,7 @@
  * under the License.
  */
 
+<<<<<<< HEAD
 package org.elasticsearch.search.facet.statistical;
 
 import org.elasticsearch.common.io.stream.StreamInput;
@@ -27,13 +28,33 @@ import org.elasticsearch.search.facet.Facet;
 import org.elasticsearch.search.facet.InternalFacet;
 
 import java.io.IOException;
+=======
+package org.elasticsearch.search.facet.datehistogram;
+
+import org.elasticsearch.common.CacheRecycler;
+import org.elasticsearch.common.io.stream.StreamInput;
+import org.elasticsearch.common.io.stream.StreamOutput;
+import org.elasticsearch.common.trove.ExtTLongObjectHashMap;
+import org.elasticsearch.common.xcontent.XContentBuilder;
+import org.elasticsearch.common.xcontent.XContentBuilderString;
+import org.elasticsearch.search.facet.Facet;
+
+import java.io.IOException;
+import java.util.*;
+>>>>>>> 76aa07461566a5976980e6696204781271955163
 
 /**
  *
  */
+<<<<<<< HEAD
 public class InternalStatisticalFacet implements StatisticalFacet, InternalFacet {
 
     private static final String STREAM_TYPE = "statistical";
+=======
+public class InternalFullDateHistogramFacet extends InternalDateHistogramFacet {
+
+    private static final String STREAM_TYPE = "fdHistogram";
+>>>>>>> 76aa07461566a5976980e6696204781271955163
 
     public static void registerStreams() {
         Streams.registerStream(STREAM, STREAM_TYPE);
@@ -42,7 +63,11 @@ public class InternalStatisticalFacet implements StatisticalFacet, InternalFacet
     static Stream STREAM = new Stream() {
         @Override
         public Facet readFacet(String type, StreamInput in) throws IOException {
+<<<<<<< HEAD
             return readStatisticalFacet(in);
+=======
+            return readHistogramFacet(in);
+>>>>>>> 76aa07461566a5976980e6696204781271955163
         }
     };
 
@@ -51,6 +76,7 @@ public class InternalStatisticalFacet implements StatisticalFacet, InternalFacet
         return STREAM_TYPE;
     }
 
+<<<<<<< HEAD
     private String name;
 
     private double min;
@@ -73,6 +99,120 @@ public class InternalStatisticalFacet implements StatisticalFacet, InternalFacet
         this.total = total;
         this.sumOfSquares = sumOfSquares;
         this.count = count;
+=======
+
+    /**
+     * A histogram entry representing a single entry within the result of a histogram facet.
+     */
+    public static class FullEntry implements Entry {
+        private final long time;
+        long count;
+        long totalCount;
+        double total;
+        double min = Double.POSITIVE_INFINITY;
+        double max = Double.NEGATIVE_INFINITY;
+
+        public FullEntry(long time, long count, double min, double max, long totalCount, double total) {
+            this.time = time;
+            this.count = count;
+            this.min = min;
+            this.max = max;
+            this.totalCount = totalCount;
+            this.total = total;
+        }
+
+        @Override
+        public long time() {
+            return time;
+        }
+
+        @Override
+        public long getTime() {
+            return time();
+        }
+
+        @Override
+        public long count() {
+            return count;
+        }
+
+        @Override
+        public long getCount() {
+            return count();
+        }
+
+        @Override
+        public double total() {
+            return total;
+        }
+
+        @Override
+        public double getTotal() {
+            return total();
+        }
+
+        @Override
+        public long totalCount() {
+            return totalCount;
+        }
+
+        @Override
+        public long getTotalCount() {
+            return this.totalCount;
+        }
+
+        @Override
+        public double mean() {
+            if (totalCount == 0) {
+                return totalCount;
+            }
+            return total / totalCount;
+        }
+
+        @Override
+        public double getMean() {
+            return total / totalCount;
+        }
+
+        @Override
+        public double min() {
+            return this.min;
+        }
+
+        @Override
+        public double getMin() {
+            return this.min;
+        }
+
+        @Override
+        public double max() {
+            return this.max;
+        }
+
+        @Override
+        public double getMax() {
+            return this.max;
+        }
+    }
+
+    private String name;
+
+    private ComparatorType comparatorType;
+
+    ExtTLongObjectHashMap<FullEntry> tEntries;
+    boolean cachedEntries;
+    Collection<FullEntry> entries;
+
+    private InternalFullDateHistogramFacet() {
+    }
+
+    public InternalFullDateHistogramFacet(String name, ComparatorType comparatorType, ExtTLongObjectHashMap<InternalFullDateHistogramFacet.FullEntry> entries, boolean cachedEntries) {
+        this.name = name;
+        this.comparatorType = comparatorType;
+        this.tEntries = entries;
+        this.cachedEntries = cachedEntries;
+        this.entries = entries.valueCollection();
+>>>>>>> 76aa07461566a5976980e6696204781271955163
     }
 
     @Override
@@ -92,6 +232,7 @@ public class InternalStatisticalFacet implements StatisticalFacet, InternalFacet
 
     @Override
     public String getType() {
+<<<<<<< HEAD
         return TYPE;
     }
 
@@ -172,10 +313,96 @@ public class InternalStatisticalFacet implements StatisticalFacet, InternalFacet
 
     public double getStdDeviation() {
         return stdDeviation();
+=======
+        return type();
+    }
+
+    @Override
+    public List<FullEntry> entries() {
+        if (!(entries instanceof List)) {
+            entries = new ArrayList<FullEntry>(entries);
+        }
+        return (List<FullEntry>) entries;
+    }
+
+    @Override
+    public List<FullEntry> getEntries() {
+        return entries();
+    }
+
+    @Override
+    public Iterator<Entry> iterator() {
+        return (Iterator) entries().iterator();
+    }
+
+    void releaseCache() {
+        if (cachedEntries) {
+            CacheRecycler.pushLongObjectMap(tEntries);
+            cachedEntries = false;
+            tEntries = null;
+        }
+    }
+
+    @Override
+    public Facet reduce(String name, List<Facet> facets) {
+        if (facets.size() == 1) {
+            // we need to sort it
+            InternalFullDateHistogramFacet internalFacet = (InternalFullDateHistogramFacet) facets.get(0);
+            List<FullEntry> entries = internalFacet.entries();
+            Collections.sort(entries, comparatorType.comparator());
+            internalFacet.releaseCache();
+            return internalFacet;
+        }
+
+        ExtTLongObjectHashMap<FullEntry> map = CacheRecycler.popLongObjectMap();
+
+        for (Facet facet : facets) {
+            InternalFullDateHistogramFacet histoFacet = (InternalFullDateHistogramFacet) facet;
+            for (FullEntry fullEntry : histoFacet.entries) {
+                FullEntry current = map.get(fullEntry.time);
+                if (current != null) {
+                    current.count += fullEntry.count;
+                    current.total += fullEntry.total;
+                    current.totalCount += fullEntry.totalCount;
+                    if (fullEntry.min < current.min) {
+                        current.min = fullEntry.min;
+                    }
+                    if (fullEntry.max > current.max) {
+                        current.max = fullEntry.max;
+                    }
+                } else {
+                    map.put(fullEntry.time, fullEntry);
+                }
+            }
+            histoFacet.releaseCache();
+        }
+
+        // sort
+        Object[] values = map.internalValues();
+        Arrays.sort(values, (Comparator) comparatorType.comparator());
+        List<FullEntry> ordered = new ArrayList<FullEntry>(map.size());
+        for (int i = 0; i < map.size(); i++) {
+            FullEntry value = (FullEntry) values[i];
+            if (value == null) {
+                break;
+            }
+            ordered.add(value);
+        }
+
+        CacheRecycler.pushLongObjectMap(map);
+
+        // just initialize it as already ordered facet
+        InternalFullDateHistogramFacet ret = new InternalFullDateHistogramFacet();
+        ret.name = name;
+        ret.comparatorType = comparatorType;
+        ret.entries = ordered;
+        return ret;
+>>>>>>> 76aa07461566a5976980e6696204781271955163
     }
 
     static final class Fields {
         static final XContentBuilderString _TYPE = new XContentBuilderString("_type");
+<<<<<<< HEAD
         static final XContentBuilderString COUNT = new XContentBuilderString("count");
         static final XContentBuilderString TOTAL = new XContentBuilderString("total");
         static final XContentBuilderString MIN = new XContentBuilderString("min");
@@ -184,11 +411,22 @@ public class InternalStatisticalFacet implements StatisticalFacet, InternalFacet
         static final XContentBuilderString SUM_OF_SQUARES = new XContentBuilderString("sum_of_squares");
         static final XContentBuilderString VARIANCE = new XContentBuilderString("variance");
         static final XContentBuilderString STD_DEVIATION = new XContentBuilderString("std_deviation");
+=======
+        static final XContentBuilderString ENTRIES = new XContentBuilderString("entries");
+        static final XContentBuilderString TIME = new XContentBuilderString("time");
+        static final XContentBuilderString COUNT = new XContentBuilderString("count");
+        static final XContentBuilderString TOTAL = new XContentBuilderString("total");
+        static final XContentBuilderString TOTAL_COUNT = new XContentBuilderString("total_count");
+        static final XContentBuilderString MEAN = new XContentBuilderString("mean");
+        static final XContentBuilderString MIN = new XContentBuilderString("min");
+        static final XContentBuilderString MAX = new XContentBuilderString("max");
+>>>>>>> 76aa07461566a5976980e6696204781271955163
     }
 
     @Override
     public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
         builder.startObject(name);
+<<<<<<< HEAD
         builder.field(Fields._TYPE, StatisticalFacet.TYPE);
         builder.field(Fields.COUNT, count());
         builder.field(Fields.TOTAL, total());
@@ -198,12 +436,33 @@ public class InternalStatisticalFacet implements StatisticalFacet, InternalFacet
         builder.field(Fields.SUM_OF_SQUARES, sumOfSquares());
         builder.field(Fields.VARIANCE, variance());
         builder.field(Fields.STD_DEVIATION, stdDeviation());
+=======
+        builder.field(Fields._TYPE, TYPE);
+        builder.startArray(Fields.ENTRIES);
+        for (Entry entry : entries()) {
+            builder.startObject();
+            builder.field(Fields.TIME, entry.time());
+            builder.field(Fields.COUNT, entry.count());
+            builder.field(Fields.MIN, entry.min());
+            builder.field(Fields.MAX, entry.max());
+            builder.field(Fields.TOTAL, entry.total());
+            builder.field(Fields.TOTAL_COUNT, entry.totalCount());
+            builder.field(Fields.MEAN, entry.mean());
+            builder.endObject();
+        }
+        builder.endArray();
+>>>>>>> 76aa07461566a5976980e6696204781271955163
         builder.endObject();
         return builder;
     }
 
+<<<<<<< HEAD
     public static StatisticalFacet readStatisticalFacet(StreamInput in) throws IOException {
         InternalStatisticalFacet facet = new InternalStatisticalFacet();
+=======
+    public static InternalFullDateHistogramFacet readHistogramFacet(StreamInput in) throws IOException {
+        InternalFullDateHistogramFacet facet = new InternalFullDateHistogramFacet();
+>>>>>>> 76aa07461566a5976980e6696204781271955163
         facet.readFrom(in);
         return facet;
     }
@@ -211,16 +470,28 @@ public class InternalStatisticalFacet implements StatisticalFacet, InternalFacet
     @Override
     public void readFrom(StreamInput in) throws IOException {
         name = in.readUTF();
+<<<<<<< HEAD
         count = in.readVLong();
         total = in.readDouble();
         min = in.readDouble();
         max = in.readDouble();
         sumOfSquares = in.readDouble();
+=======
+        comparatorType = ComparatorType.fromId(in.readByte());
+
+        cachedEntries = false;
+        int size = in.readVInt();
+        entries = new ArrayList<FullEntry>(size);
+        for (int i = 0; i < size; i++) {
+            entries.add(new FullEntry(in.readLong(), in.readVLong(), in.readDouble(), in.readDouble(), in.readVLong(), in.readDouble()));
+        }
+>>>>>>> 76aa07461566a5976980e6696204781271955163
     }
 
     @Override
     public void writeTo(StreamOutput out) throws IOException {
         out.writeUTF(name);
+<<<<<<< HEAD
         out.writeVLong(count);
         out.writeDouble(total);
         out.writeDouble(min);
@@ -229,3 +500,18 @@ public class InternalStatisticalFacet implements StatisticalFacet, InternalFacet
     }
 }
 
+=======
+        out.writeByte(comparatorType.id());
+        out.writeVInt(entries.size());
+        for (FullEntry entry : entries) {
+            out.writeLong(entry.time);
+            out.writeVLong(entry.count);
+            out.writeDouble(entry.min);
+            out.writeDouble(entry.max);
+            out.writeVLong(entry.totalCount);
+            out.writeDouble(entry.total);
+        }
+        releaseCache();
+    }
+}
+>>>>>>> 76aa07461566a5976980e6696204781271955163

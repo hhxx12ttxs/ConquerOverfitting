@@ -49,7 +49,7 @@ public class MainProcess {
             System.out.println("Main Process: set work directory error at project "+projectType+"-"+projectNumber);
             File recordPackage = new File(System.getProperty("user.dir")+"/patch/");
             recordPackage.mkdirs();
-            File main = new File(recordPackage.getAbsolutePath()+"/"+"FixResult.log");
+            File main = new File(System.getProperty("user.dir")+"/"+"FixResult.log");
             try {
                 if (!main.exists()) {
                     main.createNewFile();

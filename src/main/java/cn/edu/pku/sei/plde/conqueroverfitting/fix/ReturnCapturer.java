@@ -277,6 +277,7 @@ public class ReturnCapturer {
             if (parameters.get(1).contains("(") && parameters.get(1).contains(")") && parameters.get(1).contains(_methodName)){
                 callExpression = parameters.get(1);
                 returnExpression = parameters.get(0);
+
             }
             else {
                 callExpression = parameters.get(0);

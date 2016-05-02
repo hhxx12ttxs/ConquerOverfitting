@@ -221,6 +221,7 @@ public class PApplet extends Applet
   }
 
   /**
+<<<<<<< HEAD
    * Setting for whether to use the Quartz renderer on OS X. The Quartz
    * renderer is on its way out for OS X, but Processing uses it by default
    * because it's much faster than the Sun renderer. In some cases, however,
@@ -240,6 +241,8 @@ public class PApplet extends Applet
   static public String useQuartz = "true";
 
   /**
+=======
+>>>>>>> 76aa07461566a5976980e6696204781271955163
    * Modifier flags for the shortcut key used to trigger menus.
    * (Cmd on Mac OS X, Ctrl on Linux and Windows)
    */
@@ -269,6 +272,7 @@ public class PApplet extends Applet
    * Note that this won't update if you change the resolution
    * of your screen once the the applet is running.
    * <p>
+<<<<<<< HEAD
    * This variable is not static because in the desktop version of Processing,
    * not all instances of PApplet will necessarily be started on a screen of 
    * the same size. 
@@ -278,6 +282,10 @@ public class PApplet extends Applet
   /** 
    * Use screenW and screenH instead.
    * @deprecated
+=======
+   * This variable is not static, because future releases need to be better
+   * at handling multiple displays.
+>>>>>>> 76aa07461566a5976980e6696204781271955163
    */
   public Dimension screen =
     Toolkit.getDefaultToolkit().getScreenSize();
@@ -664,10 +672,13 @@ public class PApplet extends Applet
   public void init() {
 //    println("Calling init()");
 
+<<<<<<< HEAD
     Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
     screenWidth = screen.width;
     screenHeight = screen.height;
 
+=======
+>>>>>>> 76aa07461566a5976980e6696204781271955163
     // send tab keys through to the PApplet
     setFocusTraversalKeysEnabled(false);
 
@@ -4068,6 +4079,7 @@ public class PApplet extends Applet
   }
 
 
+<<<<<<< HEAD
   /**
    * Used by PGraphics to remove the requirement for loading a font!
    */
@@ -4082,11 +4094,19 @@ public class PApplet extends Applet
   
   public PFont createFont(String name, float size) {
     return createFont(name, size, true, null);
+=======
+  public PFont createFont(String name, float size) {
+    return createFont(name, size, true, PFont.DEFAULT_CHARSET);
+>>>>>>> 76aa07461566a5976980e6696204781271955163
   }
 
 
   public PFont createFont(String name, float size, boolean smooth) {
+<<<<<<< HEAD
     return createFont(name, size, smooth, null);
+=======
+    return createFont(name, size, smooth, PFont.DEFAULT_CHARSET);
+>>>>>>> 76aa07461566a5976980e6696204781271955163
   }
 
 
@@ -4095,8 +4115,13 @@ public class PApplet extends Applet
    * installed on the system, or from a .ttf or .otf that's inside
    * the data folder of this sketch.
    * <P/>
+<<<<<<< HEAD
    * Many .otf fonts don't seem to be supported by Java, perhaps because 
    * they're CFF based?
+=======
+   * Only works with Java 1.3 or later. Many .otf fonts don't seem
+   * to be supported by Java, perhaps because they're CFF based?
+>>>>>>> 76aa07461566a5976980e6696204781271955163
    * <P/>
    * Font names are inconsistent across platforms and Java versions.
    * On Mac OS X, Java 1.3 uses the font menu name of the font,
@@ -4105,9 +4130,15 @@ public class PApplet extends Applet
    * it appears that only the menu names are used, no matter what
    * Java version is in use. Naming system unknown/untested for 1.5.
    * <P/>
+<<<<<<< HEAD
    * Use 'null' for the charset if you want to dynamically create
    * character bitmaps only as they're needed. (Version 1.0.9 and
    * earlier would interpret null as all unicode characters.)
+=======
+   * Use 'null' for the charset if you want to use any of the 65,536
+   * unicode characters that exist in the font. Note that this can
+   * produce an enormous file or may cause an OutOfMemoryError.
+>>>>>>> 76aa07461566a5976980e6696204781271955163
    */
   public PFont createFont(String name, float size,
                           boolean smooth, char charset[]) {
@@ -4115,9 +4146,14 @@ public class PApplet extends Applet
     Font baseFont = null;
 
     try {
+<<<<<<< HEAD
       InputStream stream = null;
       if (lowerName.endsWith(".otf") || lowerName.endsWith(".ttf")) {
         stream = createInput(name);
+=======
+      if (lowerName.endsWith(".otf") || lowerName.endsWith(".ttf")) {
+        InputStream stream = createInput(name);
+>>>>>>> 76aa07461566a5976980e6696204781271955163
         if (stream == null) {
           System.err.println("The font \"" + name + "\" " +
                              "is missing or inaccessible, make sure " +
@@ -4128,6 +4164,7 @@ public class PApplet extends Applet
         baseFont = Font.createFont(Font.TRUETYPE_FONT, createInput(name));
 
       } else {
+<<<<<<< HEAD
         baseFont = PFont.findFont(name);
       }
       return new PFont(baseFont.deriveFont(size), smooth, charset, 
@@ -4138,6 +4175,16 @@ public class PApplet extends Applet
       e.printStackTrace();
       return null;
     }
+=======
+        //baseFont = new Font(name, Font.PLAIN, 1);
+        baseFont = PFont.findFont(name);
+      }
+    } catch (Exception e) {
+      System.err.println("Problem using createFont() with " + name);
+      e.printStackTrace();
+    }
+    return new PFont(baseFont.deriveFont(size), smooth, charset);
+>>>>>>> 76aa07461566a5976980e6696204781271955163
   }
 
 
@@ -6957,6 +7004,7 @@ public class PApplet extends Applet
    * GIF image of the Processing logo.
    */
   static public final byte[] ICON_IMAGE = {
+<<<<<<< HEAD
     71, 73, 70, 56, 57, 97, 16, 0, 16, 0, -60, 0, 0, 0, 0, 0, 
     0, 0, -127, 0, -127, 0, 0, -127, -127, -127, 0, 0, -127, 0, -127, -127, 
     -127, 0, -127, -127, -127, -63, -63, -63, 0, 0, -1, 0, -1, 0, 0, -1, 
@@ -6970,6 +7018,20 @@ public class PApplet extends Applet
     15, -124, 15, 25, 28, 28, 93, 63, -45, 115, -22, -116, 90, -83, 82, 89, 
     -44, -103, 61, 44, -91, -54, -89, 19, -111, 50, 18, -51, -55, 1, 73, -121, 
     -53, -79, 77, 43, -101, 12, -74, -30, -99, -24, -94, 16, 0, 59,
+=======
+    71, 73, 70, 56, 57, 97, 16, 0, 16, 0, -77, 0, 0, 0, 0, 0, -1, -1, -1, 12,
+    12, 13, -15, -15, -14, 45, 57, 74, 54, 80, 111, 47, 71, 97, 62, 88, 117,
+    1, 14, 27, 7, 41, 73, 15, 52, 85, 2, 31, 55, 4, 54, 94, 18, 69, 109, 37,
+    87, 126, -1, -1, -1, 33, -7, 4, 1, 0, 0, 15, 0, 44, 0, 0, 0, 0, 16, 0, 16,
+    0, 0, 4, 122, -16, -107, 114, -86, -67, 83, 30, -42, 26, -17, -100, -45,
+    56, -57, -108, 48, 40, 122, -90, 104, 67, -91, -51, 32, -53, 77, -78, -100,
+    47, -86, 12, 76, -110, -20, -74, -101, 97, -93, 27, 40, 20, -65, 65, 48,
+    -111, 99, -20, -112, -117, -123, -47, -105, 24, 114, -112, 74, 69, 84, 25,
+    93, 88, -75, 9, 46, 2, 49, 88, -116, -67, 7, -19, -83, 60, 38, 3, -34, 2,
+    66, -95, 27, -98, 13, 4, -17, 55, 33, 109, 11, 11, -2, -128, 121, 123, 62,
+    91, 120, -128, 127, 122, 115, 102, 2, 119, 0, -116, -113, -119, 6, 102,
+    121, -108, -126, 5, 18, 6, 4, -102, -101, -100, 114, 15, 17, 0, 59
+>>>>>>> 76aa07461566a5976980e6696204781271955163
   };
 
 
@@ -7033,7 +7095,11 @@ public class PApplet extends Applet
     if (platform == MACOSX) {
       // Only run this on OS X otherwise it can cause a permissions error.
       // http://dev.processing.org/bugs/show_bug.cgi?id=976
+<<<<<<< HEAD
       System.setProperty("apple.awt.graphics.UseQuartz", useQuartz);
+=======
+      System.setProperty("apple.awt.graphics.UseQuartz", "true");
+>>>>>>> 76aa07461566a5976980e6696204781271955163
     }
 
     // This doesn't do anything.
@@ -7462,9 +7528,15 @@ public class PApplet extends Applet
 
   //////////////////////////////////////////////////////////////
 
+<<<<<<< HEAD
   // EVERYTHING BELOW THIS LINE IS AUTOMATICALLY GENERATED. DO NOT TOUCH!
   // This includes the Javadoc comments, which are automatically copied from
   // the PImage and PGraphics source code files.
+=======
+  // EVERYTHING BELOW THIS LINE IS AUTOMATICALLY GENERATED. NO TOUCH!
+  // This includes all of the comments, which are automatically pulled
+  // from their respective functions in PGraphics or PImage.
+>>>>>>> 76aa07461566a5976980e6696204781271955163
 
   // public functions for processing.core
 
@@ -7476,6 +7548,7 @@ public class PApplet extends Applet
 
 
   /**
+<<<<<<< HEAD
    * Set various hints and hacks for the renderer. This is used to handle obscure rendering features that cannot be implemented in a consistent manner across renderers. Many options will often graduate to standard features instead of hints over time.
    * <br><br>hint(ENABLE_OPENGL_4X_SMOOTH) - Enable 4x anti-aliasing for OpenGL. This can help force anti-aliasing if it has not been enabled by the user. On some graphics cards, this can also be set by the graphics driver's control panel, however not all cards make this available. This hint must be called immediately after the size() command because it resets the renderer, obliterating any settings and anything drawn (and like size(), re-running the code that came before it again).
    * <br><br>hint(DISABLE_OPENGL_2X_SMOOTH) - In Processing 1.0, Processing always enables 2x smoothing when the OpenGL renderer is used. This hint disables the default 2x smoothing and returns the smoothing behavior found in earlier releases, where smooth() and noSmooth() could be used to enable and disable smoothing, though the quality was inferior.
@@ -7492,6 +7565,24 @@ public class PApplet extends Applet
    * @see processing.core.PGraphics
    * @see processing.core.PApplet#createGraphics(int, int, String, String)
    * @see processing.core.PApplet#size(int, int)
+=======
+   * Enable a hint option.
+   * <P>
+   * For the most part, hints are temporary api quirks,
+   * for which a proper api hasn't been properly worked out.
+   * for instance SMOOTH_IMAGES existed because smooth()
+   * wasn't yet implemented, but it will soon go away.
+   * <P>
+   * They also exist for obscure features in the graphics
+   * engine, like enabling/disabling single pixel lines
+   * that ignore the zbuffer, the way they do in alphabot.
+   * <P>
+   * Current hint options:
+   * <UL>
+   * <LI><TT>DISABLE_DEPTH_TEST</TT> -
+   * turns off the z-buffer in the P3D or OPENGL renderers.
+   * </UL>
+>>>>>>> 76aa07461566a5976980e6696204781271955163
    */
   public void hint(int which) {
     if (recorder != null) recorder.hint(which);
@@ -7677,6 +7768,7 @@ public class PApplet extends Applet
   }
 
 
+<<<<<<< HEAD
   /**
    * Draws a point, a coordinate in space at the dimension of one pixel.
    * The first parameter is the horizontal value for the point, the second
@@ -7697,6 +7789,8 @@ public class PApplet extends Applet
    *
    * @see PGraphics#beginShape()
    */
+=======
+>>>>>>> 76aa07461566a5976980e6696204781271955163
   public void point(float x, float y, float z) {
     if (recorder != null) recorder.point(x, y, z);
     g.point(x, y, z);
@@ -7709,6 +7803,7 @@ public class PApplet extends Applet
   }
 
 
+<<<<<<< HEAD
   /**
    * Draws a line (a direct path between two points) to the screen.
    * The version of <b>line()</b> with four parameters draws the line in 2D.
@@ -7734,6 +7829,8 @@ public class PApplet extends Applet
    * @see PGraphics#strokeCap(int)
    * @see PGraphics#beginShape()
    */
+=======
+>>>>>>> 76aa07461566a5976980e6696204781271955163
   public void line(float x1, float y1, float z1,
                    float x2, float y2, float z2) {
     if (recorder != null) recorder.line(x1, y1, z1, x2, y2, z2);
@@ -7741,6 +7838,7 @@ public class PApplet extends Applet
   }
 
 
+<<<<<<< HEAD
   /**
    * A triangle is a plane created by connecting three points. The first two
    * arguments specify the first point, the middle two arguments specify
@@ -7756,6 +7854,8 @@ public class PApplet extends Applet
    *
    * @see PApplet#beginShape()
    */
+=======
+>>>>>>> 76aa07461566a5976980e6696204781271955163
   public void triangle(float x1, float y1, float x2, float y2,
                        float x3, float y3) {
     if (recorder != null) recorder.triangle(x1, y1, x2, y2, x3, y3);
@@ -7763,6 +7863,7 @@ public class PApplet extends Applet
   }
 
 
+<<<<<<< HEAD
   /**
    * A quad is a quadrilateral, a four sided polygon. It is similar to
    * a rectangle, but the angles between its edges are not constrained
@@ -7781,6 +7882,8 @@ public class PApplet extends Applet
    * @param y4 y-coordinate of the fourth corner
    *
    */
+=======
+>>>>>>> 76aa07461566a5976980e6696204781271955163
   public void quad(float x1, float y1, float x2, float y2,
                    float x3, float y3, float x4, float y4) {
     if (recorder != null) recorder.quad(x1, y1, x2, y2, x3, y3, x4, y4);
@@ -7794,6 +7897,7 @@ public class PApplet extends Applet
   }
 
 
+<<<<<<< HEAD
   /**
    * Draws a rectangle to the screen. A rectangle is a four-sided shape with
    * every angle at ninety degrees. The first two parameters set the location,
@@ -7809,12 +7913,15 @@ public class PApplet extends Applet
    * @see PGraphics#rectMode(int)
    * @see PGraphics#quad(float, float, float, float, float, float, float, float)
    */
+=======
+>>>>>>> 76aa07461566a5976980e6696204781271955163
   public void rect(float a, float b, float c, float d) {
     if (recorder != null) recorder.rect(a, b, c, d);
     g.rect(a, b, c, d);
   }
 
 
+<<<<<<< HEAD
   /**
    * The origin of the ellipse is modified by the <b>ellipseMode()</b>
    * function. The default configuration is <b>ellipseMode(CENTER)</b>,
@@ -7832,12 +7939,15 @@ public class PApplet extends Applet
    * @param mode        Either CENTER, RADIUS, CORNER, or CORNERS.
    * @see PApplet#ellipse(float, float, float, float)
    */
+=======
+>>>>>>> 76aa07461566a5976980e6696204781271955163
   public void ellipseMode(int mode) {
     if (recorder != null) recorder.ellipseMode(mode);
     g.ellipseMode(mode);
   }
 
 
+<<<<<<< HEAD
   /**
    * Draws an ellipse (oval) in the display window. An ellipse with an equal
    * <b>width</b> and <b>height</b> is a circle. The first two parameters set
@@ -7852,6 +7962,8 @@ public class PApplet extends Applet
    *
    * @see PApplet#ellipseMode(int)
    */
+=======
+>>>>>>> 76aa07461566a5976980e6696204781271955163
   public void ellipse(float a, float b, float c, float d) {
     if (recorder != null) recorder.ellipse(a, b, c, d);
     g.ellipse(a, b, c, d);
@@ -7859,6 +7971,7 @@ public class PApplet extends Applet
 
 
   /**
+<<<<<<< HEAD
    * Draws an arc in the display window.
    * Arcs are drawn along the outer edge of an ellipse defined by the
    * <b>x</b>, <b>y</b>, <b>width</b> and <b>height</b> parameters.
@@ -7877,6 +7990,15 @@ public class PApplet extends Applet
    *
    * @see PGraphics#ellipseMode(int)
    * @see PGraphics#ellipse(float, float, float, float)
+=======
+   * Identical parameters and placement to ellipse,
+   * but draws only an arc of that ellipse.
+   * <p/>
+   * start and stop are always radians because angleMode() was goofy.
+   * ellipseMode() sets the placement.
+   * <p/>
+   * also tries to be smart about start < stop.
+>>>>>>> 76aa07461566a5976980e6696204781271955163
    */
   public void arc(float a, float b, float c, float d,
                   float start, float stop) {
@@ -7885,15 +8007,19 @@ public class PApplet extends Applet
   }
 
 
+<<<<<<< HEAD
   /**
    * @param size dimension of the box in all dimensions, creates a cube
    */
+=======
+>>>>>>> 76aa07461566a5976980e6696204781271955163
   public void box(float size) {
     if (recorder != null) recorder.box(size);
     g.box(size);
   }
 
 
+<<<<<<< HEAD
   /**
    * A box is an extruded rectangle. A box with equal dimension
    * on all sides is a cube.
@@ -7905,15 +8031,20 @@ public class PApplet extends Applet
    *
    * @see PApplet#sphere(float)
    */
+=======
+>>>>>>> 76aa07461566a5976980e6696204781271955163
   public void box(float w, float h, float d) {
     if (recorder != null) recorder.box(w, h, d);
     g.box(w, h, d);
   }
 
 
+<<<<<<< HEAD
   /**
    * @param res number of segments (minimum 3) used per full circle revolution
    */
+=======
+>>>>>>> 76aa07461566a5976980e6696204781271955163
   public void sphereDetail(int res) {
     if (recorder != null) recorder.sphereDetail(res);
     g.sphereDetail(res);
@@ -7921,6 +8052,7 @@ public class PApplet extends Applet
 
 
   /**
+<<<<<<< HEAD
    * Controls the detail used to render a sphere by adjusting the number of
    * vertices of the sphere mesh. The default resolution is 30, which creates
    * a fairly detailed sphere definition with vertices every 360/30 = 12
@@ -7950,6 +8082,13 @@ public class PApplet extends Applet
    * Set the detail level for approximating a sphere. The ures and vres params
    * control the horizontal and vertical resolution.
    *
+=======
+   * Set the detail level for approximating a sphere. The ures and vres params
+   * control the horizontal and vertical resolution.
+   *
+   * Code for sphereDetail() submitted by toxi [031031].
+   * Code for enhanced u/v version from davbol [080801].
+>>>>>>> 76aa07461566a5976980e6696204781271955163
    */
   public void sphereDetail(int ures, int vres) {
     if (recorder != null) recorder.sphereDetail(ures, vres);
@@ -7959,8 +8098,11 @@ public class PApplet extends Applet
 
   /**
    * Draw a sphere with radius r centered at coordinate 0, 0, 0.
+<<<<<<< HEAD
    * A sphere is a hollow ball made from tessellated triangles.
    * =advanced
+=======
+>>>>>>> 76aa07461566a5976980e6696204781271955163
    * <P>
    * Implementation notes:
    * <P>
@@ -7980,9 +8122,12 @@ public class PApplet extends Applet
    *
    * [davbol 080801] now using separate sphereDetailU/V
    * </PRE>
+<<<<<<< HEAD
    *
    * @webref shape:3d_primitives
    * @param r the radius of the sphere
+=======
+>>>>>>> 76aa07461566a5976980e6696204781271955163
    */
   public void sphere(float r) {
     if (recorder != null) recorder.sphere(r);
@@ -7992,12 +8137,20 @@ public class PApplet extends Applet
 
   /**
    * Evalutes quadratic bezier at point t for points a, b, c, d.
+<<<<<<< HEAD
    * The parameter t varies between 0 and 1. The a and d parameters are the
    * on-curve points, b and c are the control points. To make a two-dimensional
    * curve, call this function once with the x coordinates and a second time
    * with the y coordinates to get the location of a bezier curve at t.
    *
    * =advanced
+=======
+   * t varies between 0 and 1, and a and d are the on curve points,
+   * b and c are the control points. this can be done once with the
+   * x coordinates and a second time with the y coordinates to get
+   * the location of a bezier curve at t.
+   * <P>
+>>>>>>> 76aa07461566a5976980e6696204781271955163
    * For instance, to convert the following example:<PRE>
    * stroke(255, 102, 0);
    * line(85, 20, 10, 10);
@@ -8017,6 +8170,7 @@ public class PApplet extends Applet
    *   vertex(x, y);
    * }
    * endShape();</PRE>
+<<<<<<< HEAD
    *
    * @webref shape:curves
    * @param a coordinate of first point on the curve
@@ -8028,6 +8182,8 @@ public class PApplet extends Applet
    * @see PGraphics#bezier(float, float, float, float, float, float, float, float, float, float, float, float)
    * @see PGraphics#bezierVertex(float, float, float, float, float, float)
    * @see PGraphics#curvePoint(float, float, float, float, float)
+=======
+>>>>>>> 76aa07461566a5976980e6696204781271955163
    */
   public float bezierPoint(float a, float b, float c, float d, float t) {
     return g.bezierPoint(a, b, c, d, t);
@@ -8035,6 +8191,7 @@ public class PApplet extends Applet
 
 
   /**
+<<<<<<< HEAD
    * Calculates the tangent of a point on a Bezier curve. There is a good
    * definition of "tangent" at Wikipedia: <a href="http://en.wikipedia.org/wiki/Tangent" target="new">http://en.wikipedia.org/wiki/Tangent</a>
    *
@@ -8051,12 +8208,17 @@ public class PApplet extends Applet
    * @see PGraphics#bezier(float, float, float, float, float, float, float, float, float, float, float, float)
    * @see PGraphics#bezierVertex(float, float, float, float, float, float)
    * @see PGraphics#curvePoint(float, float, float, float, float)
+=======
+   * Provide the tangent at the given point on the bezier curve.
+   * Fix from davbol for 0136.
+>>>>>>> 76aa07461566a5976980e6696204781271955163
    */
   public float bezierTangent(float a, float b, float c, float d, float t) {
     return g.bezierTangent(a, b, c, d, t);
   }
 
 
+<<<<<<< HEAD
   /**
    * Sets the resolution at which Beziers display. The default value is 20. This function is only useful when using the P3D or OPENGL renderer as the default (JAVA2D) renderer does not use this information.
    *
@@ -8067,6 +8229,8 @@ public class PApplet extends Applet
    * @see PApplet#curveVertex(float, float)
    * @see PApplet#curveTightness(float)
    */
+=======
+>>>>>>> 76aa07461566a5976980e6696204781271955163
   public void bezierDetail(int detail) {
     if (recorder != null) recorder.bezierDetail(detail);
     g.bezierDetail(detail);
@@ -8074,6 +8238,7 @@ public class PApplet extends Applet
 
 
   /**
+<<<<<<< HEAD
    * Draws a Bezier curve on the screen. These curves are defined by a series
    * of anchor and control points. The first two parameters specify the first
    * anchor point and the last two parameters specify the other anchor point.
@@ -8083,6 +8248,8 @@ public class PApplet extends Applet
    * (see the Environment reference for more information).
    *
    * =advanced
+=======
+>>>>>>> 76aa07461566a5976980e6696204781271955163
    * Draw a cubic bezier curve. The first and last points are
    * the on-curve points. The middle two are the 'control' points,
    * or 'handles' in an application like Illustrator.
@@ -8104,6 +8271,7 @@ public class PApplet extends Applet
    * To draw a quadratic (instead of cubic) curve,
    * use the control point twice by doubling it:
    * <PRE>bezier(x1, y1, cx, cy, cx, cy, x2, y2);</PRE>
+<<<<<<< HEAD
    *
    * @webref shape:curves
    * @param x1 coordinates for the first anchor point
@@ -8121,6 +8289,8 @@ public class PApplet extends Applet
    *
    * @see PGraphics#bezierVertex(float, float, float, float, float, float)
    * @see PGraphics#curve(float, float, float, float, float, float, float, float, float, float, float, float)
+=======
+>>>>>>> 76aa07461566a5976980e6696204781271955163
    */
   public void bezier(float x1, float y1,
                      float x2, float y2,
@@ -8141,6 +8311,7 @@ public class PApplet extends Applet
 
 
   /**
+<<<<<<< HEAD
    * Evalutes the Catmull-Rom curve at point t for points a, b, c, d. The
    * parameter t varies between 0 and 1, a and d are points on the curve,
    * and b and c are the control points. This can be done once with the x
@@ -8157,6 +8328,11 @@ public class PApplet extends Applet
    * @see PGraphics#curve(float, float, float, float, float, float, float, float, float, float, float, float)
    * @see PGraphics#curveVertex(float, float)
    * @see PGraphics#bezierPoint(float, float, float, float, float)
+=======
+   * Get a location along a catmull-rom curve segment.
+   *
+   * @param t Value between zero and one for how far along the segment
+>>>>>>> 76aa07461566a5976980e6696204781271955163
    */
   public float curvePoint(float a, float b, float c, float d, float t) {
     return g.curvePoint(a, b, c, d, t);
@@ -8164,6 +8340,7 @@ public class PApplet extends Applet
 
 
   /**
+<<<<<<< HEAD
    * Calculates the tangent of a point on a Catmull-Rom curve. There is a good definition of "tangent" at Wikipedia: <a href="http://en.wikipedia.org/wiki/Tangent" target="new">http://en.wikipedia.org/wiki/Tangent</a>.
    *
    * =advanced
@@ -8180,12 +8357,17 @@ public class PApplet extends Applet
    * @see PGraphics#curveVertex(float, float)
    * @see PGraphics#curvePoint(float, float, float, float, float)
    * @see PGraphics#bezierTangent(float, float, float, float, float)
+=======
+   * Calculate the tangent at a t value (0..1) on a Catmull-Rom curve.
+   * Code thanks to Dave Bollinger (Bug #715)
+>>>>>>> 76aa07461566a5976980e6696204781271955163
    */
   public float curveTangent(float a, float b, float c, float d, float t) {
     return g.curveTangent(a, b, c, d, t);
   }
 
 
+<<<<<<< HEAD
   /**
    * Sets the resolution at which curves display. The default value is 20.
    * This function is only useful when using the P3D or OPENGL renderer as
@@ -8198,12 +8380,15 @@ public class PApplet extends Applet
    * @see PGraphics#curveVertex(float, float)
    * @see PGraphics#curveTightness(float)
    */
+=======
+>>>>>>> 76aa07461566a5976980e6696204781271955163
   public void curveDetail(int detail) {
     if (recorder != null) recorder.curveDetail(detail);
     g.curveDetail(detail);
   }
 
 
+<<<<<<< HEAD
   /**
    * Modifies the quality of forms created with <b>curve()</b> and
    *<b>curveVertex()</b>. The parameter <b>squishy</b> determines how the
@@ -8221,6 +8406,8 @@ public class PApplet extends Applet
    * @see PGraphics#curveVertex(float, float)
    *
    */
+=======
+>>>>>>> 76aa07461566a5976980e6696204781271955163
   public void curveTightness(float tightness) {
     if (recorder != null) recorder.curveTightness(tightness);
     g.curveTightness(tightness);
@@ -8228,6 +8415,7 @@ public class PApplet extends Applet
 
 
   /**
+<<<<<<< HEAD
    * Draws a curved line on the screen. The first and second parameters
    * specify the beginning control point and the last two parameters specify
    * the ending control point. The middle parameters specify the start and
@@ -8242,6 +8430,12 @@ public class PApplet extends Applet
    * =advanced
    * As of revision 0070, this function no longer doubles the first
    * and last points. The curves are a bit more boring, but it's more
+=======
+   * Draws a segment of Catmull-Rom curve.
+   * <P>
+   * As of 0070, this function no longer doubles the first and
+   * last points. The curves are a bit more boring, but it's more
+>>>>>>> 76aa07461566a5976980e6696204781271955163
    * mathematically correct, and properly mirrored in curvePoint().
    * <P>
    * Identical to typing out:<PRE>
@@ -8252,6 +8446,7 @@ public class PApplet extends Applet
    * curveVertex(x4, y4);
    * endShape();
    * </PRE>
+<<<<<<< HEAD
    *
    * @webref shape:curves
    * @param x1 coordinates for the beginning control point
@@ -8270,6 +8465,8 @@ public class PApplet extends Applet
    * @see PGraphics#curveVertex(float, float)
    * @see PGraphics#curveTightness(float)
    * @see PGraphics#bezier(float, float, float, float, float, float, float, float, float, float, float, float)
+=======
+>>>>>>> 76aa07461566a5976980e6696204781271955163
    */
   public void curve(float x1, float y1,
                     float x2, float y2,
@@ -8309,6 +8506,7 @@ public class PApplet extends Applet
 
 
   /**
+<<<<<<< HEAD
    * Modifies the location from which images draw. The default mode is
    * <b>imageMode(CORNER)</b>, which specifies the location to be the
    * upper-left corner and uses the fourth and fifth parameters of
@@ -8328,6 +8526,11 @@ public class PApplet extends Applet
    * @see processing.core.PImage
    * @see processing.core.PApplet#image(PImage, float, float, float, float)
    * @see processing.core.PGraphics#background(float, float, float, float)
+=======
+   * The mode can only be set to CORNERS, CORNER, and CENTER.
+   * <p/>
+   * Support for CENTER was added in release 0146.
+>>>>>>> 76aa07461566a5976980e6696204781271955163
    */
   public void imageMode(int mode) {
     if (recorder != null) recorder.imageMode(mode);
@@ -8341,6 +8544,7 @@ public class PApplet extends Applet
   }
 
 
+<<<<<<< HEAD
   /**
    * Displays images to the screen. The images must be in the sketch's "data"
    * directory to load correctly. Select "Add file..." from the "Sketch" menu
@@ -8374,6 +8578,8 @@ public class PApplet extends Applet
    * @see processing.core.PGraphics#background(float, float, float, float)
    * @see processing.core.PGraphics#alpha(int)
    */
+=======
+>>>>>>> 76aa07461566a5976980e6696204781271955163
   public void image(PImage image, float x, float y, float c, float d) {
     if (recorder != null) recorder.image(image, x, y, c, d);
     g.image(image, x, y, c, d);
@@ -8394,6 +8600,7 @@ public class PApplet extends Applet
 
 
   /**
+<<<<<<< HEAD
    * Modifies the location from which shapes draw.
    * The default mode is <b>shapeMode(CORNER)</b>, which specifies the
    * location to be the upper left corner of the shape and uses the third
@@ -8412,6 +8619,10 @@ public class PApplet extends Applet
    * @webref shape:loading_displaying
    * @see PGraphics#shape(PShape)
    * @see PGraphics#rectMode(int)
+=======
+   * Set the orientation for the shape() command (like imageMode() or rectMode()).
+   * @param mode Either CORNER, CORNERS, or CENTER.
+>>>>>>> 76aa07461566a5976980e6696204781271955163
    */
   public void shapeMode(int mode) {
     if (recorder != null) recorder.shapeMode(mode);
@@ -8434,6 +8645,7 @@ public class PApplet extends Applet
   }
 
 
+<<<<<<< HEAD
   /**
    * Displays shapes to the screen. The shapes must be in the sketch's "data"
    * directory to load correctly. Select "Add file..." from the "Sketch" menu
@@ -8463,6 +8675,8 @@ public class PApplet extends Applet
    * @see PGraphics#loadShape(String)
    * @see PGraphics#shapeMode(int)
    */
+=======
+>>>>>>> 76aa07461566a5976980e6696204781271955163
   public void shape(PShape shape, float x, float y, float c, float d) {
     if (recorder != null) recorder.shape(shape, x, y, c, d);
     g.shape(shape, x, y, c, d);
@@ -9146,6 +9360,7 @@ public class PApplet extends Applet
   }
 
 
+<<<<<<< HEAD
   /**
    * Disables drawing the stroke (outline). If both <b>noStroke()</b> and
    * <b>noFill()</b> are called, no shapes will be drawn to the screen.
@@ -9154,6 +9369,8 @@ public class PApplet extends Applet
    *
    * @see PGraphics#stroke(float, float, float, float)
    */
+=======
+>>>>>>> 76aa07461566a5976980e6696204781271955163
   public void noStroke() {
     if (recorder != null) recorder.noStroke();
     g.noStroke();
@@ -9163,8 +9380,11 @@ public class PApplet extends Applet
   /**
    * Set the tint to either a grayscale or ARGB value.
    * See notes attached to the fill() function.
+<<<<<<< HEAD
    * @param rgb color value in hexadecimal notation
    * (i.e. #FFCC00 or 0xFFFFCC00) or any value of the color datatype
+=======
+>>>>>>> 76aa07461566a5976980e6696204781271955163
    */
   public void stroke(int rgb) {
     if (recorder != null) recorder.stroke(rgb);
@@ -9178,10 +9398,13 @@ public class PApplet extends Applet
   }
 
 
+<<<<<<< HEAD
   /**
    *
    * @param gray specifies a value between white and black
    */
+=======
+>>>>>>> 76aa07461566a5976980e6696204781271955163
   public void stroke(float gray) {
     if (recorder != null) recorder.stroke(gray);
     g.stroke(gray);
@@ -9200,6 +9423,7 @@ public class PApplet extends Applet
   }
 
 
+<<<<<<< HEAD
   /**
    * Sets the color used to draw lines and borders around shapes. This color
    * is either specified in terms of the RGB or HSB color depending on the
@@ -9222,12 +9446,15 @@ public class PApplet extends Applet
    * @param y green or saturation value (depending on the current color mode)
    * @param z blue or brightness value (depending on the current color mode)
    */
+=======
+>>>>>>> 76aa07461566a5976980e6696204781271955163
   public void stroke(float x, float y, float z, float a) {
     if (recorder != null) recorder.stroke(x, y, z, a);
     g.stroke(x, y, z, a);
   }
 
 
+<<<<<<< HEAD
   /**
    * Removes the current fill value for displaying images and reverts to displaying images with their original hues.
    *
@@ -9235,6 +9462,8 @@ public class PApplet extends Applet
    * @see processing.core.PGraphics#tint(float, float, float, float)
    * @see processing.core.PGraphics#image(PImage, float, float, float, float)
    */
+=======
+>>>>>>> 76aa07461566a5976980e6696204781271955163
   public void noTint() {
     if (recorder != null) recorder.noTint();
     g.noTint();
@@ -9250,20 +9479,26 @@ public class PApplet extends Applet
   }
 
 
+<<<<<<< HEAD
   /**
    * @param rgb color value in hexadecimal notation
    * (i.e. #FFCC00 or 0xFFFFCC00) or any value of the color datatype
    * @param alpha opacity of the image
    */
+=======
+>>>>>>> 76aa07461566a5976980e6696204781271955163
   public void tint(int rgb, float alpha) {
     if (recorder != null) recorder.tint(rgb, alpha);
     g.tint(rgb, alpha);
   }
 
 
+<<<<<<< HEAD
   /**
    * @param gray any valid number
    */
+=======
+>>>>>>> 76aa07461566a5976980e6696204781271955163
   public void tint(float gray) {
     if (recorder != null) recorder.tint(gray);
     g.tint(gray);
@@ -9282,6 +9517,7 @@ public class PApplet extends Applet
   }
 
 
+<<<<<<< HEAD
   /**
    * Sets the fill value for displaying images. Images can be tinted to
    * specified colors or made transparent by setting the alpha.
@@ -9311,12 +9547,15 @@ public class PApplet extends Applet
    * @see processing.core.PGraphics#noTint()
    * @see processing.core.PGraphics#image(PImage, float, float, float, float)
    */
+=======
+>>>>>>> 76aa07461566a5976980e6696204781271955163
   public void tint(float x, float y, float z, float a) {
     if (recorder != null) recorder.tint(x, y, z, a);
     g.tint(x, y, z, a);
   }
 
 
+<<<<<<< HEAD
   /**
    * Disables filling geometry. If both <b>noStroke()</b> and <b>noFill()</b>
    * are called, no shapes will be drawn to the screen.
@@ -9326,6 +9565,8 @@ public class PApplet extends Applet
    * @see PGraphics#fill(float, float, float, float)
    *
    */
+=======
+>>>>>>> 76aa07461566a5976980e6696204781271955163
   public void noFill() {
     if (recorder != null) recorder.noFill();
     g.noFill();
@@ -9334,7 +9575,10 @@ public class PApplet extends Applet
 
   /**
    * Set the fill to either a grayscale value or an ARGB int.
+<<<<<<< HEAD
    * @param rgb color value in hexadecimal notation (i.e. #FFCC00 or 0xFFFFCC00) or any value of the color datatype
+=======
+>>>>>>> 76aa07461566a5976980e6696204781271955163
    */
   public void fill(int rgb) {
     if (recorder != null) recorder.fill(rgb);
@@ -9348,9 +9592,12 @@ public class PApplet extends Applet
   }
 
 
+<<<<<<< HEAD
   /**
    * @param gray number specifying value between white and black
    */
+=======
+>>>>>>> 76aa07461566a5976980e6696204781271955163
   public void fill(float gray) {
     if (recorder != null) recorder.fill(gray);
     g.fill(gray);
@@ -9369,6 +9616,7 @@ public class PApplet extends Applet
   }
 
 
+<<<<<<< HEAD
   /**
    * Sets the color used to fill shapes. For example, if you run <b>fill(204, 102, 0)</b>, all subsequent shapes will be filled with orange. This color is either specified in terms of the RGB or HSB color depending on the current <b>colorMode()</b> (the default color space is RGB, with each value in the range from 0 to 255).
    * <br><br>When using hexadecimal notation to specify a color, use "#" or "0x" before the values (e.g. #CCFFAA, 0xFFCCFFAA). The # syntax uses six digits to specify a color (the way colors are specified in HTML and CSS). When using the hexadecimal notation starting with "0x", the hexadecimal value must be specified with eight characters; the first two characters define the alpha component and the remainder the red, green, and blue components.
@@ -9387,6 +9635,8 @@ public class PApplet extends Applet
    * @see PGraphics#background(float, float, float, float)
    * @see PGraphics#colorMode(int, float, float, float, float)
    */
+=======
+>>>>>>> 76aa07461566a5976980e6696204781271955163
   public void fill(float x, float y, float z, float a) {
     if (recorder != null) recorder.fill(x, y, z, a);
     g.fill(x, y, z, a);
@@ -9523,8 +9773,11 @@ public class PApplet extends Applet
    * Note that background() should be called before any transformations occur,
    * because some implementations may require the current transformation matrix
    * to be identity before drawing.
+<<<<<<< HEAD
    *
    * @param rgb color value in hexadecimal notation (i.e. #FFCC00 or 0xFFFFCC00)<br/>or any value of the color datatype
+=======
+>>>>>>> 76aa07461566a5976980e6696204781271955163
    */
   public void background(int rgb) {
     if (recorder != null) recorder.background(rgb);
@@ -9553,8 +9806,11 @@ public class PApplet extends Applet
 
   /**
    * See notes about alpha in background(x, y, z, a).
+<<<<<<< HEAD
    * @param gray specifies a value between white and black
    * @param alpha opacity of the background
+=======
+>>>>>>> 76aa07461566a5976980e6696204781271955163
    */
   public void background(float gray, float alpha) {
     if (recorder != null) recorder.background(gray, alpha);
@@ -9573,6 +9829,7 @@ public class PApplet extends Applet
 
 
   /**
+<<<<<<< HEAD
    * The <b>background()</b> function sets the color used for the background of the Processing window. The default background is light gray. In the <b>draw()</b> function, the background color is used to clear the display window at the beginning of each frame.
    * <br><br>An image can also be used as the background for a sketch, however its width and height must be the same size as the sketch window. To resize an image 'b' to the size of the sketch window, use b.resize(width, height).
    * <br><br>Images used as background will ignore the current tint() setting.
@@ -9597,6 +9854,17 @@ public class PApplet extends Applet
    * @see PGraphics#fill(float)
    * @see PGraphics#tint(float)
    * @see PGraphics#colorMode(int)
+=======
+   * Clear the background with a color that includes an alpha value. This can
+   * only be used with objects created by createGraphics(), because the main
+   * drawing surface cannot be set transparent.
+   * <p>
+   * It might be tempting to use this function to partially clear the screen
+   * on each frame, however that's not how this function works. When calling
+   * background(), the pixels will be replaced with pixels that have that level
+   * of transparency. To do a semi-transparent overlay, use fill() with alpha
+   * and draw a rectangle.
+>>>>>>> 76aa07461566a5976980e6696204781271955163
    */
   public void background(float x, float y, float z, float a) {
     if (recorder != null) recorder.background(x, y, z, a);
@@ -9622,10 +9890,13 @@ public class PApplet extends Applet
   }
 
 
+<<<<<<< HEAD
   /**
    * @param mode Either RGB or HSB, corresponding to Red/Green/Blue and Hue/Saturation/Brightness
    * @param max range for all color elements
    */
+=======
+>>>>>>> 76aa07461566a5976980e6696204781271955163
   public void colorMode(int mode) {
     if (recorder != null) recorder.colorMode(mode);
     g.colorMode(mode);
@@ -9653,6 +9924,7 @@ public class PApplet extends Applet
   }
 
 
+<<<<<<< HEAD
   /**
    * Changes the way Processing interprets color data. By default, the parameters for <b>fill()</b>, <b>stroke()</b>, <b>background()</b>, and <b>color()</b> are defined by values between 0 and 255 using the RGB color model. The <b>colorMode()</b> function is used to change the numerical range used for specifying colors and to switch color systems. For example, calling <b>colorMode(RGB, 1.0)</b> will specify that values are specified between 0 and 1. The limits for defining colors are altered by setting the parameters range1, range2, range3, and range 4.
    *
@@ -9666,6 +9938,8 @@ public class PApplet extends Applet
    * @see PGraphics#fill(float)
    * @see PGraphics#stroke(float)
    */
+=======
+>>>>>>> 76aa07461566a5976980e6696204781271955163
   public void colorMode(int mode,
                         float maxX, float maxY, float maxZ, float maxA) {
     if (recorder != null) recorder.colorMode(mode, maxX, maxY, maxZ, maxA);
@@ -9673,17 +9947,21 @@ public class PApplet extends Applet
   }
 
 
+<<<<<<< HEAD
   /**
    * Extracts the alpha value from a color.
    *
    * @webref color:creating_reading
    * @param what any value of the color datatype
    */
+=======
+>>>>>>> 76aa07461566a5976980e6696204781271955163
   public final float alpha(int what) {
     return g.alpha(what);
   }
 
 
+<<<<<<< HEAD
   /**
    * Extracts the red value from a color, scaled to match current <b>colorMode()</b>. This value is always returned as a  float so be careful not to assign it to an int value.<br><br>The red() function is easy to use and undestand, but is slower than another technique. To achieve the same results when working in <b>colorMode(RGB, 255)</b>, but with greater speed, use the &gt;&gt; (right shift) operator with a bit mask. For example, the following two lines of code are equivalent:<br><pre>float r1 = red(myColor);<br>float r2 = myColor &gt;&gt; 16 &amp; 0xFF;</pre>
    *
@@ -9697,11 +9975,14 @@ public class PApplet extends Applet
    * @see PGraphics#brightness(int)
    * @ref rightshift
    */
+=======
+>>>>>>> 76aa07461566a5976980e6696204781271955163
   public final float red(int what) {
     return g.red(what);
   }
 
 
+<<<<<<< HEAD
   /**
    * Extracts the green value from a color, scaled to match current <b>colorMode()</b>. This value is always returned as a  float so be careful not to assign it to an int value.<br><br>The <b>green()</b> function is easy to use and undestand, but is slower than another technique. To achieve the same results when working in <b>colorMode(RGB, 255)</b>, but with greater speed, use the &gt;&gt; (right shift) operator with a bit mask. For example, the following two lines of code are equivalent:<br><pre>float r1 = green(myColor);<br>float r2 = myColor &gt;&gt; 8 &amp; 0xFF;</pre>
    *
@@ -9715,11 +9996,14 @@ public class PApplet extends Applet
    * @see PGraphics#brightness(int)
    * @ref rightshift
    */
+=======
+>>>>>>> 76aa07461566a5976980e6696204781271955163
   public final float green(int what) {
     return g.green(what);
   }
 
 
+<<<<<<< HEAD
   /**
    * Extracts the blue value from a color, scaled to match current <b>colorMode()</b>. This value is always returned as a  float so be careful not to assign it to an int value.<br><br>The <b>blue()</b> function is easy to use and undestand, but is slower than another technique. To achieve the same results when working in <b>colorMode(RGB, 255)</b>, but with greater speed, use a bit mask to remove the other color components. For example, the following two lines of code are equivalent:<br><pre>float r1 = blue(myColor);<br>float r2 = myColor &amp; 0xFF;</pre>
    *
@@ -9732,11 +10016,14 @@ public class PApplet extends Applet
    * @see PGraphics#saturation(int)
    * @see PGraphics#brightness(int)
    */
+=======
+>>>>>>> 76aa07461566a5976980e6696204781271955163
   public final float blue(int what) {
     return g.blue(what);
   }
 
 
+<<<<<<< HEAD
   /**
    * Extracts the hue value from a color.
    *
@@ -9749,11 +10036,14 @@ public class PApplet extends Applet
    * @see PGraphics#saturation(int)
    * @see PGraphics#brightness(int)
    */
+=======
+>>>>>>> 76aa07461566a5976980e6696204781271955163
   public final float hue(int what) {
     return g.hue(what);
   }
 
 
+<<<<<<< HEAD
   /**
    * Extracts the saturation value from a color.
    *
@@ -9766,11 +10056,14 @@ public class PApplet extends Applet
    * @see PGraphics#hue(int)
    * @see PGraphics#brightness(int)
    */
+=======
+>>>>>>> 76aa07461566a5976980e6696204781271955163
   public final float saturation(int what) {
     return g.saturation(what);
   }
 
 
+<<<<<<< HEAD
   /**
    * Extracts the brightness value from a color.
    *
@@ -9784,12 +10077,15 @@ public class PApplet extends Applet
    * @see PGraphics#hue(int)
    * @see PGraphics#saturation(int)
    */
+=======
+>>>>>>> 76aa07461566a5976980e6696204781271955163
   public final float brightness(int what) {
     return g.brightness(what);
   }
 
 
   /**
+<<<<<<< HEAD
    * Calculates a color or colors between two color at a specific increment. The <b>amt</b> parameter is the amount to interpolate between the two values where 0.0 equal to the first point, 0.1 is very near the first point, 0.5 is half-way in between, etc.
    *
    * @webref color:creating_reading
@@ -9799,6 +10095,9 @@ public class PApplet extends Applet
    *
    * @see PGraphics#blendColor(int, int, int)
    * @see PGraphics#color(float, float, float, float)
+=======
+   * Interpolate between two colors, using the current color mode.
+>>>>>>> 76aa07461566a5976980e6696204781271955163
    */
   public int lerpColor(int c1, int c2, float amt) {
     return g.lerpColor(c1, c2, amt);
@@ -9892,7 +10191,11 @@ public class PApplet extends Applet
    * <br><br>As of release 0149, this function ignores <b>imageMode()</b>.
    *
    * @webref
+<<<<<<< HEAD
    * @brief Reads the color of any pixel or grabs a rectangle of pixels
+=======
+   * @brief     Reads the color of any pixel or grabs a rectangle of pixels
+>>>>>>> 76aa07461566a5976980e6696204781271955163
    * @param x x-coordinate of the pixel
    * @param y y-coordinate of the pixel
    * @param w width of pixel rectangle to get
@@ -9916,6 +10219,7 @@ public class PApplet extends Applet
 
 
   /**
+<<<<<<< HEAD
    * Changes the color of any pixel or writes an image directly into the display window. The <b>x</b> and <b>y</b> parameters specify the pixel to change and the <b>color</b> parameter specifies the color value. The color parameter is affected by the current color mode (the default is RGB values from 0 to 255). When setting an image, the x and y parameters define the coordinates for the upper-left corner of the image.
    * <br><br>Setting the color of a single pixel with <b>set(x, y)</b> is easy, but not as fast as putting the data directly into <b>pixels[]</b>. The equivalent statement to "set(x, y, #000000)" using <b>pixels[]</b> is "pixels[y*width+x] = #000000". You must call <b>loadPixels()</b> to load the display window data into the <b>pixels[]</b> array before setting the values and calling <b>updatePixels()</b> to update the window with any changes.
    * <br><br>As of release 1.0, this function ignores <b>imageMode()</b>.
@@ -9927,6 +10231,20 @@ public class PApplet extends Applet
    * @param x x-coordinate of the pixel
    * @param y y-coordinate of the pixel
    * @param c any value of the color datatype
+=======
+   * Changes the color of any pixel or writes an image directly into the image. The <b>x</b> and <b>y</b> parameter specify the pixel or the upper-left corner of the image. The <b>color</b> parameter specifies the color value.<br><br>Setting the color of a single pixel with <b>set(x, y)</b> is easy, but not as fast as putting the data directly into <b>pixels[]</b>. The equivalent statement to "set(x, y, #000000)" using <b>pixels[]</b> is "pixels[y*width+x] = #000000". Processing requires calling <b>loadPixels()</b> to load the display window data into the <b>pixels[]</b> array before getting the values and calling <b>updatePixels()</b> to update the window.
+   * <br><br>As of release 0149, this function ignores <b>imageMode()</b>.
+   *
+   * @webref
+   * @brief     Writes a color to any pixel or writes an image into another
+   * @param x x-coordinate of the pixel or upper-left corner of the image
+   * @param y y-coordinate of the pixel or upper-left corner of the image
+   * @param c any value of the color datatype
+   *
+   * @see processing.core.PImage#get(int, int, int, int)
+   * @see processing.core.PImage#pixels
+   * @see processing.core.PImage#copy(PImage, int, int, int, int, int, int, int, int)
+>>>>>>> 76aa07461566a5976980e6696204781271955163
    */
   public void set(int x, int y, int c) {
     if (recorder != null) recorder.set(x, y, c);
@@ -10047,8 +10365,13 @@ public class PApplet extends Applet
    * @param dh destination image height
    * @param src an image variable referring to the source image.
    *
+<<<<<<< HEAD
    * @see processing.core.PGraphics#alpha(int)
    * @see processing.core.PImage#blend(PImage, int, int, int, int, int, int, int, int, int)
+=======
+   * @see processing.core.PApplet#alpha(int)
+   * @see processing.core.PApplet#blend(PImage, int, int, int, int, int, int, int, int, int)
+>>>>>>> 76aa07461566a5976980e6696204781271955163
    */
   public void copy(PImage src,
                    int sx, int sy, int sw, int sh,
@@ -10130,6 +10453,10 @@ public class PApplet extends Applet
   /**
    * Blends one area of this image to another area.
    *
+<<<<<<< HEAD
+=======
+   *
+>>>>>>> 76aa07461566a5976980e6696204781271955163
    * @see processing.core.PImage#blendColor(int,int,int)
    */
   public void blend(int sx, int sy, int sw, int sh,
@@ -10171,8 +10498,13 @@ public class PApplet extends Applet
    * @param dh destination image height
    * @param mode Either BLEND, ADD, SUBTRACT, LIGHTEST, DARKEST, DIFFERENCE, EXCLUSION, MULTIPLY, SCREEN, OVERLAY, HARD_LIGHT, SOFT_LIGHT, DODGE, BURN
    *
+<<<<<<< HEAD
    * @see processing.core.PGraphics#alpha(int)
    * @see processing.core.PGraphics#copy(PImage, int, int, int, int, int, int, int, int)
+=======
+   * @see processing.core.PApplet#alpha(int)
+   * @see processing.core.PApplet#copy(PImage, int, int, int, int, int, int, int, int)
+>>>>>>> 76aa07461566a5976980e6696204781271955163
    * @see processing.core.PImage#blendColor(int,int,int)
    */
   public void blend(PImage src,

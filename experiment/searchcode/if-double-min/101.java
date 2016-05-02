@@ -17,13 +17,21 @@
  * under the License.
  */
 
+<<<<<<< HEAD
 package org.elasticsearch.search.facet.termsstats.longs;
+=======
+package org.elasticsearch.search.facet.termsstats.doubles;
+>>>>>>> 76aa07461566a5976980e6696204781271955163
 
 import org.elasticsearch.common.CacheRecycler;
 import org.elasticsearch.common.collect.ImmutableList;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
+<<<<<<< HEAD
 import org.elasticsearch.common.trove.ExtTLongObjectHashMap;
+=======
+import org.elasticsearch.common.trove.ExtTDoubleObjectHashMap;
+>>>>>>> 76aa07461566a5976980e6696204781271955163
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentBuilderString;
 import org.elasticsearch.search.facet.Facet;
@@ -32,9 +40,15 @@ import org.elasticsearch.search.facet.termsstats.InternalTermsStatsFacet;
 import java.io.IOException;
 import java.util.*;
 
+<<<<<<< HEAD
 public class InternalTermsStatsLongFacet extends InternalTermsStatsFacet {
 
     private static final String STREAM_TYPE = "lTS";
+=======
+public class InternalTermsStatsDoubleFacet extends InternalTermsStatsFacet {
+
+    private static final String STREAM_TYPE = "dTS";
+>>>>>>> 76aa07461566a5976980e6696204781271955163
 
     public static void registerStream() {
         Streams.registerStream(STREAM, STREAM_TYPE);
@@ -50,28 +64,49 @@ public class InternalTermsStatsLongFacet extends InternalTermsStatsFacet {
         return STREAM_TYPE;
     }
 
+<<<<<<< HEAD
     public InternalTermsStatsLongFacet() {
     }
 
     public static class LongEntry implements Entry {
 
         long term;
+=======
+    public InternalTermsStatsDoubleFacet() {
+    }
+
+    public static class DoubleEntry implements Entry {
+
+        double term;
+>>>>>>> 76aa07461566a5976980e6696204781271955163
         long count;
         long totalCount;
         double total;
         double min;
         double max;
 
+<<<<<<< HEAD
         public LongEntry(long term, long count, long totalCount, double total, double min, double max) {
             this.term = term;
             this.count = count;
             this.total = total;
+=======
+        public DoubleEntry(double term, long count, long totalCount, double total, double min, double max) {
+            this.term = term;
+            this.count = count;
+            this.total = total;
+            this.totalCount = totalCount;
+>>>>>>> 76aa07461566a5976980e6696204781271955163
             this.min = min;
             this.max = max;
         }
 
         @Override public String term() {
+<<<<<<< HEAD
             return Long.toString(term);
+=======
+            return Double.toString(term);
+>>>>>>> 76aa07461566a5976980e6696204781271955163
         }
 
         @Override public String getTerm() {
@@ -135,7 +170,11 @@ public class InternalTermsStatsLongFacet extends InternalTermsStatsFacet {
         }
 
         @Override public int compareTo(Entry o) {
+<<<<<<< HEAD
             LongEntry other = (LongEntry) o;
+=======
+            DoubleEntry other = (DoubleEntry) o;
+>>>>>>> 76aa07461566a5976980e6696204781271955163
             return (term < other.term ? -1 : (term == other.term ? 0 : 1));
         }
     }
@@ -146,11 +185,19 @@ public class InternalTermsStatsLongFacet extends InternalTermsStatsFacet {
 
     long missing;
 
+<<<<<<< HEAD
     Collection<LongEntry> entries = ImmutableList.of();
 
     ComparatorType comparatorType;
 
     public InternalTermsStatsLongFacet(String name, ComparatorType comparatorType, int requiredSize, Collection<LongEntry> entries, long missing) {
+=======
+    Collection<DoubleEntry> entries = ImmutableList.of();
+
+    ComparatorType comparatorType;
+
+    public InternalTermsStatsDoubleFacet(String name, ComparatorType comparatorType, int requiredSize, Collection<DoubleEntry> entries, long missing) {
+>>>>>>> 76aa07461566a5976980e6696204781271955163
         this.name = name;
         this.comparatorType = comparatorType;
         this.requiredSize = requiredSize;
@@ -174,6 +221,7 @@ public class InternalTermsStatsLongFacet extends InternalTermsStatsFacet {
         return type();
     }
 
+<<<<<<< HEAD
     @Override public List<LongEntry> entries() {
         if (!(entries instanceof List)) {
             entries = ImmutableList.copyOf(entries);
@@ -189,6 +237,23 @@ public class InternalTermsStatsLongFacet extends InternalTermsStatsFacet {
     }
 
     @Override public List<LongEntry> getEntries() {
+=======
+    @Override public List<DoubleEntry> entries() {
+        if (!(entries instanceof List)) {
+            entries = ImmutableList.copyOf(entries);
+        }
+        return (List<DoubleEntry>) entries;
+    }
+
+    List<DoubleEntry> mutableList() {
+        if (!(entries instanceof List)) {
+            entries = new ArrayList<DoubleEntry>(entries);
+        }
+        return (List<DoubleEntry>) entries;
+    }
+
+    @Override public List<DoubleEntry> getEntries() {
+>>>>>>> 76aa07461566a5976980e6696204781271955163
         return entries();
     }
 
@@ -208,15 +273,22 @@ public class InternalTermsStatsLongFacet extends InternalTermsStatsFacet {
         if (facets.size() == 1) {
             if (requiredSize == 0) {
                 // we need to sort it here!
+<<<<<<< HEAD
                 InternalTermsStatsLongFacet tsFacet = (InternalTermsStatsLongFacet) facets.get(0);
                 if (!tsFacet.entries.isEmpty()) {
                     List<LongEntry> entries = tsFacet.mutableList();
+=======
+                InternalTermsStatsDoubleFacet tsFacet = (InternalTermsStatsDoubleFacet) facets.get(0);
+                if (!tsFacet.entries.isEmpty()) {
+                    List<DoubleEntry> entries = tsFacet.mutableList();
+>>>>>>> 76aa07461566a5976980e6696204781271955163
                     Collections.sort(entries, comparatorType.comparator());
                 }
             }
             return facets.get(0);
         }
         int missing = 0;
+<<<<<<< HEAD
         ExtTLongObjectHashMap<LongEntry> map = CacheRecycler.popLongObjectMap();
         map.clear();
         for (Facet facet : facets) {
@@ -237,12 +309,35 @@ public class InternalTermsStatsLongFacet extends InternalTermsStatsFacet {
                     }
                 } else {
                     map.put(longEntry.term, longEntry);
+=======
+        ExtTDoubleObjectHashMap<DoubleEntry> map = CacheRecycler.popDoubleObjectMap();
+        map.clear();
+        for (Facet facet : facets) {
+            InternalTermsStatsDoubleFacet tsFacet = (InternalTermsStatsDoubleFacet) facet;
+            missing += tsFacet.missing;
+            for (Entry entry : tsFacet) {
+                DoubleEntry doubleEntry = (DoubleEntry) entry;
+                DoubleEntry current = map.get(doubleEntry.term);
+                if (current != null) {
+                    current.count += doubleEntry.count;
+                    current.totalCount += doubleEntry.totalCount;
+                    current.total += doubleEntry.total;
+                    if (doubleEntry.min < current.min) {
+                        current.min = doubleEntry.min;
+                    }
+                    if (doubleEntry.max > current.max) {
+                        current.max = doubleEntry.max;
+                    }
+                } else {
+                    map.put(doubleEntry.term, doubleEntry);
+>>>>>>> 76aa07461566a5976980e6696204781271955163
                 }
             }
         }
 
         // sort
         if (requiredSize == 0) { // all terms
+<<<<<<< HEAD
             LongEntry[] entries1 = map.values(new LongEntry[map.size()]);
             Arrays.sort(entries1, comparatorType.comparator());
             CacheRecycler.pushLongObjectMap(map);
@@ -253,13 +348,30 @@ public class InternalTermsStatsLongFacet extends InternalTermsStatsFacet {
             List<LongEntry> ordered = new ArrayList<LongEntry>(map.size());
             for (int i = 0; i < requiredSize; i++) {
                 LongEntry value = (LongEntry) values[i];
+=======
+            DoubleEntry[] entries1 = map.values(new DoubleEntry[map.size()]);
+            Arrays.sort(entries1, comparatorType.comparator());
+            CacheRecycler.pushDoubleObjectMap(map);
+            return new InternalTermsStatsDoubleFacet(name, comparatorType, requiredSize, Arrays.asList(entries1), missing);
+        } else {
+            Object[] values = map.internalValues();
+            Arrays.sort(values, (Comparator) comparatorType.comparator());
+            List<DoubleEntry> ordered = new ArrayList<DoubleEntry>(map.size());
+            for (int i = 0; i < requiredSize; i++) {
+                DoubleEntry value = (DoubleEntry) values[i];
+>>>>>>> 76aa07461566a5976980e6696204781271955163
                 if (value == null) {
                     break;
                 }
                 ordered.add(value);
             }
+<<<<<<< HEAD
             CacheRecycler.pushLongObjectMap(map);
             return new InternalTermsStatsLongFacet(name, comparatorType, requiredSize, ordered, missing);
+=======
+            CacheRecycler.pushDoubleObjectMap(map);
+            return new InternalTermsStatsDoubleFacet(name, comparatorType, requiredSize, ordered, missing);
+>>>>>>> 76aa07461566a5976980e6696204781271955163
         }
     }
 
@@ -283,7 +395,11 @@ public class InternalTermsStatsLongFacet extends InternalTermsStatsFacet {
         builder.startArray(Fields.TERMS);
         for (Entry entry : entries) {
             builder.startObject();
+<<<<<<< HEAD
             builder.field(Fields.TERM, ((LongEntry) entry).term);
+=======
+            builder.field(Fields.TERM, ((DoubleEntry) entry).term);
+>>>>>>> 76aa07461566a5976980e6696204781271955163
             builder.field(Fields.COUNT, entry.count());
             builder.field(Fields.TOTAL_COUNT, entry.totalCount());
             builder.field(Fields.MIN, entry.min());
@@ -297,8 +413,13 @@ public class InternalTermsStatsLongFacet extends InternalTermsStatsFacet {
         return builder;
     }
 
+<<<<<<< HEAD
     public static InternalTermsStatsLongFacet readTermsStatsFacet(StreamInput in) throws IOException {
         InternalTermsStatsLongFacet facet = new InternalTermsStatsLongFacet();
+=======
+    public static InternalTermsStatsDoubleFacet readTermsStatsFacet(StreamInput in) throws IOException {
+        InternalTermsStatsDoubleFacet facet = new InternalTermsStatsDoubleFacet();
+>>>>>>> 76aa07461566a5976980e6696204781271955163
         facet.readFrom(in);
         return facet;
     }
@@ -310,9 +431,15 @@ public class InternalTermsStatsLongFacet extends InternalTermsStatsFacet {
         missing = in.readVLong();
 
         int size = in.readVInt();
+<<<<<<< HEAD
         entries = new ArrayList<LongEntry>(size);
         for (int i = 0; i < size; i++) {
             entries.add(new LongEntry(in.readLong(), in.readVLong(), in.readVLong(), in.readDouble(), in.readDouble(), in.readDouble()));
+=======
+        entries = new ArrayList<DoubleEntry>(size);
+        for (int i = 0; i < size; i++) {
+            entries.add(new DoubleEntry(in.readDouble(), in.readVLong(), in.readVLong(), in.readDouble(), in.readDouble(), in.readDouble()));
+>>>>>>> 76aa07461566a5976980e6696204781271955163
         }
     }
 
@@ -324,7 +451,11 @@ public class InternalTermsStatsLongFacet extends InternalTermsStatsFacet {
 
         out.writeVInt(entries.size());
         for (Entry entry : entries) {
+<<<<<<< HEAD
             out.writeLong(((LongEntry) entry).term);
+=======
+            out.writeDouble(((DoubleEntry) entry).term);
+>>>>>>> 76aa07461566a5976980e6696204781271955163
             out.writeVLong(entry.count());
             out.writeVLong(entry.totalCount());
             out.writeDouble(entry.total());

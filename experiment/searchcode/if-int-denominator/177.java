@@ -37,14 +37,22 @@ package org.jhove2.module.format.icc.type;
 
 import com.sleepycat.persist.model.Persistent;
 
+<<<<<<< HEAD
 /** ICC fixed unsigned 2 byte/16 bit number with 8 fractional bits. The number
  * is organized as:
  * iiiiiiiiffffffff, with the value:
  * iiiiiiii + ffffffff/256. See ICC.1:2004-10, \u00a7 5.1.6.
+=======
+/** ICC s15Fixed16Number, a fixed signed 4 byte/32 bit quantity with 16
+ * fractional bits.  The number is organized as:
+ * siiiiiiiiiiiiiiiffffffffffffffff, with the value:
+ * siiiiiiiiiiiiiii + ffffffffffffffff/65536. See ICC.1:2004-10, \u00a7 5.1.3.
+>>>>>>> 76aa07461566a5976980e6696204781271955163
  * 
  * @author slabrams
  */
 @Persistent
+<<<<<<< HEAD
 public class U8Fixed8Number
 {
     /** Fractional denominator. */
@@ -54,11 +62,23 @@ public class U8Fixed8Number
     protected int fractional;
     
     /** Unsigned integral part: 0xff00. */
+=======
+public class S15Fixed16Number
+{
+    /** Fractional denominator. */
+    public static final int DENOMINATOR = 65536;
+    
+    /** Fractional part: 0x0000ffff. */
+    protected int fractional;
+    
+    /** Signed integral part: 0xffff0000. */
+>>>>>>> 76aa07461566a5976980e6696204781271955163
     protected int integral;
     
     /** Floating point value. */
     protected double value;
     
+<<<<<<< HEAD
     private U8Fixed8Number(){
     	super();
     }
@@ -68,6 +88,14 @@ public class U8Fixed8Number
     	this();
         this.integral   = (in & 0xff00) >> 8;
         this.fractional =  in & 0x00ff;
+=======
+    /** Instantiate a new <code>S15Fixed16Number</code>.
+     */
+    public S15Fixed16Number(int in) {
+    	this();
+        this.integral   = (in & 0xffff0000) >> 16;
+        this.fractional =  in & 0x0000ffff;
+>>>>>>> 76aa07461566a5976980e6696204781271955163
         this.value      = this.integral +
                  ((double)this.fractional/(double)DENOMINATOR);
         /* Only keep 5 significant fractional digits. */
@@ -76,6 +104,13 @@ public class U8Fixed8Number
         this.value /= 100000;
     }
     
+<<<<<<< HEAD
+=======
+    private S15Fixed16Number(){
+    	super();
+    }
+    
+>>>>>>> 76aa07461566a5976980e6696204781271955163
     /** Get fractional part.
      * @return Fractional part
      */
@@ -83,8 +118,13 @@ public class U8Fixed8Number
         return this.fractional;
     }
     
+<<<<<<< HEAD
     /** Get integral part.
      * @return Integral part 
+=======
+    /** Get signed integral part.
+     * @return Signed integral part 
+>>>>>>> 76aa07461566a5976980e6696204781271955163
      */
     public int getIntegral() {
         return this.integral;
@@ -98,7 +138,11 @@ public class U8Fixed8Number
     }
     
     /** String representation of the arithmetic representation of the
+<<<<<<< HEAD
      * number: integral + fractional/256.
+=======
+     * number: integral + fractional/65536.
+>>>>>>> 76aa07461566a5976980e6696204781271955163
      * @return String representation of the arithmetic representation
      */
     public String toArithmeticString() {

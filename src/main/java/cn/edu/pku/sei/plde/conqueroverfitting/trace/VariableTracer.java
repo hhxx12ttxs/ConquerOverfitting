@@ -37,16 +37,18 @@ public class VariableTracer {
     private String _testSrcPath;
     private Asserts _asserts;
     private String _shellResult;
+    private String _project;
     /**
      *
      * @param srcPath the path of source file
      */
-    public VariableTracer(String srcPath, String testSrcPath, Suspicious suspicious){
+    public VariableTracer(String srcPath, String testSrcPath, Suspicious suspicious, String project){
         _classpath = suspicious._classpath;
         _testClasspath = suspicious._testClasspath;
         _srcPath = srcPath;
         _testSrcPath = testSrcPath;
         _suspicious = suspicious;
+        _project = project;
     }
 
 
@@ -63,10 +65,8 @@ public class VariableTracer {
         _testClassname = testClassname;
         _testMethodName = testMethodName;
         _functionname = functionname;
-        //if (!isSuccess){
-        //    spreadForLoop();
-        //}
-        _asserts = new Asserts(_classpath,_srcPath,_testClasspath,_testSrcPath,testClassname,testMethodName, _suspicious._libPath);
+
+        _asserts = new Asserts(_classpath,_srcPath,_testClasspath,_testSrcPath,testClassname,testMethodName, _suspicious._libPath,_project);
         List<MethodInfo> methodInfos = _suspicious.getMethodInfo(_srcPath);
         ErrorLineTracer tracer = new ErrorLineTracer(_suspicious,_asserts, _classname, _functionname);
         List<Integer> errorLines = tracer.trace(errorLine, isSuccess);
@@ -103,7 +103,6 @@ public class VariableTracer {
         }
         _suspicious._assertsMap.put(_testClassname+"#"+_testMethodName, _asserts);
         _suspicious._errorLineMap.put(_testClassname+"#"+_testMethodName, new ArrayList<>(errorLines));
-        //results.addAll(getAddonResult(_suspicious.getAllInfo()));
         deleteTempFile();
         return results;
     }
@@ -339,7 +338,7 @@ public class VariableTracer {
                 SourceUtils.commentCodeInSourceFile(sourceFile, i+1);
             }
         }
-        SourceUtils.insertCodeToSourceFile(sourceFile,spreadString,methodStartLine);
+        CodeUtils.addCodeToFile(sourceFile,spreadString,methodStartLine);
         try {
             System.out.println(ShellUtils.shellRun(Arrays.asList("javac -Xlint:unchecked -source 1.6 -target 1.6 -cp "+ buildClasspath(Arrays.asList(PathUtils.getJunitPath(),_testClasspath,_classpath)) +" -d "+_testClasspath+" "+ sourceFile.getAbsolutePath())));
         } catch (IOException e){

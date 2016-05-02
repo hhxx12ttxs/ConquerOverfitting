@@ -12,6 +12,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.CodeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.InfoUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.MathUtils;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.VariableUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 
 
@@ -27,36 +28,33 @@ import java.util.regex.Matcher;
  */
 public class BoundaryGenerator {
 
+    public static long lastSearchTime=0;
+
     public static List<String> generate(Suspicious suspicious, ExceptionVariable exceptionVariable, Map<VariableInfo, List<String>> trueValues, Map<VariableInfo, List<String>> falseValues, String project) {
-        List<String> keywords = new ArrayList<>();
-        if (exceptionVariable.name.length() == 1){
-            //keywords.add("factorial");
-            String variableName = suspicious.functionnameWithoutParam();
-            String keyword = "";
-            for (Character ch: variableName.toCharArray()){
-                if(!((ch<='Z')&&(ch>='A'))){
-                    keyword += ch;
-                    continue;
-                }
-                break;
+
+        List<String> intervals = new ArrayList<>();
+        if (MathUtils.isNumberType(exceptionVariable.type)){
+            List<BoundaryWithFreq> variableBoundary = new ArrayList<>();
+            if (!MathUtils.allMaxMinValue(exceptionVariable.values)){
+                //while (lastSearchTime!=0 && (System.currentTimeMillis()-lastSearchTime)/1000< 60);
+                variableBoundary = SearchBoundaryFilter.getBoundary(exceptionVariable, project, suspicious);
+                lastSearchTime = System.currentTimeMillis();
             }
-            keywords.add(keyword);
-        }
-
-
-
-        Map<List<String>, String> intervals = new HashMap<>();
-        if (MathUtils.isNumberType(exceptionVariable.type) && exceptionVariable.values.size() <=5){
-            List<BoundaryWithFreq> variableBoundary = SearchBoundaryFilter.getBoundary(exceptionVariable, project, keywords);
             for (String value: exceptionVariable.values){
-                ArrayList<BoundaryWithFreq> intervalss;
-                try {
-                    intervalss = MathUtils.generateInterval(variableBoundary, Double.valueOf(value));
-                }catch (Exception e){
-                    intervals.put(Arrays.asList(value), "["+value+"-"+value+"]");
-                    e.printStackTrace();
+                if (MathUtils.isMaxMinValue(value)){
+                    intervals.add(value);
                     continue;
                 }
+                try {
+                    ArrayList<BoundaryWithFreq> intervalss = MathUtils.generateInterval(variableBoundary, Double.valueOf(value));
+                    if (intervalss == null  || intervalss.size() == 0){
+                        return new ArrayList<>();
+                    }
+                    intervals.add(intervalss.get(0).value);
+                }catch (Exception e){
+                    continue;
+                }
+                /*
                 String left = intervalss.get(0).value;
                 if (intervalss.get(0).leftClose >= intervalss.get(0).rightClose){
                     left = "["+left;
@@ -65,18 +63,30 @@ public class BoundaryGenerator {
                 if (intervalss.get(1).rightClose >= intervalss.get(1).leftClose){
                     right = right + "]";
                 }
-                intervals.put(Arrays.asList(value), left+"-"+right);
+                */
             }
         }
         else {
-            List<BoundaryInfo> boundaryInfo = SearchBoundaryFilter.getBoundaryInfo(exceptionVariable, project, keywords);
-            intervals = exceptionVariable.getBoundaryIntervals(boundaryInfo);
+            List<BoundaryWithFreq> variableBoundary = new ArrayList<>();
+            if (!allSpecificValue(exceptionVariable.values)){
+                //while (lastSearchTime!=0 && (System.currentTimeMillis()-lastSearchTime)/1000< 60);
+                variableBoundary = SearchBoundaryFilter.getBoundary(exceptionVariable, project, suspicious);
+                lastSearchTime = System.currentTimeMillis();
+            }
+            for (String value : exceptionVariable.values) {
+                if (exceptionVariable.name.endsWith(".null") &&value.equals("false")){
+                    continue;
+                }
+                if (value.equals("true") || value.equals("false") || value.equals("null")) {
+                    intervals.add(value);
+                    continue;
+                }
+                intervals = exceptionVariable.getBoundaryIntervals(variableBoundary);
+            }
         }
         List<String> returnList = new ArrayList<>();
-        for (Map.Entry<List<String>, String> entry: intervals.entrySet()){
-            String interval = entry.getValue();
-            List<String> value = entry.getKey();
-            String ifString = generateWithSingleWord(exceptionVariable,interval,value);
+        for (String interval: intervals){
+            String ifString = generateWithSingleWord(exceptionVariable,interval);
             if (!ifString.equals("")){
                 returnList.add(ifString);
             }
@@ -84,8 +94,17 @@ public class BoundaryGenerator {
         return returnList;
     }
 
+    private static boolean allSpecificValue(Set<String> values){
+        for (String value: values){
+            if (!value.equals("null") && !value.equals("true") && !value.equals("false")){
+                return false;
+            }
+        }
+        return true;
+    }
 
-    private static String generateWithSingleWord(ExceptionVariable variable, String intervals,List<String> valueStrings) {
+
+    private static String generateWithSingleWord(ExceptionVariable variable, String intervals) {
         if (variable.variable.variableName.equals("this")){
             return intervals;
         }
@@ -121,6 +140,7 @@ public class BoundaryGenerator {
                     return variable.variable.variableName + "==" + intervals;
                 }
             }
+            /*
             boolean biggestClose = false;
             boolean smallestClose = false;
             String biggest = intervals.split("-")[0];
@@ -171,9 +191,8 @@ public class BoundaryGenerator {
             }
             if (interval.size() == 2) {
                 return generateWithTwoInterval(interval);
-            }
+            }*/
         }
-
         if (variable.variable.variableName.contains("==")||variable.variable.variableName.contains("!=") || variable.variable.variableName.contains(">") || variable.variable.variableName.contains("<")){
             if (intervals.equals("true")){
                 return variable.variable.variableName;

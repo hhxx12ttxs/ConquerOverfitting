@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 /*******************************************************************************
  * Crown Copyright (c) 2006, 2012, Copyright (c) 2006, 2008 Kestral Computing P/L.
  * All rights reserved. This program and the accompanying materials
@@ -204,4 +205,64 @@ public class DefinitionParser implements Parser<String, UcumModel> {
 			throw new XmlPullParserException(Messages.DefinitionParser_58+name+Messages.DefinitionParser_59+xpp.getName()+Messages.DefinitionParser_60+context);		
 	}
 }
+=======
+package com.company;
+
+
+public class Complex {
+
+    public void main() {
+
+    }
+
+    public double real;
+    public double imaginary;
+
+    public Complex(double real, double imaginary) {
+        this.real = real;
+        this.imaginary = imaginary;
+    }
+
+    public Complex() {
+        this.real = 0;
+        this.imaginary = 0;
+    }
+
+    public Complex clone(){
+        return new Complex(real,imaginary);
+    }
+
+    public Complex add(Complex x) {
+        return new Complex(x.real + this.real, x.imaginary + this.imaginary);
+    }
+
+    public Complex sub(Complex x) {
+        return new Complex(-x.real + this.real, -x.imaginary + this.imaginary);
+    }
+
+    public Complex multiply(double x) {
+        return new Complex(x * this.real, x * this.imaginary);
+    }
+
+    public Complex divide(double x) {
+        return new Complex(this.real / x, this.imaginary / x);
+    }
+
+    public double magnitude() {
+        return Math.sqrt(this.real * this.real + this.imaginary * this.imaginary);
+    }
+
+    public String toString() {
+        if (imaginary == 0)
+            return real + "";
+        else
+            return "(" + real + "," + imaginary + ")";
+    }
+
+    public Complex multiply(Complex complex) {
+        return new Complex(real * complex.real - imaginary * complex.imaginary, real * complex.imaginary + complex.real * imaginary);
+    }
+}
+
+>>>>>>> 76aa07461566a5976980e6696204781271955163
 

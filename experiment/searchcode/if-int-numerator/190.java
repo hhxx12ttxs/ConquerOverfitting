@@ -31,10 +31,17 @@ import org.jfin.date.daycount.DaycountException;
 /**
  * If startCalendar and endCalendar are equal dates, returns zero.
  */
+<<<<<<< HEAD
 public class US30360 extends DaycountCalculator {
 
     private static Logger logger = Logger
             .getLogger("org.jfin.date.daycount.defaultimpl.US30360");
+=======
+public class EU30360 extends DaycountCalculator {
+
+    private static Logger logger = Logger
+            .getLogger("org.jfin.date.daycount.defaultimpl.EU30360");
+>>>>>>> 76aa07461566a5976980e6696204781271955163
 
     public double calculateDaycountFraction(Calendar startCalendar,
                                             Calendar endCalendar) throws DaycountException {
@@ -57,6 +64,7 @@ public class US30360 extends DaycountCalculator {
         int year1 = startCalendar.get(Calendar.YEAR);
         int year2 = endCalendar.get(Calendar.YEAR);
 
+<<<<<<< HEAD
         boolean isLastDayOfFebruary1 = dayOfMonth1 == startCalendar.getActualMaximum(Calendar.DAY_OF_MONTH) && month1 == Calendar.FEBRUARY;
         boolean isLastDayOfFebruary2 = dayOfMonth2 == startCalendar.getActualMaximum(Calendar.DAY_OF_MONTH) && month2 == Calendar.FEBRUARY;
 
@@ -76,6 +84,15 @@ public class US30360 extends DaycountCalculator {
             dayOfMonth1 = 30;
         }
 
+=======
+        if (dayOfMonth1 == 31) {
+            dayOfMonth1 = 30;
+        }
+        if (dayOfMonth2 == 31) {
+            dayOfMonth2 = 30;
+        }
+
+>>>>>>> 76aa07461566a5976980e6696204781271955163
         int numerator = 360 * (year2 - year1);
         numerator += 30 * (month2 - month1);
         numerator += dayOfMonth2 - dayOfMonth1;

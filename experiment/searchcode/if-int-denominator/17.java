@@ -85,7 +85,11 @@ public final class ReedSolomonDecoder {
     }
   }
 
+<<<<<<< HEAD
   private GenericGFPoly[] runEuclideanAlgorithm(GenericGFPoly a, GenericGFPoly b, int R)
+=======
+  public GenericGFPoly[] runEuclideanAlgorithm(GenericGFPoly a, GenericGFPoly b, int R)
+>>>>>>> 76aa07461566a5976980e6696204781271955163
       throws ReedSolomonException {
     // Assume a's degree is >= b's
     if (a.getDegree() < b.getDegree()) {
@@ -123,6 +127,13 @@ public final class ReedSolomonDecoder {
       }
 
       t = q.multiply(tLast).addOrSubtract(tLastLast);
+<<<<<<< HEAD
+=======
+      
+      if (r.getDegree() >= rLast.getDegree()) {
+        throw new IllegalStateException("Division algorithm failed to reduce polynomial?");
+      }
+>>>>>>> 76aa07461566a5976980e6696204781271955163
     }
 
     int sigmaTildeAtZero = t.getCoefficient(0);

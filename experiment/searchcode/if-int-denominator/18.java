@@ -58,9 +58,17 @@ public final class ReedSolomonDecoder {
   public void decode(int[] received, int twoS) throws ReedSolomonException {
     GenericGFPoly poly = new GenericGFPoly(field, received);
     int[] syndromeCoefficients = new int[twoS];
+<<<<<<< HEAD
     boolean noError = true;
     for (int i = 0; i < twoS; i++) {
       int eval = poly.evaluateAt(field.exp(i + field.getGeneratorBase()));
+=======
+    boolean dataMatrix = field.equals(GenericGF.DATA_MATRIX_FIELD_256);
+    boolean noError = true;
+    for (int i = 0; i < twoS; i++) {
+      // Thanks to sanfordsquires for this fix:
+      int eval = poly.evaluateAt(field.exp(dataMatrix ? i + 1 : i));
+>>>>>>> 76aa07461566a5976980e6696204781271955163
       syndromeCoefficients[syndromeCoefficients.length - 1 - i] = eval;
       if (eval != 0) {
         noError = false;
@@ -75,7 +83,11 @@ public final class ReedSolomonDecoder {
     GenericGFPoly sigma = sigmaOmega[0];
     GenericGFPoly omega = sigmaOmega[1];
     int[] errorLocations = findErrorLocations(sigma);
+<<<<<<< HEAD
     int[] errorMagnitudes = findErrorMagnitudes(omega, errorLocations);
+=======
+    int[] errorMagnitudes = findErrorMagnitudes(omega, errorLocations, dataMatrix);
+>>>>>>> 76aa07461566a5976980e6696204781271955163
     for (int i = 0; i < errorLocations.length; i++) {
       int position = received.length - 1 - field.log(errorLocations[i]);
       if (position < 0) {
@@ -85,7 +97,11 @@ public final class ReedSolomonDecoder {
     }
   }
 
+<<<<<<< HEAD
   public GenericGFPoly[] runEuclideanAlgorithm(GenericGFPoly a, GenericGFPoly b, int R)
+=======
+  private GenericGFPoly[] runEuclideanAlgorithm(GenericGFPoly a, GenericGFPoly b, int R)
+>>>>>>> 76aa07461566a5976980e6696204781271955163
       throws ReedSolomonException {
     // Assume a's degree is >= b's
     if (a.getDegree() < b.getDegree()) {
@@ -96,14 +112,26 @@ public final class ReedSolomonDecoder {
 
     GenericGFPoly rLast = a;
     GenericGFPoly r = b;
+<<<<<<< HEAD
+=======
+    GenericGFPoly sLast = field.getOne();
+    GenericGFPoly s = field.getZero();
+>>>>>>> 76aa07461566a5976980e6696204781271955163
     GenericGFPoly tLast = field.getZero();
     GenericGFPoly t = field.getOne();
 
     // Run Euclidean algorithm until r's degree is less than R/2
     while (r.getDegree() >= R / 2) {
       GenericGFPoly rLastLast = rLast;
+<<<<<<< HEAD
       GenericGFPoly tLastLast = tLast;
       rLast = r;
+=======
+      GenericGFPoly sLastLast = sLast;
+      GenericGFPoly tLastLast = tLast;
+      rLast = r;
+      sLast = s;
+>>>>>>> 76aa07461566a5976980e6696204781271955163
       tLast = t;
 
       // Divide rLastLast by rLast, with quotient in q and remainder in r
@@ -122,11 +150,16 @@ public final class ReedSolomonDecoder {
         r = r.addOrSubtract(rLast.multiplyByMonomial(degreeDiff, scale));
       }
 
+<<<<<<< HEAD
       t = q.multiply(tLast).addOrSubtract(tLastLast);
       
       if (r.getDegree() >= rLast.getDegree()) {
         throw new IllegalStateException("Division algorithm failed to reduce polynomial?");
       }
+=======
+      s = q.multiply(sLast).addOrSubtract(sLastLast);
+      t = q.multiply(tLast).addOrSubtract(tLastLast);
+>>>>>>> 76aa07461566a5976980e6696204781271955163
     }
 
     int sigmaTildeAtZero = t.getCoefficient(0);
@@ -160,7 +193,11 @@ public final class ReedSolomonDecoder {
     return result;
   }
 
+<<<<<<< HEAD
   private int[] findErrorMagnitudes(GenericGFPoly errorEvaluator, int[] errorLocations) {
+=======
+  private int[] findErrorMagnitudes(GenericGFPoly errorEvaluator, int[] errorLocations, boolean dataMatrix) {
+>>>>>>> 76aa07461566a5976980e6696204781271955163
     // This is directly applying Forney's Formula
     int s = errorLocations.length;
     int[] result = new int[s];
@@ -180,7 +217,12 @@ public final class ReedSolomonDecoder {
       }
       result[i] = field.multiply(errorEvaluator.evaluateAt(xiInverse),
           field.inverse(denominator));
+<<<<<<< HEAD
       if (field.getGeneratorBase() != 0) {
+=======
+      // Thanks to sanfordsquires for this fix:
+      if (dataMatrix) {
+>>>>>>> 76aa07461566a5976980e6696204781271955163
         result[i] = field.multiply(result[i], xiInverse);
       }
     }

@@ -62,6 +62,7 @@ public final class ErrorCorrection {
     }
 
     ModulusPoly knownErrors = field.getOne();
+<<<<<<< HEAD
     if (erasures != null) {
       for (int erasure : erasures) {
         int b = field.exp(received.length - 1 - erasure);
@@ -69,6 +70,13 @@ public final class ErrorCorrection {
         ModulusPoly term = new ModulusPoly(field, new int[]{field.subtract(0, b), 1});
         knownErrors = knownErrors.multiply(term);
       }
+=======
+    for (int erasure : erasures) {
+      int b = field.exp(received.length - 1 - erasure);
+      // Add (1 - bx) term:
+      ModulusPoly term = new ModulusPoly(field, new int[] { field.subtract(0, b), 1 });
+      knownErrors = knownErrors.multiply(term);
+>>>>>>> 76aa07461566a5976980e6696204781271955163
     }
 
     ModulusPoly syndrome = new ModulusPoly(field, S);

@@ -35,9 +35,22 @@ public final class ErrorCorrection {
     this.field = ModulusGF.PDF417_GF;
   }
 
+<<<<<<< HEAD
   public void decode(int[] received,
                      int numECCodewords,
                      int[] erasures) throws ChecksumException {
+=======
+  /**
+   * @param received received codewords
+   * @param numECCodewords number of those codewords used for EC
+   * @param erasures location of erasures
+   * @return number of errors
+   * @throws ChecksumException if errors cannot be corrected, maybe because of too many errors
+   */
+  public int decode(int[] received,
+                    int numECCodewords,
+                    int[] erasures) throws ChecksumException {
+>>>>>>> 76aa07461566a5976980e6696204781271955163
 
     ModulusPoly poly = new ModulusPoly(field, received);
     int[] S = new int[numECCodewords];
@@ -50,6 +63,7 @@ public final class ErrorCorrection {
       }
     }
 
+<<<<<<< HEAD
     if (error) {
 
       ModulusPoly knownErrors = field.getOne();
@@ -81,6 +95,41 @@ public final class ErrorCorrection {
         received[position] = field.subtract(received[position], errorMagnitudes[i]);
       }
     }
+=======
+    if (!error) {
+      return 0;
+    }
+
+    ModulusPoly knownErrors = field.getOne();
+    for (int erasure : erasures) {
+      int b = field.exp(received.length - 1 - erasure);
+      // Add (1 - bx) term:
+      ModulusPoly term = new ModulusPoly(field, new int[] { field.subtract(0, b), 1 });
+      knownErrors = knownErrors.multiply(term);
+    }
+
+    ModulusPoly syndrome = new ModulusPoly(field, S);
+    //syndrome = syndrome.multiply(knownErrors);
+
+    ModulusPoly[] sigmaOmega =
+        runEuclideanAlgorithm(field.buildMonomial(numECCodewords, 1), syndrome, numECCodewords);
+    ModulusPoly sigma = sigmaOmega[0];
+    ModulusPoly omega = sigmaOmega[1];
+
+    //sigma = sigma.multiply(knownErrors);
+
+    int[] errorLocations = findErrorLocations(sigma);
+    int[] errorMagnitudes = findErrorMagnitudes(omega, sigma, errorLocations);
+
+    for (int i = 0; i < errorLocations.length; i++) {
+      int position = received.length - 1 - field.log(errorLocations[i]);
+      if (position < 0) {
+        throw ChecksumException.getChecksumInstance();
+      }
+      received[position] = field.subtract(received[position], errorMagnitudes[i]);
+    }
+    return errorLocations.length;
+>>>>>>> 76aa07461566a5976980e6696204781271955163
   }
 
   private ModulusPoly[] runEuclideanAlgorithm(ModulusPoly a, ModulusPoly b, int R)

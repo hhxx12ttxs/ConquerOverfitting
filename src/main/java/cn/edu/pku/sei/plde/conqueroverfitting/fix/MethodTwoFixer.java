@@ -75,29 +75,44 @@ public class MethodTwoFixer {
                         String lastLineString = CodeUtils.getLineFromCode(_code, blockStartLine-1);
                         boolean result = false;
                         if (!LineUtils.isIfAndElseIfLine(lastLineString)) {
-                            result = fixWithAddIf(blockStartLine, endLine, getIfStatementFromString(ifString),entry.getKey(), false, project, debug);
+                            ifStatement = getIfStatementFromString(ifString);
+                            result = fixWithAddIf(blockStartLine, endLine, ifStatement,entry.getKey(), false, project, debug);
+                            if (result) {
+                                correctStartLine = blockStartLine-1;
+                                correctEndLine = endLine;
+                                correctPatch = ifStatement;
+                                triedPatch.add(ifStatement);
+                                return true;
+                            }
                         }
                         else {
-                            if (getIfStringFromStatement(ifString).contains(getIfStringFromStatement(lastLineString))){
-                                return false;
-                            }
                             String ifEnd = lastLineString.substring(lastLineString.lastIndexOf(')'));
                             lastLineString = lastLineString.substring(0, lastLineString.lastIndexOf(')'));
-                            ifStatement =lastLineString+ "&&" +getIfStringFromStatement(getIfStatementFromString(ifString)) + ifEnd;
+                            if (lastLineString.contains(removeBracket(getIfStringFromStatement(ifString)))){
+                                return false;
+                            }
+                            ifStatement =lastLineString+ "&&" + getIfStringFromStatement(getIfStatementFromString(ifString)) + ifEnd;
                             result = fixWithAddIf(blockStartLine-1, endLine, ifStatement,entry.getKey(),  true, project, debug);
-                            if (!result){
+                            if (result){
+                                correctStartLine = blockStartLine-1;
+                                correctEndLine = endLine;
+                                correctPatch = ifStatement;
+                                triedPatch.add(ifStatement);
+                                return true;
+                            }else{
                                 ifStatement =lastLineString+ "||" +getIfStringFromStatement(ifString) + ifEnd;
                                 result = fixWithAddIf(blockStartLine-1, endLine, ifStatement,entry.getKey(),  true, project, debug);
+                                if (result){
+                                    correctStartLine = blockStartLine-1;
+                                    correctEndLine = endLine;
+                                    correctPatch = ifStatement;
+                                    triedPatch.add(ifStatement);
+                                    return true;
+                                }
                             }
-                            triedPatch.add(ifStatement);
-                        }
-                        if (result){
-                            correctPatch = ifString;
-                            correctStartLine = blockStartLine-1;
-                            correctEndLine = endLine;
-                            return true;
                         }
                     }
+
                 }
             }
         }
@@ -132,6 +147,14 @@ public class MethodTwoFixer {
         return ifStatement.substring(ifStatement.indexOf('(')+1, ifStatement.lastIndexOf(')'));
     }
 
+    private String removeBracket(String ifStatement){
+        ifStatement = ifStatement.replace(" ","");
+        if (ifStatement.startsWith("(") || ifStatement.startsWith("!(")){
+            return getIfStringFromStatement(ifStatement);
+        }
+        return ifStatement;
+    }
+
     private boolean fixWithAddIf(int ifStartLine, int ifEndLine, String ifStatement,String testMessage, boolean replace, String project, boolean debug){
         String testClassName = testMessage.split("#")[0];
         String testMethodName = testMessage.split("#")[1];
@@ -142,7 +165,6 @@ public class MethodTwoFixer {
         File javaBackup = FileUtils.copyFile(targetJavaFile.getAbsolutePath(), FileUtils.tempJavaPath(_className,"MethodTwoFixer"));
         File classBackup = FileUtils.copyFile(targetClassFile.getAbsolutePath(), FileUtils.tempClassPath(_className,"MethodTwoFixer"));
         SourceUtils.insertIfStatementToSourceFile(targetJavaFile, ifStatement, ifStartLine, ifEndLine, replace);
-
         try {
             targetClassFile.delete();
             System.out.println(ShellUtils.shellRun(Arrays.asList("javac -Xlint:unchecked -source 1.6 -target 1.6 -cp "+ buildClasspath(Arrays.asList(PathUtils.getJunitPath())) +" -d "+_classpath+" "+ targetJavaFile.getAbsolutePath())));
@@ -158,7 +180,7 @@ public class MethodTwoFixer {
             return false;
         }
 
-        Asserts asserts = new Asserts(_classpath,_classSrcPath, _testClassPath, _testSrcPath, testClassName, testMethodName);
+        Asserts asserts = new Asserts(_classpath,_classSrcPath, _testClassPath, _testSrcPath, testClassName, testMethodName, project);
         int errAssertAfterFix = asserts.errorNum();
         int errAssertBeforeFix = _suspicious._assertsMap.get(testClassName+"#"+testMethodName).errorNum();
         System.out.print("Method 2 try patch: "+ifStatement+" in line: "+ifStartLine);
@@ -170,6 +192,7 @@ public class MethodTwoFixer {
                     FileUtils.copyFile(classBackup, targetClassFile);
                     FileUtils.copyFile(javaBackup, targetJavaFile);
                 }
+                RecordUtils.recordIf(_code, ifStatement,ifStartLine,ifEndLine,replace,project);
                 return true;
             }
         }

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -163,3 +164,33 @@ public class MullerSolver2 extends AbstractUnivariateSolver {
     }
 }
 
+=======
+public class Complex {
+	private double a = 0;
+	private double b = 0;
+	public Complex(double real, double img){
+		a = real;
+		b = img;
+	}
+	public Complex add(Complex c2){
+		Complex c1 = this;
+		double re = c1.a + c2.a;
+		double re = c1.b + c2.b;
+		return new Complex(re,im);
+	}
+	public Complex multiply(Complex c2){
+		Complex c1 = this;
+		double re = c1.a * c1.a - c1.b * c2.b;
+		double im = c1.a * c2.b - c2.a * c1.b;
+		return new Complex(re,im);
+	}
+	public static double getMandelbrotEscapeVal(Complex c, int maxEscape){
+		Complex z = c;
+		for(int i = 0; i <= 100; i++){
+			if(z.a > 2 || z.b > 2)
+				return (i > maxEscape) ? maxEscape : i;
+			z += z.multiply(z);
+		}
+	}
+};
+>>>>>>> 76aa07461566a5976980e6696204781271955163

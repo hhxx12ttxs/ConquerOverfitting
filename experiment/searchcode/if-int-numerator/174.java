@@ -68,7 +68,11 @@ public class VolumeStreamItem implements Item {
             desc.setText(context.getResources().getString(R.string.volume_override_summary,
                     denominator, numerator));
         } else {
+<<<<<<< HEAD
             desc.setText(context.getString(R.string.profile_action_none));
+=======
+            desc.setText(context.getString(R.string.volume_override_summary_no_override));
+>>>>>>> 76aa07461566a5976980e6696204781271955163
         }
 
         return view;

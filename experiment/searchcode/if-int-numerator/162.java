@@ -36,7 +36,15 @@ public final class ErrorCorrection {
   }
 
   /**
+<<<<<<< HEAD
    * @return number of errors
+=======
+   * @param received received codewords
+   * @param numECCodewords number of those codewords used for EC
+   * @param erasures location of erasures
+   * @return number of errors
+   * @throws ChecksumException if errors cannot be corrected, maybe because of too many errors
+>>>>>>> 76aa07461566a5976980e6696204781271955163
    */
   public int decode(int[] received,
                     int numECCodewords,

@@ -213,7 +213,7 @@ public class Localization  {
                 if (statements.size() < 50) {
                     String errorAssertCode = "";
                     if (!errorLineMap.containsKey(test)) {
-                        Asserts asserts = new Asserts(classpath, srcPath, testClassPath, testSrcPath, testClass, testMethod, libPaths);
+                        Asserts asserts = new Asserts(classpath, srcPath, testClassPath, testSrcPath, testClass, testMethod, libPaths, project);
                         if (asserts.errorLines().size() == 0) {
                             continue;
                         }
