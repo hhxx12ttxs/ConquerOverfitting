@@ -22,7 +22,11 @@ public class BoundaryInfo {
 		this.isSimpleType = isSimpleType;
 		this.otherType = otherType;
 		this.name = name;
+		if(value.contains(".0")){
+			value = value.replace(".0", "");
+		}
 		this.value = value;
+
 		this.info = info;
 		this.leftClose = leftClose;//[k
 		this.rightClose = rightClose;//k]

@@ -57,7 +57,12 @@ public class GathererJava {
                     + "&lan=" + API_CODE_LANGUAGE;
             System.out.println("search : " + url);
 
-            codeUrlList.addAll(getCodeUrlList(url));
+            try {
+                codeUrlList.addAll(getCodeUrlList(url));
+            } catch (Exception e){
+                e.printStackTrace();
+            }
+
         }
 //        int size = codeUrlList.size();
 //        for(int i = MAX_URL_NUM; i < size; i ++){

@@ -1,23 +1,13 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.main;
 
-import cn.edu.pku.sei.plde.conqueroverfitting.fix.SuspiciousFixer;
-import cn.edu.pku.sei.plde.conqueroverfitting.localization.Localization;
-import cn.edu.pku.sei.plde.conqueroverfitting.localization.Suspicious;
-import cn.edu.pku.sei.plde.conqueroverfitting.trace.ExceptionVariable;
-import cn.edu.pku.sei.plde.conqueroverfitting.utils.FileUtils;
-import cn.edu.pku.sei.plde.conqueroverfitting.utils.TestUtils;
 import org.apache.commons.lang.StringUtils;
-import org.junit.Test;
 
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.text.Format;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
-import java.util.Map;
 import java.util.concurrent.*;
 
 /**
@@ -38,17 +28,29 @@ public class Main {
             System.out.println("No file in path");
             return;
         }
+        deleteTempFile();
         if (args.length == 2){
-
-            String projectName = args[1];
-            try {
-                fixProject(projectName, path);
-            } catch (Exception e){
-                e.printStackTrace();
+            if (args[1].contains(":")){
+                for (String name: args[1].split(":")){
+                    System.out.println("Main: fixing project "+name);
+                    try {
+                        fixProject(name, path);
+                    }
+                    catch (Exception e){
+                        e.printStackTrace();
+                    }
+                }
+            }
+            else {
+                String projectName = args[1];
+                try {
+                    fixProject(projectName, path);
+                } catch (Exception e){
+                    e.printStackTrace();
+                }
             }
             return;
         }
-        deleteTempFile();
         for (File sub_file : sub_files){
             if (sub_file.isDirectory()){
                 System.out.println("Main: fixing project "+sub_file.getName());
@@ -71,7 +73,7 @@ public class Main {
             System.out.println("Main: cannot recognize project name \""+project+"\"");
             return;
         }
-        int timeout = 3600;
+        int timeout = 1200;
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         Future<Boolean> future = executorService.submit(new RunFixProcess(path, project));
 

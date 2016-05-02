@@ -1,0 +1,900 @@
+****************************************   begin   ****************************************
+size: 1
+value: 0
+type: INT
+freq 1700
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 4
+value: null
+type: NULL
+freq 1340
+isSimpleType true
+otherType null
+variableSimpleType NULL
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 1
+value: 1
+type: INT
+freq 218
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 2
+value: -1
+type: INT
+freq 88
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 5
+value: false
+type: BOOLEAN
+freq 72
+isSimpleType true
+otherType null
+variableSimpleType BOOLEAN
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 1
+value: 2
+type: INT
+freq 69
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 1
+value: 3
+type: INT
+freq 44
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 2
+value: 12
+type: INT
+freq 23
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 1
+value: 5
+type: INT
+freq 21
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 1
+value: 4
+type: INT
+freq 20
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 1
+value: 7
+type: INT
+freq 20
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 2
+value: 60
+type: INT
+freq 18
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 3
+value: '-'
+type: CHARACTER
+freq 17
+isSimpleType true
+otherType null
+variableSimpleType CHARACTER
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 1
+value: 9
+type: INT
+freq 15
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 3
+value: '0'
+type: CHARACTER
+freq 15
+isSimpleType true
+otherType null
+variableSimpleType CHARACTER
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 2
+value: 30
+type: INT
+freq 13
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 14
+value: Long.MAX_VALUE
+type: LONG
+freq 12
+isSimpleType true
+otherType null
+variableSimpleType LONG
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 3
+value: 365
+type: INT
+freq 12
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 2
+value: 15
+type: INT
+freq 12
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 2
+value: 23
+type: INT
+freq 12
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 2
+value: 10
+type: INT
+freq 11
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 13
+value: new Months(0)
+type: null
+freq 10
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 12
+value: new Period()
+type: null
+freq 10
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 13
+value: new Months(1)
+type: null
+freq 9
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 3
+value: '9'
+type: CHARACTER
+freq 9
+isSimpleType true
+otherType null
+variableSimpleType CHARACTER
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 14
+value: dtStart.year()
+type: INT
+freq 9
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 35
+value: "'P'yyyy'Y'M'M'd'DT'H'H'm'M's.S'S'"
+type: STRING
+freq 8
+isSimpleType true
+otherType null
+variableSimpleType STRING
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 2
+value: 29
+type: INT
+freq 8
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 3
+value: "y"
+type: null
+freq 8
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 3
+value: "M"
+type: null
+freq 8
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 3
+value: "d"
+type: null
+freq 8
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 3
+value: "H"
+type: null
+freq 8
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 3
+value: "m"
+type: null
+freq 8
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 3
+value: "s"
+type: null
+freq 8
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 3
+value: "S"
+type: null
+freq 8
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 4
+value: '\''
+type: CHARACTER
+freq 8
+isSimpleType true
+otherType null
+variableSimpleType CHARACTER
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 13
+value: new Months(2)
+type: null
+freq 8
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 13
+value: new Months(3)
+type: null
+freq 8
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 13
+value: new Months(4)
+type: null
+freq 8
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 13
+value: new Months(5)
+type: null
+freq 8
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 13
+value: new Months(6)
+type: null
+freq 8
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 13
+value: new Months(7)
+type: null
+freq 8
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 13
+value: new Months(8)
+type: null
+freq 8
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 13
+value: new Months(9)
+type: null
+freq 8
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 14
+value: new Months(10)
+type: null
+freq 8
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 14
+value: new Months(11)
+type: null
+freq 8
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 14
+value: new Months(12)
+type: null
+freq 8
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 29
+value: new Months(Integer.MAX_VALUE)
+type: null
+freq 8
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 29
+value: new Months(Integer.MIN_VALUE)
+type: null
+freq 8
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 61
+value: ISOPeriodFormat.standard().withParseType(PeriodType.months())
+type: null
+freq 8
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 34
+value: new SimpleDateFormat("yyyy-MM-dd")
+type: null
+freq 8
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 2
+value: ""
+type: STRING
+freq 8
+isSimpleType true
+otherType null
+variableSimpleType STRING
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 32
+value: new HashSet<DurationFieldType>()
+type: null
+freq 7
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 2
+value: 11
+type: INT
+freq 7
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 1
+value: 8
+type: INT
+freq 7
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 1
+value: 6
+type: INT
+freq 7
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 3
+value: '.'
+type: CHARACTER
+freq 7
+isSimpleType true
+otherType null
+variableSimpleType CHARACTER
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 4
+value: 1000
+type: INT
+freq 7
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 17
+value: Integer.MAX_VALUE
+type: INT
+freq 7
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 15
+value: dtStart.month()
+type: INT
+freq 7
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 10
+value: new Date()
+type: null
+freq 6
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 81
+value: new DateTimeFieldType[]{DateTimeFieldType.year(),DateTimeFieldType.monthOfYear()}
+type: null
+freq 6
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 87
+value: new DateTimeFieldType[]{DateTimeFieldType.monthOfYear(),DateTimeFieldType.dayOfMonth()}
+type: null
+freq 6
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 173
+value: new DateTimeFormatterBuilder().appendOptional(ISODateTimeFormat.localDateParser().getParser()).appendOptional(DateTimeFormat.forPattern("--MM-dd").getParser()).toFormatter()
+type: null
+freq 6
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 3
+value: 'M'
+type: CHARACTER
+freq 6
+isSimpleType true
+otherType null
+variableSimpleType CHARACTER
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 112
+value: new DateTimeFieldType[]{DateTimeFieldType.year(),DateTimeFieldType.monthOfYear(),DateTimeFieldType.dayOfMonth()}
+type: null
+freq 6
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 15
+value: new DateRange()
+type: null
+freq 5
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 21
+value: new DefaultTimeline()
+type: null
+freq 5
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 25
+value: DateTimeConstants.JANUARY
+type: INT
+freq 5
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 2
+value: 24
+type: INT
+freq 5
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 3
+value: 'Y'
+type: CHARACTER
+freq 5
+isSimpleType true
+otherType null
+variableSimpleType CHARACTER
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 17
+value: Integer.MIN_VALUE
+type: INT
+freq 5
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 26
+value: DateTickMarkPosition.START
+type: null
+freq 4
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 23
+value: SECONDS_OPTIONAL_MILLIS
+type: INT
+freq 4
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 3
+value: '+'
+type: CHARACTER
+freq 4
+isSimpleType true
+otherType null
+variableSimpleType CHARACTER
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 3
+value: ','
+type: CHARACTER
+freq 4
+isSimpleType true
+otherType null
+variableSimpleType CHARACTER
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 15
+value: new Literal("")
+type: null
+freq 4
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 15
+value: new DockPanel()
+type: null
+freq 4
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 12
+value: HALFHOUR * 2
+type: LONG
+freq 4
+isSimpleType true
+otherType null
+variableSimpleType LONG
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 3
+value: 120
+type: INT
+freq 4
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 2
+value: 90
+type: INT
+freq 4
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 36
+value: "javax.xml.datatype.DatatypeFactory"
+type: STRING
+freq 4
+isSimpleType true
+otherType null
+variableSimpleType STRING
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 3
+value: 'D'
+type: CHARACTER
+freq 4
+isSimpleType true
+otherType null
+variableSimpleType CHARACTER
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 3
+value: 'T'
+type: CHARACTER
+freq 4
+isSimpleType true
+otherType null
+variableSimpleType CHARACTER
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 29
+value: Logger.getLogger("Minecraft")
+type: null
+freq 4
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 68
+value: new DecimalFormat("#00",DecimalFormatSymbols.getInstance(Locale.US))
+type: null
+freq 4
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 59
+value: new DateTickUnit(DateTickUnit.DAY,1,new SimpleDateFormat())
+type: null
+freq 4
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 2
+value: 20
+type: INT
+freq 4
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 2
+value: 59
+type: INT
+freq 4
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 12
+value: new JPanel()
+type: null
+freq 3
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 4
+value: 0x01
+type: INT
+freq 3
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 4
+value: 0x02
+type: INT
+freq 3
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 4
+value: 0x04
+type: INT
+freq 3
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 4
+value: 0x08
+type: INT
+freq 3
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 4
+value: 0x10
+type: INT
+freq 3
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 4
+value: 0x20
+type: INT
+freq 3
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 25
+value: setHourToZero(new Date())
+type: null
+freq 3
+isSimpleType true
+otherType null
+variableSimpleType null
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 2
+value: 31
+type: INT
+freq 3
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 3
+value: 100
+type: INT
+freq 3
+isSimpleType true
+otherType null
+variableSimpleType INT
+****************************************   end   ****************************************
+****************************************   begin   ****************************************
+size: 65
+value: new String("org.apache.xerces.jaxp.datatype.DatatypeFactoryImpl")
+type: STRING
+freq 3
+isSimpleType true
+otherType null
+variableSimpleType STRING
+****************************************   end   ****************************************

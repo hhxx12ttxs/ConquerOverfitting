@@ -4,6 +4,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.boundary.BoundaryGenerator;
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.Interval;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Localization;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Suspicious;
+import cn.edu.pku.sei.plde.conqueroverfitting.localization.common.container.map.DoubleMap;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.ExceptionExtractor;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.ExceptionVariable;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.TraceResult;
@@ -84,7 +85,7 @@ public class SuspiciousFixer {
         for (List<ExceptionVariable> echelon: echelons) {
             Map<String, List<String>> boundarys = new HashMap<>();
             for (Map.Entry<String, List<ExceptionVariable>> assertEchelon : classifyWithAssert(echelon).entrySet()) {
-                List<String> ifStrings = getIfStrings(echelon);
+                List<String> ifStrings = getIfStrings(assertEchelon.getValue());
                 boundarys.put(assertEchelon.getKey(), ifStrings);
             }
             boolean method1FixSuccess = false;
@@ -240,6 +241,7 @@ public class SuspiciousFixer {
         if (ifStrings.size() == 0){
             return "";
         }
+        /*
         if (trueValues.size() == 0){
             for (Map.Entry<String, List<String>> entry: ifStrings.entrySet()){
                 List<String> bannedIfString = new ArrayList<>();
@@ -251,7 +253,7 @@ public class SuspiciousFixer {
                 entry.getValue().removeAll(bannedIfString);
                 bannedHistory.addAll(bannedIfString);
             }
-        }
+        }*/
         MethodTwoFixer fixer = new MethodTwoFixer(suspicious, errorTestNum);
         if (fixer.fix(ifStrings, Sets.newHashSet(errorLine), project, debug)){
             return fixer.correctPatch+"["+fixer.correctStartLine+","+fixer.correctEndLine+"]";
@@ -268,6 +270,7 @@ public class SuspiciousFixer {
         ReturnCapturer fixCapturer = new ReturnCapturer(suspicious._classpath,suspicious._srcPath, suspicious._testClasspath, suspicious._testSrcPath);
         MethodOneFixer methodOneFixer = new MethodOneFixer(suspicious, project,errorTestNum);
         for (Map.Entry<String, List<String>> entry: ifStrings.entrySet()){
+            /*
             if (trueValues.size() == 0){
                 List<String> bannedIfString = new ArrayList<>();
                 for (String ifString: entry.getValue()){
@@ -280,7 +283,7 @@ public class SuspiciousFixer {
                 }
                 entry.getValue().removeAll(bannedIfString);
                 bannedHistory.addAll(bannedIfString);
-            }
+            }*/
 
             String testClassName = entry.getKey().split("#")[0];
             String testMethodName = entry.getKey().split("#")[1];
@@ -303,7 +306,7 @@ public class SuspiciousFixer {
                 List<String> ifStatement = entry.getValue();
                 List<String> bannedStatement = new ArrayList<>();
                 for (String statemnt: ifStatement){
-                    if (!ifStringFilter(statemnt) && ifStatement.contains(statemnt)){
+                    if (!ifStringFilter(statemnt)){
                         bannedStatement.add(statemnt);
                     }
                 }

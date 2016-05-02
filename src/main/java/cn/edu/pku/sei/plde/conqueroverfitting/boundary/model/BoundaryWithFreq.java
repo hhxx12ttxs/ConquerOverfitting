@@ -24,31 +24,38 @@ public class BoundaryWithFreq {
         this.otherType = otherType;
         this.value = value;
         try{
+
             if(isSimpleType) {
-                dvalue = Double.parseDouble(value);
+                if(!value.equals("null")) {
+                    int valueSize = value.length();
+                    if (value.endsWith("L") || value.endsWith("l") || value.endsWith("D") || value.endsWith("d") || value.endsWith("F") || value.endsWith("f")) {
+                        this.value = value.substring(0, valueSize - 1);
+                    }
+                    dvalue = Double.parseDouble(value);
+                }
             }
         }catch (Exception e){
-            if(value.contains("Integer.MIN_VALUE") || value.contains("Integer.MIN_VAUE")){
+            if(value.equals("Integer.MIN_VALUE") || value.equals("Integer.MIN_VAUE")){
                 this.value = "Integer.MIN_VALUE";
                 dvalue = Integer.MIN_VALUE;
             }
-            if(value.contains("Integer.MAX_VALUE") || value.contains("Integer.MAX_VAUE")){
+            if(value.equals("Integer.MAX_VALUE") || value.equals("Integer.MAX_VAUE")){
                 this.value = "Integer.MAX_VALUE";
                 dvalue = Integer.MAX_VALUE;
             }
-            if(value.contains("Double.MIN_VALUE") || value.contains("Double.MIN_VAUE")){
+            if(value.equals("Double.MIN_VALUE") || value.equals("Double.MIN_VAUE")){
                 this.value = "Double.MIN_VALUE";
                 dvalue = Double.MIN_VALUE;
             }
-            if(value.contains("Double.MAX_VALUE") || value.contains("Double.MAX_VAUE")){
+            if(value.equals("Double.MAX_VALUE") || value.equals("Double.MAX_VAUE")){
                 this.value = "Double.MAX_VALUE";
                 dvalue = Double.MAX_VALUE;
             }
-            if(value.contains("Long.MIN_VALUE") || value.contains("Long.MIN_VAUE")){
+            if(value.equals("Long.MIN_VALUE") || value.equals("Long.MIN_VAUE")){
                 this.value = "Long.MIN_VALUE";
                 dvalue = Long.MIN_VALUE;
             }
-            if(value.contains("Long.MAX_VALUE") || value.contains("Long.MAX_VAUE")){
+            if(value.equals("Long.MAX_VALUE") || value.equals("Long.MAX_VAUE")){
                 this.value = "Long.MAX_VALUE";
                 dvalue = Long.MAX_VALUE;
             }

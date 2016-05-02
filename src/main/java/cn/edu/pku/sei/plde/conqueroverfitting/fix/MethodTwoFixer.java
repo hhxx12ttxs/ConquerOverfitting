@@ -86,12 +86,12 @@ public class MethodTwoFixer {
                             }
                         }
                         else {
-                            if (getIfStringFromStatement(ifString).contains(getIfStringFromStatement(lastLineString))){
-                                return false;
-                            }
                             String ifEnd = lastLineString.substring(lastLineString.lastIndexOf(')'));
                             lastLineString = lastLineString.substring(0, lastLineString.lastIndexOf(')'));
-                            ifStatement =lastLineString+ "&&" +getIfStringFromStatement(getIfStatementFromString(ifString)) + ifEnd;
+                            if (lastLineString.contains(removeBracket(getIfStringFromStatement(ifString)))){
+                                return false;
+                            }
+                            ifStatement =lastLineString+ "&&" + getIfStringFromStatement(getIfStatementFromString(ifString)) + ifEnd;
                             result = fixWithAddIf(blockStartLine-1, endLine, ifStatement,entry.getKey(),  true, project, debug);
                             if (result){
                                 correctStartLine = blockStartLine-1;
@@ -145,6 +145,14 @@ public class MethodTwoFixer {
 
     private String getIfStringFromStatement(String ifStatement){
         return ifStatement.substring(ifStatement.indexOf('(')+1, ifStatement.lastIndexOf(')'));
+    }
+
+    private String removeBracket(String ifStatement){
+        ifStatement = ifStatement.replace(" ","");
+        if (ifStatement.startsWith("(") || ifStatement.startsWith("!(")){
+            return getIfStringFromStatement(ifStatement);
+        }
+        return ifStatement;
     }
 
     private boolean fixWithAddIf(int ifStartLine, int ifEndLine, String ifStatement,String testMessage, boolean replace, String project, boolean debug){

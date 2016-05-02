@@ -245,6 +245,21 @@ public class MathUtils {
                 value.contains("9223372036854775807");
     }
 
+
+    public static boolean allMaxMinValue(List<String> values){
+        for (String value: values){
+            if (!isMaxMinValue(value)){
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public static boolean allMaxMinValue(Set<String> values){
+        return allMaxMinValue(new ArrayList<String>(values));
+    }
+
+
     public static List<Interval> mergetDoubleInterval(ArrayList<Interval> intervals) {
         Collections.sort(intervals, new Comparator<Interval>() {
             @Override
@@ -423,7 +438,7 @@ public class MathUtils {
         }
 
 
-        Collections.sort(boundaryWithFreqsCopy, new ComparatorBounaryWithFreqs());
+        //Collections.sort(boundaryWithFreqsCopy, new ComparatorBounaryWithFreqs());
 
 //        Log log = new Log("log//if-long-var1-copy.log");
 //        for (BoundaryWithFreq boundaryInfo : boundaryWithFreqsCopy) {
@@ -452,66 +467,66 @@ public class MathUtils {
 
             }
 
-            for (int i = 0; i < size - 1; i++) {
-                BoundaryWithFreq boundaryWithFreq0 = boundaryWithFreqsCopy.get(i);
-                BoundaryWithFreq boundaryWithFreq1 = boundaryWithFreqsCopy.get(i + 1);
-                if (boundaryWithFreq0.dvalue < wrongValue && boundaryWithFreq1.dvalue > wrongValue) {
-                    if (boundaryWithFreq0.leftClose == 0 && boundaryWithFreq0.rightClose != 0) {
-                        boundaryWithFreq0.leftClose = 0;
-                    } else if (boundaryWithFreq0.leftClose != 0 && boundaryWithFreq0.rightClose == 0) {
-                        boundaryWithFreq0.leftClose = 1;
-                    } else {
-                        boundaryWithFreq0.leftClose = 0;
-                    }
-
-                    if (boundaryWithFreq1.leftClose == 0 && boundaryWithFreq1.rightClose != 0) {
-                        boundaryWithFreq1.rightClose = 1;
-                    } else if (boundaryWithFreq1.leftClose != 0 && boundaryWithFreq1.rightClose == 0) {
-                        boundaryWithFreq1.rightClose = 0;
-                    } else {
-                        boundaryWithFreq1.rightClose = 0;
-                    }
-
-
-                    interval.add(boundaryWithFreq0);
-                    interval.add(boundaryWithFreq1);
-                    return interval;
-
-                }
-            }
+//            for (int i = 0; i < size - 1; i++) {
+//                BoundaryWithFreq boundaryWithFreq0 = boundaryWithFreqsCopy.get(i);
+//                BoundaryWithFreq boundaryWithFreq1 = boundaryWithFreqsCopy.get(i + 1);
+//                if (boundaryWithFreq0.dvalue < wrongValue && boundaryWithFreq1.dvalue > wrongValue) {
+//                    if (boundaryWithFreq0.leftClose == 0 && boundaryWithFreq0.rightClose != 0) {
+//                        boundaryWithFreq0.leftClose = 0;
+//                    } else if (boundaryWithFreq0.leftClose != 0 && boundaryWithFreq0.rightClose == 0) {
+//                        boundaryWithFreq0.leftClose = 1;
+//                    } else {
+//                        boundaryWithFreq0.leftClose = 0;
+//                    }
+//
+//                    if (boundaryWithFreq1.leftClose == 0 && boundaryWithFreq1.rightClose != 0) {
+//                        boundaryWithFreq1.rightClose = 1;
+//                    } else if (boundaryWithFreq1.leftClose != 0 && boundaryWithFreq1.rightClose == 0) {
+//                        boundaryWithFreq1.rightClose = 0;
+//                    } else {
+//                        boundaryWithFreq1.rightClose = 0;
+//                    }
+//
+//
+//                    interval.add(boundaryWithFreq0);
+//                    interval.add(boundaryWithFreq1);
+//                    return interval;
+//
+//                }
+//            }
 
 
         }
 //        public BoundaryWithFreq(TypeEnum variableSimpleType, boolean isSimpleType,
 //        String otherType, String value, int leftClose, int rightClose, int freq) {
-        if (wrongValue < boundaryWithFreqsCopy.get(0).dvalue) {
-            interval.add(new BoundaryWithFreq(TypeEnum.DOUBLE, true, null, "Integer.MIN_VALUE", 1, 0, 1));
-            BoundaryWithFreq boundaryWithFreq1 = boundaryWithFreqsCopy.get(0);
-            if (boundaryWithFreq1.leftClose == 0 && boundaryWithFreq1.rightClose != 0) {
-                boundaryWithFreq1.rightClose = 1;
-            } else if (boundaryWithFreq1.leftClose != 0 && boundaryWithFreq1.rightClose == 0) {
-                boundaryWithFreq1.rightClose = 0;
-            } else {
-                boundaryWithFreq1.rightClose = 0;
-            }
-            interval.add(boundaryWithFreq1);
-            return interval;
-        }
-        if (wrongValue > boundaryWithFreqsCopy.get(size - 1).dvalue) {
-            BoundaryWithFreq boundaryWithFreq0 = boundaryWithFreqsCopy.get(size - 1);
-
-            if (boundaryWithFreq0.leftClose == 0 && boundaryWithFreq0.rightClose != 0) {
-                boundaryWithFreq0.leftClose = 0;
-            } else if (boundaryWithFreq0.leftClose != 0 && boundaryWithFreq0.rightClose == 0) {
-                boundaryWithFreq0.leftClose = 1;
-            } else {
-                boundaryWithFreq0.leftClose = 0;
-            }
-
-            interval.add(boundaryWithFreq0);
-            interval.add(new BoundaryWithFreq(TypeEnum.DOUBLE, true, null, "Integer.MAX_VALUE", 0, 1, 1));
-            return interval;
-        }
+//        if (wrongValue < boundaryWithFreqsCopy.get(0).dvalue) {
+//            interval.add(new BoundaryWithFreq(TypeEnum.DOUBLE, true, null, "Integer.MIN_VALUE", 1, 0, 1));
+//            BoundaryWithFreq boundaryWithFreq1 = boundaryWithFreqsCopy.get(0);
+//            if (boundaryWithFreq1.leftClose == 0 && boundaryWithFreq1.rightClose != 0) {
+//                boundaryWithFreq1.rightClose = 1;
+//            } else if (boundaryWithFreq1.leftClose != 0 && boundaryWithFreq1.rightClose == 0) {
+//                boundaryWithFreq1.rightClose = 0;
+//            } else {
+//                boundaryWithFreq1.rightClose = 0;
+//            }
+//            interval.add(boundaryWithFreq1);
+//            return interval;
+//        }
+//        if (wrongValue > boundaryWithFreqsCopy.get(size - 1).dvalue) {
+//            BoundaryWithFreq boundaryWithFreq0 = boundaryWithFreqsCopy.get(size - 1);
+//
+//            if (boundaryWithFreq0.leftClose == 0 && boundaryWithFreq0.rightClose != 0) {
+//                boundaryWithFreq0.leftClose = 0;
+//            } else if (boundaryWithFreq0.leftClose != 0 && boundaryWithFreq0.rightClose == 0) {
+//                boundaryWithFreq0.leftClose = 1;
+//            } else {
+//                boundaryWithFreq0.leftClose = 0;
+//            }
+//
+//            interval.add(boundaryWithFreq0);
+//            interval.add(new BoundaryWithFreq(TypeEnum.DOUBLE, true, null, "Integer.MAX_VALUE", 0, 1, 1));
+//            return interval;
+//        }
         return interval;
     }
 }
