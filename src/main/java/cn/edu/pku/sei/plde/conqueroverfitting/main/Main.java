@@ -28,6 +28,7 @@ public class Main {
             System.out.println("No file in path");
             return;
         }
+        deleteTempFile();
         if (args.length == 2){
             if (args[1].contains(":")){
                 for (String name: args[1].split(":")){
@@ -50,7 +51,6 @@ public class Main {
             }
             return;
         }
-        deleteTempFile();
         for (File sub_file : sub_files){
             if (sub_file.isDirectory()){
                 System.out.println("Main: fixing project "+sub_file.getName());
@@ -73,7 +73,7 @@ public class Main {
             System.out.println("Main: cannot recognize project name \""+project+"\"");
             return;
         }
-        int timeout = 3600;
+        int timeout = 1200;
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         Future<Boolean> future = executorService.submit(new RunFixProcess(path, project));
 

@@ -148,7 +148,8 @@ public class MethodTwoFixer {
     }
 
     private String removeBracket(String ifStatement){
-        if (ifStatement.contains("(") && ifStatement.contains(")")){
+        ifStatement = ifStatement.replace(" ","");
+        if (ifStatement.startsWith("(") || ifStatement.startsWith("!(")){
             return getIfStringFromStatement(ifStatement);
         }
         return ifStatement;
