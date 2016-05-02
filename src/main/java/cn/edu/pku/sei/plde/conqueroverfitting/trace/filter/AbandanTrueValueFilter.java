@@ -54,6 +54,9 @@ public class AbandanTrueValueFilter {
                 if (TypeUtils.isArrayFromName(variableInfo.variableName)){
                     List<String> falseValues = new ArrayList<>();
                     List<String> trueValues = trueVariable.get(variableInfo);
+                    if (trueValues == null){
+                        continue;
+                    }
                     for (String value: entry.getValue()){
                         if (!trueValues.contains(value)){
                             falseValues.add(value);
