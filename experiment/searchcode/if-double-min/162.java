@@ -1,0 +1,401 @@
+<<<<<<< HEAD
+package se.l4.vibe.probes;
+
+import java.util.Collection;
+import java.util.concurrent.TimeUnit;
+
+/**
+ * Range operations for {@link TimeSeries time series}.
+ * 
+ * @author Andreas Holstenson
+ *
+ */
+public class Range
+{
+	private Range()
+	{
+	}
+	
+	/**
+	 * Return a probe that will always return the minimum value ever measured
+	 * in the given series.
+	 * 
+	 * @param series
+	 * @return
+	 */
+	public static <T extends Number> Probe<Double> min(TimeSeries<T> series)
+	{
+		return new SeriesMinMax<T>(series, ValueReaders.<T>same(), true);
+	}
+	
+	/**
+	 * Return a probe that will always return the minimum value ever measured
+	 * in the given series.
+	 * 
+	 * @param series
+	 * @return
+	 */
+	public static <T, N extends Number> Probe<Double> min(TimeSeries<T> series, ValueReader<T, N> reader)
+	{
+		return new SeriesMinMax<T>(series, reader, true);
+	}
+	
+	/**
+	 * Return a probe that will always return the maximum value ever measured
+	 * in the given series.
+	 * 
+	 * @param series
+	 * @return
+	 */
+	public static <T, N extends Number> Probe<Double> max(TimeSeries<T> series, ValueReader<T, N> reader)
+	{
+		return new SeriesMinMax<T>(series, reader, false);
+	}
+	
+	/**
+	 * Return a probe that will return the minimum value measured over a
+	 * certain period.
+	 * 
+	 * @param series
+	 * @return
+	 */
+	public static <T extends Number> Probe<Double> minimum(
+			TimeSeries<T> series,
+			long duration,
+			TimeUnit unit)
+	{
+		return TimeSeriesProbes.forSeries(series, duration, unit, new MinOperation<T, T>(ValueReaders.<T>same()));
+	}
+	
+	/**
+	 * Return a probe that will return the minimum value measured over a
+	 * certain period.
+	 * 
+	 * @param series
+	 * @return
+	 */
+	public static <T, N extends Number> Probe<Double> minimum(
+			TimeSeries<T> series,
+			ValueReader<T, N> reader,
+			long duration,
+			TimeUnit unit)
+	{
+		return TimeSeriesProbes.forSeries(series, duration, unit, new MinOperation<T, N>(reader));
+	}
+	
+	/**
+	 * Return a probe that will return the maximum value measured over a
+	 * certain period.
+	 * 
+	 * @param series
+	 * @return
+	 */
+	public static <T extends Number> Probe<Double> maximum(
+			TimeSeries<T> series,
+			long duration,
+			TimeUnit unit)
+	{
+		return TimeSeriesProbes.forSeries(series, duration, unit, new MaxOperation<T, T>(ValueReaders.<T>same()));
+	}
+	
+	/**
+	 * Return a probe that will return the maximum value measured over a
+	 * certain period.
+	 * 
+	 * @param series
+	 * @return
+	 */
+	public static <T, N extends Number> Probe<Double> maximum(
+			TimeSeries<T> series,
+			ValueReader<T, N> reader,
+			long duration,
+			TimeUnit unit)
+	{
+		return TimeSeriesProbes.forSeries(series, duration, unit, new MaxOperation<T, N>(reader));
+	}
+	
+	/**
+	 * Create a new operation that will calculate the minimum of any time
+	 * series.
+	 * 
+	 * @return
+	 */
+	public static <T extends Number> TimeSeriesOperation<T, Double> newMinimumOperation()
+	{
+		return new MinOperation<T, T>(ValueReaders.<T>same());
+	}
+
+	/**
+	 * Create a new operation that will calculate the minimum of any time
+	 * series.
+	 * 
+	 * @return
+	 */
+	public static <T, N extends Number> TimeSeriesOperation<T, Double> newMinimumOperation(ValueReader<T, N> reader)
+	{
+		return new MinOperation<T, N>(reader);
+	}
+	
+	/**
+	 * Create a new operation that will calculate the minimum of any time
+	 * series.
+	 * 
+	 * @return
+	 */
+	public static <T extends Number> TimeSeriesOperation<T, Double> newMaximumOperation()
+	{
+		return new MaxOperation<T, T>(ValueReaders.<T>same());
+	}
+	
+	/**
+	 * Create a new operation that will calculate the minimum of any time
+	 * series.
+	 * 
+	 * @return
+	 */
+	public static <T, N extends Number> TimeSeriesOperation<T, Double> newMaximumOperation(ValueReader<T, N> reader)
+	{
+		return new MaxOperation<T, N>(reader);
+	}
+	
+	private static class MinOperation<I, O extends Number>
+		implements TimeSeriesOperation<I, Double>
+	{
+		private final ValueReader<I, O> reader;
+		private double value;
+		
+		public MinOperation(ValueReader<I, O> reader)
+		{
+			this.reader = reader;
+		}
+
+		@Override
+		public void add(I value, Collection<TimeSeries.Entry<I>> entries)
+		{
+			double min = Double.MAX_VALUE;
+			for(TimeSeries.Entry<I> entry : entries)
+			{
+				min = Math.min(min, reader.read(entry.getValue()).doubleValue());
+			}
+			
+			this.value = min;
+		}
+		
+		@Override
+		public void remove(I value, Collection<TimeSeries.Entry<I>> entries)
+		{
+			// Do nothing
+		}
+		
+		@Override
+		public Double get()
+		{
+			return value;
+		}
+	}
+	
+	private static class MaxOperation<I, T extends Number>
+		implements TimeSeriesOperation<I, Double>
+	{
+		private final ValueReader<I, T> reader;
+		private double value;
+	
+		public MaxOperation(ValueReader<I, T> reader)
+		{
+			this.reader = reader;
+		}
+		
+		@Override
+		public void add(I value, Collection<TimeSeries.Entry<I>> entries)
+		{
+			double max = Double.MIN_VALUE;
+			for(TimeSeries.Entry<I> entry : entries)
+			{
+				max = Math.max(max, reader.read(entry.getValue()).doubleValue());
+			}
+			
+			this.value = max;
+		}
+		
+		@Override
+		public void remove(I value, Collection<TimeSeries.Entry<I>> entries)
+		{
+			// Do nothing
+		}
+		
+		@Override
+		public Double get()
+		{
+			return value;
+		}
+	}
+	
+	private static class SeriesMinMax<T>
+		implements Probe<Double>
+	{
+		private double value;
+		
+		public SeriesMinMax(TimeSeries<T> series, final ValueReader<T, ? extends Number> reader, final boolean min)
+		{
+			value = min ? Double.MAX_VALUE : Double.MIN_NORMAL;
+			series.addListener(new SampleListener<T>()
+			{
+				@Override
+				public void sampleAcquired(SampledProbe<T> probe, TimeSeries.Entry<T> entry)
+				{
+					double newValue = reader.read(entry.getValue()).doubleValue();
+					if(min)
+					{
+						value = Math.min(newValue, value);
+					}
+					else
+					{
+						value = Math.max(newValue, value);
+					}
+				}
+			});
+		}
+		
+		@Override
+		public Double read()
+		{
+			return value;
+		}
+	}
+=======
+package uk.ac.rhul.cs.dice.golem.conbine.agent.williams.utils;
+
+import java.util.Random;
+
+public class RandomBidCreator implements BidCreator {
+
+    protected final Random random;
+    private final double initialPrice;
+    private final double reservationPrice;
+
+    public RandomBidCreator(double initialPrice, double reservationPrice) {
+        random = new Random();
+        this.initialPrice = initialPrice;
+        this.reservationPrice = reservationPrice;
+    }
+
+    public double getIP() {
+        return initialPrice;
+    }
+
+    public double getRP() {
+	    return reservationPrice;
+	}
+
+	public double getUtility(double offer) {
+	    return (getRP() - offer) / (getRP() - getIP());
+	}
+
+	@Override
+	public double getBid(double utilitySpace, double min, double max) {
+	    return getRandomBid(utilitySpace, min, max);
+	}
+
+	/**
+     * Get a random bid.
+     * 
+     * @param utilitySpace
+     *            The utility space to generate the random bid from.
+     * @return a random bid.
+     */
+    private double getRandomBid(double utilitySpace) {
+        return getIP() + random.nextInt((int) (getRP() - getIP()) + 1);
+    }
+    
+    /**
+     * Get a random bid (above a minimum utility value if possible).
+     * 
+     * @param utilitySpace
+     *            The utility space to generate the random bid from.
+     * @param min
+     *            The minimum utility value.
+     * @return a random bid (above a minimum utility value if possible).
+     */
+    private double getRandomBid(double utilitySpace, double min) {
+        int i = 0;
+        while (true) {
+            double b = getRandomBid(utilitySpace);
+            double util = getUtility(b);
+//            Logger.i(this, "b:" + b + "util: " + util);
+            
+            if (util >= min) {
+//                Logger.i(this, "util >= min " + "util:" + util + " min: " +  min);
+                //printVal(util);
+                return b;
+            }
+            
+            i++;
+            
+            if (i == 500) {
+//            	Logger.i(this, "i == 500");
+                min -= 0.01;
+//                Logger.i(this, "min: " + min);
+                i = 0;
+            }
+        }
+    }
+
+    /**
+     * Get a random bid (within a utility range if possible).
+     * 
+     * @param utilitySpace
+     *            The utility space to generate the random bid from.
+     * @param min
+     *            The minimum utility value.
+     * @param max
+     *            The maximum utility value.
+     * @return a random bid (within a utility range if possible).
+     */
+    public double getRandomBid(double utilitySpace, double min, double max) {
+       // printRange(min, max);
+        //System.out.println("Get bid in range ["+min+", "+max+"]");
+        int i = 0;
+        while (true) {
+            if (max >= 1) {
+                return getRandomBid(utilitySpace, min);
+            }
+            
+            double b = getRandomBid(utilitySpace);
+            double util = getUtility(b);
+            
+            if (util >= min && util <= max) {
+               // printVal(util);
+                return b;
+            }
+            
+            i++;
+            
+            if (i == 500) {
+                max += 0.01;
+                i = 0;
+            }
+        }
+    }
+
+    private void printRange(double min, double max) {
+        min = Math.max(min, 0);
+        max = Math.min(max, 1);
+        int i = 0;
+        for (; i < min * 100; i++) {
+            System.out.print(" ");
+        }
+        for (; i < max * 100; i++) {
+            System.out.print("-");
+        }
+        System.out.println();
+    }
+
+    private void printVal(double util) {
+        for (int i = 0; i < util * 100; i++) {
+            System.out.print(" ");
+        }
+        System.out.println("^");
+    }
+>>>>>>> 76aa07461566a5976980e6696204781271955163
+}
+

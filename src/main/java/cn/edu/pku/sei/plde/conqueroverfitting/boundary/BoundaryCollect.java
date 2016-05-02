@@ -79,7 +79,7 @@ public class BoundaryCollect {
         int size = boundaryWithFreqs.size();
 
         for(int i = 10; i < size; i ++){
-            boundaryWithFreqs.remove(10);
+            boundaryWithFreqs.remove(5);
         }
 
         return boundaryWithFreqs;
