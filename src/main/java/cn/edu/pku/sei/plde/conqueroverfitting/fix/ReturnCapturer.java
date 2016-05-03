@@ -62,9 +62,6 @@ public class ReturnCapturer {
         _fileaddress = _testsrcpath + System.getProperty("file.separator") + _testClassName.replace('.',System.getProperty("file.separator").charAt(0))+".java";
 
         try {
-            if (!simpleMethodFix().equals("")){
-                return simpleMethodFix();
-            }
             String retrunString = run();
             if (retrunString.contains("throw")){
                 return parseThrowException(retrunString);
@@ -184,18 +181,6 @@ public class ReturnCapturer {
     }
 
 
-    private String simpleMethodFix(){
-        String classCode = FileUtils.getCodeFromFile(_classSrcPath, _classname);
-        String methodCode = CodeUtils.getMethodBody(classCode, _methodName);
-        String firstStatement = methodCode.substring(1,methodCode.length()-1).split("\n")[0];
-        if (firstStatement.equals("return true;")){
-            return "return false;";
-        }
-        if (firstStatement.equals("return false;")){
-            return "return true;";
-        }
-        return "";
-    }
 
     private String getFixFromLine(int assertLine){
         String lineString = CodeUtils.getLineFromCode(_classCode, assertLine);

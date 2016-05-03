@@ -127,6 +127,8 @@ public final class GZoltarSuspiciousProgramStatements implements SuspiciousProgr
         }
         gzoltar.run();
 
+
+
         List<StatementExt> statements = gzoltar.getSuspiciousStatementExts();
 
 		/*Logger logger = LoggerFactory.getLogger(this.getClass());

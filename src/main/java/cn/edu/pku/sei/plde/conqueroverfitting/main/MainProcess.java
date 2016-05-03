@@ -42,7 +42,7 @@ public class MainProcess {
         PATH_OF_DEFECTS4J = path;
     }
 
-    public boolean mainProcess(String projectType, int projectNumber) throws Exception{
+    public synchronized boolean mainProcess(String projectType, int projectNumber) throws Exception{
         String project = setWorkDirectory(projectType,projectNumber);
         startLine = System.currentTimeMillis();
         if (!checkProjectDirectory()){
@@ -64,6 +64,9 @@ public class MainProcess {
         }
         Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc,libPath, project);
         List<Suspicious> suspiciouses = localization.getSuspiciousLite();
+        if (Thread.interrupted()){
+            return false;
+        }
         if (suspiciouses.size() == 0){
             System.out.println("no suspicious found\n");
         }
@@ -105,7 +108,7 @@ public class MainProcess {
                 continue;
             }
             try {
-                if ((System.currentTimeMillis()-startLine)/1000 >3600){
+                if (Thread.interrupted()){
                     return false;
                 }
                 if (fixSuspicious(suspicious, project)){
