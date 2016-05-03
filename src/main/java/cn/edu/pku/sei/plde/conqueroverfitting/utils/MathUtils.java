@@ -255,6 +255,22 @@ public class MathUtils {
         return true;
     }
 
+    public static String replaceSpecialNumber(String ifString){
+        ifString = ifString.replace(String.valueOf(Integer.MIN_VALUE),"Integer.MIN_VALUE");
+        ifString = ifString.replace(String.valueOf(Integer.MAX_VALUE),"Integer.MAX_VALUE");
+        ifString = ifString.replace("-2.147483648E9","Integer.MIN_VALUE");
+        ifString = ifString.replace("2.147483647E9","Integer.MAX_VALUE");
+        ifString = ifString.replace("(long)-9.223372036854776E18","Long.MIN_VALUE");
+        ifString = ifString.replace("(long)9.223372036854776E18","Long.MAX_VALUE");
+        ifString = ifString.replace(String.valueOf(Long.MIN_VALUE),"Long.MIN_VALUE");
+        ifString = ifString.replace(String.valueOf(Long.MAX_VALUE),"Long.MAX_VALUE");
+        ifString = ifString.replace(String.valueOf(Double.MIN_VALUE),"Double.MIN_VALUE");
+        ifString = ifString.replace(String.valueOf(Double.MAX_VALUE),"Double.MAX_VALUE");
+        ifString = ifString.replace(String.valueOf(Short.MIN_VALUE),"Short.MIN_VALUE");
+        ifString = ifString.replace(String.valueOf(Short.MAX_VALUE),"Short.MAX_VALUE");
+        return ifString;
+    }
+
     public static boolean allMaxMinValue(Set<String> values){
         return allMaxMinValue(new ArrayList<String>(values));
     }

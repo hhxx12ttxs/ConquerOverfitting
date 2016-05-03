@@ -34,7 +34,6 @@ public class SuspiciousFixer {
     private List<ExceptionVariable> exceptionVariables;
     private String project;
     private int errorTestNum;
-    private long searchTime = 0;
     private List<String> methodOneHistory = new ArrayList<>();
     private List<String> methodTwoHistory = new ArrayList<>();
     private List<String> bannedHistory = new ArrayList<>();
@@ -173,7 +172,7 @@ public class SuspiciousFixer {
             if (getIfStatementFromBoundary(list).contains("==") && getIfStatementFromBoundary(list).contains("!=")){
                 continue;
             }
-            returnList.add(replaceSpecialNumber(getIfStatementFromBoundary(list)));
+            returnList.add(MathUtils.replaceSpecialNumber(getIfStatementFromBoundary(list)));
         }
         return returnList;
     }
@@ -230,7 +229,6 @@ public class SuspiciousFixer {
         if (!boundarysMap.containsKey(exceptionVariable)){
             long startTime = System.currentTimeMillis();
             List<String> boundarys = BoundaryGenerator.generate(suspicious,exceptionVariable, trueValues, falseValues, project);
-            searchTime += System.currentTimeMillis()-startTime;
             boundarysMap.put(exceptionVariable, boundarys);
         }
         return boundarysMap.get(exceptionVariable);
@@ -241,19 +239,6 @@ public class SuspiciousFixer {
         if (ifStrings.size() == 0){
             return "";
         }
-        /*
-        if (trueValues.size() == 0){
-            for (Map.Entry<String, List<String>> entry: ifStrings.entrySet()){
-                List<String> bannedIfString = new ArrayList<>();
-                for (String ifString: entry.getValue()){
-                    if (ifString.replace(" ","").contains("==null") || ifString.contains("instanceof")){
-                        bannedIfString.add(ifString);
-                    }
-                }
-                entry.getValue().removeAll(bannedIfString);
-                bannedHistory.addAll(bannedIfString);
-            }
-        }*/
         MethodTwoFixer fixer = new MethodTwoFixer(suspicious, errorTestNum);
         if (fixer.fix(ifStrings, Sets.newHashSet(errorLine), project, debug)){
             return fixer.correctPatch+"["+fixer.correctStartLine+","+fixer.correctEndLine+"]";
@@ -270,21 +255,6 @@ public class SuspiciousFixer {
         ReturnCapturer fixCapturer = new ReturnCapturer(suspicious._classpath,suspicious._srcPath, suspicious._testClasspath, suspicious._testSrcPath);
         MethodOneFixer methodOneFixer = new MethodOneFixer(suspicious, project,errorTestNum);
         for (Map.Entry<String, List<String>> entry: ifStrings.entrySet()){
-            /*
-            if (trueValues.size() == 0){
-                List<String> bannedIfString = new ArrayList<>();
-                for (String ifString: entry.getValue()){
-                    if ((ifString.replace(" ","").contains("==null") && ifString.contains("!") )||(ifString.replace(" ","").contains("!=null"))){
-                        bannedIfString.add(ifString);
-                    }
-                    if (ifString.contains("instanceof") && !ifString.contains("!")){
-                        bannedIfString.add(ifString);
-                    }
-                }
-                entry.getValue().removeAll(bannedIfString);
-                bannedHistory.addAll(bannedIfString);
-            }*/
-
             String testClassName = entry.getKey().split("#")[0];
             String testMethodName = entry.getKey().split("#")[1];
             int assertLine = Integer.valueOf(entry.getKey().split("#")[2]);
@@ -376,26 +346,12 @@ public class SuspiciousFixer {
         return false;
     }
 
-    private static String replaceSpecialNumber(String ifString){
-        ifString = ifString.replace(String.valueOf(Integer.MIN_VALUE),"Integer.MIN_VALUE");
-        ifString = ifString.replace(String.valueOf(Integer.MAX_VALUE),"Integer.MAX_VALUE");
-        ifString = ifString.replace("-2.147483648E9","Integer.MIN_VALUE");
-        ifString = ifString.replace("2.147483647E9","Integer.MAX_VALUE");
-        ifString = ifString.replace("(long)-9.223372036854776E18","Long.MIN_VALUE");
-        ifString = ifString.replace(String.valueOf(Long.MIN_VALUE),"Long.MIN_VALUE");
-        ifString = ifString.replace(String.valueOf(Long.MAX_VALUE),"Long.MAX_VALUE");
-        ifString = ifString.replace(String.valueOf(Double.MIN_VALUE),"Double.MIN_VALUE");
-        ifString = ifString.replace(String.valueOf(Double.MAX_VALUE),"Double.MAX_VALUE");
-        ifString = ifString.replace(String.valueOf(Short.MIN_VALUE),"Short.MIN_VALUE");
-        ifString = ifString.replace(String.valueOf(Short.MAX_VALUE),"Short.MAX_VALUE");
-        return ifString;
-    }
 
     private void printHistoryBoundary(Map<String, List<String>> boundary, String ifStatement){
         RecordUtils patchWriter = new RecordUtils(project, "patch");
         patchWriter.write("====================================================\n");
         patchWriter.write("boundary of suspicious: "+suspicious.classname()+"#"+suspicious.functionnameWithoutParam()+"#"+suspicious.getDefaultErrorLine()+"\n");
-        patchWriter.write(replaceSpecialNumber(ifStatement)+"\n");
+        patchWriter.write(MathUtils.replaceSpecialNumber(ifStatement)+"\n");
         patchWriter.close();
 
         RecordUtils writer = new RecordUtils(project, "patch");

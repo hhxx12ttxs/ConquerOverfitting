@@ -46,6 +46,8 @@ public class Asserts {
         _testMethodName = testMethodName;
         _project = project;
         _code = FileUtils.getCodeFromFile(_testSrcPath, _testClassname);
+
+
         if (!_code.contains(_testMethodName) && _code.contains(" extends ")){
             String extendsClass = _code.split(" extends ")[1].substring(0, _code.split(" extends ")[1].indexOf("{"));
             String className = CodeUtils.getClassNameOfImportClass(_code, extendsClass);
@@ -333,10 +335,6 @@ public class Asserts {
         path += StringUtils.join(pathList,System.getProperty("path.separator"));
         path += "\"";
         return path;
-    }
-
-    public String buildClasspath(String path){
-        return buildClasspath(new ArrayList<String>(Arrays.asList(path)));
     }
 
     private static String tempJavaPath(String classname){
