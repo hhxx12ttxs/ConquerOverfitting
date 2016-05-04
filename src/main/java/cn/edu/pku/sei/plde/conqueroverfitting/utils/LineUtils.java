@@ -87,7 +87,13 @@ public class LineUtils {
     }
 
     public static boolean isIfLine(String line){
-        return line.replace(" ","").startsWith("if(");
+        return line.replace(" ","").startsWith("if(") && line.contains(")");
+    }
+    public static String getIfExpression(String line){
+        if (!isIfLine(line)){
+            return "";
+        }
+        return line.substring(line.indexOf('(')+1, line.lastIndexOf(')')).trim();
     }
 
     public static boolean isIfAndElseIfLine(String line){

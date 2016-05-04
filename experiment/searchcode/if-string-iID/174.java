@@ -1,0 +1,1371 @@
+//Copyright (C) 2010  Novabit Informationssysteme GmbH
+//
+//This file is part of Nuclos.
+//
+//Nuclos is free software: you can redistribute it and/or modify
+//it under the terms of the GNU Affero General Public License as published by
+//the Free Software Foundation, either version 3 of the License, or
+//(at your option) any later version.
+//
+//Nuclos is distributed in the hope that it will be useful,
+//but WITHOUT ANY WARRANTY; without even the implied warranty of
+//MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//GNU Affero General Public License for more details.
+//
+//You should have received a copy of the GNU Affero General Public License
+//along with Nuclos.  If not, see <http://www.gnu.org/licenses/>.
+package org.nuclos.server.transfer.ejb3;
+
+import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+
+import javax.annotation.PostConstruct;
+
+import org.apache.commons.lang.NotImplementedException;
+import org.dom4j.DocumentException;
+import org.dom4j.Element;
+import org.nuclos.common.NuclosBusinessException;
+import org.nuclos.common.UID;
+import org.nuclos.common.collection.Pair;
+import org.nuclos.common2.EntityAndField;
+import org.nuclos.common2.exception.CommonCreateException;
+import org.nuclos.common2.exception.CommonFinderException;
+import org.nuclos.common2.exception.CommonPermissionException;
+import org.nuclos.server.common.AttributeCache;
+import org.nuclos.server.common.ServerParameterProvider;
+import org.nuclos.server.common.ServerServiceLocator;
+import org.nuclos.server.common.ejb3.LocaleFacadeLocal;
+import org.nuclos.server.common.ejb3.NuclosFacadeBean;
+import org.nuclos.server.genericobject.GenericObjectMetaDataCache;
+import org.nuclos.server.genericobject.Modules;
+import org.nuclos.server.genericobject.ejb3.GenericObjectFacadeLocal;
+import org.nuclos.server.masterdata.ejb3.MasterDataFacadeLocal;
+import org.nuclos.server.ruleengine.NuclosBusinessRuleException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * Facade bean for XML Import functions. <br>
+ * <br>
+ * <br>Created by Novabit Informationssysteme GmbH
+ * <br>Please visit <a href="http://www.novabit.de">www.novabit.de</a>
+ */
+@Transactional(noRollbackFor= {Exception.class})
+public class XmlImportFacadeBean extends NuclosFacadeBean implements XmlImportFacadeRemote {
+
+	private XmlExportImportProtocolFacadeLocal protocolFacade;
+
+	private Integer iProtocolId;
+
+	private Modules modules = Modules.getInstance();
+	private GenericObjectMetaDataCache genericObjectMetaDataCache = GenericObjectMetaDataCache.getInstance();
+	private AttributeCache attributeCache = AttributeCache.getInstance();
+	private ServerParameterProvider serverParameterProvider = ServerParameterProvider.getInstance();
+	
+	private LocaleFacadeLocal localeFacade;
+
+	private Date today;
+
+	private SimpleDateFormat dateFormat;
+
+	private Map<Pair<String, String>, String> idMap;
+
+	private List<Pair<String, Integer>> lstAllReadEntityIds;
+	private List<Pair<String, Integer>> lstAllImportedEntityIds;
+
+	private Map<Integer, List<Map<EntityAndField, String>>> mpGoSubFormsWithForeignKeys;
+	private Map<String, Map<EntityAndField, String>> mpMdSubFormsWithForeignKeys;
+
+	private Integer iActionNumber = 1;
+
+	private GenericObjectFacadeLocal genericObjectFacade;
+	
+	private MasterDataFacadeLocal masterDataFacade;
+	
+	public XmlImportFacadeBean() {
+	}
+	
+	@Autowired
+	final void setLocaleFacade(LocaleFacadeLocal localeFacade) {
+		this.localeFacade = localeFacade;
+	}
+
+	@Autowired
+	final void setGenericObjectFacade(GenericObjectFacadeLocal genericObjectFacade) {
+		this.genericObjectFacade = genericObjectFacade;
+	}
+	
+	private final GenericObjectFacadeLocal getGenericObjectFacade() {
+		return genericObjectFacade;
+	}
+	
+	@Autowired
+	final void setMasterDataFacade(MasterDataFacadeLocal masterDataFacade) {
+		this.masterDataFacade = masterDataFacade;
+	}
+	
+	private final MasterDataFacadeLocal getMasterDataFacade() {
+		return masterDataFacade;
+	}
+
+	@PostConstruct
+	public void postConstruct() {
+		modules = Modules.getInstance();
+		genericObjectMetaDataCache = GenericObjectMetaDataCache.getInstance();
+		attributeCache = AttributeCache.getInstance();
+		serverParameterProvider = ServerParameterProvider.getInstance();
+	}
+
+	private XmlExportImportProtocolFacadeLocal getProtocolFacade() {
+		if (protocolFacade == null)
+			protocolFacade = ServerServiceLocator.getInstance().getFacade(XmlExportImportProtocolFacadeLocal.class);
+		return protocolFacade;
+	}
+
+	/**
+	 * Import Method
+	 *
+	 * @param importFile
+	 *            zipfile with content to import
+	 * @throws IOException
+	 * @throws CommonPermissionException
+	 * @throws CommonCreateException
+	 * @throws CreateException
+	 * @throws CommonFinderException
+	 * @throws ElisaBusinessException
+	 * @jboss.method-attributes read-only = "true"
+	 */
+	public void xmlImport(UID sEntityName, org.nuclos.common2.File importFile) 
+			throws IOException, DocumentException, CommonCreateException, CommonPermissionException, NuclosBusinessException, CommonFinderException {
+		throw new NotImplementedException();
+		/*
+		
+		today = new Date();
+		dateFormat = new SimpleDateFormat("dd.MM.yy HH:mm:ss");
+		iActionNumber = 1;
+
+		idMap = new HashMap<Pair<String, String>, String>();
+		lstAllReadEntityIds = new ArrayList<Pair<String, Integer>>();
+		lstAllImportedEntityIds = new ArrayList<Pair<String, Integer>>();
+
+		// map of subforms with their foreign keys of the entities
+		mpGoSubFormsWithForeignKeys = new HashMap<Integer, List<Map<EntityAndField, String>>>();
+		mpMdSubFormsWithForeignKeys = new HashMap<String, Map<EntityAndField, String>>();
+
+		info("Begin Import: user ["+getCurrentUserName()+"] date ["+today+"] entity ["+sEntityName+"] file ["+importFile.getFilename()+"]");
+		iProtocolId = getProtocolFacade().writeExportImportLogHeader(XmlExportImportHelper.EXPIMP_TYPE_IMPORT, getCurrentUserName(), today, sEntityName, importFile.getFilename());
+		getProtocolFacade().addFile(iProtocolId, importFile.getContents());
+
+		// create and clear import dirs
+		File expimpDir = NuclosSystemParameters.getDirectory(NuclosSystemParameters.EXPORT_IMPORT_PATH);
+		if (!expimpDir.exists()) {
+			expimpDir.mkdir();
+		}
+		File expimpTimestampDir = new File(expimpDir, "" + today.getTime());
+		expimpTimestampDir.mkdir();
+
+		try {
+			// write zip File to import dir
+			final File zipFile = new File(expimpTimestampDir, "import.zip");
+			final OutputStream fos = new BufferedOutputStream(new FileOutputStream(zipFile));
+			try {
+				fos.write(importFile.getContents());
+			}
+			finally {
+				fos.close();
+			}
+			// extract zip file
+			XmlExportImportHelper.extractZipArchive(zipFile, expimpTimestampDir);
+
+			// read xml file
+			SAXReader reader = new SAXReader();
+			//reader.setStripWhitespaceText(false);
+
+			File fImport = new File(expimpTimestampDir, "export.xml");
+
+			final InputStream is = new BufferedInputStream(new FileInputStream(fImport));
+			final Reader isr = new InputStreamReader(is, "UTF-8");
+			Document document = reader.read(isr);
+
+			Element root = document.getRootElement();
+
+			String sVersionExport = root.attribute("version").getValue();
+			String sVersionImport = ApplicationProperties.getInstance().getNuclosVersion().getVersionNumber();
+
+			if (!sVersionImport.equals(sVersionExport)) {
+				String sMessage = MessageFormat.format(localeFacade.getResourceById(localeFacade.getUserLocale(), "xmlimport.error.incompatible.app.version"), sVersionExport, sVersionImport);
+					//"Die zu importierenden Daten stammen aus einer Applikation mit der Versionsnummer ["+sVersionExport+"]\n" +
+				//"Diese Versionsnummer stimmt nicht mit der Version ["+sVersionImport+"] der aktuellen Applikation \u00fcberein.";
+
+				getProtocolFacade().writeExportImportLogEntry(iProtocolId, XmlExportImportHelper.EXPIMP_MESSAGE_LEVEL_ERROR,
+						XmlExportImportHelper.EXPIMP_ACTION_INSERT, sMessage, iActionNumber++);
+
+				throw new NuclosBusinessException(StringUtils.getParameterizedExceptionMessage("xmlimport.error.incompatible.app.version",
+					sVersionExport, sVersionImport));
+			}
+
+			String sEntityNameExport = root.attribute("rootentity").getValue();
+
+			if (!sEntityNameExport.equals(sEntityName)) {
+				String sMessage = MessageFormat.format(localeFacade.getResourceById(localeFacade.getUserLocale(), "xmlimport.error.incompatible.entity"), sEntityNameExport, sEntityName);
+					//"Die zu importierenden Daten stammen aus der Entit\u00e4t ["+sEntityNameExport+"]\n" +
+				//"Diese Entit\u00e4t stimmt nicht mit der aktuell ausgew\u00e4hlten Entit\u00e4t ["+sEntityName+"] \u00fcberein.";
+
+				getProtocolFacade().writeExportImportLogEntry(iProtocolId, XmlExportImportHelper.EXPIMP_MESSAGE_LEVEL_ERROR,
+						XmlExportImportHelper.EXPIMP_ACTION_INSERT, sMessage, iActionNumber++);
+
+				throw new NuclosBusinessException(StringUtils.getParameterizedExceptionMessage("xmlimport.error.incompatible.entity", sEntityNameExport, sEntityName));
+			}
+
+//			// special handling for elisa (see export facade)
+//			if (bDeepexport) {
+//				bElisaDeepExport = true;
+//				bDeepexport = false;
+//			}
+//			else {
+//				bElisaDeepExport = false;
+//			}
+
+			// iterate through child elements of root
+			for (Iterator<Element> i = root.elementIterator(); i.hasNext();) {
+				Element element = i.next();
+				if (element.attribute("type").getValue().equals("masterdata")) {
+					importMDEntity(element);
+				}
+				else if (element.attribute("type").getValue().equals("genericObject")) {
+					importGOEntity(element);
+				}
+			}
+
+			// delete not used data
+			removeNotExportedData();
+
+			info("END Import");
+		}
+		finally {
+			// delete export dir
+			XmlExportImportHelper.deleteDir(expimpTimestampDir);
+		}
+		*/
+	}
+
+	/**
+	 * determines whether an entity with the given id was already imported.
+	 * if entity with given id was imported, then return the corresponding id
+	 * of the target system, otherwise null
+	 * @param pairToDetermine
+	 * @return String
+	 */
+	private String getMappedId(Pair<String, String> pairToDetermine) {
+		for (Pair<String, String> pairExists : idMap.keySet()) {
+			if (pairExists.getX().equals(pairToDetermine.getX()) &&
+					pairExists.getY().equals(pairToDetermine.getY())) {
+				return idMap.get(pairExists);
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * determines whether an entity with the given id was already imported.
+	 * if entity with given id was imported, then return the corresponding id
+	 * of the target system, otherwise null
+	 * Caution: this works only fine, if the object id is unique, but normally the id should be unique,
+	 * nevertheless this method should only be used in the context of genericobjectrelation
+	 * @param sOldId
+	 * @return String
+	 */
+	private String getMappedId(String sOldId) {
+		for (Pair<String, String> pairExists : idMap.keySet()) {
+			if (pairExists.getY().equals(sOldId)) {
+				return idMap.get(pairExists);
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * imports a Generic Object Entity
+	 *
+	 * @param element
+	 * @throws CreateException
+	 * @throws CommonPermissionException
+	 * @throws CommonCreateException
+	 * @throws NuclosBusinessRuleException
+	 */
+	private void importGOEntity(Element element) throws CommonCreateException, CommonPermissionException, NuclosBusinessRuleException {
+		throw new NotImplementedException();
+		/*
+		// Map for Attributes
+		Map<Integer, DynamicAttributeVO> attributesMap = new HashMap<Integer, DynamicAttributeVO>();
+		// Map for System Attributes
+		Map<String, String> systemAttributes = new HashMap<String, String>();
+
+		Boolean bImportData = new Boolean(element.attributeValue("import"));
+
+		// get id for the exported Module on the target system
+		Integer iModuleId = modules.getModuleIdByEntityName(element.attributeValue("name"));
+
+		String sProcessId = element.attributeValue("process");
+		Integer iProcessId = (sProcessId == null || sProcessId.equals("")) ? null : new Integer(sProcessId);
+
+		info("Import GenericObject Entity: "+element.attributeValue("name")+" ModuleId: "+iModuleId+" Export-Id: "+element.attribute("id").getValue());
+
+		// Attribute Iterator
+		Iterator<Element> elmit = element.elementIterator();
+
+		try {
+			// setup usage criteria
+			AttributeCVO attrcvo = attributeCache.getAttribute(iModuleId, SF.PROCESS.getMetaData().getFieldUID());
+			DynamicAttributeVO davo = new DynamicAttributeVO(null, attrcvo.getId(), null, sProcessId);
+			// put new attribute into the Map
+			attributesMap.put(davo.getAttributeUID(), davo);
+			// put atributeId to loaded Map
+
+			davo = null;
+			// Iterate Attributes of the XML File
+			while (elmit.hasNext()) {
+				Element elem = elmit.next();
+				attrcvo = attributeCache.getAttribute(iModuleId, elem.attribute("name").getText());
+
+				debug("Import GenericObject Attribute: "+elem.attribute("name").getText());
+
+				// fill system attribute map
+				if (elem.attribute("name").getText().startsWith("[")) {
+					systemAttributes.put(elem.attribute("name").getText(), elem.element("value").getTextTrim());
+				}
+
+				// attribute has references
+				if (Boolean.valueOf(elem.attribute("hasReference").getText())) {
+					// if attribute nuclosState set the right status model
+					// reference
+					if (elem.attribute("name").getText().equals(SF.STATE.getMetaData().getFieldUID())) {
+						String sStatus = elem.element("value").getTextTrim();
+
+						// get new StatusId
+						Integer newStatusId = getReferenecedStatusId(iModuleId, iProcessId, sStatus);
+
+						// create Attribute
+						davo = new DynamicAttributeVO(null, attrcvo.getId(), newStatusId, sStatus);
+					}
+					// if attribute nuclosProcess
+					else if (elem.attribute("name").getText().equals(SF.PROCESS.getMetaData().getFieldUID())) {
+						davo = new DynamicAttributeVO(null, attrcvo.getId(),
+								this.getReferencedProcessId(iModuleId, elem.element("value").getTextTrim()), elem.element("value").getTextTrim());
+
+					// common Atributes with references
+					} else {
+						Boolean bIsForgeinEntityImportExportable = true;
+						String sExternalEntity = AttributeCache.getInstance().getAttribute(iModuleId, elem.attribute("name").getText()).getExternalEntity();
+						// id aus map ersetzen
+						String oldId = elem.element("referenceId").getTextTrim();
+						String newId = getMappedId(new Pair<String, String>(sExternalEntity, oldId));
+
+						if (Modules.getInstance().isModule(sExternalEntity)) {
+							bIsForgeinEntityImportExportable = Modules.getInstance().isImportExportable(sExternalEntity);
+						}
+						else {
+							MasterDataMetaVO mdmvo = MasterDataMetaCache.getInstance().getMetaData(sExternalEntity);
+							bIsForgeinEntityImportExportable = (mdmvo == null) ? false : mdmvo.getIsImportExport();
+						}
+
+
+						if (newId == null && bIsForgeinEntityImportExportable) {
+							String sMessage = StringUtils.getParameterizedExceptionMessage("xmlimport.error.missing.reference.1", elem.attribute("name").getText(), element.attributeValue("name"), element.attribute("id").getValue());
+//								"Fehler beim Ermitteln der Referenz-Id f\u00fcr das Attribut ["+elem.attribute("name").getText()+"]"+
+//							" der Entit\u00e4t "+element.attributeValue("name")+" mit der Id ["+element.attribute("id").getValue()+"]";
+							getProtocolFacade().writeExportImportLogEntry(iProtocolId, XmlExportImportHelper.EXPIMP_MESSAGE_LEVEL_ERROR,
+								XmlExportImportHelper.EXPIMP_ACTION_INSERT, 
+								MessageFormat.format(localeFacade.getResourceById(localeFacade.getUserLocale(), "xmlimport.error.missing.reference.1"), elem.attribute("name").getText(), element.attributeValue("name"), element.attribute("id").getValue()), iActionNumber++);
+
+							if (E.REPORT.checkEntityName(sExternalEntity)) {
+								sMessage = StringUtils.getParameterizedExceptionMessage("xmlimport.error.missing.reference.2", elem.attribute("name").getText(), element.attributeValue("name"), element.attribute("id").getValue());
+									//" Sie besitzen kein Recht auf den referenzierten Report bzw. Formular.";
+								getProtocolFacade().writeExportImportLogEntry(iProtocolId, XmlExportImportHelper.EXPIMP_MESSAGE_LEVEL_ERROR,
+									XmlExportImportHelper.EXPIMP_ACTION_INSERT, 
+									MessageFormat.format(localeFacade.getResourceById(localeFacade.getUserLocale(), "xmlimport.error.missing.reference.2"), elem.attribute("name").getText(), element.attributeValue("name"), element.attribute("id").getValue()), iActionNumber++);
+							}
+							else {
+								sMessage = StringUtils.getParameterizedExceptionMessage("xmlimport.error.missing.reference.3", elem.attribute("name").getText(), element.attributeValue("name"), element.attribute("id").getValue());
+									//" Evtl. wurde die Referenzierte Entit\u00e4t zuvor nicht exportiert und konnte deshalb nicht gefunden werden.";
+								getProtocolFacade().writeExportImportLogEntry(iProtocolId, XmlExportImportHelper.EXPIMP_MESSAGE_LEVEL_ERROR,
+									XmlExportImportHelper.EXPIMP_ACTION_INSERT, 
+									MessageFormat.format(localeFacade.getResourceById(localeFacade.getUserLocale(), "xmlimport.error.missing.reference.3"), elem.attribute("name").getText(), element.attributeValue("name"), element.attribute("id").getValue()), iActionNumber++);
+							}
+							
+							
+							throw new NuclosFatalException(sMessage);
+						}
+						else {
+							if (!bIsForgeinEntityImportExportable) {
+								newId = oldId;
+							}
+						}
+
+						davo = new DynamicAttributeVO(null, attrcvo.getId(), new Integer(newId), elem.element("value").getTextTrim());
+					}
+				}
+				// attributes without references
+				else {
+					davo = new DynamicAttributeVO(null, attrcvo.getId(), null, elem.element("value").getTextTrim());
+
+					// check whether attribute has a value list
+					if (!attrcvo.getValues().isEmpty()) {
+						Element eValueId = elem.element("valueId");
+						String sValueId = (eValueId == null) ? null : eValueId.getTextTrim();
+						if (sValueId != null && !sValueId.equals("")) {
+							davo.setValueId(new Integer(sValueId));
+						}
+					}
+				}
+				// put new attribute into the Map
+				attributesMap.put(davo.getAttributeUID(), davo);
+				// put atributeId to loaded Map
+			}
+
+			// TODO nicht generisch, complete missing system attributes
+			if (!systemAttributes.containsKey(SF.PROCESS.getMetaData().getFieldUID())) {
+				attributesMap.put(attributeCache.getAttribute(iModuleId, SF.PROCESS.getMetaData().getFieldUID()).getPrimaryKey(),
+						new DynamicAttributeVO(null, attributeCache.getAttribute(iModuleId, SF.PROCESS.getMetaData().getFieldUID()).getPrimaryKey(), null, ""));
+			}
+			if (!systemAttributes.containsKey(SF.ORIGIN.getMetaData().getFieldUID())) {
+				attributesMap.put(attributeCache.getAttribute(iModuleId, SF.ORIGIN.getMetaData().getFieldUID()).getPrimaryKey(),
+						new DynamicAttributeVO(null, attributeCache.getAttribute(iModuleId, SF.ORIGIN.getMetaData().getFieldUID()).getPrimaryKey(), null, ""));
+			}
+
+			// read parentId and deleted flag
+			Integer parentId = null;
+			if (!element.attributeValue("parentId").equals("null")) {
+				parentId = Integer.valueOf(element.attributeValue("parentId"));
+			}
+			Boolean deleted = Boolean.valueOf(element.attributeValue("deleted"));
+
+			// 1. step create NuclosValueObject with MetaData
+			NuclosValueObject nvo = new NuclosValueObject(null,
+					(Date)CanonicalAttributeFormat.getInstance(Date.class).parse(attributesMap.get(AttributeCache.getInstance().getAttribute(iModuleId, SF.CREATEDAT.getMetaData().getFieldUID()).getPrimaryKey()).getCanonicalValue(AttributeCache.getInstance())),
+					systemAttributes.get(SF.CREATEDBY.getMetaData().getFieldUID()),
+					(Date)CanonicalAttributeFormat.getInstance(Date.class).parse(attributesMap.get(AttributeCache.getInstance().getAttribute(iModuleId, SF.CHANGEDAT.getMetaData().getFieldUID()).getPrimaryKey()).getCanonicalValue(AttributeCache.getInstance())),
+					systemAttributes.get(SF.CHANGEDBY.getMetaData().getFieldUID()), 1);
+
+			// 2. step create GenericObjectVO
+			GenericObjectVO govo = new GenericObjectVO(nvo, iModuleId, parentId,	null, deleted);
+			// set attributes from attribute Map
+			govo.setAttributes(attributesMap.values());
+
+			// check if there is an existing GO with same Values in the unique
+			// attributes
+			GenericObjectVO existingGO = getExistingGOEntity(govo, iModuleId);
+
+			// Entity already exists
+			if (existingGO != null) {
+				// modify Version and id
+				nvo = new NuclosValueObject(existingGO.getId(),
+						(Date)CanonicalAttributeFormat.getInstance(Date.class).parse(attributesMap.get(AttributeCache.getInstance().getAttribute(iModuleId, SF.CREATEDAT.getMetaData().getFieldUID()).getPrimaryKey()).getCanonicalValue(AttributeCache.getInstance())),
+						//dateFormat.parse(metaAttributes.get(NuclosEOField.CREATEDAT.getMetaData().getField())),
+						systemAttributes.get(SF.CREATEDBY.getMetaData().getFieldUID()),
+						(Date)CanonicalAttributeFormat.getInstance(Date.class).parse(attributesMap.get(AttributeCache.getInstance().getAttribute(iModuleId, SF.CHANGEDAT.getMetaData().getFieldUID()).getPrimaryKey()).getCanonicalValue(AttributeCache.getInstance())),
+						//dateFormat.parse(metaAttributes.get(NuclosEOField.CHANGEDAT.getMetaData().getField())),
+						systemAttributes.get(SF.CHANGEDBY.getMetaData().getFieldUID()),
+						existingGO.getVersion());
+
+				Collection<DynamicAttributeVO> exattr = existingGO.getAttributes();
+
+				// replace attribute values
+				for (DynamicAttributeVO dynattr : exattr) {
+					if (attributesMap.containsKey(dynattr.getAttributeUID())) {
+						DynamicAttributeVO mapvalue = attributesMap.get(dynattr.getAttributeUID());
+						dynattr.setCanonicalValue(mapvalue.getCanonicalValue(attributeCache), attributeCache);
+						if (mapvalue.getValueId() != null) {
+							dynattr.setValueId(mapvalue.getValueId());
+						}
+						attributesMap.remove(dynattr.getAttributeUID());
+					}
+					else {
+						dynattr.remove();
+					}
+				}
+
+				govo = new GenericObjectVO(nvo, iModuleId, parentId, null, deleted);
+
+				// set existing attributes with new values
+				govo.setAttributes(exattr);
+				// set new attributes
+				for (DynamicAttributeVO dynattr : attributesMap.values()) {
+					govo.setAttribute(dynattr);
+				}
+
+				// read all subforms of all layouts
+				if (!mpGoSubFormsWithForeignKeys.containsKey(govo.getModule())) {
+					List<Map<EntityAndField, String>> lseafn = new ArrayList<Map<EntityAndField, String>>();
+					for (Integer iLayoutId : genericObjectMetaDataCache.getLayoutsByModule(govo.getModule(), false)) {
+						LayoutFacadeLocal layoutFacade = ServerServiceLocator.getInstance().getFacade(LayoutFacadeLocal.class);
+						Map<EntityAndField, String> subformtree = layoutFacade.getSubFormEntityAndParentSubFormEntityNamesByLayoutId(iLayoutId);
+						Map<EntityAndField, String> subformtree_with_fkeys = new HashMap<EntityAndField, String>();
+						for (EntityAndField eafn : subformtree.keySet()) {
+							String sParentEntity = element.attributeValue("name");
+							if (subformtree.get(eafn) != null) {
+								sParentEntity = subformtree.get(eafn);
+							}
+
+							String s1 = eafn.getDalEntity();
+							String sForeignKeyFieldName = XmlExportImportHelper.getForeignKeyFieldUID(sParentEntity, eafn.getField(), eafn.getDalEntity());
+							subformtree_with_fkeys.put(new EntityAndField(s1, sForeignKeyFieldName), subformtree.get(eafn));
+						}
+						lseafn.add(subformtree_with_fkeys);
+					}
+					mpGoSubFormsWithForeignKeys.put(govo.getModule(), lseafn);
+				}
+
+				// if data was "imported" remove all dependant data, because the dependant data were exported as well
+				if (bImportData) {
+					for(Map<EntityAndField, String> mpSubFormsWithForeignKeys : mpGoSubFormsWithForeignKeys.get(govo.getModule())) {
+						readDependants(mpSubFormsWithForeignKeys, null, existingGO.getId(), new DependantMasterDataMapImpl());
+					}
+				}
+
+				// call modify Method
+				String sMessage;// = StringUtils.getParameterizedExceptionMessage("xmlimport.error.module.entity.1", element.attribute("name").getValue(), existingGO.getId());
+					//"Modul-Entit\u00e4t ["+element.attribute("name").getValue()+"] mit der ID ["+existingGO.getId()+"] ";
+				String sAction = XmlExportImportHelper.EXPIMP_ACTION_UPDATE;
+				if (bImportData) {
+					GenericObjectWithDependantsVO modifiedGO = getGenericObjectFacade().modify(iModuleId, new GenericObjectWithDependantsVO(govo, null), ServerParameterProvider.getInstance().getValue(ParameterProvider.KEY_LAYOUT_CUSTOM_KEY));
+
+					if ((modifiedGO.getId()).compareTo(existingGO.getId()) != 0) {
+						sMessage = StringUtils.getParameterizedExceptionMessage("xmlimport.error.module.entity.2", element.attribute("name").getValue(), existingGO.getId());
+							//"konnte nicht im Zielsystem ermittelt werden.";
+						getProtocolFacade().writeExportImportLogEntry(iProtocolId, XmlExportImportHelper.EXPIMP_MESSAGE_LEVEL_ERROR,
+								sAction, MessageFormat.format(localeFacade.getResourceById(localeFacade.getUserLocale(), "xmlimport.error.module.entity.2"), element.attribute("name").getValue(), existingGO.getId()), iActionNumber++);
+						throw new NuclosFatalException(sMessage);
+					}
+					else {
+						sMessage = MessageFormat.format(localeFacade.getResourceById(localeFacade.getUserLocale(), "xmlimport.error.module.entity.3"), element.attribute("name").getValue(), existingGO.getId()); 
+							//"erfolgreich ge\u00e4ndert.";
+						info(sMessage);
+						getProtocolFacade().writeExportImportLogEntry(iProtocolId, XmlExportImportHelper.EXPIMP_MESSAGE_LEVEL_INFO,
+								sAction, sMessage, iActionNumber++);
+					}
+				}
+				else {
+					sAction = XmlExportImportHelper.EXPIMP_ACTION_READ;
+					sMessage = MessageFormat.format(localeFacade.getResourceById(localeFacade.getUserLocale(), "xmlimport.error.module.entity.4"), element.attribute("name").getValue(), existingGO.getId()); 
+						//"erfolgreich im Zielsystem ermittelt.";
+					info(sMessage);
+					getProtocolFacade().writeExportImportLogEntry(iProtocolId, XmlExportImportHelper.EXPIMP_MESSAGE_LEVEL_INFO, sAction, sMessage, iActionNumber++);
+				}
+
+				// create old/new Id matching
+				idMap.put(new Pair<String, String>(element.attribute("name").getValue(),element.attribute("id").getValue()), String.valueOf(existingGO.getId()));
+				// remember all imported genericobjects
+				lstAllImportedEntityIds.add(new Pair<String, Integer>(element.attributeValue("name"), existingGO.getId()));
+
+//				info(sMessage);
+//				getProtocolFacade().writeExportImportLogEntry(iProtocolId, XmlExportImportHelper.EXPIMP_MESSAGE_LEVEL_INFO,
+//						sAction, sMessage, iActionNumber++);
+			}
+			// Entity not exists
+			else {
+				// create new GO
+				if (bImportData) {
+					GenericObjectVO newGoVO = getGenericObjectFacade().create(new GenericObjectWithDependantsVO(govo, new DependantMasterDataMapImpl()), null);
+
+					// create old/new Id matching
+					idMap.put(new Pair<String, String>(element.attributeValue("name"),element.attribute("id").getValue()), String.valueOf(newGoVO.getId()));
+					// remember all imported genericobjects
+					lstAllImportedEntityIds.add(new Pair<String, Integer>(element.attributeValue("name"), newGoVO.getId()));
+
+					String sMessage = MessageFormat.format(localeFacade.getResourceById(localeFacade.getUserLocale(), "xmlimport.error.module.entity.1"), element.attribute("name").getValue(), newGoVO.getId());
+						//"Modul-Entit\u00e4t ["+element.attribute("name").getValue()+"] mit der ID ["+newGoVO.getId()+"] erfolgreich angelegt.";
+					info(sMessage);
+					getProtocolFacade().writeExportImportLogEntry(iProtocolId, XmlExportImportHelper.EXPIMP_MESSAGE_LEVEL_INFO,
+							XmlExportImportHelper.EXPIMP_ACTION_INSERT, sMessage, iActionNumber++);
+				}
+			}
+		}
+		catch (Exception e) {
+			String sMessage = StringUtils.getParameterizedExceptionMessage("xmlimport.error.module.entity.5", element.attribute("name").getValue(), element.attribute("id").getValue(), e);  
+				//"Modul-Entit\u00e4t ["+element.attribute("name").getValue()+"] mit der Export-ID ["+element.attribute("id").getValue()+"] konnte nicht angelegt werden. "+e;
+			getProtocolFacade().writeExportImportLogEntry(iProtocolId, XmlExportImportHelper.EXPIMP_MESSAGE_LEVEL_ERROR,
+					XmlExportImportHelper.EXPIMP_ACTION_INSERT, 
+					MessageFormat.format(localeFacade.getResourceById(localeFacade.getUserLocale(), "xmlimport.error.module.entity.5"), element.attribute("name").getValue(), element.attribute("id").getValue(), e), iActionNumber++);
+			throw new NuclosFatalException(sMessage);
+		}
+		*/
+	}
+
+	/**
+	 * imports a MasterData Entity
+	 *
+	 * @param element
+	 *            node of the exportet Entity in the xml file
+	 * @throws CreateException
+	 * @throws CommonPermissionException
+	 * @throws CommonCreateException
+	 * @throws CommonFinderException
+	 * @throws ElisaBusinessException
+	 */
+	/*
+	private void importMDEntity(Element element) 
+			throws CommonCreateException, CommonPermissionException, NuclosBusinessException, CommonFinderException {
+		info("Import MasterData Entity: " + element.attributeValue("name")+" Export-Id: "+element.attribute("id").getValue());
+
+		final Boolean bImportData = new Boolean(element.attributeValue("import"));
+		final String sEntityName = element.attribute("name").getValue();
+
+		// fetch metadata
+		MasterDataMetaVO mdm = getMasterDataFacade().getMetaData(sEntityName);
+		List<MasterDataMetaFieldVO> metafields = mdm.getFields();
+
+		// Map for MD values
+		Map<String, Object> mpFields = new HashMap<String, Object>();
+		// Map for additional system Attributes like created_by, changed_at, version ...
+		Map<String, String> metaAttributes = new HashMap<String, String>();
+
+		// iterates the MD Meta fields and fills the Master Data Value Map
+		Iterator<MasterDataMetaFieldVO> fieldIt = metafields.iterator();
+		MasterDataMetaFieldVO mfield;
+		while (fieldIt.hasNext()) {
+			mfield = fieldIt.next();
+
+			debug("Import MasterDataField: "+mfield.getFieldUID());
+
+			try {
+				// if Field with Reference
+				if (mfield.getForeignEntity() != null) {
+					Element elm = element.element(mfield.getFieldUID() + "Id");
+					if (elm != null) {
+						String oldId = elm.getTextTrim();
+
+						if (oldId != null && !oldId.equals("")) {
+							Boolean bIsForgeinEntityImportExportable = true;
+							String sForeignEntity = mfield.getForeignEntity();
+
+							assert !StringUtils.isNullOrEmpty(sForeignEntity);
+
+							if (Modules.getInstance().isModule(sForeignEntity)) {
+								bIsForgeinEntityImportExportable = Modules.getInstance().isImportExportable(sForeignEntity);
+							}
+							else {
+								MasterDataMetaVO mdmvo = MasterDataMetaCache.getInstance().getMetaData(sForeignEntity);
+								bIsForgeinEntityImportExportable = (mdmvo == null) ? false : mdmvo.getIsImportExport();
+							}
+
+							// match old to new Id
+							Object newId = null;
+							// special handling for entity genericobjectrelation, because the foreignkey entity is set to generalsearch
+							// for the fields source and destination and therefore it's not possible to determine the corresponding object ids
+//							if ("genericobjectrelation".equals(element.attributeValue("name")) &&
+//									(mfield.getFieldName().equals("source") || mfield.getFieldName().equals("destination"))) {
+							if ("generalSearch".equalsIgnoreCase(sForeignEntity)) {
+								bIsForgeinEntityImportExportable = true;
+								newId = getMappedId(oldId);
+							}
+							else {
+								newId = getMappedId(new Pair<String, String>(sForeignEntity, oldId));
+							}
+
+							if (newId == null && bIsForgeinEntityImportExportable) {
+								String sMessage; 
+//									"Fehler beim Ermitteln der Referenz-Id f\u00fcr das Feld ["+mfield.getFieldName()+"]"+
+//								" der Entit\u00e4t "+element.attributeValue("name")+" mit der Id ["+element.attribute("id").getValue()+"]";
+
+								if (E.REPORT.checkEntityName(sForeignEntity)) {
+									sMessage = StringUtils.getParameterizedExceptionMessage("xmlimport.error.missing.mdreference.2", mfield.getFieldUID(), element.attributeValue("name"), element.attribute("id").getValue());
+										//" Sie besitzen kein Recht auf den referenzierten Report bzw. Formular.";
+									getProtocolFacade().writeExportImportLogEntry(iProtocolId, XmlExportImportHelper.EXPIMP_MESSAGE_LEVEL_ERROR,
+										XmlExportImportHelper.EXPIMP_ACTION_INSERT, 
+										MessageFormat.format(localeFacade.getResourceById(localeFacade.getUserLocale(), "xmlimport.error.missing.mdreference.2"), mfield.getFieldUID(), element.attributeValue("name"), element.attribute("id").getValue()), iActionNumber++);
+								}
+								else {
+									sMessage = StringUtils.getParameterizedExceptionMessage("xmlimport.error.missing.mdreference.3", mfield.getFieldUID(), element.attributeValue("name"), element.attribute("id").getValue());
+										//" Evtl. wurde die Referenzierte Entit\u00e4t zuvor nicht exportiert und konnte deshalb nicht gefunden werden.";
+									getProtocolFacade().writeExportImportLogEntry(iProtocolId, XmlExportImportHelper.EXPIMP_MESSAGE_LEVEL_ERROR,
+										XmlExportImportHelper.EXPIMP_ACTION_INSERT, 
+										MessageFormat.format(localeFacade.getResourceById(localeFacade.getUserLocale(), "xmlimport.error.missing.mdreference.3"), mfield.getFieldUID(), element.attributeValue("name"), element.attribute("id").getValue()), iActionNumber++);
+								}
+//								getProtocolFacade().writeExportImportLogEntry(iProtocolId, XmlExportImportHelper.EXPIMP_MESSAGE_LEVEL_ERROR,
+//										XmlExportImportHelper.EXPIMP_ACTION_INSERT, sMessage, iActionNumber++);
+								throw new NuclosFatalException(sMessage);
+							}
+							else {
+								if (!bIsForgeinEntityImportExportable) {
+									newId = oldId;
+								}
+							}
+							mpFields.put(mfield.getFieldUID() + "Id", Integer.parseInt(newId.toString()));
+						}
+					}
+				}
+				// if field without a Reference
+				else {
+					Element elm = element.element(mfield.getFieldUID());
+					if (elm != null) {
+						String selmText = elm.getText();
+						if (!"".equals(selmText)) {
+							putFieldToMap(mpFields, mfield, selmText, element);
+						}
+					}
+				}
+			}
+			catch (ParseException e) {
+				String sMessage = StringUtils.getParameterizedExceptionMessage("xmlimport.error.parse.value", element.attribute("name").getValue(), element.attribute("id").getValue(), e);  
+//					"Fehler beim Parsen eines Wertes der zu importierenden Datei bei der Stammdaten-Entit\u00e4t ["+element.attribute("name").getValue()+"] " +
+//				"mit der Export-ID ["+element.attribute("id").getValue()+"]. "+e;
+				getProtocolFacade().writeExportImportLogEntry(iProtocolId, XmlExportImportHelper.EXPIMP_MESSAGE_LEVEL_ERROR,
+						XmlExportImportHelper.EXPIMP_ACTION_INSERT, 
+						MessageFormat.format(localeFacade.getResourceById(localeFacade.getUserLocale(), "xmlimport.error.parse.value"), element.attribute("name").getValue(), element.attribute("id").getValue(), e), iActionNumber++);
+				throw new NuclosFatalException(sMessage);
+			}
+			catch (IOException e) {
+				String sMessage = StringUtils.getParameterizedExceptionMessage("xmlimport.error.read.file", element.attribute("name").getValue(), element.attribute("id").getValue(), e);  
+//					"Fehler beim lesen einer zu importierenden Datei bei der Stammdaten-Entit\u00e4t ["+element.attribute("name").getValue()+"] " +
+//				"mit der Export-ID ["+element.attribute("id").getValue()+"]. "+e;
+				getProtocolFacade().writeExportImportLogEntry(iProtocolId, XmlExportImportHelper.EXPIMP_MESSAGE_LEVEL_ERROR,
+						XmlExportImportHelper.EXPIMP_ACTION_INSERT, 
+						MessageFormat.format(localeFacade.getResourceById(localeFacade.getUserLocale(), "xmlimport.error.read.file"), element.attribute("name").getValue(), element.attribute("id").getValue(), e), iActionNumber++);
+				throw new NuclosFatalException(sMessage);
+			}
+			catch (ClassNotFoundException e) {
+				String sMessage = StringUtils.getParameterizedExceptionMessage("xmlimport.error.read.object", element.attribute("name").getValue(), element.attribute("id").getValue(), e); 
+//					"Fehler beim lesen eines zu importierenden Objekts der Stammdaten-Entit\u00e4t ["+element.attribute("name").getValue()+"] " +
+//				"mit der Export-ID ["+element.attribute("id").getValue()+"]. "+e;
+				getProtocolFacade().writeExportImportLogEntry(iProtocolId, XmlExportImportHelper.EXPIMP_MESSAGE_LEVEL_ERROR,
+						XmlExportImportHelper.EXPIMP_ACTION_INSERT, 
+						MessageFormat.format(localeFacade.getResourceById(localeFacade.getUserLocale(), "xmlimport.error.read.object"), element.attribute("name").getValue(), element.attribute("id").getValue(), e), iActionNumber++);
+				throw new NuclosFatalException(sMessage);
+			}
+			catch (Exception e) {
+				throw new NuclosFatalException(e);
+			}
+		}
+
+		// fill MD additional System attributes like created_by, changed_at
+		Iterator<Element> i2 = element.elementIterator();
+		while (i2.hasNext()) {
+			Element field = i2.next();
+			if (field.getName().equals("attribute")) {
+				metaAttributes.put(field.attributeValue("name"), field.getTextTrim());
+			}
+		}
+
+		// prepare new MD Record
+		MasterDataVO prepVO;
+		try {
+			String sCreatedAt = metaAttributes.get(SF.CREATEDAT.getMetaData().getFieldUID());
+			String sCreatedBy = metaAttributes.get(SF.CREATEDBY.getMetaData().getFieldUID());
+			String sChangedAt = metaAttributes.get(SF.CHANGEDAT.getMetaData().getFieldUID());
+			String sChangedBy = metaAttributes.get(SF.CHANGEDBY.getMetaData().getFieldUID());
+
+			String sNow = DateUtils.toString(DateUtils.now()) + " 00:00:00";
+
+			prepVO = new MasterDataVO(sEntityName, null,
+					dateFormat.parse((sCreatedAt == null) ? sNow : sCreatedAt),
+					(sCreatedBy == null) ? "INITIAL" : sCreatedBy,
+					dateFormat.parse((sChangedAt == null) ? sNow : sChangedAt),
+					(sChangedBy == null) ? "INITIAL" : sChangedBy, 1, mpFields);
+		}
+		catch (ParseException e) {
+			String sMessage = StringUtils.getParameterizedExceptionMessage("xmlimport.error.parse.date", element.attribute("name").getValue(), element.attribute("id").getValue(), e);   
+//				"Fehler beim Parsen des Datums bei der Stammdaten-Entit\u00e4t ["+element.attribute("name").getValue()+"] " +
+//				"mit der Export-ID ["+element.attribute("id").getValue()+"]. "+e;
+			getProtocolFacade().writeExportImportLogEntry(iProtocolId, XmlExportImportHelper.EXPIMP_MESSAGE_LEVEL_ERROR,
+					XmlExportImportHelper.EXPIMP_ACTION_INSERT, 
+					MessageFormat.format(localeFacade.getResourceById(localeFacade.getUserLocale(), "xmlimport.error.parse.date"), element.attribute("name").getValue(), element.attribute("id").getValue(), e), iActionNumber++);
+			throw new NuclosFatalException(sMessage);
+		}
+
+		// check if Entity already exists
+		MasterDataVO existingEntity = getExistingMDEntity(prepVO, element.attribute("name").getValue());
+
+		if (existingEntity != null) {
+			// entity exists
+			try {
+				// set old id and old version
+				prepVO = new MasterDataVO(sEntityName, existingEntity.getId(),
+						prepVO.getCreatedAt(), prepVO.getCreatedBy(),
+						prepVO.getChangedAt(), prepVO.getChangedBy(),
+						existingEntity.getVersion(), prepVO.getFieldValues());
+
+				// read all dependant data
+				DependantMasterDataMap dmdm = null;
+
+				if (!mpMdSubFormsWithForeignKeys.containsKey(sEntityName)) {
+					LayoutFacadeLocal layoutFacade = ServerServiceLocator.getInstance().getFacade(LayoutFacadeLocal.class);
+					mpMdSubFormsWithForeignKeys.put(sEntityName, layoutFacade.getSubFormEntityAndParentSubFormEntityNames(sEntityName,prepVO.getIntId(),true, ServerParameterProvider.getInstance().getValue(ParameterProvider.KEY_LAYOUT_CUSTOM_KEY)));
+				}
+
+				// if data was "imported" remove all dependant data, because the dependant data were exported as well
+				if (bImportData) {
+					readDependants(mpMdSubFormsWithForeignKeys.get(sEntityName), null, existingEntity.getIntId(), new DependantMasterDataMapImpl());
+				}
+
+				// call modify Method
+				String sMessage;// = "Stammdaten-Entit\u00e4t ["+element.attribute("name").getValue()+"] mit der ID ["+existingEntity.getId()+"] ";
+				String sAction = XmlExportImportHelper.EXPIMP_ACTION_UPDATE;
+				if (bImportData) {
+					Object modid = getMasterDataFacade().modify(element.attribute("name").getValue(), prepVO, dmdm, null);
+
+					if (((Integer)modid).compareTo((Integer)existingEntity.getId()) != 0) {
+						sMessage = StringUtils.getParameterizedExceptionMessage("xmlimport.error.masterdata.entity.2", element.attribute("name").getValue(), existingEntity.getId());
+							//"konnte nicht im Zielsystem ermittelt werden.";
+						getProtocolFacade().writeExportImportLogEntry(iProtocolId, XmlExportImportHelper.EXPIMP_MESSAGE_LEVEL_ERROR, sAction, 
+							MessageFormat.format(localeFacade.getResourceById(localeFacade.getUserLocale(), "xmlimport.error.masterdata.entity.2"), element.attribute("name").getValue(), existingEntity.getId()), iActionNumber++);
+						throw new NuclosFatalException(sMessage);
+					}
+					else {
+						sMessage = MessageFormat.format(localeFacade.getResourceById(localeFacade.getUserLocale(), "xmlimport.error.masterdata.entity.3"), element.attribute("name").getValue(), existingEntity.getId()); 
+							//"erfolgreich ge\u00e4ndert.";
+						info(sMessage);
+						getProtocolFacade().writeExportImportLogEntry(iProtocolId, XmlExportImportHelper.EXPIMP_MESSAGE_LEVEL_INFO,
+								sAction, sMessage, iActionNumber++);
+					}
+				}
+				else {
+					sAction = XmlExportImportHelper.EXPIMP_ACTION_READ;
+					sMessage = MessageFormat.format(localeFacade.getResourceById(localeFacade.getUserLocale(), "xmlimport.error.masterdata.entity.4"), element.attribute("name").getValue(), existingEntity.getId()); 
+						//"erfolgreich im Zielsystem ermittelt.";
+					info(sMessage);
+					getProtocolFacade().writeExportImportLogEntry(iProtocolId, XmlExportImportHelper.EXPIMP_MESSAGE_LEVEL_INFO,
+							sAction, sMessage, iActionNumber++);
+				}
+
+				// create old/new Id matching
+				idMap.put(new Pair<String, String>(element.attribute("name").getValue(), element.attribute("id").getValue()), String.valueOf(existingEntity.getId()));
+				// remember all imported masterdata
+				lstAllImportedEntityIds.add(new Pair<String, Integer>(element.attribute("name").getValue() ,(Integer)existingEntity.getId()));
+
+//				info(sMessage);
+//				getProtocolFacade().writeExportImportLogEntry(iProtocolId, XmlExportImportHelper.EXPIMP_MESSAGE_LEVEL_INFO,
+//						sAction, sMessage, iActionNumber++);
+			}
+			catch (Exception e) {
+				String sMessage = StringUtils.getParameterizedExceptionMessage("xmlimport.error.masterdata.entity.5", element.attribute("name").getValue(), element.attribute("id"), e);  
+					//"Stammdaten-Entit\u00e4t ["+element.attribute("name").getValue()+"] mit der Export-ID ["+element.attribute("id")+"] konnte nicht modifiziert werden. "+e;
+				getProtocolFacade().writeExportImportLogEntry(iProtocolId, XmlExportImportHelper.EXPIMP_MESSAGE_LEVEL_ERROR,
+						XmlExportImportHelper.EXPIMP_ACTION_UPDATE, 
+						MessageFormat.format(localeFacade.getResourceById(localeFacade.getUserLocale(), "xmlimport.error.masterdata.entity.5"), element.attribute("name").getValue(), element.attribute("id"), e), iActionNumber++);
+				throw new NuclosFatalException(sMessage);
+			}
+		}
+		else {
+			// entity not exists
+			try {
+				if (bImportData) {
+					// call create Method
+					MasterDataVO newVO = getMasterDataFacade().create(element.attribute("name").getValue(), prepVO, null, null);
+
+					// create old/new Id matching
+					idMap.put(new Pair<String, String>(element.attribute("name").getValue(), element.attribute("id").getValue()), String.valueOf(newVO.getId()));
+					// remember all imported masterdata
+					lstAllImportedEntityIds.add(new Pair<String, Integer>(element.attribute("name").getValue() ,newVO.getIntId()));
+
+					String sMessage = MessageFormat.format(localeFacade.getResourceById(localeFacade.getUserLocale(), "xmlimport.error.masterdata.entity.6"), element.attribute("name").getValue(), newVO.getIntId()); 
+						//"Stammdaten-Entit\u00e4t ["+element.attribute("name").getValue()+"] mit der ID ["+newVO.getIntId()+"] erfolgreich angelegt.";
+					info(sMessage);
+					getProtocolFacade().writeExportImportLogEntry(iProtocolId, XmlExportImportHelper.EXPIMP_MESSAGE_LEVEL_INFO,
+							XmlExportImportHelper.EXPIMP_ACTION_INSERT, sMessage, iActionNumber++);
+				}
+			}
+			catch (Exception e) {
+				String sMessage = StringUtils.getParameterizedExceptionMessage("xmlimport.error.masterdata.entity.7", element.attribute("name").getValue(), element.attribute("id"), e);  
+					//"Stammdaten-Entit\u00e4t ["+element.attribute("name").getValue()+"] mit der Export-ID ["+element.attribute("id")+"] konnte nicht angelegt werden. "+e;
+				getProtocolFacade().writeExportImportLogEntry(iProtocolId, XmlExportImportHelper.EXPIMP_MESSAGE_LEVEL_ERROR,
+						XmlExportImportHelper.EXPIMP_ACTION_INSERT, 
+						MessageFormat.format(localeFacade.getResourceById(localeFacade.getUserLocale(), "xmlimport.error.masterdata.entity.7"), element.attribute("name").getValue(), element.attribute("id"), e), iActionNumber++);
+				throw new NuclosFatalException(sMessage);
+			}
+		}
+		
+	}
+	*/
+/*
+	private void putFieldToMap(Map<String, Object> mpFields, MasterDataMetaFieldVO mfield, String selmText, Element element) 
+			throws IOException, ClassNotFoundException, ParseException, CommonCreateException, CommonPermissionException, NuclosBusinessRuleException, NumberFormatException, Base64DecodingException {
+		// Import documentfiles
+		if (mfield.getJavaClass().getName().equals("org.nuclos.server.genericobject.valueobject.GenericObjectDocumentFile")){
+			try {
+				if (selmText != null && !selmText.equals("")) {
+					File expimpDir = NuclosSystemParameters.getDirectory(NuclosSystemParameters.EXPORT_IMPORT_PATH);
+					File expimpResourceDir = new File(expimpDir, "" + today.getTime() + "/ressource");
+					File df = new File(expimpResourceDir, element.attributeValue("id")+"."+selmText);
+					GenericObjectDocumentFile godf = new GenericObjectDocumentFile(selmText,IOUtils.readFromBinaryFile(df));
+					mpFields.put(mfield.getFieldUID(), godf);
+					df = null;
+				}
+			}
+			catch (Exception e) {
+				//String sMessage = StringUtils.getParameterizedExceptionMessage("xmlimport.error.masterdata.entity.8", selmText, element.attribute("name").getValue(), element.attribute("id"), e); 
+					//"Das Dokument ["+selmText+"] f\u00fcr die Stammdaten-Entit\u00e4t ["+element.attribute("name").getValue()+"] mit der Export-ID ["+element.attribute("id")+"] konnte nicht angelegt werden. "+e;
+				getProtocolFacade().writeExportImportLogEntry(iProtocolId, XmlExportImportHelper.EXPIMP_MESSAGE_LEVEL_ERROR,
+						XmlExportImportHelper.EXPIMP_ACTION_INSERT, 
+						MessageFormat.format(localeFacade.getResourceById(localeFacade.getUserLocale(), "xmlimport.error.masterdata.entity.8"), selmText, element.attribute("name").getValue(), element.attribute("id"), e), iActionNumber++);
+			}
+		}
+		else if (mfield.getJavaClass().getName().equals("java.lang.Object")){
+			if (selmText != null && !selmText.equals("")) {
+				File expimpDir = NuclosSystemParameters.getDirectory(NuclosSystemParameters.EXPORT_IMPORT_PATH);
+				File expimpResourceDir = new File(expimpDir, "" + today.getTime() + "/ressource");
+				Object oData = XmlExportImportHelper.readObjectFromFile(expimpResourceDir, selmText);
+				mpFields.put(mfield.getFieldUID(), oData);
+			}
+		}
+		else if (mfield.getJavaClass().getName().equals("[B")) {
+			if (selmText != null && !selmText.equals("")) {
+				mpFields.put(mfield.getFieldUID(), Base64.decode(selmText));
+			}
+		}
+		else if (mfield.getJavaClass().getName().equals("org.nuclos.server.report.ByteArrayCarrier")) {
+			if (selmText != null && !selmText.equals("")) {
+				mpFields.put(mfield.getFieldUID(), new ByteArrayCarrier(Base64.decode(selmText)));
+			}
+		}
+		else if (mfield.getJavaClass().getName().equals("org.nuclos.server.resource.valueobject.ResourceFile")) {
+			if (selmText != null && !selmText.equals("")) {
+				mpFields.put(mfield.getFieldUID(), new ResourceFile(element.attributeValue("filename"), element.attributeValue("documentFileId")==null?null:Integer.parseInt(element.attributeValue("documentFileId")), Base64.decode(selmText)));
+			}
+		}
+		else if (mfield.getJavaClass().getName().equals("java.util.Date")) {
+			if (!selmText.equals("")) {
+				mpFields.put(mfield.getFieldUID(), dateFormat.parse(selmText));
+			}
+		}
+		else if (mfield.getJavaClass().getName().equals("java.lang.String")) {
+			mpFields.put(mfield.getFieldUID(), selmText);
+		}
+		else if (mfield.getJavaClass().getName().equals("java.lang.Integer")) {
+			if (!selmText.equals("")) {
+				mpFields.put(mfield.getFieldUID(), Integer.valueOf(selmText));
+			}
+		}
+		else if (mfield.getJavaClass().getName().equals("java.lang.Boolean")) {
+			if (!selmText.equals("")) {
+				mpFields.put(mfield.getFieldUID(), Boolean.valueOf(selmText));
+			}
+		}
+		else if (mfield.getJavaClass().getName().equals("java.lang.Double")) {
+			if (!selmText.equals("")) {
+				mpFields.put(mfield.getFieldUID(), Double.valueOf(selmText));
+			}
+		}
+	}
+	*/
+
+	/**
+	 * read all dependant masterdata
+	 * this is necessary to delete data in the traget system which have already been deleted in the source system
+	 * Note: only used in the case, that the imported data was exported in 'deepexport' mode
+	 * @param subformtree
+	 * @param sEntityName
+	 * @param entityId
+	 * @param dmdm
+	 */
+		/*
+	private DependantMasterDataMap readDependants(final Map<EntityAndField, String> subformtree, String sEntityName, Object entityId, DependantMasterDataMapImpl dmdm) {
+		LayoutFacadeLocal layoutFacade = ServerServiceLocator.getInstance().getFacade(LayoutFacadeLocal.class);
+
+		List<EntityAndField> entitylist = new ArrayList<EntityAndField>();
+		for (Entry<EntityAndField, String> entry : subformtree.entrySet()) {
+			if (sEntityName == null) {
+				if (entry.getValue() == null) {
+					entitylist.add(entry.getKey());
+				}
+			} else if (sEntityName.equals(entry.getValue())) {
+				entitylist.add(entry.getKey());
+			}
+		}
+
+		for (EntityAndField eafn : entitylist) {
+			final String entity = eafn.getDalEntity();
+			Collection<MasterDataVO> mdList = getMasterDataFacade().getDependantMasterData(
+					entity, eafn.getField(), entityId);
+
+			for (MasterDataVO mdvo : mdList) {
+				DependantMasterDataMap dmdmOfChildren = readDependants(subformtree, entity, mdvo.getIntId(), 
+						new DependantMasterDataMapImpl());
+				mdvo.setDependants(dmdmOfChildren);
+
+				// check subforms in other layouts
+				if (eafn.getDalEntity() != null) {
+					if (Modules.getInstance().isModule(entity)) {
+						// this should never happen
+					}
+					else if (MasterDataMetaCache.getInstance().getMetaData(entity).getIsImportExport()){
+						if (!mpMdSubFormsWithForeignKeys.containsKey(entity)) {
+							if (layoutFacade.isMasterDataLayoutAvailable(entity)) {
+								mpMdSubFormsWithForeignKeys.put(entity, 
+										layoutFacade.getSubFormEntityAndParentSubFormEntityNames(
+												entity,mdvo.getIntId(),true, ServerParameterProvider.getInstance().getValue(ParameterProvider.KEY_LAYOUT_CUSTOM_KEY)));
+							}
+						}
+
+						if (mpMdSubFormsWithForeignKeys.get(entity) != null) {
+							readDependants(mpMdSubFormsWithForeignKeys.get(entityId), null, mdvo.getIntId(), 
+									new DependantMasterDataMapImpl());
+						}
+						//todo check this
+						if (!MasterDataMetaCache.getInstance().getMetaData(entity).getUniqueFieldNames().isEmpty()) {
+							Pair<String, Integer> pair = new Pair<String, Integer>(eafn.getDalEntity(), mdvo.getIntId());
+							if (!isEntityIdAlreadyRead(pair)){
+								lstAllReadEntityIds.add(pair);
+							}
+						}
+					}
+				}
+				//lstAllReadEntityIds.add(new Pair<String, MasterDataVO>(eafn.getEntityName(), mdvo));
+			}
+			dmdm.addAllData(entity, CollectionUtils.transform(mdList, 
+					new MasterDataToEntityObjectTransformer(entity)));
+		}
+		return dmdm;
+	}
+*/
+	/**
+	 * Method checks if there is an existing MD Entity with same Data in the
+	 * unique Fields
+	 *
+	 * @param mdvo
+	 * @param entityName
+	 * @return null if there is no equal Entity, the Entities MasterDataVO if
+	 *         there is one
+	 * @throws CommonFinderException
+	 * @throws CreateException
+	 * @throws CommonPermissionException
+	 * @throws CommonCreateException
+	 * @throws NuclosBusinessException
+	 *             if ther are more thean one equal Entity
+	 */
+	/*
+	private MasterDataVO getExistingMDEntity(MasterDataVO mdvo,	String entityName) 
+			throws NuclosBusinessException, CommonFinderException, CommonCreateException, CommonPermissionException {
+		MasterDataMetaVO metavo = getMasterDataFacade().getMetaData(entityName);
+		Set<String> ufields = metavo.getUniqueFieldNames();
+
+		// if no unique fields are set, return null and a new record will be
+		// generated
+		if (ufields.size() == 0) {
+			return null;
+		}
+
+		CollectableEntity entity = new CollectableMasterDataEntity(metavo);
+
+		ArrayList<CollectableSearchCondition> conditions = new ArrayList<CollectableSearchCondition>();
+
+		for (String field : ufields) {
+			MasterDataMetaFieldVO m = metavo.getField(field);
+			int fieldtype = (m.getForeignEntity() == null) ? CollectableField.TYPE_VALUEFIELD : CollectableField.TYPE_VALUEIDFIELD;
+
+			CollectableEntityField ef = entity.getEntityField(m.getFieldUID());
+
+			CollectableField value;
+			if (fieldtype == CollectableField.TYPE_VALUEFIELD) {
+				value = new CollectableValueField(mdvo.getFieldValue(field));
+
+				if (value.isNull()) {
+					continue;
+				}
+			}
+			else if (fieldtype == CollectableField.TYPE_VALUEIDFIELD) {
+				value = new CollectableValueIdField(mdvo.getFieldValue(m.getFieldUID()+"Id"), mdvo.getFieldValue(field));
+			}
+			else {
+				throw new NuclosFatalException();
+			}
+
+			if (value != null) {
+				if ((value instanceof CollectableValueField && value.getValue() != null && !value.getValue().equals("")) ||
+						(value instanceof CollectableValueIdField && value.getValueId() != null)) {
+
+				//if (((value.getValue() != null && !value.getValue().equals("")) || value.getValueId() != null)) {
+					conditions.add(new CollectableComparison(ef, ComparisonOperator.EQUAL, value));
+				}
+				else {
+					conditions.add(new CollectableIsNullCondition(ef, ComparisonOperator.IS_NULL));
+				}
+			}
+		}
+
+		TruncatableCollection<MasterDataVO> result = getMasterDataFacade().getMasterData(entityName, new CompositeCollectableSearchCondition(LogicalOperator.AND, conditions), true);
+		if (result.size() > 1) {
+			String sMessage = localeFacade.getResourceById(localeFacade.getUserLocale(), "xmlimport.error.masterdata.entity.9");//"Mehr als eine eindeutige Entit\u00e4t gefunden, bitte manuell \u00fcberpr\u00fcfen";
+			error(sMessage);
+			getProtocolFacade().writeExportImportLogEntry(iProtocolId, XmlExportImportHelper.EXPIMP_MESSAGE_LEVEL_ERROR,
+					XmlExportImportHelper.EXPIMP_ACTION_READ, sMessage, iActionNumber++);
+			throw new NuclosBusinessException("xmlimport.error.masterdata.entity.10");//"Mehr als eine eindeutige Entit\u00e4t gefunden");
+		}
+
+		if (result.iterator().hasNext()) {
+			return result.iterator().next();
+		}
+
+		return null;
+	}
+	*/
+
+	/**
+	 * Method checks if there is an existing GO Entity with same Data in the
+	 * unique Attributes
+	 *
+	 * @param govo
+	 * @param moduleId
+	 * @return
+	 * @throws NuclosBusinessException
+	 * @throws CommonPermissionException
+	 * @throws CommonFinderException
+	 * @throws CreateException
+	 * @throws CommonCreateException
+	 */
+	/*
+	private GenericObjectVO getExistingGOEntity(GenericObjectVO govo, Integer moduleId) 
+			throws NuclosBusinessException, CommonFinderException, CommonPermissionException, CommonCreateException {
+
+		ArrayList<CollectableSearchCondition> conditions = new ArrayList<CollectableSearchCondition>();
+
+		List<Integer> result = getGenericObjectFacade().getGenericObjectIds(moduleId,
+				new CompositeCollectableSearchCondition(LogicalOperator.AND, conditions));
+
+		if (result.size() > 1) {
+			String sMessage = localeFacade.getResourceById(localeFacade.getUserLocale(), "xmlimport.error.masterdata.entity.9");//"Mehr als eine eindeutige Entit\u00e4t gefunden, bitte manuell \u00fcberpr\u00fcfen";
+			error(sMessage);
+			getProtocolFacade().writeExportImportLogEntry(iProtocolId, XmlExportImportHelper.EXPIMP_MESSAGE_LEVEL_ERROR,
+					XmlExportImportHelper.EXPIMP_ACTION_READ, sMessage, iActionNumber++);
+			throw new NuclosBusinessException("xmlimport.error.masterdata.entity.10");//"Mehr als eine eindeutige Entit\u00e4t gefunden");
+		}
+
+		if (result.iterator().hasNext()) {
+			return getGenericObjectFacade().get(result.iterator().next());
+		}
+
+		return null;
+	}
+	*/
+
+	/**
+	 * returns the matching id of the GO Process from the import system
+	 *
+	 * @param moduleId
+	 * @param process
+	 * @return
+	 */
+	/*
+	private Integer getReferencedProcessId(Integer moduleId, String process) {
+		DbQueryBuilder builder = dataBaseHelper.getDbAccess().getQueryBuilder();
+		DbQuery<Integer> query = builder.createQuery(Integer.class);
+		DbFrom t = query.from("T_MD_PROCESS").alias(SystemFields.BASE_ALIAS);
+		query.select(t.baseColumn("INTID", Integer.class));
+		query.where(builder.and(
+			builder.equal(t.baseColumn("INTID_T_MD_MODULE", Integer.class), moduleId),
+			builder.equal(t.baseColumn("STRPROCESS", String.class), process)));
+		return CollectionUtils.getFirst(dataBaseHelper.getDbAccess().executeQuery(query), 0);
+	}
+	*/
+
+	/**
+	 * returns the maching id of the GO status from the target system
+	 *
+	 * @param moduleId
+	 *            Module ID
+	 * @param status
+	 *            State name
+	 * @return Process name
+	 */
+	/*
+	private Integer getReferenecedStatusId(Integer iModuleId, Integer iProcessId, String status) {
+		UsageCriteria usagecriteria = new UsageCriteria(iModuleId, iProcessId, null, null);
+
+		Integer stateModelId = StateModelUsagesCache.getInstance().getStateUsages().getStateModel(usagecriteria);
+		Collection<StateVO> states = ServerServiceLocator.getInstance().getFacade(StateFacadeLocal.class).getStatesByModel(stateModelId);
+
+		for (StateVO sta : states) {
+			if (sta.getStatename().equals(status))
+				return sta.getId();
+		}
+		return null;
+	}
+	*/
+
+	/**
+	 * check whether an entity with its id was already read
+	 * @param pExportEntityId
+	 * @return boolean
+	 */
+	/*
+	private boolean isEntityIdAlreadyRead(Pair<String, Integer> pExportEntityId) {
+		for (Pair<String, Integer> pAllEntityId : lstAllReadEntityIds ) {
+			if (pAllEntityId.getX().equals(pExportEntityId.getX()) &&
+					pAllEntityId.getY().compareTo(pExportEntityId.getY()) == 0) {
+				return true;
+			}
+		}
+		return false;
+	}
+	*/
+
+	/**
+	 * detects the entity data which was read in the target system, but not exported by the
+	 * source system and removes them
+	 *
+	 * @throws CommonCreateException
+	 * @throws CommonPermissionException
+	 * @throws CreateException
+	 * @throws NuclosBusinessRuleException
+	 */
+	/*
+	private void removeNotExportedData() 
+			throws CommonCreateException, CommonPermissionException, NuclosBusinessRuleException {
+		List<Pair<String, Integer>> lstRemoveEntityIds = new ArrayList<Pair<String, Integer>>();
+
+		for (Pair<String, Integer> pAllEntityId : lstAllReadEntityIds) {
+			boolean bfound = false;
+			for (Pair<String, Integer> pImportedEntityId : lstAllImportedEntityIds) {
+				if (pAllEntityId.getX().equals(pImportedEntityId.getX()) &&
+						pAllEntityId.getY().compareTo(pImportedEntityId.getY()) == 0) {
+					bfound = true;
+					break;
+				}
+			}
+
+			if (!bfound) {
+				lstRemoveEntityIds.add(new Pair<String, Integer>(pAllEntityId.getX(), pAllEntityId.getY()));
+			}
+		}
+
+		for (Pair<String, Integer> pRemove : lstRemoveEntityIds) {
+			// entity data found in the target system which is not included in the export file
+			// this means, that the data was deleted in the source system, because all entity data
+			// and its dependencies should be included in the export file -> delete not exported entity data
+
+			String sEntity = pRemove.getX();
+			Integer iId = pRemove.getY();
+			//MasterDataVO mdvo = pRemove.getY();
+
+			try {
+				MasterDataVO mdvo = getMasterDataFacade().get(sEntity, iId);
+
+				// 1. remove references to current mdvo
+				removeReferenceToEntity(sEntity, mdvo);
+
+				// 2. finally remove current mdvo
+				getMasterDataFacade().remove(sEntity, mdvo, false, null);
+
+				//String sMessage = "Die Entit\u00e4t ["+sEntity+"] mit der ID ["+mdvo.getIntId()+"] wurde erfolgreich gel\u00f6scht.";
+				getProtocolFacade().writeExportImportLogEntry(iProtocolId, XmlExportImportHelper.EXPIMP_MESSAGE_LEVEL_INFO,
+						XmlExportImportHelper.EXPIMP_ACTION_DELETE, 
+						MessageFormat.format(localeFacade.getResourceById(localeFacade.getUserLocale(), "xmlimport.error.masterdata.entity.11"), sEntity, mdvo.getIntId()), iActionNumber++);
+			}
+			catch (Exception e) {
+				String sMessage = StringUtils.getParameterizedExceptionMessage("xmlimport.error.masterdata.entity.12", sEntity, iId, e); 
+					//"Die Stammdaten-Entit\u00e4t ["+sEntity+"] mit der ID ["+iId+"] konnte nicht gel\u00f6scht werden. "+e;
+				getProtocolFacade().writeExportImportLogEntry(iProtocolId, XmlExportImportHelper.EXPIMP_MESSAGE_LEVEL_ERROR,
+						XmlExportImportHelper.EXPIMP_ACTION_DELETE, 
+						MessageFormat.format(localeFacade.getResourceById(localeFacade.getUserLocale(), "xmlimport.error.masterdata.entity.12"), sEntity, iId, e), iActionNumber++);
+				throw new NuclosFatalException(sMessage);
+			}
+		}
+	}
+	*/
+
+	/**
+	 * removes existing references to the given entity which will be deleted in the next step
+	 *
+	 * @param sEntity
+	 * @param mdvo
+	 */
+	/*
+	// @TODO GOREF
+	private void removeReferenceToEntity(final String sEntity, final MasterDataVO mdvo) {
+		DbQueryBuilder builder = dataBaseHelper.getDbAccess().getQueryBuilder();
+		DbQuery<DbTuple> query = builder.createTupleQuery();
+		DbFrom t = query.from("T_AD_MASTERDATA_FIELD").alias(SystemFields.BASE_ALIAS);
+		query.multiselect(
+			t.baseColumn("INTID_T_AD_MASTERDATA", Integer.class),
+			t.baseColumn("STRFIELD", String.class),
+			t.baseColumn("STRDBFIELD", String.class));
+		query.where(builder.equal(t.baseColumn("STRFOREIGNENTITY", String.class), sEntity));
+		
+		try {
+			for (DbTuple tuple : dataBaseHelper.getDbAccess().executeQuery(query)) {
+				final Integer iIntidOfForeignEntity = tuple.get(0, Integer.class);
+				final String sField = tuple.get(1, String.class);
+				String sDBField = tuple.get(2, String.class);
+				sDBField = sDBField.toUpperCase().replaceFirst("^STRVALUE_", "INTID_");
+				final MasterDataMetaVO mdmvo = MasterDataMetaCache.getInstance().getMasterDataMetaById(iIntidOfForeignEntity);
+	
+				DbQuery<Integer> query2 = builder.createQuery(Integer.class);
+				DbFrom t2 = query.from(mdmvo.getDBEntity()).alias("t2");
+				query2.select(t2.baseColumn("INTID", Integer.class));
+				query2.where(builder.equal(t2.baseColumn(sDBField, Integer.class), mdvo.getIntId()));
+	
+				try {
+					for (Integer iIntid : dataBaseHelper.getDbAccess().executeQuery(query2)) {
+						try {
+							// if field is not nullable, then it's not possible to remove the reference
+							if (!mdmvo.getField(sField).isNullable()) {
+								String sMessage = StringUtils.getParameterizedExceptionMessage("xmlimport.error.masterdata.entity.13", sEntity, mdvo.getIntId(), sField, mdmvo.getDalEntity());  
+				//									"Die Refernz auf die Entit\u00e4t ["+sEntity+"] mit der ID ["+mdvo.getIntId()+"]" +
+				//								"des Feldes ["+sField+"] der Entit\u00e4t ["+mdmvo.getEntityName()+"] " +
+				//								"kann nicht entfernt werden, da das Feld nicht leer sein darf.";
+								getProtocolFacade().writeExportImportLogEntry(iProtocolId, XmlExportImportHelper.EXPIMP_MESSAGE_LEVEL_ERROR,
+										XmlExportImportHelper.EXPIMP_ACTION_DELETE, 
+										MessageFormat.format(localeFacade.getResourceById(localeFacade.getUserLocale(), "xmlimport.error.masterdata.entity.13"), sEntity, mdvo.getIntId(), sField, mdmvo.getDalEntity()), iActionNumber++);
+								throw new NuclosFatalException(sMessage);
+							}
+				
+							MasterDataVO mdvo_ref = null;
+							try {
+								mdvo_ref = getMasterDataFacade().get(mdmvo.getDalEntity(), iIntid);
+								mdvo_ref.setFieldValue(sField+"Id", null);
+								getMasterDataFacade().modify(mdmvo.getDalEntity(), mdvo_ref, null, null);
+							}
+							catch (Exception e) {
+								String sMessage = StringUtils.getParameterizedExceptionMessage("xmlimport.error.masterdata.entity.14", sField, mdmvo.getDalEntity(), mdvo_ref.getIntId(), e);   
+				//									"Beim Versuch den Refernzeintrag des Feldes ["+sField+"] der Stammdaten-Entit\u00e4t ["+mdmvo.getEntityName()+"] " +
+				//								"mit der ID ["+mdvo_ref.getIntId()+"] zur\u00fcckzusetzen, trat ein Fehler auf. "+e;
+								getProtocolFacade().writeExportImportLogEntry(iProtocolId, XmlExportImportHelper.EXPIMP_MESSAGE_LEVEL_ERROR,
+										XmlExportImportHelper.EXPIMP_ACTION_DELETE, 
+										MessageFormat.format(localeFacade.getResourceById(localeFacade.getUserLocale(), "xmlimport.error.masterdata.entity.14"), sField, mdmvo.getDalEntity(), mdvo_ref.getIntId(), e), iActionNumber++);
+								throw new NuclosFatalException(sMessage);
+							}
+						}
+						catch (Exception e) {
+							throw new NuclosFatalException(e);
+						}
+					}
+				}
+				catch (DbException e) {
+					String sMessage = StringUtils.getParameterizedExceptionMessage("xmlimport.error.masterdata.entity.15", sField, mdmvo.getDalEntity(), iIntidOfForeignEntity, e);    
+	//							"Beim Versuch die Refernzeintr\u00e4ge des Feldes ["+sField+"] der Stammdaten-Entit\u00e4t ["+mdmvo.getEntityName()+"] " +
+	//						"mit der ID ["+iIntidOfForeignEntity+"] zur\u00fcckzusetzen, trat ein Fehler auf. "+e;
+	
+					try {
+						getProtocolFacade().writeExportImportLogEntry(iProtocolId, XmlExportImportHelper.EXPIMP_MESSAGE_LEVEL_ERROR,
+								XmlExportImportHelper.EXPIMP_ACTION_DELETE, 
+								MessageFormat.format(localeFacade.getResourceById(localeFacade.getUserLocale(), "xmlimport.error.masterdata.entity.15"), sField, mdmvo.getDalEntity(), iIntidOfForeignEntity, e), iActionNumber++);
+					}
+					catch (Exception e1) {
+						throw new NuclosFatalException(e);
+					}
+					throw new NuclosFatalException(sMessage);
+				}
+			}
+		}
+		catch (DbException e) {
+			String sMessage = StringUtils.getParameterizedExceptionMessage("xmlimport.error.masterdata.entity.16", sEntity, mdvo.getIntId(), e);     
+//							"Beim Versuch die Refernzeintr\u00e4ge der Stammdaten-Entit\u00e4t ["+sEntity+"] " +
+//						"mit der ID ["+mdvo.getIntId()+"] zur\u00fcckzusetzen, trat ein Fehler auf. "+e;
+
+			try {
+				getProtocolFacade().writeExportImportLogEntry(iProtocolId, XmlExportImportHelper.EXPIMP_MESSAGE_LEVEL_ERROR,
+						XmlExportImportHelper.EXPIMP_ACTION_DELETE, 
+						MessageFormat.format(localeFacade.getResourceById(localeFacade.getUserLocale(), "xmlimport.error.masterdata.entity.16"), sEntity, mdvo.getIntId(), e), iActionNumber++);
+			}
+			catch (Exception e1) {
+				throw new NuclosFatalException(e1);
+			}
+			throw new NuclosFatalException(sMessage);
+		}
+	}
+	*/
+}
+

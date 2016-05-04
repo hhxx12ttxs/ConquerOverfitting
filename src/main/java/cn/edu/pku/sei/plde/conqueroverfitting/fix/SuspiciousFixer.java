@@ -96,7 +96,8 @@ public class SuspiciousFixer {
                     method1FixSuccess = true;
                 }
             }
-            String methodTwoResult = fixMethodTwo(suspicious, boundarys, project, line, errorTestNum, false);
+            AngelicFilter filter = new AngelicFilter(suspicious, project);
+            String methodTwoResult = fixMethodTwo(suspicious, filter.filter(line,boundarys,traceResults), project, line, errorTestNum, false);
             RecordUtils.printRuntimeMessage(suspicious, project, exceptionVariables, echelons, line);
             if (!methodTwoResult.equals("")) {
                 printHistoryBoundary(boundarys, methodTwoResult);
