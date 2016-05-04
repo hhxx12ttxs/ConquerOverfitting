@@ -18,6 +18,7 @@ public class Main {
     public static void main(String[] args){
         if (args.length == 0){
             System.out.println("Hello world");
+            System.exit(0);
         }
         new File(System.getProperty("user.dir")+"/temp/").mkdirs();
         new File(System.getProperty("user.dir")+"/suspicious/").mkdirs();
@@ -26,7 +27,7 @@ public class Main {
         File [] sub_files = file.listFiles();
         if (sub_files == null){
             System.out.println("No file in path");
-            return;
+            System.exit(0);
         }
         deleteTempFile();
         ExecutorService executorService = Executors.newSingleThreadExecutor();
@@ -50,7 +51,7 @@ public class Main {
                     e.printStackTrace();
                 }
             }
-            return;
+            System.exit(0);
         }
         for (File sub_file : sub_files){
             if (sub_file.isDirectory()){
@@ -63,6 +64,7 @@ public class Main {
                 }
             }
         }
+        System.exit(0);
     }
     private static void fixProject(String project, String path, ExecutorService executorService) throws Exception{
         if (!project.contains("_")){

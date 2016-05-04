@@ -224,23 +224,25 @@ public class ExceptionVariable {
         return small+"-"+big;
     }
 
-    public List<String> getBoundaryIntervals(List<BoundaryWithFreq> boundaryInfos){
+    public List<String> getBoundaryIntervals(List<BoundaryInfo> boundaryInfos){
         List<String> valueList = new ArrayList<>(values);
         List<String> result = new ArrayList<>();
         if (name.equals("this")){
             String thisValue = values.iterator().next();
             thisValue = thisValue.substring(thisValue.indexOf('(')+1, thisValue.lastIndexOf(')'));
             String[] thisValues = thisValue.contains(",")?thisValue.split(","):new String[]{thisValue};
-            for (BoundaryWithFreq info: boundaryInfos){
+            for (BoundaryInfo info: boundaryInfos){
                 if (info.value.contains("new "+type) && info.value.contains("(") && info.value.contains(")") && !info.value.endsWith("(")){
                     String newValue = info.value.substring(info.value.indexOf('(')+1, info.value.lastIndexOf(')'));
                     String[] newValues = newValue.contains(",")?newValue.split(","):new String[]{newValue};
                     if (judgeTheSame(newValues, thisValues)){
                         if (traceResult.getTestResult()){
                             result.add("!this.equals("+info.value+")");
+                            break;
                         }
                         else {
                             result.add("this.equals("+info.value+")");
+                            break;
                         }
                     }
                 }

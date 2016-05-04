@@ -157,22 +157,6 @@ public class MethodOneFixer {
             }
         }
         return 0;
-        /*
-        int errAssertNumAfterFix = 0;
-        int errAssertNumBeforeFix = 0;
-        for (Map.Entry<String, String> test: getTestsOfPatch().entrySet()){
-            Asserts asserts = new Asserts(_classpath,_classSrcPath, _testClassPath, _testSrcPath, test.getValue(), test.getKey());
-            errAssertNumAfterFix += asserts.errorNum();
-            errAssertNumBeforeFix += _suspicious._assertsMap.get(test.getValue()+"#"+test.getKey()).errorNum();
-        }
-        if (errAssertNumAfterFix < errAssertNumBeforeFix || errAssertNumAfterFix == 0 ){
-            return errAssertNumAfterFix;
-        }
-        for (Map.Entry<File, File> backup: backups.entrySet()){
-            FileUtils.copyFile(backup.getValue(), backup.getKey());
-        }
-        return -1;
-        */
     }
 
 

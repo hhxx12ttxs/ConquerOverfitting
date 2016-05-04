@@ -27,12 +27,12 @@ public class MethodTwoFixer {
     private String _methodCode;
     private Set<Integer> _errorLines;
     private int _methodStartLine;
-    public List<String> triedPatch = new ArrayList<>();
     private int _methodEndLine;
     private int _errorTestNum;
     public String correctPatch;
     public int correctStartLine;
     public int correctEndLine;
+    public List<String> triedPatch = new ArrayList<>();
 
     public MethodTwoFixer(Suspicious suspicious, int errorTestNum){
         _suspicious = suspicious;
@@ -159,6 +159,8 @@ public class MethodTwoFixer {
         String testClassName = testMessage.split("#")[0];
         String testMethodName = testMessage.split("#")[1];
         int assertLine = Integer.valueOf(testMessage.split("#")[2]);
+        AssertComment comment = new AssertComment(_suspicious._assertsMap.get(testClassName+"#"+testMethodName), assertLine);
+        comment.comment();
 
         File targetJavaFile = new File(FileUtils.getFileAddressOfJava(_classSrcPath, _className));
         File targetClassFile = new File(FileUtils.getFileAddressOfClass(_classpath, _className));
@@ -172,11 +174,13 @@ public class MethodTwoFixer {
         catch (IOException e){
             FileUtils.copyFile(classBackup, targetClassFile);
             FileUtils.copyFile(javaBackup, targetJavaFile);
+            comment.uncomment();
             return false;
         }
         if (!targetClassFile.exists()){ //编译不成功
             FileUtils.copyFile(classBackup, targetClassFile);
             FileUtils.copyFile(javaBackup, targetJavaFile);
+            comment.uncomment();
             return false;
         }
 
@@ -193,11 +197,13 @@ public class MethodTwoFixer {
                     FileUtils.copyFile(javaBackup, targetJavaFile);
                 }
                 RecordUtils.recordIf(_code, ifStatement,ifStartLine,ifEndLine,replace,project);
+                comment.uncomment();
                 return true;
             }
         }
         FileUtils.copyFile(classBackup, targetClassFile);
         FileUtils.copyFile(javaBackup, targetJavaFile);
+        comment.uncomment();
         System.out.println(" fix fail");
         return false;
     }

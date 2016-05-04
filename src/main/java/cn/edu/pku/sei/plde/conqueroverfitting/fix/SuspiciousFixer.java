@@ -258,6 +258,7 @@ public class SuspiciousFixer {
             String testClassName = entry.getKey().split("#")[0];
             String testMethodName = entry.getKey().split("#")[1];
             int assertLine = Integer.valueOf(entry.getKey().split("#")[2]);
+            AssertComment comment = new AssertComment(suspicious._assertsMap.get(testClassName+"#"+testMethodName), assertLine);
             if (assertLine == -1){
                 testClassName = suspicious._failTests.get(0).split("#")[0];
                 testMethodName = suspicious._failTests.get(0).split("#")[1];
@@ -299,7 +300,9 @@ public class SuspiciousFixer {
             else {
                 patch = new Patch(testClassName, testMethodName, suspicious.classname(), Arrays.asList(errorLine), entry.getValue(), fixString);
             }
+            comment.comment();
             boolean result = methodOneFixer.addPatch(patch);
+            comment.uncomment();
             if (result){
                 break;
             }

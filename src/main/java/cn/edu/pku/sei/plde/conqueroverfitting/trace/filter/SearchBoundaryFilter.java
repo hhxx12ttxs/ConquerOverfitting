@@ -38,6 +38,15 @@ public class SearchBoundaryFilter {
         return getBoundary(exceptionVariable, project, new ArrayList<String>(), suspicious);
     }
 
+    public static List<BoundaryInfo> getBoundaryInfo(ExceptionVariable exceptionVariable, String project, List<String> keywords, Suspicious suspicious){
+        return getSearchBoundary(exceptionVariable.variable, project, keywords, suspicious);
+    }
+
+
+    public static List<BoundaryInfo> getBoundaryInfo(ExceptionVariable exceptionVariable, String project, Suspicious suspicious) {
+        return getBoundaryInfo(exceptionVariable, project, new ArrayList<String>(), suspicious);
+    }
+
 
     private static List<BoundaryWithFreq> getSearchBoundaryWithFreq(VariableInfo info, String project, List<String> addonKeywords, Suspicious suspicious){
         String variableName = info.variableName;
@@ -131,7 +140,97 @@ public class SearchBoundaryFilter {
         return boundaryList;
     }
 
+    private static List<BoundaryInfo> getSearchBoundary(VariableInfo info, String project, List<String> addonKeywords, Suspicious suspicious){
+        String variableName = info.variableName;
+        if (variableName.endsWith("[i]")){
+            variableName = variableName.substring(0, variableName.indexOf("["));
+        }
+        if (variableName.endsWith(".null")){
+            variableName = variableName.substring(0, variableName.lastIndexOf("."));
+        }
+        if (variableName.endsWith(".Comparable")){
+            variableName = variableName.substring(0, variableName.lastIndexOf("."));
+        }
+        String valueType = info.isSimpleType?info.getStringType().toLowerCase():info.getStringType();
+        ArrayList<String> keywords = new ArrayList<String>();
+        keywords.add("if");
+        keywords.addAll(addonKeywords);
+        keywords.add(valueType);
+        if (VariableUtils.isExpression(info)){
+            keywords.add(info.expressMethod);
+            keywords.remove(variableName);
+        }
+        if (variableName.length() == 1){
+            String methodName = suspicious.functionnameWithoutParam();
+            String keyword = "";
+            for (Character ch: methodName.toCharArray()){
+                if(!((ch<='Z')&&(ch>='A'))){
+                    keyword += ch;
+                    continue;
+                }
+                break;
+            }
+            keywords.remove(keyword);
+            keywords.remove(valueType);
+        }
+        if (!variableName.equals("this") && !VariableUtils.isExpression(info) && variableName.length() > 1){
+            keywords.add(variableName.replace(" ",""));
+        }
 
+        File codePackage = new File("experiment/searchcode/" + StringUtils.join(keywords,"-"));
+        if (!codePackage.exists()){
+            GathererJava GathererJava = new GathererJava(keywords, StringUtils.join(keywords, "-"),getProjectFullName(project));
+            try {
+                GathererJava.searchCode();
+            } catch (Exception e){
+                e.printStackTrace();
+            }
+        }
+        if (codePackage.exists()) {
+            if (codePackage.list().length > 30 || VariableUtils.isExpression(info)){
+                BoundaryCollect boundaryCollect = new BoundaryCollect(codePackage.getAbsolutePath());
+                List<BoundaryInfo> boundaryList = boundaryCollect.getBoundaryList();
+                return boundaryList;
+            }
+        }
+
+
+        if (!info.isSimpleType) {
+            keywords.remove(variableName);
+            codePackage = new File("experiment/searchcode/" + StringUtils.join(keywords,"-"));
+            if (!codePackage.exists()){
+                GathererJava GathererJava = new GathererJava(keywords, StringUtils.join(keywords,"-"),getProjectFullName(project));
+                try {
+                    GathererJava.searchCode();
+                } catch (Exception e){
+                    e.printStackTrace();
+                }
+                if (!codePackage.exists()) {
+                    codePackage.mkdirs();
+                }
+            }
+            BoundaryCollect boundaryCollect = new BoundaryCollect(codePackage.getAbsolutePath());
+            List<BoundaryInfo> boundaryList = boundaryCollect.getBoundaryList();
+            return boundaryList;
+        }
+
+        keywords.remove(valueType);
+        codePackage = new File("experiment/searchcode/" + StringUtils.join(keywords,"-"));
+        if (!codePackage.exists()){
+            GathererJava GathererJava = new GathererJava(keywords, StringUtils.join(keywords,"-"),getProjectFullName(project));
+            try {
+                GathererJava.searchCode();
+            } catch (Exception e){
+                e.printStackTrace();
+            }
+            if (!codePackage.exists()) {
+                codePackage.mkdirs();
+            }
+        }
+        BoundaryCollect boundaryCollect = new BoundaryCollect(codePackage.getAbsolutePath());
+        List<BoundaryInfo> boundaryList = boundaryCollect.getBoundaryList();
+        return boundaryList;
+    }
 
 
     /*
