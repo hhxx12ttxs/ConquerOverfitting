@@ -3,6 +3,7 @@ package cn.edu.pku.sei.plde.conqueroverfitting.localization;
 import cn.edu.pku.sei.plde.conqueroverfitting.assertCollect.Asserts;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.common.library.JavaLibrary;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.common.synth.TestClassesFinder;
+import cn.edu.pku.sei.plde.conqueroverfitting.main.TimeLine;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.ExceptionVariable;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.TraceResult;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.VariableTracer;
@@ -420,7 +421,7 @@ public class Suspicious implements Serializable{
         return _methodInfo;
     }
 
-    public List<TraceResult> getTraceResult(String project) {
+    public List<TraceResult> getTraceResult(String project, TimeLine timeLine) {
         VariableTracer tracer = new VariableTracer(_srcPath, _testSrcPath, this, project);
         List<TraceResult> traceResults = new ArrayList<TraceResult>();
         List<String> trueTests = new ArrayList<>(_tests);
@@ -439,6 +440,9 @@ public class Suspicious implements Serializable{
             if (traceResults.size()> 50 || tracedTestCount > 10){
                 break;
             }
+            if (timeLine.isTimeout()){
+                return new ArrayList<>();
+            }
         }
         for (String testclass: _failTests){
             try{
@@ -448,6 +452,9 @@ public class Suspicious implements Serializable{
             }
             if (traceResults.size()> 50){
                 break;
+            }
+            if (timeLine.isTimeout()){
+                return new ArrayList<>();
             }
         }
         return traceResults;

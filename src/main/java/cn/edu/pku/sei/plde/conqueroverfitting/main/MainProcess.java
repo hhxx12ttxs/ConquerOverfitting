@@ -33,8 +33,6 @@ public class MainProcess {
     public long startMili=System.currentTimeMillis();
     public List<Suspicious> triedSuspicious = new ArrayList<>();
 
-    private long startLine;
-
     public MainProcess(String path){
         if (!path.endsWith("/")){
             path += "/";
@@ -42,9 +40,8 @@ public class MainProcess {
         PATH_OF_DEFECTS4J = path;
     }
 
-    public synchronized boolean mainProcess(String projectType, int projectNumber) throws Exception{
+    public  boolean mainProcess(String projectType, int projectNumber, TimeLine timeLine) throws Exception{
         String project = setWorkDirectory(projectType,projectNumber);
-        startLine = System.currentTimeMillis();
         if (!checkProjectDirectory()){
             System.out.println("Main Process: set work directory error at project "+projectType+"-"+projectNumber);
             File recordPackage = new File(System.getProperty("user.dir")+"/patch/");
@@ -64,13 +61,13 @@ public class MainProcess {
         }
         Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc,libPath, project);
         List<Suspicious> suspiciouses = localization.getSuspiciousLite();
-        if (Thread.interrupted()){
+        if (timeLine.isTimeout()){
             return false;
         }
         if (suspiciouses.size() == 0){
             System.out.println("no suspicious found\n");
         }
-        return suspiciousLoop(suspiciouses, project);
+        return suspiciousLoop(suspiciouses, project, timeLine);
     }
 
 
@@ -95,7 +92,7 @@ public class MainProcess {
         }
 
 
-    public boolean suspiciousLoop(List<Suspicious> suspiciouses, String project) {
+    public boolean suspiciousLoop(List<Suspicious> suspiciouses, String project, TimeLine timeLine) {
         for (Suspicious suspicious: suspiciouses){
             suspicious._libPath = libPath;
             boolean tried = false;
@@ -108,10 +105,10 @@ public class MainProcess {
                 continue;
             }
             try {
-                if (Thread.interrupted()){
+                if (timeLine.isTimeout()){
                     return false;
                 }
-                if (fixSuspicious(suspicious, project)){
+                if (fixSuspicious(suspicious, project, timeLine)){
                     return true;
                 }
             } catch (Exception e){
@@ -123,25 +120,30 @@ public class MainProcess {
     }
 
 
-    public boolean fixSuspicious(Suspicious suspicious, String project) throws Exception{
-        SuspiciousFixer fixer = new SuspiciousFixer(suspicious, project);
+    public boolean fixSuspicious(Suspicious suspicious, String project, TimeLine timeLine) throws Exception{
+        SuspiciousFixer fixer = new SuspiciousFixer(suspicious, project, timeLine);
+        if (timeLine.isTimeout()){
+            return false;
+        }
         if (fixer.mainFixProcess()){
             printCollectingMessage(project, suspicious);
-            return isFixSuccess( project);
+            return isFixSuccess(project, timeLine);
         }
         return false;
     }
 
-    public boolean isFixSuccess( String project){
+    public boolean isFixSuccess(String project, TimeLine timeLine){
         System.out.println("Fix Success One Place");
+        if (timeLine.isTimeout()){
+            return false;
+        }
         if (TestUtils.getFailTestNumInProject(project) > 0){
             Localization localization = new Localization(classpath, testClasspath, testClassSrc, classSrc,libPath, project);
             List<Suspicious> suspiciouses = localization.getSuspiciousLite(false);
             if (suspiciouses.size() == 0){
                 return false;
             }
-            suspiciousLoop(suspiciouses, project);
-            return true;
+            return suspiciousLoop(suspiciouses, project, timeLine);
         }
         else {
             System.out.println("Fix All Place Success");

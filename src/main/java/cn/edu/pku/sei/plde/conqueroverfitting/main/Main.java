@@ -30,13 +30,12 @@ public class Main {
             System.exit(0);
         }
         deleteTempFile();
-        ExecutorService executorService = Executors.newSingleThreadExecutor();
         if (args.length == 2){
             if (args[1].contains(":")){
                 for (String name: args[1].split(":")){
                     System.out.println("Main: fixing project "+name);
                     try {
-                        fixProject(name, path, executorService);
+                        fixProject(name, path);
                     }
                     catch (Exception e){
                         e.printStackTrace();
@@ -46,7 +45,7 @@ public class Main {
             else {
                 String projectName = args[1];
                 try {
-                    fixProject(projectName, path, executorService);
+                    fixProject(projectName, path);
                 } catch (Exception e){
                     e.printStackTrace();
                 }
@@ -57,7 +56,7 @@ public class Main {
             if (sub_file.isDirectory()){
                 System.out.println("Main: fixing project "+sub_file.getName());
                 try {
-                    fixProject(sub_file.getName(), path, executorService);
+                    fixProject(sub_file.getName(), path);
                 }
                 catch (Exception e){
                     e.printStackTrace();
@@ -66,7 +65,7 @@ public class Main {
         }
         System.exit(0);
     }
-    private static void fixProject(String project, String path, ExecutorService executorService) throws Exception{
+    private static void fixProject(String project, String path) throws Exception{
         if (!project.contains("_")){
             System.out.println("Main: cannot recognize project name \""+project+"\"");
             return;
@@ -76,42 +75,50 @@ public class Main {
             return;
         }
         int timeout = 1200;
-        ExecutorService service = Executors.newSingleThreadExecutor();
-        RunFixProcess process = new RunFixProcess(path, project);
-        Future<Boolean> future =  service.submit(process);
+        TimeLine timeLine = new TimeLine(timeout);
+        String projectType = project.split("_")[0];
+        int projectNumber = Integer.valueOf(project.split("_")[1]);
+        MainProcess process = new MainProcess(path);
+        boolean result;
+        File main = new File(System.getProperty("user.dir")+"/"+"FixResult.log");
         try {
-            future.get(timeout, TimeUnit.SECONDS);
-        } catch (InterruptedException e){
-            future.cancel(true);
-            e.printStackTrace();
-        } catch (TimeoutException e){
-            processPatchFile(project);
-            future.cancel(true);
-            e.printStackTrace();
-        } finally {
-            System.out.println("Finish Fix "+project);
-
+            FileWriter writer = new FileWriter(main, true);
+            Format format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            writer.write("project "+project+" begin Time:"+format.format(new Date())+"\n");
+            writer.close();
+            result = process.mainProcess(projectType, projectNumber, timeLine);
+            writer = new FileWriter(main, true);
+            writer.write("project "+project+" "+(result?"Success":"Fail")+" Time:"+format.format(new Date())+"\n");
+            writer.close();
+        } catch (Exception e){
+            result = false;
         }
+        if (!result){
+           processFail(project, timeLine);
+        }
+
+
     }
 
 
-
-    private static void processPatchFile(String project){
+    private static void processFail(String project, TimeLine timeLine){
         File recordFile = new File(System.getProperty("user.dir")+"/patch/"+project);
         if (recordFile.exists()){
-            recordFile.renameTo(new File(System.getProperty("user.dir")+recordFile.getName()+".fail"));
+            recordFile.delete();
         }
-        try {
-            File main = new File(System.getProperty("user.dir")+"/"+"FixResult.log");
-            if (!main.exists()){
-                main.createNewFile();
+        if (timeLine.isTimeout()){
+            try {
+                File main = new File(System.getProperty("user.dir")+"/"+"FixResult.log");
+                if (!main.exists()){
+                    main.createNewFile();
+                }
+                FileWriter writer = new FileWriter(main, true);
+                Format format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                writer.write("project "+project+" Timeout At :"+format.format(new Date())+"\n");
+                writer.close();
+            } catch (IOException e){
+                e.printStackTrace();
             }
-            FileWriter writer = new FileWriter(main, true);
-            Format format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-            writer.write("project "+project+" Timeout At :"+format.format(new Date())+"\n");
-            writer.close();
-        } catch (IOException e){
-            e.printStackTrace();
         }
     }
 
@@ -149,7 +156,7 @@ public class Main {
     }
 }
 
-
+/*
 class RunFixProcess implements Callable<Boolean>  {
     public String path;
     public String projectType;
@@ -193,4 +200,4 @@ class RunFixProcess implements Callable<Boolean>  {
 
         return true;
     }
-}
+}*/

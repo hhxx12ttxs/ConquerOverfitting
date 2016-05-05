@@ -5,6 +5,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.Interval;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Localization;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Suspicious;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.common.container.map.DoubleMap;
+import cn.edu.pku.sei.plde.conqueroverfitting.main.TimeLine;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.ExceptionExtractor;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.ExceptionVariable;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.TraceResult;
@@ -34,13 +35,15 @@ public class SuspiciousFixer {
     private List<ExceptionVariable> exceptionVariables;
     private String project;
     private int errorTestNum;
+    private TimeLine timeLine;
     private List<String> methodOneHistory = new ArrayList<>();
     private List<String> methodTwoHistory = new ArrayList<>();
     private List<String> bannedHistory = new ArrayList<>();
-    public SuspiciousFixer(Suspicious suspicious, String project){
+    public SuspiciousFixer(Suspicious suspicious, String project, TimeLine timeLine){
         this.suspicious = suspicious;
         this.project = project;
-        traceResults = suspicious.getTraceResult(project);
+        this.timeLine = timeLine;
+        traceResults = suspicious.getTraceResult(project, timeLine);
         trueValues = AbandanTrueValueFilter.getTrueValue(traceResults, suspicious.getAllInfo());
         falseValues = AbandanTrueValueFilter.getFalseValue(traceResults, suspicious.getAllInfo());
         errorTestNum = TestUtils.getFailTestNumInProject(project);
@@ -61,6 +64,9 @@ public class SuspiciousFixer {
             }
          }
         for (Map.Entry<Integer, List<TraceResult>> entry: firstToGo.entrySet()){
+            if (timeLine.isTimeout()){
+                return false;
+            }
             if (fixInLineWithTraceResult(entry.getKey(), entry.getValue(), extractor, false)){
                 return true;
             }
@@ -68,6 +74,9 @@ public class SuspiciousFixer {
         for (Map.Entry<Integer, List<TraceResult>> entry: traceResultWithLine.entrySet()){
             if (firstToGo.containsKey(entry.getKey())){
                 continue;
+            }
+            if (timeLine.isTimeout()){
+                return false;
             }
             if (fixInLineWithTraceResult(entry.getKey(), entry.getValue(), extractor, true)){
                 return true;
