@@ -16,7 +16,7 @@ public class BoundaryCollectTest {
     @Test
     public void testBoundaryCollect() {
         String path = "filesfortest";
-        BoundaryCollect boundaryCollect = new BoundaryCollect(path);
+        BoundaryCollect boundaryCollect = new BoundaryCollect(path, false, null);
         ArrayList<BoundaryInfo> boundaryList = boundaryCollect.getBoundaryList();
 
         //assertNotNull(boundaryList);
@@ -37,7 +37,7 @@ public class BoundaryCollectTest {
     @Test
     public void testMath26() {
         String path = "experiment//searchcode//math-long-a0";
-        BoundaryCollect boundaryCollect = new BoundaryCollect(path);
+        BoundaryCollect boundaryCollect = new BoundaryCollect(path, false, null);
         ArrayList<BoundaryInfo> boundaryList = boundaryCollect.getBoundaryList();
 
         assertNotNull(boundaryList);
@@ -54,7 +54,7 @@ public class BoundaryCollectTest {
     @Test
     public void testMath99() {
         String path = "experiment//searchcode//math-int-u";
-        BoundaryCollect boundaryCollect = new BoundaryCollect(path);
+        BoundaryCollect boundaryCollect = new BoundaryCollect(path, false, null);
         ArrayList<BoundaryInfo> boundaryList = boundaryCollect.getBoundaryList();
 
         assertNotNull(boundaryList);
@@ -71,7 +71,7 @@ public class BoundaryCollectTest {
     @Test
     public void Math93() {
         String path = "experiment//searchcode//if-factorial-int";
-        BoundaryCollect boundaryCollect = new BoundaryCollect(path);
+        BoundaryCollect boundaryCollect = new BoundaryCollect(path, false, null);
 //        ArrayList<BoundaryInfo> boundaryList = boundaryCollect.getBoundaryList();
 //
 //        assertNotNull(boundaryList);
@@ -106,7 +106,7 @@ public class BoundaryCollectTest {
     @Test
     public void testMath15() {
         String path = "experiment//searchcode//math-double-pow";
-        BoundaryCollect boundaryCollect = new BoundaryCollect(path);
+        BoundaryCollect boundaryCollect = new BoundaryCollect(path, false, null);
         ArrayList<BoundaryInfo> boundaryList = boundaryCollect.getBoundaryList();
 
         assertNotNull(boundaryList);
@@ -123,7 +123,7 @@ public class BoundaryCollectTest {
     @Test
     public void testMath37() {
         String path = "experiment//searchcode//if-double-elitismRate";
-        BoundaryCollect boundaryCollect = new BoundaryCollect(path);
+        BoundaryCollect boundaryCollect = new BoundaryCollect(path, false, null);
         ArrayList<BoundaryInfo> boundaryList = boundaryCollect.getBoundaryList();
 
         assertNotNull(boundaryList);
@@ -141,7 +141,7 @@ public class BoundaryCollectTest {
     @Test
     public void testMath47() {
         String path = "experiment//searchcode//math-complex";
-        BoundaryCollect boundaryCollect = new BoundaryCollect(path);
+        BoundaryCollect boundaryCollect = new BoundaryCollect(path, false, null);
         ArrayList<BoundaryInfo> boundaryList = boundaryCollect.getBoundaryList();
 
         assertNotNull(boundaryList);

@@ -112,7 +112,7 @@ public class MathUtilsTest {
 
 
         String path = "experiment//searchcode//if-Complex";
-        BoundaryCollect boundaryCollect = new BoundaryCollect(path);
+        BoundaryCollect boundaryCollect = new BoundaryCollect(path, true, "Complex");
         boundaryWithFreqs = boundaryCollect.getBoundaryWithFreqList();
 
         Log log = new Log("log//if-Complex.log");

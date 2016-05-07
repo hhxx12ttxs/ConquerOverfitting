@@ -96,7 +96,7 @@ public class SearchBoundaryFilter {
         }
         if (codePackage.exists()) {
             if (codePackage.list().length > 30 || VariableUtils.isExpression(info)){
-                BoundaryCollect boundaryCollect = new BoundaryCollect(codePackage.getAbsolutePath());
+                BoundaryCollect boundaryCollect = new BoundaryCollect(codePackage.getAbsolutePath(), false, null);
                 List<BoundaryWithFreq> boundaryList = boundaryCollect.getBoundaryWithFreqList();
                 return boundaryList;
             }
@@ -117,7 +117,7 @@ public class SearchBoundaryFilter {
                     codePackage.mkdirs();
                 }
             }
-            BoundaryCollect boundaryCollect = new BoundaryCollect(codePackage.getAbsolutePath());
+            BoundaryCollect boundaryCollect = new BoundaryCollect(codePackage.getAbsolutePath(), false, null);
             List<BoundaryWithFreq> boundaryList = boundaryCollect.getBoundaryWithFreqList();
             return boundaryList;
         }
@@ -135,7 +135,7 @@ public class SearchBoundaryFilter {
                 codePackage.mkdirs();
             }
         }
-        BoundaryCollect boundaryCollect = new BoundaryCollect(codePackage.getAbsolutePath());
+        BoundaryCollect boundaryCollect = new BoundaryCollect(codePackage.getAbsolutePath(), false, null);
         List<BoundaryWithFreq> boundaryList = boundaryCollect.getBoundaryWithFreqList();
         return boundaryList;
     }
@@ -188,7 +188,7 @@ public class SearchBoundaryFilter {
         }
         if (codePackage.exists()) {
             if (codePackage.list().length > 30 || VariableUtils.isExpression(info)){
-                BoundaryCollect boundaryCollect = new BoundaryCollect(codePackage.getAbsolutePath());
+                BoundaryCollect boundaryCollect = new BoundaryCollect(codePackage.getAbsolutePath(), false, null);
                 List<BoundaryInfo> boundaryList = boundaryCollect.getBoundaryList();
                 return boundaryList;
             }
@@ -209,7 +209,7 @@ public class SearchBoundaryFilter {
                     codePackage.mkdirs();
                 }
             }
-            BoundaryCollect boundaryCollect = new BoundaryCollect(codePackage.getAbsolutePath());
+            BoundaryCollect boundaryCollect = new BoundaryCollect(codePackage.getAbsolutePath(), false, null);
             List<BoundaryInfo> boundaryList = boundaryCollect.getBoundaryList();
             return boundaryList;
         }
@@ -227,7 +227,7 @@ public class SearchBoundaryFilter {
                 codePackage.mkdirs();
             }
         }
-        BoundaryCollect boundaryCollect = new BoundaryCollect(codePackage.getAbsolutePath());
+        BoundaryCollect boundaryCollect = new BoundaryCollect(codePackage.getAbsolutePath(), false, null);
         List<BoundaryInfo> boundaryList = boundaryCollect.getBoundaryList();
         return boundaryList;
     }
@@ -272,7 +272,7 @@ public class SearchBoundaryFilter {
                 FileUtils.deleteDir(codePackage);
             }
             else {
-                BoundaryCollect boundaryCollect = new BoundaryCollect(codePackage.getAbsolutePath());
+                BoundaryCollect boundaryCollect = new BoundaryCollect(codePackage.getAbsolutePath(), false, null);
                 List<BoundaryInfo> boundaryList = boundaryCollect.getBoundaryList();
                 //FileUtils.deleteDir(codePackage);
                 return boundaryList;
@@ -290,7 +290,7 @@ public class SearchBoundaryFilter {
                 }
 
             }
-            BoundaryCollect boundaryCollect = new BoundaryCollect(codePackage.getAbsolutePath());
+            BoundaryCollect boundaryCollect = new BoundaryCollect(codePackage.getAbsolutePath(), false, null);
             List<BoundaryInfo> boundaryList = boundaryCollect.getBoundaryList();
             //FileUtils.deleteDir(complexCodePackage);
             return boundaryList;
@@ -308,7 +308,7 @@ public class SearchBoundaryFilter {
                 codePackage.mkdirs();
             }
         }
-        BoundaryCollect boundaryCollect = new BoundaryCollect(codePackage.getAbsolutePath());
+        BoundaryCollect boundaryCollect = new BoundaryCollect(codePackage.getAbsolutePath(), false, null);
         List<BoundaryInfo> boundaryList = boundaryCollect.getBoundaryList();
         FileUtils.deleteDir(simpleCodePackage);
         return boundaryList;

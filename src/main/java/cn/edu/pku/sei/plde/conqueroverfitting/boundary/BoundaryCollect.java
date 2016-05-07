@@ -20,9 +20,15 @@ public class BoundaryCollect {
     private ArrayList<String> filesPath;
     private ArrayList<BoundaryInfo> boundaryList;
 
-    public BoundaryCollect(String rootPath) {
+    private boolean isClass;
+    public String className;
+
+    public BoundaryCollect(String rootPath, boolean isClass, String className) {
         this.rootPath = rootPath;
         boundaryList = new ArrayList<BoundaryInfo>();
+        this.isClass = isClass;
+        this.className = className;
+
         generateBoundaryList();
     }
 
@@ -74,12 +80,22 @@ public class BoundaryCollect {
             }
         }
 
+        if(isClass){
+            Iterator<BoundaryWithFreq> iterator = boundaryWithFreqs.iterator();
+            while(iterator.hasNext()){
+                String value = iterator.next().value;
+                if(!value.contains(className) || value.contains("{")){
+                    iterator.remove();
+                }
+            }
+        }
+
         Collections.sort(boundaryWithFreqs, new ComparatorBounaryWithFreqs());
 
         int size = boundaryWithFreqs.size();
 
         for(int i = 10; i < size; i ++){
-            boundaryWithFreqs.remove(5);
+            boundaryWithFreqs.remove(10);
         }
 
         return boundaryWithFreqs;
