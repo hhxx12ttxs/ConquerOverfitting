@@ -11,6 +11,7 @@ import org.apache.commons.lang.StringUtils;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Created by yanrunfa on 16/4/1.
@@ -76,7 +77,11 @@ public class MethodTwoFixer {
                         boolean result = false;
                         if (!LineUtils.isIfAndElseIfLine(lastLineString)) {
                             ifStatement = getIfStatementFromString(ifString);
-                            result = fixWithAddIf(blockStartLine, endLine, ifStatement,entry.getKey(), false, project, debug);
+                            try {
+                                result = fixWithAddIf(blockStartLine, endLine, ifStatement,entry.getKey(), false, project, debug);
+                            } catch (TimeoutException e){
+                                return false;
+                            }
                             if (result) {
                                 correctStartLine = blockStartLine-1;
                                 correctEndLine = endLine;
@@ -88,11 +93,15 @@ public class MethodTwoFixer {
                         else {
                             String ifEnd = lastLineString.substring(lastLineString.lastIndexOf(')'));
                             lastLineString = lastLineString.substring(0, lastLineString.lastIndexOf(')'));
-                            if (lastLineString.contains(removeBracket(getIfStringFromStatement(ifString)))){
+                            if (lastLineString.replace(" ","").contains(removeBracket(getIfStringFromStatement(ifString)).replace(" ",""))){
                                 return false;
                             }
                             ifStatement =lastLineString+ "&&" + getIfStringFromStatement(getIfStatementFromString(ifString)) + ifEnd;
-                            result = fixWithAddIf(blockStartLine-1, endLine, ifStatement,entry.getKey(),  true, project, debug);
+                            try {
+                                result = fixWithAddIf(blockStartLine-1, endLine, ifStatement,entry.getKey(),  true, project, debug);
+                            } catch (TimeoutException e){
+                                return false;
+                            }
                             if (result){
                                 correctStartLine = blockStartLine-1;
                                 correctEndLine = endLine;
@@ -101,7 +110,11 @@ public class MethodTwoFixer {
                                 return true;
                             }else{
                                 ifStatement =lastLineString+ "||" +getIfStringFromStatement(ifString) + ifEnd;
-                                result = fixWithAddIf(blockStartLine-1, endLine, ifStatement,entry.getKey(),  true, project, debug);
+                                try {
+                                    result = fixWithAddIf(blockStartLine-1, endLine, ifStatement,entry.getKey(),  true, project, debug);
+                                } catch (TimeoutException e){
+                                    return false;
+                                }
                                 if (result){
                                     correctStartLine = blockStartLine-1;
                                     correctEndLine = endLine;
@@ -155,7 +168,7 @@ public class MethodTwoFixer {
         return ifStatement;
     }
 
-    private boolean fixWithAddIf(int ifStartLine, int ifEndLine, String ifStatement,String testMessage, boolean replace, String project, boolean debug){
+    private boolean fixWithAddIf(int ifStartLine, int ifEndLine, String ifStatement,String testMessage, boolean replace, String project, boolean debug) throws TimeoutException{
         String testClassName = testMessage.split("#")[0];
         String testMethodName = testMessage.split("#")[1];
         int assertLine = Integer.valueOf(testMessage.split("#")[2]);
@@ -190,6 +203,9 @@ public class MethodTwoFixer {
         System.out.print("Method 2 try patch: "+ifStatement+" in line: "+ifStartLine);
         if (errAssertAfterFix < errAssertBeforeFix || errAssertAfterFix == 0) {
             int errorTestNumAfterFix = TestUtils.getFailTestNumInProject(project);
+            if (errorTestNumAfterFix == Integer.MAX_VALUE){
+                throw new TimeoutException();
+            }
             if (errorTestNumAfterFix < _errorTestNum){
                 System.out.println(" fix success");
                 if (debug){

@@ -7,7 +7,10 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.text.Format;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
 import java.util.concurrent.*;
 
 /**
@@ -30,8 +33,13 @@ public class Main {
             System.exit(0);
         }
         deleteTempFile();
+        List<String> bannedList = new ArrayList<>();
         if (args.length == 2){
-            if (args[1].contains(":")){
+            if (args[1].startsWith("ban:")){
+                String banned = args[1].substring(args[1].indexOf(":")+1);
+                bannedList.addAll(Arrays.asList(banned.split(":")));
+            }
+            else if (args[1].contains(":")){
                 for (String name: args[1].split(":")){
                     System.out.println("Main: fixing project "+name);
                     try {
@@ -41,6 +49,7 @@ public class Main {
                         e.printStackTrace();
                     }
                 }
+                System.exit(0);
             }
             else {
                 String projectName = args[1];
@@ -49,13 +58,18 @@ public class Main {
                 } catch (Exception e){
                     e.printStackTrace();
                 }
+                System.exit(0);
             }
-            System.exit(0);
+
         }
         for (File sub_file : sub_files){
             if (sub_file.isDirectory()){
                 System.out.println("Main: fixing project "+sub_file.getName());
                 try {
+                    if (bannedList.contains(sub_file.getName())){
+                        System.out.println("Main: jumped project "+sub_file.getName());
+                        continue;
+                    }
                     fixProject(sub_file.getName(), path);
                 }
                 catch (Exception e){
@@ -74,8 +88,7 @@ public class Main {
             System.out.println("Main: cannot recognize project name \""+project+"\"");
             return;
         }
-        int timeout = 1200;
-        TimeLine timeLine = new TimeLine(timeout);
+        TimeLine timeLine = new TimeLine(Config.TOTAL_RUN_TIMEOUT);
         String projectType = project.split("_")[0];
         int projectNumber = Integer.valueOf(project.split("_")[1]);
         MainProcess process = new MainProcess(path);

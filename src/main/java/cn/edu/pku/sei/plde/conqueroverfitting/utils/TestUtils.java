@@ -1,6 +1,9 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.utils;
 
+import cn.edu.pku.sei.plde.conqueroverfitting.gatherer.GathererJava;
 import cn.edu.pku.sei.plde.conqueroverfitting.junit.JunitRunner;
+import cn.edu.pku.sei.plde.conqueroverfitting.main.Config;
+import com.google.common.util.concurrent.Service;
 import com.gzoltar.core.GZoltar;
 import com.gzoltar.core.instr.testing.TestResult;
 import javassist.NotFoundException;
@@ -10,6 +13,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.*;
 
 /**
  * Created by yanrunfa on 16/3/8.
@@ -38,7 +42,22 @@ public class TestUtils {
             gzoltar.addTestPackageNotToExecute("org.junit");
             gzoltar.addTestToExecute(classname);
             gzoltar.addClassNotToInstrument(classname);
-            gzoltar.run();
+            ExecutorService service = Executors.newSingleThreadExecutor();
+            Future<Boolean> future = service.submit(new GzoltarRunProcess(gzoltar));
+            try {
+                future.get(Config.GZOLTAR_RUN_TIMEOUT, TimeUnit.SECONDS);
+            } catch (InterruptedException e){
+                future.cancel(true);
+                e.printStackTrace();
+                return "";
+            } catch (TimeoutException e){
+                future.cancel(true);
+                e.printStackTrace();
+                return "";
+            } catch (ExecutionException e){
+                future.cancel(true);
+                return "";
+            }
         } catch (NullPointerException e){
             throw new NotFoundException("Test Class " + classname +  " No Found in Test Class Path " + testPath);
         } catch (IOException e){
@@ -89,6 +108,9 @@ public class TestUtils {
 
     public static int getFailTestNumInProject(String projectName){
         String testResult = getDefects4jTestResult(projectName);
+        if (testResult.equals("")){//error occurs in run
+            return Integer.MAX_VALUE;
+        }
         if (!testResult.contains("Failing tests:")){
             return 0;
         }
@@ -121,5 +143,18 @@ public class TestUtils {
         path += StringUtils.join(additionalPath,System.getProperty("path.separator"));
         path += "\"";
         return path;
+    }
+}
+
+class GzoltarRunProcess implements Callable<Boolean> {
+    public GZoltar gzoltar;
+
+    public GzoltarRunProcess(GZoltar gzoltar) {
+        this.gzoltar = gzoltar;
+    }
+
+    public synchronized Boolean call() {
+        gzoltar.run();
+        return true;
     }
 }
