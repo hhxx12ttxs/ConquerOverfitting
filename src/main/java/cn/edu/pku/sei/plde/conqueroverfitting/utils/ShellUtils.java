@@ -27,19 +27,21 @@ public class ShellUtils {
             future.cancel(true);
             service.shutdownNow();
             e.printStackTrace();
-
             p.destroy();
+            RuntimeUtils.killProcess();
             return "";
         } catch (TimeoutException e){
             future.cancel(true);
             service.shutdownNow();
             p.destroy();
+            RuntimeUtils.killProcess();
             e.printStackTrace();
             return "";
         } catch (ExecutionException e){
             future.cancel(true);
             service.shutdownNow();
             p.destroy();
+            RuntimeUtils.killProcess();
             e.printStackTrace();
             return "";
         }

@@ -13,6 +13,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeEnum;
 import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.FileUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.MathUtils;
+import cn.edu.pku.sei.plde.conqueroverfitting.utils.RuntimeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.VariableUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.visible.model.VariableInfo;
 import org.apache.commons.collections.iterators.ArrayListIterator;
@@ -135,14 +136,17 @@ public class SearchBoundaryFilter {
         } catch (InterruptedException e){
             future.cancel(true);
             service.shutdownNow();
+            RuntimeUtils.killProcess();
             e.printStackTrace();
         } catch (TimeoutException e){
             future.cancel(true);
             service.shutdownNow();
+            RuntimeUtils.killProcess();
             e.printStackTrace();
         } catch (ExecutionException e){
             service.shutdownNow();
             future.cancel(true);
+            RuntimeUtils.killProcess();
             e.printStackTrace();
         }
     }

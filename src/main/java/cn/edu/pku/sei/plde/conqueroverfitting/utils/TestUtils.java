@@ -49,16 +49,19 @@ public class TestUtils {
             } catch (InterruptedException e){
                 future.cancel(true);
                 service.shutdownNow();
+                RuntimeUtils.killProcess();
                 e.printStackTrace();
                 return "timeout";
             } catch (TimeoutException e){
                 future.cancel(true);
                 service.shutdownNow();
+                RuntimeUtils.killProcess();
                 e.printStackTrace();
                 return "timeout";
             } catch (ExecutionException e){
                 service.shutdownNow();
                 future.cancel(true);
+                RuntimeUtils.killProcess();
                 return "timeout";
             }
         } catch (NullPointerException e){
