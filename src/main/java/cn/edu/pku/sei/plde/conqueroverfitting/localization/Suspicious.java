@@ -227,7 +227,6 @@ public class Suspicious implements Serializable{
                 info.isLocalVariable = true;
             }
             variableInfos.addAll(subVariableInfo);
-
         }
         variableInfos.addAll(locals);
         variableCollect = VariableCollect.GetInstance(getClassSrcIndex(classSrc));
@@ -251,7 +250,8 @@ public class Suspicious implements Serializable{
         }
         variableInfos.addAll(parameters);
 
-        if (!_isConstructor){
+        //if (!_isConstructor){
+        if (false){
             variableCollect = VariableCollect.GetInstance(getClassSrcIndex(classSrc));
             LinkedHashMap<String, ArrayList<VariableInfo>> classvars = variableCollect.getVisibleFieldInAllClassMap(classSrcPath);
             if (classvars.containsKey(classSrcPath)){

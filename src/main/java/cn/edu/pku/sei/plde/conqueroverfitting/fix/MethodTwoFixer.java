@@ -7,6 +7,7 @@ import cn.edu.pku.sei.plde.conqueroverfitting.localization.common.support.Factor
 import cn.edu.pku.sei.plde.conqueroverfitting.type.TypeUtils;
 import cn.edu.pku.sei.plde.conqueroverfitting.utils.*;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.math.NumberUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -74,8 +75,9 @@ public class MethodTwoFixer {
                     String ifStatement="";
                     for (int endLine: getLinesCanAdd(blockStartLine, blockEndLine,_code)) {
                         String lastLineString = CodeUtils.getLineFromCode(_code, blockStartLine-1);
+                        String wholeLineString = CodeUtils.getWholeLineFromCodeReverse(_code, blockStartLine-1);
                         boolean result = false;
-                        if (!LineUtils.isIfAndElseIfLine(lastLineString)) {
+                        if (!LineUtils.isIfAndElseIfLine(wholeLineString)) {
                             ifStatement = getIfStatementFromString(ifString);
                             try {
                                 result = fixWithAddIf(blockStartLine, endLine, ifStatement,entry.getKey(), false, project, debug);
@@ -93,8 +95,8 @@ public class MethodTwoFixer {
                         else {
                             String ifEnd = lastLineString.substring(lastLineString.lastIndexOf(')'));
                             lastLineString = lastLineString.substring(0, lastLineString.lastIndexOf(')'));
-                            if (lastLineString.replace(" ","").contains(removeBracket(getIfStringFromStatement(ifString)).replace(" ",""))){
-                                return false;
+                            if (!ifFilter(lastLineString, ifString)){
+                                continue;
                             }
                             ifStatement =lastLineString+ "&&" + getIfStringFromStatement(getIfStatementFromString(ifString)) + ifEnd;
                             try {
@@ -127,6 +129,49 @@ public class MethodTwoFixer {
                     }
 
                 }
+            }
+        }
+        return false;
+    }
+
+    private boolean ifFilter(String ifBefore, String newIf){
+        ifBefore = ifBefore.replace(" ","");
+        if (ifBefore.startsWith("if(")){
+            ifBefore = ifBefore.substring(ifBefore.indexOf("(")+1);
+        }
+        newIf = newIf.replace(" ","");
+        newIf = removeBracket(getIfStringFromStatement(newIf));
+        if (newIf.equals(ifBefore)){
+            return false;
+        }
+        if (ifBefore.contains(">")){
+            try {
+                if (ifBefore.contains(">=")){
+                    MathUtils.parseStringValue(ifBefore.substring(ifBefore.indexOf("=")+1));
+                }
+                else {
+                    MathUtils.parseStringValue(ifBefore.substring(ifBefore.indexOf(">")+1));
+                }
+            } catch (NumberFormatException e){
+                return false;
+            }
+            if (newIf.contains(ifBefore.substring(0, ifBefore.indexOf(">")))){
+                return true;
+            }
+        }
+        if (ifBefore.contains("<")){
+            try {
+                if (ifBefore.contains("<=")){
+                    MathUtils.parseStringValue(ifBefore.substring(ifBefore.indexOf("=")+1));
+                }
+                else {
+                    MathUtils.parseStringValue(ifBefore.substring(ifBefore.indexOf("<")+1));
+                }
+            } catch (NumberFormatException e){
+                return false;
+            }
+            if (newIf.contains(ifBefore.substring(0, ifBefore.indexOf("<")))){
+                return true;
             }
         }
         return false;
@@ -172,7 +217,15 @@ public class MethodTwoFixer {
         String testClassName = testMessage.split("#")[0];
         String testMethodName = testMessage.split("#")[1];
         int assertLine = Integer.valueOf(testMessage.split("#")[2]);
-        AssertComment comment = new AssertComment(_suspicious._assertsMap.get(testClassName+"#"+testMethodName), assertLine);
+        Asserts asserts = _suspicious._assertsMap.get(testClassName+"#"+testMethodName);
+        AssertComment comment = new AssertComment(asserts, assertLine);
+        List<String> thrownExceptions = new ArrayList<>();
+        if (asserts._thrownExceptionMap.containsKey(assertLine)){
+            thrownExceptions = asserts._thrownExceptionMap.get(assertLine);
+        }
+        if (!canBeEqualsNull(ifStatement, thrownExceptions)){
+        //    return false;
+        }
         comment.comment();
 
         File targetJavaFile = new File(FileUtils.getFileAddressOfJava(_classSrcPath, _className));
@@ -197,13 +250,18 @@ public class MethodTwoFixer {
             return false;
         }
 
-        Asserts asserts = new Asserts(_classpath,_classSrcPath, _testClassPath, _testSrcPath, testClassName, testMethodName, project);
-        int errAssertAfterFix = asserts.errorNum();
-        int errAssertBeforeFix = _suspicious._assertsMap.get(testClassName+"#"+testMethodName).errorNum();
+        Asserts assertsAfterFix = new Asserts(_classpath,_classSrcPath, _testClassPath, _testSrcPath, testClassName, testMethodName, project);
+        if (assertsAfterFix.timeout){
+            comment.uncomment();
+            return false;
+        }
+        int errAssertAfterFix = assertsAfterFix.errorNum();
+        int errAssertBeforeFix = asserts.errorNum();
         System.out.print("Method 2 try patch: "+ifStatement+" in line: "+ifStartLine);
         if (errAssertAfterFix < errAssertBeforeFix || errAssertAfterFix == 0) {
             int errorTestNumAfterFix = TestUtils.getFailTestNumInProject(project);
             if (errorTestNumAfterFix == Integer.MAX_VALUE){
+                comment.uncomment();
                 throw new TimeoutException();
             }
             if (errorTestNumAfterFix < _errorTestNum){
@@ -298,6 +356,17 @@ public class MethodTwoFixer {
         return path;
     }
 
+    private static boolean canBeEqualsNull(String ifString, List<String> thrownExceptions){
+        if (!ifString.contains("null")){
+            return true;
+        }
+        for (String exception: thrownExceptions){
+            if (exception.contains("java.lang.NullPointerException")){
+                return true;
+            }
+        }
+        return false;
+    }
 
 
 }

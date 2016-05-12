@@ -134,11 +134,14 @@ public class SearchBoundaryFilter {
             future.get(Config.SEARCH_BOUNDARY_TIMEOUT, TimeUnit.SECONDS);
         } catch (InterruptedException e){
             future.cancel(true);
+            service.shutdownNow();
             e.printStackTrace();
         } catch (TimeoutException e){
             future.cancel(true);
+            service.shutdownNow();
             e.printStackTrace();
         } catch (ExecutionException e){
+            service.shutdownNow();
             future.cancel(true);
             e.printStackTrace();
         }
@@ -162,6 +165,9 @@ class SearchCodeProcess implements Callable<Boolean> {
         GathererJava GathererJava = new GathererJava(keywords, StringUtils.join(keywords, "-"),getProjectFullName(project));
         try {
             GathererJava.searchCode();
+            if (Thread.interrupted()){
+                return false;
+            }
         } catch (Exception e){
             e.printStackTrace();
         }

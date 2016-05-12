@@ -105,6 +105,9 @@ public class ReturnCapturer {
 
     private String run() throws Exception{
         _testTrace = TestUtils.getTestTrace(_classpath, _testclasspath,_testClassName,_testMethodName);
+        if (_testTrace != null && _testTrace.equals("timeout")){
+            return "";
+        }
         _classCode = FileUtils.getCodeFromFile(_fileaddress);
         _functionCode = FileUtils.getTestFunctionCodeFromCode(_classCode, _testMethodName);
         _errorLineNum = getErrorLineNumFromTestTrace();
@@ -177,7 +180,8 @@ public class ReturnCapturer {
             return "throw new " +expectedClass.replace(".class","").trim() + "();";
         }
 
-        throw new Exception("No Fix Found for This Test");
+        System.out.println("No Fix Found for This Test");
+        return "";
     }
 
 
@@ -195,6 +199,9 @@ public class ReturnCapturer {
         }
         else if (lineString.contains("assert")){
             try {
+                if (!_functionCode.contains("{") || !_functionCode.contains("}")){
+                    return "";
+                }
                 String functionBody = _functionCode.substring(_functionCode.indexOf('{')+1,_functionCode.lastIndexOf('}'));
                 String linesBefore = "";
                 for (String line: functionBody.split("\n")){

@@ -32,7 +32,6 @@ public class Main {
             System.out.println("No file in path");
             System.exit(0);
         }
-        deleteTempFile();
         List<String> bannedList = new ArrayList<>();
         if (args.length == 2){
             if (args[1].startsWith("ban:")){
@@ -40,6 +39,7 @@ public class Main {
                 bannedList.addAll(Arrays.asList(banned.split(":")));
             }
             else if (args[1].contains(":")){
+                deleteTempFile();
                 for (String name: args[1].split(":")){
                     System.out.println("Main: fixing project "+name);
                     try {
@@ -62,6 +62,7 @@ public class Main {
             }
 
         }
+        deleteTempFile();
         for (File sub_file : sub_files){
             if (sub_file.isDirectory()){
                 System.out.println("Main: fixing project "+sub_file.getName());

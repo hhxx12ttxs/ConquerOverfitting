@@ -1,5 +1,6 @@
 package cn.edu.pku.sei.plde.conqueroverfitting.fix;
 
+import cn.edu.pku.sei.plde.conqueroverfitting.assertCollect.Asserts;
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.BoundaryGenerator;
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.Interval;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Localization;
@@ -50,6 +51,10 @@ public class SuspiciousFixer {
     }
 
     public boolean mainFixProcess(){
+        //if (errorTestNum == Integer.MAX_VALUE){
+        //    timeLine.timeOutNow();
+        //    return false;
+        //}
         ExceptionExtractor extractor = new ExceptionExtractor(suspicious);
         Map<Integer, List<TraceResult>> traceResultWithLine = traceResultClassify(traceResults);
         Map<Integer, List<TraceResult>> firstToGo = new TreeMap<Integer, List<TraceResult>>(new Comparator<Integer>() {
@@ -98,12 +103,18 @@ public class SuspiciousFixer {
             }
             boolean method1FixSuccess = false;
             if (!onlyMethod2){
+                if (timeLine.isTimeout()){
+                    return false;
+                }
                 String methodOneResult = fixMethodOne(suspicious, boundarys, project, line, errorTestNum, false);
                 RecordUtils.printRuntimeMessage(suspicious, project, exceptionVariables, echelons, line);
                 if (!methodOneResult.equals("")) {
                     printHistoryBoundary(boundarys, methodOneResult);
                     method1FixSuccess = true;
                 }
+            }
+            if (timeLine.isTimeout()){
+                return false;
             }
             AngelicFilter filter = new AngelicFilter(suspicious, project);
             String methodTwoResult = fixMethodTwo(suspicious, filter.filter(line,boundarys,traceResults), project, line, errorTestNum, false);
@@ -112,7 +123,7 @@ public class SuspiciousFixer {
                 printHistoryBoundary(boundarys, methodTwoResult);
                 return true;
             }
-            else if (method1FixSuccess){
+            else if (method1FixSuccess && !timeLine.isTimeout()){
                 String methodOneResult = fixMethodOne(suspicious, boundarys, project, line, errorTestNum, false);
                 return true;
             }
@@ -237,8 +248,10 @@ public class SuspiciousFixer {
 
     private List<String> getBoundary(ExceptionVariable exceptionVariable){
         if (!boundarysMap.containsKey(exceptionVariable)){
-            long startTime = System.currentTimeMillis();
             List<String> boundarys = BoundaryGenerator.generate(suspicious,exceptionVariable, trueValues, falseValues, project);
+            if(timeLine.isTimeout()){
+                return new ArrayList<>();
+            }
             boundarysMap.put(exceptionVariable, boundarys);
         }
         return boundarysMap.get(exceptionVariable);
@@ -268,7 +281,12 @@ public class SuspiciousFixer {
             String testClassName = entry.getKey().split("#")[0];
             String testMethodName = entry.getKey().split("#")[1];
             int assertLine = Integer.valueOf(entry.getKey().split("#")[2]);
-            AssertComment comment = new AssertComment(suspicious._assertsMap.get(testClassName+"#"+testMethodName), assertLine);
+            Asserts asserts = suspicious._assertsMap.get(testClassName+"#"+testMethodName);
+            List<String> thrownExceptions = new ArrayList<>();
+            if (asserts._thrownExceptionMap.containsKey(assertLine)){
+                thrownExceptions = asserts._thrownExceptionMap.get(assertLine);
+            }
+            AssertComment comment = new AssertComment(asserts, assertLine);
             if (assertLine == -1){
                 testClassName = suspicious._failTests.get(0).split("#")[0];
                 testMethodName = suspicious._failTests.get(0).split("#")[1];
@@ -289,6 +307,9 @@ public class SuspiciousFixer {
                 for (String statemnt: ifStatement){
                     if (!ifStringFilter(statemnt)){
                         bannedStatement.add(statemnt);
+                    }
+                    if (!canBeEqualsNull(statemnt, thrownExceptions)){
+                        //bannedStatement.add(statemnt);
                     }
                 }
                 ifStatement.removeAll(bannedStatement);
@@ -325,8 +346,21 @@ public class SuspiciousFixer {
         return "";
     }
 
+    private static boolean canBeEqualsNull(String ifString, List<String> thrownExceptions){
+        if (!ifString.contains("null")){
+            return true;
+        }
+        for (String exception: thrownExceptions){
+            if (exception.contains("java.lang.NullPointerException")){
+                return true;
+            }
+        }
+        return false;
+    }
+
 
     private static boolean ifStringFilter(String ifStatement){
+
         if (ifStatement.contains("==") || ifStatement.contains("!=") || ifStatement.contains("equals") || ifStatement.contains("instanceof")){
             return true;
         }

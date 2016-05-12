@@ -34,7 +34,9 @@ public class Asserts {
     public int _assertNums;
     public List<String> _asserts;
     public Map<String, Integer> _assertLineMap;
+    public Map<Integer,List<String>> _thrownExceptionMap = new HashMap<>();
     public String _project;
+    public boolean timeout = false;
 
     public Asserts(String classpath, String srcPath, String testClasspath, String testSrcPath, String testClassname, String testMethodName, List<String> libPath, String project) {
         _libPath = libPath;
@@ -96,10 +98,18 @@ public class Asserts {
                 if (trace == null || trace.equals(oldTrace) || trace.contains("NoClassDefFoundError") || trace.contains("NoSuchMethodError")){
                     break;
                 }
+                if (trace.equals("timeout")){
+                    timeout = true;
+                    break;
+                }
                 oldTrace = trace;
+                List<String> thrownExceptions = new ArrayList<>();
                 for (String line : trace.split("\n")){
                     if (line.contains(_testClassname) && line.contains(_testMethodName) && line.contains("(") && line.contains(")") && line.contains(":")){
                         lineNum =  Integer.valueOf(line.substring(line.lastIndexOf("(")+1,line.lastIndexOf(")")).split(":")[1]);
+                    }
+                    if (line.contains("Exception")){
+                        thrownExceptions.add(line);
                     }
                 }
                 if (result.contains(lineNum)) {
@@ -111,7 +121,7 @@ public class Asserts {
                     if (LineUtils.isLineInFor(code, lineNum)){
                         RecordUtils.record("Assert In For: "+_project+" Test: "+_testClassname+"#"+_testMethodName+"#"+lineNum, "assertInFor");
                     }
-
+                    _thrownExceptionMap.put(lineNum, thrownExceptions);
                     result.add(lineNum);
                 }
                 if (lineString.startsWith("fail(")){
@@ -129,6 +139,7 @@ public class Asserts {
                                 SourceUtils.commentCodeInSourceFile(tempJavaFile, num);
                                 num--;
                             }
+                            _thrownExceptionMap.put(i, thrownExceptions);
                             result.add(i);
                             _errorThrowLines.add(lineNum);
                             break;

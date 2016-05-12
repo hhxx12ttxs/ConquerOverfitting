@@ -283,6 +283,16 @@ public class CodeUtils {
         return result;
     }
 
+    public static String getWholeLineFromCodeReverse(String code, int line){
+        String result = "";
+        int brackets;
+        do {
+            result = getLineFromCode(code, line--)+result;
+            brackets = CodeUtils.countChar(result, ')') - CodeUtils.countChar(result, '(');
+        } while (brackets != 0);
+        return result;
+    }
+
     public static List<String> divideParameter(String line, int level){
         return divideParameter(line, level, true);
     }

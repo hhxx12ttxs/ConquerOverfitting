@@ -48,15 +48,18 @@ public class TestUtils {
                 future.get(Config.GZOLTAR_RUN_TIMEOUT, TimeUnit.SECONDS);
             } catch (InterruptedException e){
                 future.cancel(true);
+                service.shutdownNow();
                 e.printStackTrace();
-                return "";
+                return "timeout";
             } catch (TimeoutException e){
                 future.cancel(true);
+                service.shutdownNow();
                 e.printStackTrace();
-                return "";
+                return "timeout";
             } catch (ExecutionException e){
+                service.shutdownNow();
                 future.cancel(true);
-                return "";
+                return "timeout";
             }
         } catch (NullPointerException e){
             throw new NotFoundException("Test Class " + classname +  " No Found in Test Class Path " + testPath);
@@ -154,6 +157,9 @@ class GzoltarRunProcess implements Callable<Boolean> {
     }
 
     public synchronized Boolean call() {
+        if (Thread.interrupted()){
+            return false;
+        }
         gzoltar.run();
         return true;
     }

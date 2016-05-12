@@ -25,14 +25,21 @@ public class ShellUtils {
             return future.get(Config.SHELL_RUN_TIMEOUT, TimeUnit.SECONDS);
         } catch (InterruptedException e){
             future.cancel(true);
+            service.shutdownNow();
             e.printStackTrace();
+
+            p.destroy();
             return "";
         } catch (TimeoutException e){
             future.cancel(true);
+            service.shutdownNow();
+            p.destroy();
             e.printStackTrace();
             return "";
         } catch (ExecutionException e){
             future.cancel(true);
+            service.shutdownNow();
+            p.destroy();
             e.printStackTrace();
             return "";
         }
@@ -91,6 +98,9 @@ class ReadShellProcess implements Callable<String> {
             br = new BufferedReader(new InputStreamReader(in));
             while ((s = br.readLine()) != null && s.length()!=0) {
                 if (sb.length() < 1000000){
+                    if (Thread.interrupted()){
+                        return sb.toString();
+                    }
                     System.out.println(s);
                     sb.append(System.getProperty("line.separator"));
                     sb.append(s);
@@ -101,6 +111,9 @@ class ReadShellProcess implements Callable<String> {
             in = new BufferedInputStream(p.getErrorStream());
             br = new BufferedReader(new InputStreamReader(in));
             while ((s = br.readLine()) != null && s.length()!=0) {
+                if (Thread.interrupted()){
+                    return sb.toString();
+                }
                 if (sb.length() < 1000000){
                     System.out.println(s);
                     sb.append(System.getProperty("line.separator"));
