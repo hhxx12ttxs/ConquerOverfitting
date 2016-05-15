@@ -127,6 +127,7 @@ class ReadShellProcess implements Callable<String> {
         } catch (IOException e){
             e.printStackTrace();
         }
+        p.destroy();
         return sb.toString();
     }
 }

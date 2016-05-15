@@ -118,7 +118,7 @@ public class TestUtils {
             return Integer.MAX_VALUE;
         }
         if (!testResult.contains("Failing tests:")){
-            return 0;
+            return Integer.MAX_VALUE;
         }
         int errorNum = 0;
         for (String lineString: testResult.split("\n")){

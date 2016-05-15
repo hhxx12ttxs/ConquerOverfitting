@@ -250,8 +250,7 @@ public class Suspicious implements Serializable{
         }
         variableInfos.addAll(parameters);
 
-        //if (!_isConstructor){
-        if (false){
+        if (!_isConstructor){
             variableCollect = VariableCollect.GetInstance(getClassSrcIndex(classSrc));
             LinkedHashMap<String, ArrayList<VariableInfo>> classvars = variableCollect.getVisibleFieldInAllClassMap(classSrcPath);
             if (classvars.containsKey(classSrcPath)){

@@ -111,6 +111,9 @@ public class Localization  {
             try {
                 ObjectInputStream objectInputStream = new ObjectInputStream(new FileInputStream(suspicousFile));
                 List<Suspicious> result = (List<Suspicious>) objectInputStream.readObject();
+                if (result.size()>12){
+                    result = result.subList(0,12);
+                }
                 return result;
             }catch (Exception e){
                 System.out.println("Reloading Localization Result...");
@@ -162,6 +165,9 @@ public class Localization  {
             recordUtils.write(suspicious.classname()+"#"+suspicious.functionnameWithoutParam()+"#"+suspicious.getDefaultErrorLine()+"\n");
         }
         recordUtils.close();
+        if (result.size()>12){
+            result = result.subList(0,12);
+        }
         return result;
     }
 

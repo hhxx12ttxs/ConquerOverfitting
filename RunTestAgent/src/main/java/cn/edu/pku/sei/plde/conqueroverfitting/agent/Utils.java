@@ -179,6 +179,7 @@ public class Utils {
                 errIn.close();
             }
         }
+        p.destroy();
         return sb.toString();
     }
 

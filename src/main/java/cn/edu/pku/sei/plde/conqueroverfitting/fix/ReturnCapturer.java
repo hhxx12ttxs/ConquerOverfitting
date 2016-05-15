@@ -246,25 +246,23 @@ public class ReturnCapturer {
     private String assertProcessing(String assertLine, String statements) throws Exception{
         String assertType = assertLine.substring(0, assertLine.indexOf('('));
         List<String> parameters = CodeUtils.divideParameter(assertLine, 1, false);
-        if (parameters.size() > 3 && parameters.size() <2){
-
-            System.out.println(Arrays.toString(parameters.toArray()));
-            throw new Exception("Function divideParameter Error!");
-        }
         if (parameters.contains("Assert")){
             parameters.remove("Assert");
         }
         if (parameters.size() == 4){
             parameters.remove(0);
         }
-
+        //if ( parameters.size() <2){
+        //    System.out.println(Arrays.toString(parameters.toArray()));
+        //    System.out.println("Function divideParameter Fail");
+        //    return "";
+        //}
         if (assertType.contains("assertEquals") || assertType.contains("assertSame")){
             String callExpression="";
             String returnExpression="";
             List<String> callParam;
             List<String> returnParam;
             String returnString;
-
 
             if (parameters.get(1).contains("(") && parameters.get(1).contains(")") && parameters.get(1).contains(_methodName)){
                 callExpression = parameters.get(1);

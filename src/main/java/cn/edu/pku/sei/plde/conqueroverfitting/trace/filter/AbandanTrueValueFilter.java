@@ -37,6 +37,7 @@ public class AbandanTrueValueFilter {
                 if (entry.getKey().contains(".Comparable")){
                     continue;
                 }
+
                 if (entry.getKey().contains(".null") && entry.getValue().contains("false") && entry.getValue().size() > 1){
                     entry.getValue().remove("false");
                 }
@@ -45,8 +46,13 @@ public class AbandanTrueValueFilter {
                 }
 
                 VariableInfo variableInfo = getVariableInfoWithName(vars, entry.getKey());
+
                 if (variableInfo == null){
                     System.out.println("WARNING: AbandonTrueValueFilter#abandon: Connot Find VariableInfo With Variable Name "+entry.getKey());
+                    continue;
+                }
+                //ban field variable
+                if (variableInfo.isFieldVariable){
                     continue;
                 }
 

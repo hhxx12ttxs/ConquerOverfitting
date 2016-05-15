@@ -21,6 +21,8 @@ public class ReadFile {
 				source = source + line + "\r\n";
 				line = br.readLine();
 			}
+			br.close();
+			fr.close();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
