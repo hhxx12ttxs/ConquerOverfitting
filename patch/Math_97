@@ -1,0 +1,9 @@
+====================================================
+boundary of suspicious: org.apache.commons.math.analysis.BrentSolver#solve#194
+if (sign >= 0&&!(min==3)) {[138,140]
+====================================================
+Tried ifStrings With AssertMessage:org.apache.commons.math.analysis.BrentSolverTest#testRootEndpoints#279
+====================================================
+Banned ifStrings With AssertMessage:org.apache.commons.math.analysis.BrentSolverTest#testRootEndpoints#279
+====================================================
+

@@ -1,0 +1,13 @@
+====================================================
+boundary of suspicious: org.apache.commons.math.analysis.solvers.BrentSolver#solve#138
+if (min==1){throw new IllegalArgumentException();}
+====================================================
+Tried ifStrings With AssertMessage:org.apache.commons.math.analysis.solvers.BrentSolverTest#testBadEndpoints#334
+if (min==1){throw new IllegalArgumentException();}
+====================================================
+Banned ifStrings With AssertMessage:org.apache.commons.math.analysis.solvers.BrentSolverTest#testBadEndpoints#334
+
+
+
+====================================================
+

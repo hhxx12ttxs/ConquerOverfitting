@@ -1,0 +1,349 @@
+import java.util.*;
+
+import javax.swing.JTable;
+import javax.swing.table.*;
+
+import org.darkstorm.minecraft.darkmod.events.RenderEvent;
+import org.darkstorm.minecraft.darkmod.hooks.client.*;
+import org.darkstorm.minecraft.darkmod.mod.Mod;
+import org.darkstorm.minecraft.darkmod.mod.commands.*;
+import org.darkstorm.minecraft.darkmod.mod.util.constants.ChatColor;
+import org.darkstorm.tools.events.Event;
+import org.darkstorm.tools.strings.StringTools;
+import org.lwjgl.opengl.GL11;
+
+public class BlockLocatorMod extends Mod implements CommandListener {
+	public class AWTExceptionHandler {
+		public void handle(Throwable exception) {
+			try {
+				if(exception instanceof NullPointerException) {
+					synchronized(lock) {
+						JTable table = ui.getList();
+						DefaultTableModel model = (DefaultTableModel) table
+								.getModel();
+						Vector<?> data = model.getDataVector();
+						for(int i = 0; i < data.size(); i++) {
+							Object row = data.get(i);
+							if(row == null)
+								data.remove(i);
+						}
+					}
+				}
+				exception.printStackTrace();
+			} catch(Throwable exception2) {
+				exception.printStackTrace();
+			}
+		}
+	}
+
+	private BlockLocatorUI ui;
+	private int[] blockIDs = new int[0];
+	private int radius = 30;
+	private Object lock = new Object();
+	private List<Block> blocks = new ArrayList<Block>();
+
+	public BlockLocatorMod() {
+		ui = new BlockLocatorUI(this);
+		System.setProperty("sun.awt.exception.handler",
+				AWTExceptionHandler.class.getName());
+	}
+
+	@Override
+	public String getFullDescription() {
+		return "";
+	}
+
+	@Override
+	public String getName() {
+		return "Block Locator Mod";
+	}
+
+	@Override
+	public String getShortDescription() {
+		return "Locates blocks";
+	}
+
+	@Override
+	public boolean hasOptions() {
+		return false;
+	}
+
+	@Override
+	public ModControl getControlOption() {
+		return ModControl.TOGGLE;
+	}
+
+	@Override
+	public void onStart() {
+		commandManager.registerListener(new Command("blockid", "/blockid <id>",
+				"Sets the ID for block searching"), this);
+		commandManager.registerListener(
+				new Command("blockradius", "/blockradius <radius>",
+						"Sets the radius for block searching"), this);
+		eventManager.addListener(RenderEvent.class, this);
+		ui.setVisible(true);
+	}
+
+	@Override
+	public void onStop() {
+		commandManager.unregisterListener("blockid");
+		commandManager.unregisterListener("blockradius");
+		eventManager.removeListener(RenderEvent.class, this);
+		ui.setVisible(false);
+		synchronized(lock) {
+			JTable list = ui.getList();
+			DefaultTableModel model = (DefaultTableModel) list.getModel();
+			Vector<?> dataVector = model.getDataVector();
+			dataVector.clear();
+			model.fireTableDataChanged();
+		}
+	}
+
+	@SuppressWarnings("unchecked")
+	@Override
+	public int loop() {
+		synchronized(lock) {
+			try {
+				World world = minecraft.getWorld();
+				boolean visible = ui.isVisible();
+				JTable list = ui.getList();
+				DefaultTableModel model = (DefaultTableModel) list.getModel();
+				blocks.clear();
+				if(world == null) {
+					if(visible)
+						for(int i = model.getRowCount() - 1; i >= 0; i--)
+							model.removeRow(i);
+					return 1000;
+				}
+				Player currentPlayer = minecraft.getPlayer();
+				int playerX = (int) java.lang.Math.round(currentPlayer.getX());
+				int playerY = (int) java.lang.Math.round(currentPlayer.getY());
+				int playerZ = (int) java.lang.Math.round(currentPlayer.getZ());
+
+				for(int x = playerX - radius; x < playerX + radius; x++) {
+					for(int y = playerY - radius; y < playerY + radius; y++) {
+						for(int z = playerZ - radius; z < playerZ + radius; z++) {
+							int block = world.getBlockIDAt(x, y, z);
+							for(int blockID : blockIDs)
+								if(block == blockID)
+									blocks.add(new Block(x, y, z));
+						}
+					}
+				}
+
+				if(!visible)
+					return 1000;
+				TableRowSorter<TableModel> sorter = (TableRowSorter<TableModel>) list
+						.getRowSorter();
+				label: for(int row = 0; row < model.getRowCount(); row++) {
+					int x = (Integer) model.getValueAt(row, 1);
+					int y = (Integer) model.getValueAt(row, 2);
+					int z = (Integer) model.getValueAt(row, 3);
+					for(Block block : blocks) {
+						if(x == block.getX() && y == block.getY()
+								&& z == block.getZ()) {
+							model.setValueAt(
+									getDistanceTo(x, y, z, currentPlayer), row,
+									0);
+							continue label;
+						}
+					}
+					model.removeRow(row);
+				}
+				label: for(Block block : blocks) {
+					for(int row = 0; row < model.getRowCount(); row++) {
+						int x = (Integer) model.getValueAt(row, 1);
+						int y = (Integer) model.getValueAt(row, 2);
+						int z = (Integer) model.getValueAt(row, 3);
+						if(x == block.getX() && y == block.getY()
+								&& z == block.getZ())
+							continue label;
+					}
+					model.addRow(new Object[] {
+							getDistanceTo(block.getX(), block.getY(),
+									block.getZ(), minecraft.getPlayer()),
+							block.getX(), block.getY(), block.getZ() });
+				}
+				sorter.sort();
+				list.repaint();
+			} catch(Exception exception) {}
+		}
+		return 500;
+	}
+
+	private double getDistanceTo(double x, double y, double z, Player player) {
+		double x2 = player.getX();
+		double y2 = player.getY();
+		double z2 = player.getZ();
+		double xResult = java.lang.Math.pow(java.lang.Math.max(x, x2)
+				- java.lang.Math.min(x, x2), 2);
+		double yResult = java.lang.Math.pow(java.lang.Math.max(y, y2)
+				- java.lang.Math.min(y, y2), 2);
+		double zResult = java.lang.Math.pow(java.lang.Math.max(z, z2)
+				- java.lang.Math.min(z, z2), 2);
+		return java.lang.Math.sqrt(xResult + yResult + zResult);
+	}
+
+	private class Block {
+		private int x, y, z;
+
+		public Block(int x, int y, int z) {
+			this.x = x;
+			this.y = y;
+			this.z = z;
+		}
+
+		public int getX() {
+			return x;
+		}
+
+		public int getY() {
+			return y;
+		}
+
+		public int getZ() {
+			return z;
+		}
+
+	}
+
+	@Override
+	public void onCommand(String command) {
+		String[] parts = command.split(" ");
+		if(parts[0].equalsIgnoreCase("blockid")) {
+			synchronized(lock) {
+				List<Integer> ints = new ArrayList<Integer>();
+				for(int i = 1; i < parts.length; i++) {
+					try {
+						ints.add(Integer.parseInt(parts[i]));
+					} catch(Exception e) {}
+				}
+				blockIDs = new int[ints.size()];
+				for(int i = 0; i < ints.size(); i++)
+					blockIDs[i] = ints.get(i);
+				JTable list = ui.getList();
+				DefaultTableModel model = (DefaultTableModel) list.getModel();
+				Vector<?> dataVector = model.getDataVector();
+				dataVector.clear();
+				model.fireTableDataChanged();
+				displayText(ChatColor.GRAY
+						+ "Block IDs for searching are now "
+						+ ChatColor.GOLD
+						+ ints.toString().substring(1,
+								ints.toString().length() - 1));
+			}
+		} else if(parts[0].equalsIgnoreCase("blockradius") && parts.length == 2
+				&& StringTools.isInteger(parts[1])) {
+			synchronized(lock) {
+				radius = Integer.parseInt(parts[1]);
+				displayText(ChatColor.GRAY
+						+ "Block radius for searching is now " + ChatColor.GOLD
+						+ radius);
+			}
+		}
+	}
+
+	@Override
+	public void onEvent(Event event) {
+		if(event instanceof RenderEvent) {
+			RenderEvent renderEvent = (RenderEvent) event;
+			if(renderEvent.getStatus() == RenderEvent.RENDER_ENTITIES_END) {
+				Player player = minecraft.getPlayer();
+				World world = minecraft.getWorld();
+				if(player == null || world == null)
+					return;
+				double mX = player.getX();
+				double mY = player.getY();
+				double mZ = player.getZ();
+
+				GL11.glPushMatrix();
+				GL11.glColor4f(1f, 0f, 0f, 0.104f);
+				GL11.glLineWidth(0.5f);
+				GL11.glDisable(GL11.GL_TEXTURE_2D);
+				GL11.glDisable(GL11.GL_LIGHTING);
+				GL11.glDisable(GL11.GL_DEPTH_TEST);
+				GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+				GL11.glEnable(GL11.GL_LINE_SMOOTH);
+				GL11.glDisable(GL11.GL_CULL_FACE);
+				GL11.glEnable(GL11.GL_BLEND);
+
+				synchronized(lock) {
+					for(Block block : blocks) {
+						double x1 = -(mX - block.getX()), y1 = -(mY - block
+								.getY()), z1 = -(mZ - block.getZ());
+						GL11.glBegin(GL11.GL_QUADS);
+
+						GL11.glVertex3d(x1, y1, z1);
+						GL11.glVertex3d(x1 + 1, y1, z1);
+						GL11.glVertex3d(x1 + 1, y1, z1 + 1);
+						GL11.glVertex3d(x1, y1, z1 + 1);
+
+						GL11.glVertex3d(x1, y1 + 1, z1);
+						GL11.glVertex3d(x1 + 1, y1 + 1, z1);
+						GL11.glVertex3d(x1 + 1, y1 + 1, z1 + 1);
+						GL11.glVertex3d(x1, y1 + 1, z1 + 1);
+
+						GL11.glVertex3d(x1, y1, z1);
+						GL11.glVertex3d(x1, y1 + 1, z1);
+						GL11.glVertex3d(x1, y1 + 1, z1 + 1);
+						GL11.glVertex3d(x1, y1, z1 + 1);
+
+						GL11.glVertex3d(x1, y1, z1);
+						GL11.glVertex3d(x1 + 1, y1, z1);
+						GL11.glVertex3d(x1 + 1, y1 + 1, z1);
+						GL11.glVertex3d(x1, y1 + 1, z1);
+
+						GL11.glVertex3d(x1, y1, z1 + 1);
+						GL11.glVertex3d(x1 + 1, y1, z1 + 1);
+						GL11.glVertex3d(x1 + 1, y1 + 1, z1 + 1);
+						GL11.glVertex3d(x1, y1 + 1, z1 + 1);
+
+						GL11.glVertex3d(x1 + 1, y1, z1);
+						GL11.glVertex3d(x1 + 1, y1 + 1, z1);
+						GL11.glVertex3d(x1 + 1, y1 + 1, z1 + 1);
+						GL11.glVertex3d(x1 + 1, y1, z1 + 1);
+
+						GL11.glEnd();
+					}
+					GL11.glColor4f(1f, 0f, 0f, 1f);
+					for(Block block : blocks) {
+						double x1 = -(mX - block.getX()), y1 = -(mY - block
+								.getY()), z1 = -(mZ - block.getZ());
+						GL11.glBegin(GL11.GL_LINE_LOOP);
+
+						GL11.glVertex3d(x1, y1, z1);
+						GL11.glVertex3d(x1, y1 + 1, z1);
+						GL11.glVertex3d(x1 + 1, y1 + 1, z1);
+						GL11.glVertex3d(x1 + 1, y1 + 1, z1 + 1);
+						GL11.glVertex3d(x1, y1 + 1, z1 + 1);
+						GL11.glVertex3d(x1, y1 + 1, z1);
+						GL11.glVertex3d(x1, y1, z1);
+
+						GL11.glVertex3d(x1 + 1, y1, z1);
+						GL11.glVertex3d(x1 + 1, y1 + 1, z1);
+						GL11.glVertex3d(x1 + 1, y1, z1);
+
+						GL11.glVertex3d(x1 + 1, y1, z1 + 1);
+						GL11.glVertex3d(x1 + 1, y1 + 1, z1 + 1);
+						GL11.glVertex3d(x1 + 1, y1, z1 + 1);
+
+						GL11.glVertex3d(x1, y1, z1 + 1);
+						GL11.glVertex3d(x1, y1 + 1, z1 + 1);
+						GL11.glVertex3d(x1, y1, z1 + 1);
+
+						GL11.glEnd();
+					}
+				}
+
+				GL11.glDisable(GL11.GL_LINE_SMOOTH);
+				GL11.glEnable(GL11.GL_CULL_FACE);
+				GL11.glEnable(GL11.GL_LIGHTING);
+				GL11.glEnable(GL11.GL_TEXTURE_2D);
+				GL11.glEnable(GL11.GL_DEPTH_TEST);
+				GL11.glDisable(GL11.GL_BLEND);
+				GL11.glPopMatrix();
+			}
+		}
+	}
+}
+
