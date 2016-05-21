@@ -1,7 +1,7 @@
 ****************************************   begin   ****************************************
-value: new Complex(Double.NaN,Double.NaN)
+value: new Complex(1,0)
 type: null
-freq 12
+freq 2
 isSimpleType true
 otherType null
 variableSimpleType null
@@ -9,69 +9,13 @@ variableSimpleType null
 ****************************************   begin   ****************************************
 value: new Complex(0,0)
 type: null
-freq 9
-isSimpleType true
-otherType null
-variableSimpleType null
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: new Complex(1,0)
-type: null
-freq 5
-isSimpleType true
-otherType null
-variableSimpleType null
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: new HashMap<String,ComplexType>()
-type: null
-freq 4
+freq 1
 isSimpleType true
 otherType null
 variableSimpleType null
 ****************************************   end   ****************************************
 ****************************************   begin   ****************************************
 value: new Complex(0,1)
-type: null
-freq 4
-isSimpleType true
-otherType null
-variableSimpleType null
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: new TStruct("Complex")
-type: null
-freq 2
-isSimpleType true
-otherType null
-variableSimpleType null
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: new Complex(Double.POSITIVE_INFINITY,Double.POSITIVE_INFINITY)
-type: null
-freq 2
-isSimpleType true
-otherType null
-variableSimpleType null
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: LogFactory.getLog(Complex.class)
-type: null
-freq 1
-isSimpleType true
-otherType null
-variableSimpleType null
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: Pref.makeBooleanServerPref("DisallowModificationComplexNodes",tool.prefs,false)
-type: null
-freq 1
-isSimpleType true
-otherType null
-variableSimpleType null
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: new Complex()
 type: null
 freq 1
 isSimpleType true

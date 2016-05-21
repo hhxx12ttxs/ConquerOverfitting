@@ -13,9 +13,10 @@ public class GathererJavaTest extends TestCase {
 		long timeStart = System.currentTimeMillis();
 		ArrayList<String> keyWords = new ArrayList<String>();
 		keyWords.add("if");
-		keyWords.add("Complex");
+		keyWords.add("INT");
+		keyWords.add("months");
 		//keyWords.add("var1");
-		GathererJavaGithub gathererJava = new GathererJavaGithub(keyWords, "if-Complex", "commons-math");
+		GathererJavaCodeSnippet gathererJava = new GathererJavaCodeSnippet(keyWords, "if-INT-months", "commons-math");
 		//new GathererJavaGithub(keyWords, "commons-math");Math
 		//new GathererJavaGithub(keyWords, "commons-lang");Lang
 		//new GathererJavaGithub(keyWords, "cGosure-compiler");Closure

@@ -10,10 +10,9 @@ import cn.edu.pku.sei.plde.conqueroverfitting.utils.JDTUtils;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTParser;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Iterator;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class BoundaryCollect {
     private String rootPath;
@@ -36,21 +35,67 @@ public class BoundaryCollect {
         filesPath = FileUtils.getJavaFilesInProj(rootPath);
         for (String filePath : filesPath) {
             try {
-                ASTNode root = JDTUtils.createASTForSource(new ReadFile(filePath).getSource(), ASTParser.K_COMPILATION_UNIT);
-                if (root == null) {
-                    return;
+                String source = new ReadFile(filePath).getSource();
+                if(source.contains("static") && source.contains("final")){
+                    String[] lines = source.split("\\n");
+                    for(String line : lines){
+                        if(line.contains("static") && line.contains("final")){
+                            line = "public class Test { " + line + "}";
+                            ASTNode root = JDTUtils.createASTForSource(line, ASTParser.K_COMPILATION_UNIT);
+                            if (root == null) {
+                                return;
+                            }
+                            BoundaryCollectVisitor boundaryCollectVisitor = new BoundaryCollectVisitor();
+                            root.accept(boundaryCollectVisitor);
+                            ArrayList<BoundaryInfo> boundaryListSub = boundaryCollectVisitor.getBoundaryInfoList();
+                            for (BoundaryInfo boundaryInfo : boundaryListSub) {
+                                boundaryInfo.fileName = filePath;
+                            }
+//                    System.out.println("ifExpression : " + ifExpression);
+//                    System.out.println("boundary : " + boundaryListSub);
+                            boundaryList.addAll(boundaryListSub);
+                        }
+                    }
                 }
-                BoundaryCollectVisitor boundaryCollectVisitor = new BoundaryCollectVisitor();
-                root.accept(boundaryCollectVisitor);
-                ArrayList<BoundaryInfo> boundaryListSub = boundaryCollectVisitor.getBoundaryInfoList();
-                for (BoundaryInfo boundaryInfo : boundaryListSub) {
-                    boundaryInfo.fileName = filePath;
+
+                Pattern pattern = Pattern.compile("if\\s*\\(.*?\\)");
+                Matcher matcher = pattern.matcher(source);
+                List<String> result = new ArrayList<String>();
+                while(matcher.find()){
+                    result.add(matcher.group(0) + "{}");
                 }
-                boundaryList.addAll(boundaryListSub);
+
+                for(String ifExpression : result) {
+
+                    ASTNode root = JDTUtils.createASTForSource(ifExpression, ASTParser.K_STATEMENTS);
+                    if (root == null) {
+                        return;
+                    }
+                    BoundaryCollectVisitor boundaryCollectVisitor = new BoundaryCollectVisitor();
+                    root.accept(boundaryCollectVisitor);
+                    ArrayList<BoundaryInfo> boundaryListSub = boundaryCollectVisitor.getBoundaryInfoList();
+                    for (BoundaryInfo boundaryInfo : boundaryListSub) {
+                        boundaryInfo.fileName = filePath;
+                    }
+//                    System.out.println("ifExpression : " + ifExpression);
+//                    System.out.println("boundary : " + boundaryListSub);
+                    boundaryList.addAll(boundaryListSub);
+                }
             } catch (NullPointerException e) {
                 continue;
             }
         }
+
+//        for(BoundaryInfo boundaryInfo : boundaryList){
+//            System.out.println("begin");
+//            System.out.println("name: " + boundaryInfo.name);
+//            System.out.println("value: " + boundaryInfo.value);
+//            System.out.println("type: " + boundaryInfo.variableSimpleType);
+//            System.out.println("isSimpleType " + boundaryInfo.isSimpleType);
+//            System.out.println("otherType " + boundaryInfo.otherType);
+//            System.out.println("variableSimpleType " + boundaryInfo.variableSimpleType);
+//            System.out.println("end");
+//        }
     }
 
     public ArrayList<BoundaryInfo> getBoundaryList() {

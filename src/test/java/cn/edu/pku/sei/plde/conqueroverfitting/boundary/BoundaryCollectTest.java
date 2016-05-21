@@ -140,7 +140,7 @@ public class BoundaryCollectTest {
 
     @Test
     public void testMath47() {
-        String path = "experiment//searchcode//math-complex";
+        String path = "experiment//searchcode//if-Complex";
         BoundaryCollect boundaryCollect = new BoundaryCollect(path, false, null);
         ArrayList<BoundaryInfo> boundaryList = boundaryCollect.getBoundaryList();
 
