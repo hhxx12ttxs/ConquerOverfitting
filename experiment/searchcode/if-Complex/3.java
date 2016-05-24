@@ -1,14 +1,13 @@
-    private boolean addBaseComplex = false;
-        {
-            {
-                if (current.getFactory().equals(complexFactory.getFactory())
-    /** If complex setup should be displayed */
-    private boolean showingComplexSetup = true;
-                    && current.getYield() == complexFactory.getYield())
-    /**
-     * Adds the specified factory/factories to the complex.
-     *
-        if (!complexFactory.getFactory().isMine())
-    {
-    /** If base complex should be calculated or not */
+public class complex {
+
+double x, y;
+ErrorHandler error;
+complex z, u;
+
+public complex(float d, float b) {
+public complex cdiv(complex u, complex v) {
+
+z = new complex(0, 0);
+float d = (float) (v.x * v.x + v.y * v.y), eps = epsilon();
+if (d < eps * eps)
 

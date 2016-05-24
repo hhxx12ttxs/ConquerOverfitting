@@ -1,15 +1,12 @@
-if (complex) {
-if (CMDBSession.get().getConfig().useTreeComboBox()) {
-String url = v.get(CIModel.CI_ICON_PATH);
-((CIReferenceColumnConfig)column).setPermissions(perm);
-} else if (config.isComplex()) {
-if (config.isSelectTemplates()) {
-text = v.getValueDisplayName();
-String text = item.getValue();
-if (complex && v.getValue() != null) {
-String url = v.get(CIModel.CI_ICON_PATH);
-text = v.getValueDisplayName();
-if (config.isComplex() && v.getValue() != null) {
-if (item.isComplex()) {
-text = item.getValueDisplayName();
+package util;
+
+public class Complex{
+double a,b;
+
+public Complex(double a,double b){
+this.a=a;
+public Complex divide(Complex other){
+double norm=other.norm();
+Complex result=other.conjugate().multiply(this);
+if (norm==0){
 

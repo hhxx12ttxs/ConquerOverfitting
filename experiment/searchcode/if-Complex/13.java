@@ -1,16 +1,11 @@
-command.setDescription(descrip);
-if (complex) {
-commands.add(command);
-command.setDescription(descrip);
-if (complex) {
-commands.add(command);
-Command command = new RenameFieldCommand(this, fld, newName);
-if (complex) {
-commands.add(command);
-Command command = new AddFieldCommand(this, fld);
-commands.add(command);
-if (complex) {
-EditionEvent.CHANGE_TYPE_DELETE, sourceType);
-if (complex){
-rowEvents.add(event);
+this.y = y;
+}
+
+//    @Override
+//    public boolean equals(ComplexVector2D complexVector2D1) {
+//        if (this.x.equals(complexVector2D1.getX()) &amp;&amp; (this.y.equals(complexVector2D1.getY()))) {
+@Override
+public boolean equals(Object obj) {
+if(obj instanceof ComplexVector2D)
+return getX().equals(((ComplexVector2D) obj).getX())&amp;&amp; getY().equals(((ComplexVector2D) obj).getY());
 

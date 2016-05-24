@@ -1,17 +1,10 @@
-                        if (next.getCategory() == PropertyCategory.PREFERRED) {
-                    String nextName = next.getName();
-                    if (nextName.regionMatches(0, firstName, 0, firstNameIndex)
-                            // Also make sure we begin the second word at the next
-                            // character; if not, we could have something like
-                ComplexProperty complex = categoryToProperty.get(category);
-                if (complex == null) {
-                    complex = new ComplexProperty(
-                            // scrollBar
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
-                ComplexProperty complex = categoryToProperty.get(category);
-                if (complex == null) {
-                    complex = new ComplexProperty(
-                            break;
+public Complex divide(Complex c) {
+if (c.a == 0) return new Complex(-b/c.b, -a/c.b);
+if (c.b == 0) return new Complex(a/c.a, b/c.a);
+public Complex divide(double v) {
+return new Complex(a/v, b/v);
+}
+
+public double arg() {
+if (a == 0 &amp;&amp; b == 0) return Double.NaN;
 

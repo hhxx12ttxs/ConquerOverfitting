@@ -1,18 +1,10 @@
-     * @param cx the complex number to subtract.
-     * @return the difference of the two complex numbers.
-     */
-     /**
-     * @param cx the Complex number to compare with.
-     * @return true iff the two Complex numbers are equal.
-     */
-     * Shifts a complex number right a certain number of bits.
-     * @param n The number of bits to shift by.
-            Math.abs(cx.imag()) >= MathPlus.SCALE) {
-            cx = new Complex(cx).rsh(MathPlus.SHIFT);
-            nShift = MathPlus.SHIFT;
-    /**
-     * Shifts a complex number left a certain number of bits.
-     * @param n The number of bits to shift by.
-     * @return the result of shifting the complex number left the number of bits.
-     */
+c.setComplex(((this.complex * other.real) - (this.real * other.complex)) / ((Math.pow(other.real, 2) + Math.pow(other.complex, 2))));
+if(Double.isNaN(c.getReal()) || Double.isNaN(c.getComplex()))   {
+this.complex = complex;
+}
+
+@Override
+public String toString()    {
+if(complex >= 0) {
+return String.format(&quot;%.3f+%.3fi&quot;, real, complex);
 

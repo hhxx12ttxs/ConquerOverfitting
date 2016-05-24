@@ -1,16 +1,8 @@
-            ComplexAttribute complex = (ComplexAttribute) object;
-            Property property = complex.getProperty(toTypeName(name));
-            if (property != null && !(property instanceof ComplexAttribute)) {
-                return property.getValue();
-            if (\"id\".equals(name.getLocalPart())) {
-                return complex.getIdentifier();
-            }
-                complexAtts = (Collection) object;
-            } else if (object instanceof ComplexAttribute) {
-                // get collection of features from this attribute
-            for (Object complex : complexAtts) {
-                if (complex instanceof ComplexAttribute) {
-                    PropertyDescriptor descriptor = ((Attribute) complex).getDescriptor();
-    public Object getProperty(Object object, QName name) throws Exception {
-        if (object instanceof ComplexAttribute) {
+public Complex exp()                {return new Complex(Math.pow(E,this.x)*Math.cos(this.y),Math.pow(E,this.x)*Math.sin(this.y));}
+
+public Complex pow(int n)
+{
+double[] p = toPolar(this);
+if      (n==0)                  return new Complex(1,0);
+else if (n>0)                   return new Complex(Math.pow(p[0],n)*Math.cos(n*Math.cos(p[1])),Math.pow(p[0],n)*Math.sin(n*Math.sin(p[1])));
 

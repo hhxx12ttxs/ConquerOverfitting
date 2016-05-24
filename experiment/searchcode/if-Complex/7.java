@@ -1,16 +1,10 @@
-if (numberCategories != 0)
-{
-complex.setConstituentsStringReference(getNodeListTextContent(constituentsList));// form String array from XML and set as reference
-/**
- * Complex category information.
- */
-import retina.model.database.molecule.category.MoleculeCategory;
-if (root.getElementsByTagName(\"complex\").getLength() != 0) // if complex information exists
-{
-Complex complex = new Complex(); // form new complex
-NodeList constituentsList = root.getElementsByTagName(\"con_molecule\");// find constituent molecules
-{
-import retina.model.database.molecule.category.Channel;
-}
-import retina.model.database.molecule.category.Complex;
+public static Complex onPoint(SL2C t, Complex z){
+if(z.isInfinity()){
+if(!t.c.isZero()){
+return Complex.div(t.a, t.c);
+}else{
+Complex numerix = Complex.add( Complex.mult(t.a, z), t.b);
+Complex denominator = Complex.add( Complex.mult(t.c, z), t.d);
+
+if(denominator.isZero()){
 

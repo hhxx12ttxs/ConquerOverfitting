@@ -147,25 +147,25 @@ public class GathererJavaCodeSnippet {
         if(codeSnippet == null){
             return null;
         }
-        System.out.println("codeSnippet1 : " + codeSnippet);
+        //System.out.println("codeSnippet1 : " + codeSnippet);
         while(codeSnippet.contains("\\t")){
             codeSnippet = codeSnippet.replace("\\t", "");
         }
-        System.out.println("codeSnippet2 : " + codeSnippet);
+        //System.out.println("codeSnippet2 : " + codeSnippet);
         String code = "";
         String[] lines = codeSnippet.split(",\"");
         for(int i = 0; i < lines.length; i ++){
             String line = lines[i];
             int index1 = line.indexOf(":\"");
             int index2 = line.lastIndexOf("\"");
-            System.out.println("line : " + line);
-            System.out.println("index1 : " + index1);
-            System.out.println("index2 : " + index2);
+            //System.out.println("line : " + line);
+            //System.out.println("index1 : " + index1);
+            //System.out.println("index2 : " + index2);
             if(index1 + 2 < index2) {
                 code = code + line.substring(index1 + 2, index2) + "\n";
             }
         }
-        System.out.println("code : " + code);
+       // System.out.println("code : " + code);
         return code;
     }
 }

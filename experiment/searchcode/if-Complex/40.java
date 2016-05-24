@@ -1,13 +1,12 @@
- */
-boolean complex = false;
 /**
- * Only used if complex == false. This means that only one UNARY exist.
- */
-// set to complex if the unary is a functions, expression or other than
-// a CONSTANT or Variable.
-if (!complex) {
-complex = unaryType == UNARY.TYPE.MIXED || children.size() > 1;
-/**
- * An expression is considered complex if it contains anything other than a
- * simple constant or variable.
+* Created by Giuseppe on 4/16/2014.
+*/
+
+public class TestComplex {
+
+public static void main(String[] args) {
+
+double a = 3.5;
+double b = 5.5;
+Complex c1 = new Complex(a, b);
 

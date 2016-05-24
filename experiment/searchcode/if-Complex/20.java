@@ -1,14 +1,17 @@
-// {{{ prevent infinite recursion caused by complex types referencing themselves
-if(typedef.getTypeCategory() == XSTypeDefinition.COMPLEX_TYPE)
-{
-if(complex != null && needToCalcContent)
-if(seenComplexTypes.containsKey(complex)){
-{
-    following code is awkward :
-    - if element is of complex type and this complex type is being
-      expandend (ie is in seenComplexTypes)
-if(same == null){
-// same complextype but different names
-ElementDecl sameContent = seenComplexTypes.get(complex).get(0);
-// {{{ Expand complex type
+/*
+* Created on Feb 23, 2006
+*/
+package de.torstennahm.math;
+
+
+public class Complex {
+public boolean equals(Object o) {
+if (o instanceof Complex) {
+Complex c = (Complex) o;
+return c.r == r &amp;&amp; c.i == i;
+} else {
+return false;
+}
+}
+}
 
