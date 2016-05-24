@@ -1,14 +1,13 @@
-    private boolean addBaseComplex = false;
-        {
-            {
-                if (current.getFactory().equals(complexFactory.getFactory())
-    /** If complex setup should be displayed */
-    private boolean showingComplexSetup = true;
-                    && current.getYield() == complexFactory.getYield())
-    /**
-     * Adds the specified factory/factories to the complex.
-     *
-        if (!complexFactory.getFactory().isMine())
-    {
-    /** If base complex should be calculated or not */
+* Created by Luiz Arantes Sa on 9/11/14.
+*/
+public class Complex {
+
+// real numbers
+private double a;
+private double b;
+
+
+public Complex(double a, double b) {
+this.a = a;
+this.b = b;
 

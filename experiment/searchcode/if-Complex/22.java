@@ -1,16 +1,17 @@
- */
-public final class WsdlComplexTypes implements java.io.Serializable {
-    private static final long serialVersionUID = 1L;
-    private HashMap<String, ComplexType> _complexTypes = new HashMap<String, ComplexType>();
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
-     */
-    /**
-     * Get the complex type specified by complexTypeName.
-     *
-     * @param complexTypeName Name of complex type.
-     * @return ComplexType instance, null if complex type was not defined in the wsdl file.
-/**
- * Represents a map of all named complex types in the WSDL.
+/*
+* Created on Feb 23, 2006
+*/
+package de.torstennahm.math;
+
+
+public class Complex {
+public boolean equals(Object o) {
+if (o instanceof Complex) {
+Complex c = (Complex) o;
+return c.r == r &amp;&amp; c.i == i;
+} else {
+return false;
+}
+}
+}
 

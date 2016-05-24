@@ -1,17 +1,9 @@
-// write back the fft data
-if ( scale )
-{
-for ( int x = 0; x < complexSize-1; ++x )
-{
-cursorOut.getType().setComplexNumber( tempOut[ x * 2 ] / realSize, tempOut[ x * 2 + 1 ] / realSize );
-cursorOut.fwd( 0 );
- * %%
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as
-{
-for ( int x = 0; x < complexSize-1; ++x )
-{
-// not enough memory
-if ( complex == null )
-return null;
+public class Complex {
+private double a = 0;
+private double b = 0;
+public Complex(double real, double img){
+public static double getMandelbrotEscapeVal(Complex c, int maxEscape){
+Complex z = c;
+for(int i = 0; i <= 100; i++){
+if(z.a > 2 || z.b > 2)
 

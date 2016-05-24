@@ -1,14 +1,10 @@
-        return complex;
-    }
-@Aspect
-public class ComplexCachingAspect {
-    private Map<String, Complex> cache;
-    public void setCache(Map<String, Complex> cache) {
-        this.cache = Collections.synchronizedMap(cache);
-    @Around(\"call(public Complex.new(int, int)) && args(a,b)\")
-    public Object cacheAround(ProceedingJoinPoint joinPoint, int a, int b)
-        Complex complex = cache.get(key);
-        if (complex == null) {
-            System.out.println(\"Cache MISS for (\" + key + \")\");
-        }
+c.setComplex(((this.complex * other.real) - (this.real * other.complex)) / ((Math.pow(other.real, 2) + Math.pow(other.complex, 2))));
+if(Double.isNaN(c.getReal()) || Double.isNaN(c.getComplex()))   {
+this.complex = complex;
+}
+
+@Override
+public String toString()    {
+if(complex >= 0) {
+return String.format(&quot;%.3f+%.3fi&quot;, real, complex);
 

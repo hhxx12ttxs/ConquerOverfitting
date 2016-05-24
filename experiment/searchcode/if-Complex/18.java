@@ -1,16 +1,9 @@
-            ComplexAttribute complex = (ComplexAttribute) object;
-            Property property = complex.getProperty(toTypeName(name));
-            if (property != null && !(property instanceof ComplexAttribute)) {
-                return property.getValue();
-            if (\"id\".equals(name.getLocalPart())) {
-                return complex.getIdentifier();
-            }
-                complexAtts = (Collection) object;
-            } else if (object instanceof ComplexAttribute) {
-                // get collection of features from this attribute
-            for (Object complex : complexAtts) {
-                if (complex instanceof ComplexAttribute) {
-                    PropertyDescriptor descriptor = ((Attribute) complex).getDescriptor();
-    public Object getProperty(Object object, QName name) throws Exception {
-        if (object instanceof ComplexAttribute) {
+package util;
+
+public class PolynomialComplex {
+Complex[] a;
+public PolynomialComplex(Complex[] a){
+this.a=new Complex[a.length];
+for (int i=0;i<a.length;i++){
+this.a[i]=a[i].copy();
 

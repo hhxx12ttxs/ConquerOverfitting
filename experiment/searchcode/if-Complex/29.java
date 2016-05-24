@@ -1,17 +1,17 @@
- * Redistribution and use of this software and associated documentation
- * (\"Software\"), with or without modification, are permitted provided
- * that the following conditions are met:
-        else if (e2Type == null) {
-            if (e1Type.isSimpleType()) {
-                //XMLType type = sInfo.element.getType();
-                //if ((type != null) && (type.isComplexType())) {
-                //    if (type.getName() == null) {
-        
-        if (sInfo.complex) {
-            sInfo.mixed = true;    
-        }
-                if (element != null) {
-                    //-- if complex...merge definition
-                    if (sInfo.complex) {
-                        try {
+/*
+* Created on Feb 23, 2006
+*/
+package de.torstennahm.math;
+
+
+public class Complex {
+public boolean equals(Object o) {
+if (o instanceof Complex) {
+Complex c = (Complex) o;
+return c.r == r &amp;&amp; c.i == i;
+} else {
+return false;
+}
+}
+}
 

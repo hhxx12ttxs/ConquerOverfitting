@@ -1,23 +1,7 @@
 ****************************************   begin   ****************************************
-value: new Complex(1,0)
-type: null
-freq 2
-isSimpleType true
-otherType null
-variableSimpleType null
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
 value: new Complex(0,0)
 type: null
-freq 1
-isSimpleType true
-otherType null
-variableSimpleType null
-****************************************   end   ****************************************
-****************************************   begin   ****************************************
-value: new Complex(0,1)
-type: null
-freq 1
+freq 4
 isSimpleType true
 otherType null
 variableSimpleType null

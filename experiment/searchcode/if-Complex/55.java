@@ -1,14 +1,6 @@
-    boolean containsVerb = false;
-    if ( tokens.length > 1 ) {
-        int result = classifyComplexProp( tags, tokens );
-        
-    
-    int propClass = classifyComplexProp( tags, tok );
-            
-    if ( bigComplex && bigFirstTime ) {
-        pw.print( \"that: \\n\" );
-                
-                int propClass = classifyComplexProp( tags, tok );
-                
-private int classifyComplexProp( String[] tags, String[] tokens ) {
+package kpfu.terentyev.quantum.emulator.Gates;
+
+import kpfu.terentyev.quantum.emulator.Complex;
+public ControlledUGate (Complex [][] uMatrix) throws Exception{
+if (uMatrix.length!=2 || (uMatrix.length==2 &amp;&amp; (uMatrix[0].length!=2 || uMatrix[1].length!=2))){
 

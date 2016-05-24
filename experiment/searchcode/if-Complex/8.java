@@ -1,16 +1,10 @@
-            Property property = complex.getProperty(toTypeName(name));
-            if (property != null && !(property instanceof ComplexAttribute)) {
-                return property.getValue();
-            if (\"id\".equals(name.getLocalPart())) {
-                return complex.getIdentifier();
-            }
-                complexAtts = (Collection) object;
-            } else if (object instanceof ComplexAttribute) {
-                // get collection of features from this attribute
-            for (Object complex : complexAtts) {
-                if (complex instanceof ComplexAttribute) {
-                    PropertyDescriptor descriptor = ((Attribute) complex).getDescriptor();
-    public Object getProperty(Object object, QName name) throws Exception {
-        if (object instanceof ComplexAttribute) {
-            ComplexAttribute complex = (ComplexAttribute) object;
+
+public class Complex {
+double r,i;
+public Complex(double r,double i){
+this.r = r;
+this.i = i;
+}
+public static Complex add(Complex a,Complex b){
+return new Complex(a.r + b.r,a.i + b.i);
 

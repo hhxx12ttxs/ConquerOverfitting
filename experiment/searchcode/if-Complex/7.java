@@ -1,16 +1,11 @@
-if (numberCategories != 0)
+import java.io.*;
+class ExComplex
 {
-complex.setConstituentsStringReference(getNodeListTextContent(constituentsList));// form String array from XML and set as reference
-/**
- * Complex category information.
- */
-import retina.model.database.molecule.category.MoleculeCategory;
-if (root.getElementsByTagName(\"complex\").getLength() != 0) // if complex information exists
+public static void main(String args[])
 {
-Complex complex = new Complex(); // form new complex
-NodeList constituentsList = root.getElementsByTagName(\"con_molecule\");// find constituent molecules
-{
-import retina.model.database.molecule.category.Channel;
-}
-import retina.model.database.molecule.category.Complex;
+Complex a=new Complex(2,3);
+Complex b=new Complex(2,3);
+Complex c=a.add(b);
+c.display();
+c.sub(a,b);
 

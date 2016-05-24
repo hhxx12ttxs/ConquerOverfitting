@@ -1,15 +1,10 @@
-     * Opens the dialog for the specified complex.
-     * @deprecated This method is not supported by this dialog. Use the
-     * {@link ChangePricesDialog#open(Complex)} method instead.
-     */
-        {
-            // Ignore ware if not used by the complex
-            if (!complex.usesWare(ware)) continue;
-            // Get price and check if ware is used
-            int price;
-            final boolean used;
-            if (this.customPrices.containsKey(ware))
-            {
-     * 
-    /**
+public Complex divide(Complex c) {
+if (c.a == 0) return new Complex(-b/c.b, -a/c.b);
+if (c.b == 0) return new Complex(a/c.a, b/c.a);
+public Complex divide(double v) {
+return new Complex(a/v, b/v);
+}
+
+public double arg() {
+if (a == 0 &amp;&amp; b == 0) return Double.NaN;
 

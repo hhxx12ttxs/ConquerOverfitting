@@ -1,14 +1,16 @@
-/*
- * OpenBench LogicSniffer / SUMP project 
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
-   * @return <code>true<\/code> if the capture size is bound to the number of
-   *         channels, <code>false<\/code> otherwise.
- * You should have received a copy of the GNU General Public License along
- * 51 Franklin St, Fifth Floor, Boston, MA 02110, USA
- *
-   *         <code>false<\/code> otherwise.
-   * 
-   * 
+package Task003;
+
+/**
+* Created by Kamil on 25.02.16.
+*/
+public class ComplexNumber {
+
+public double getX() {
+this.y = y;
+}
+
+private double x;
+private double y;
+
+public ComplexNumber add(ComplexNumber complexNumber) {
 
