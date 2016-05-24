@@ -1,11 +1,12 @@
-// ------------
-// Complex.java
-// ------------
+/**
+* Created by Giuseppe on 4/16/2014.
+*/
 
-class MyComplex {
-private int _r;
-private int _i;
-public boolean equals (Object rhs) {
-if (!(rhs instanceof MyComplex))
-return false;
+public class TestComplex {
+
+public static void main(String[] args) {
+
+double a = 3.5;
+double b = 5.5;
+Complex c1 = new Complex(a, b);
 

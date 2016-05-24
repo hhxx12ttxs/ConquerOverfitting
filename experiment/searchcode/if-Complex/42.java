@@ -1,9 +1,11 @@
-import java.util.Set;
+public static Complex[] fftDit1d(Complex[] complex){
+final int N = complex.length;
 
-public class ComplexAttribute
-{
-private String name;
-private Set<Attribute> attributes;
-public void addComplexAttribute(ComplexAttribute complexAttribute) {
-if (this.complexAttributes == null)
+// base case
+if (N == 1){
+return new Complex[] { complex[0] };
+}
+
+// radix 2 Cooley-Tukey FFT
+if (N % 2 != 0) {
 

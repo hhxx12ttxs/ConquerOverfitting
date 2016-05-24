@@ -1,17 +1,13 @@
-if (\"simple\".equals(config.getAttributeFilter())) {
-if (!a.isComplex()) {
-list.add(a);
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
-if (a.isComplex()) {
-list.add(a);
-}
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
-if (aModel != null) {
-if (aModel.isComplex()) {
-groupFields = config.get(\"complex\");
- *
-} else if (\"complex\".equals(config.getAttributeFilter())) {
+import org.junit.Test;
+
+import com.nr.Complex;
+
+public class Test_hypgeo {
+
+@Before
+public void setUp() throws Exception {
+public void test() {
+int i,N=20,M=100;
+double err,errmax,sbeps;
+Complex aa,bb,cc,zz,res1,res2;
 

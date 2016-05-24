@@ -1,10 +1,15 @@
-public class Solution {
-public int searchInsert(int[] A, int target) {
+if(A == null)   return 0;
 int len = A.length;
-if (target <= A[0]) {
-return 0;
+if(len <= 2)    return len;
+
+int i = 2;
+for(int j = i; j < len; j++) {
+if(A[i - 2] != A[j]) {
+A[i] = A[j];
+i++;
 }
-int i = 0;
-while(i < len) {
-if (target <= A[i]) {
+}
+return i;
+}
+}
 

@@ -1,14 +1,11 @@
-        CorbaTypeImpl corbatype = null;
-        if (isLiteralArray(complex)) {
-            corbatype = processLiteralArray(complex, defaultName, anonymous);
-        } else if (WSDLTypes.isOMGUnion(complex)) {
-            corbatype = processOMGUnion(complex, defaultName);
-            // need to determine if its a primitive type.
-            if (stype instanceof XmlSchemaComplexType) {
-        if (stype instanceof XmlSchemaComplexType) {
-            complex = (XmlSchemaComplexType)stype;
-            if (!isLiteralArray(complex)
-                && !WSDLTypes.isOMGUnion(complex)
-        } else if (WSDLTypes.isUnion(complex)) {
-            corbatype = processRegularUnion(complex, defaultName);
+package Chapter5;
+
+public class Complex {
+private double r;
+private double i;
+Complex(double rr,double ii){
+(c1.r*c2.r+c1.i*c2.i)/(c2.r*c2.r+c2.i*c2.i),(c1.i*c2.r-c2.i*c1.r)/(c2.r*c2.r+c2.i*c2.i));
+}
+public boolean equals(Object o){
+if(o.getClass() != Complex.class){
 

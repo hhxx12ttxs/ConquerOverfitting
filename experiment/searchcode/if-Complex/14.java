@@ -1,12 +1,10 @@
-package util;
+package com.barsoft.example.lab2;
 
-public class Complex{
-double a,b;
-
-public Complex(double a,double b){
-this.a=a;
-public Complex divide(Complex other){
-double norm=other.norm();
-Complex result=other.conjugate().multiply(this);
-if (norm==0){
+public class Complex {
+protected double x;
+protected double y;
+public boolean equals(Object obj) {
+if (obj != null) {
+if (obj instanceof Complex) {
+Complex cmp = (Complex) obj;
 

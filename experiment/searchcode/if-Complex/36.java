@@ -1,12 +1,8 @@
-public final static double PI = 3.141592;
-int n;
-complex complex;
-ArrayList<complex> complex_list;
+package org.sourceit.ComplexFraction;
 
-FFT(ArrayList<complex> cl, complex c){
-this.n = cl.size();
-this.complex = c;
-this.complex_list = cl;
+public class ComplexFraction {
+private ComplexNumber numerator;
+private ComplexNumber denominator;
 
-// if the number of coefficients is not the power of 2, add 0s
+public ComplexFraction(ComplexNumber numerator, ComplexNumber denominator) {
 

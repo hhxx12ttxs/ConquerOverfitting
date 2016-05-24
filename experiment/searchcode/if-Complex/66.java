@@ -1,15 +1,15 @@
-                // Punt to the robust version of the renderer
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are
- * met:
-        but if we encounter complex text and/or unicode sequences we
-        don't understand, we can render them using the
- * contributors may be used to endorse or promote products derived from
- * this software without specific prior written permission.
- *
- * MICROSYSTEMS, INC. (\"SUN\") AND ITS LICENSORS SHALL NOT BE LIABLE FOR
- * ANY DAMAGES SUFFERED BY LICENSEE AS A RESULT OF USING, MODIFYING OR
- * DISTRIBUTING THIS SOFTWARE OR ITS DERIVATIVES. IN NO EVENT WILL SUN OR
-            boolean complex = (fullRunGlyphVector.getLayoutFlags() != 0);
-            if (complex || DISABLE_GLYPH_CACHE) {
+* Omschrijving: 	Programma kan wiskundige functies met complexe getallen uitvoeren
+*/
+
+public class ComplexGetal implements ComplexGetalInterface {
+double a, b;
+
+ComplexGetal(double a, double b){
+nieuw_a = a + c *-1;
+}
+else if (d < 0){
+nieuw_b = b + d *-1;
+}
+
+ComplexGetal complex_getal = new ComplexGetal(nieuw_a, nieuw_b);
 

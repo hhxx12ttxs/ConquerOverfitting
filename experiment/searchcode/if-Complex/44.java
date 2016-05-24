@@ -1,11 +1,9 @@
-// ------------
-// Complex.java
-// ------------
+import java.util.Set;
 
-class MyComplex {
-private int _r;
-private int _i;
-public boolean equals (Object rhs) {
-if (!(rhs instanceof MyComplex))
-return false;
+public class ComplexAttribute
+{
+private String name;
+private Set<Attribute> attributes;
+public void addComplexAttribute(ComplexAttribute complexAttribute) {
+if (this.complexAttributes == null)
 

@@ -1,13 +1,7 @@
-* Created by Luiz Arantes Sa on 9/11/14.
-*/
-public class Complex {
+public class ComplexVector2D {
+private ComplexNumber x, y;
 
-// real numbers
-private double a;
-private double b;
-
-
-public Complex(double a, double b) {
-this.a = a;
-this.b = b;
+public ComplexVector2D() {
+public boolean equals(ComplexVector2D complexVector2D1) {
+if (this.x.equals(complexVector2D1.getComplexNumberX()) &amp;&amp; (this.y.equals(complexVector2D1.getComplexNumberY()))) {
 

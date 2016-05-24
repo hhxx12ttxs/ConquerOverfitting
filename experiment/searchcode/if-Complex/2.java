@@ -1,10 +1,16 @@
-c.setComplex(((this.complex * other.real) - (this.real * other.complex)) / ((Math.pow(other.real, 2) + Math.pow(other.complex, 2))));
-if(Double.isNaN(c.getReal()) || Double.isNaN(c.getComplex()))   {
-this.complex = complex;
-}
+package zadaci_20_02_2016;
 
-@Override
-public String toString()    {
-if(complex >= 0) {
-return String.format(&quot;%.3f+%.3fi&quot;, real, complex);
+import java.text.DecimalFormat;
+
+/*
+* Complex class
+*/
+
+public class Complex {
+
+// real numbers
+private double a;
+private double b;
+
+// constructors next 3 lines
 

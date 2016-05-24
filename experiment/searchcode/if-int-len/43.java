@@ -1,11 +1,12 @@
-public String lastChars(String a, String b) {
-int lenA = a.length();
-int lenB = b.length();
-String x = &quot;&quot;;
-if (lenA >= 1) {
-x += a.substring(0, 1);
-} else {
-x += &#39;@&#39;;
+public class Solution {
+public int removeDuplicates(int[] A) {
+int len = A.length;
+if( len < 1 ){
+return len;
 }
-if (lenB >= 1) {
+if( len < 2 ){
+return 1;
+}
+int index = 1;
+int processing = A[0];
 

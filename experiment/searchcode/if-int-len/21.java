@@ -1,9 +1,8 @@
 public class Solution {
-public void rotate(int[] nums, int k) {
-int len = nums.length;
-if (len == 0 &amp;&amp; len == k)
-{
-return;
-}
-if (len < k)
+public int removeDuplicates(int[] A) {
+int len = A.length;
+if (len <= 1) return len;
+
+int count = 0;
+for (int i = 1; i < len; i++) {
 

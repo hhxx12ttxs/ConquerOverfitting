@@ -1,11 +1,10 @@
-public String conCat(String a, String b) {
-int len = a.length();
-int lenB = b.length();
-if (len <= 0) {
-return b;
-}
-if (lenB <= 0) {
-return a;
-}
-if (a.substring(len-1, len).equals(b.substring(0, 1))) {
+public static void   mergeSortedArray(int[] A, int m, int[] B, int n) {
+
+int lenA=m-1;
+int lenB=n-1;
+int len=m+n-1;
+
+
+for(int i=len; i>=0;i--){
+if (lenB>=0&amp;&amp; lenA>=0){
 

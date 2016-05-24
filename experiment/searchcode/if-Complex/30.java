@@ -1,9 +1,9 @@
 package JSci.physics.quantum;
 
-import JSci.maths.Complex;
-import JSci.maths.matrices.ComplexSquareMatrix;
+import JSci.maths.*;
 import JSci.maths.fields.ComplexField;
-
-/**
-* The GammaMatrix class provides an object for encapsulating the gamma matrices.
+* @version 1.2
+* @author Mark Hale
+*/
+public final class GammaMatrix extends ComplexSquareMatrix {
 

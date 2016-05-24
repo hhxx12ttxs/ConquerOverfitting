@@ -1,10 +1,8 @@
 public class Solution {
-public int searchInsert(int[] A, int target) {
-int len = A.length;
-if (target <= A[0]) {
-return 0;
+public int removeDuplicates(int[] A) {
+if (A.length < 3) {
+return A.length;
 }
-int i = 0;
-while(i < len) {
-if (target <= A[i]) {
+int len = 2;
+for (int i=2; i < A.length; ++i) {
 

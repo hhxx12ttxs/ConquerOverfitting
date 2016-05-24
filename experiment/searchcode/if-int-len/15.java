@@ -1,11 +1,9 @@
-public String conCat(String a, String b) {
-int len = a.length();
-int lenB = b.length();
-if (len <= 0) {
-return b;
-}
-if (lenB <= 0) {
-return a;
-}
-if (a.substring(len-1, len).equals(b.substring(0, 1))) {
+package charpter1;
+
+public class q1_6 {
+public static int[][] rotate(int[][] arr){
+int len = arr.length ;
+for(int i = 0 ; i < len ; i++){
+for(int j = 0 ; j < len ; j++){
+if(arr[i][j]>=0){
 

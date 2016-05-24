@@ -1,12 +1,11 @@
-/**
-* Created by Giuseppe on 4/16/2014.
-*/
+package electricUtils;
 
-public class TestComplex {
+import mathUtils.Complex;
+import mathUtils.MathUtils;
 
-public static void main(String[] args) {
-
-double a = 3.5;
-double b = 5.5;
-Complex c1 = new Complex(a, b);
+public class ElectricUtils {
+public static Complex getEquivalentResistance(Complex resistance1, Complex resistance2,
+boolean areAlongside) {
+if (areAlongside) {
+Complex numerator = MathUtils.ComplexUtils.multiplyComplex(resistance1, resistance2);
 

@@ -1,6 +1,9 @@
-public class Solution {
-public int removeElement(int[] A, int elem) {
-int len = A.length - 1;
-for(int i = 0; i <= len;) {
-if(A[i] == elem) {
+//     for (int j = 0; j < ylen; j++) {
+//         //Everytime the length should equal zero
+//         int len = 0;
+//         while (i + len < xlen &amp;&amp; j + len < ylen &amp;&amp; A.
+//         charAt(i + len) == B.charAt(j+len)) {
+//             len++;
+//             if (len > maxlen) {
+//                 maxlen = len;
 

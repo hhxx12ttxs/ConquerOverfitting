@@ -1,10 +1,22 @@
-public int selectGasStation(int[] a, int[] g) {
-int len = a.length;
-if(len == 0) return 0;
-int[] c = new int[2*len];
-int sum = 0;
-for(int i=0;i<2*len;i++){
-// c[i] not a[i]
-sum += c[i];
-if(sum < 0){
+int len = A.length;
+
+if (len == 0 || len == 1) {
+return len;
+}
+
+int i = 0;
+int j = 1;
+
+while (j < len) {
+if (A[j] != A[j - 1]) {
+i++;
+A[i] = A[j];
+}
+
+j++;
+}
+
+return i + 1;
+}
+}
 

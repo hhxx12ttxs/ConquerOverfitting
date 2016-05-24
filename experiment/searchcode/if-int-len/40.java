@@ -1,8 +1,8 @@
 public class Solution {
-private int fill(int[][] ret, int idx, int len, int d) {
-if (len == 1) {
-ret[idx][idx] = d++;
-return d;
+public int removeDuplicates(int[] A) {
+if(A==null ||A.length==0){
+return 0;
 }
-for (int i = 0; i < len - 1; i++) {
+int len=0;
+for(int i=1;i<A.length;i++){
 

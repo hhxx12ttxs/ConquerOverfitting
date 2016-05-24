@@ -1,10 +1,10 @@
-package com.barsoft.example.lab2;
+package org.sourceit;
 
-public class Complex {
-protected double x;
-protected double y;
-public boolean equals(Object obj) {
-if (obj != null) {
-if (obj instanceof Complex) {
-Complex cmp = (Complex) obj;
+public class ComplexFraction extends Fraction {
+
+ComplexNumber numerator;
+if (obj == null) {
+return false;
+}
+if (!(obj instanceof ComplexFraction)) {
 

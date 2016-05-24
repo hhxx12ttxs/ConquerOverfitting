@@ -1,12 +1,21 @@
-public void relpace(char[] str, int len)
-{
-if (str == null || str.length == 0)
-return;
-int newLen = len;
-for (int i = 0; i < len; i++)
-{
-if (str[i] == &#39; &#39;)
-newLen += 2;
+int len = A.length;
+int i = 0;
+
+while (i < len) {
+if (A[i] > 0 &amp;&amp; A[i] <= len &amp;&amp; A[i] != i + 1 &amp;&amp; A[i] != A[A[i] - 1]) {
+i--;
 }
-str[newLen] = &#39;\0&#39;;
+
+i++;
+}
+
+for (int j = 0; j < len; j++) {
+if (A[j] != j + 1) {
+return j + 1;
+}
+}
+
+return len + 1;
+}
+}
 

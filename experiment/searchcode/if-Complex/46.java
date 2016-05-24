@@ -1,9 +1,16 @@
-public ComplexRGBTexture threshold( int cut ) {
-for (complex z : data) if (complex.mod(z) < cut) z.setComplex(0,0);
-return new Complex(Re/divisor,-Im/divisor);
+package Task003;
+
+/**
+* Created by Kamil on 25.02.16.
+*/
+public class ComplexNumber {
+
+public double getX() {
+this.y = y;
 }
 
-public Complex complexPolarPow(int n){
+private double x;
+private double y;
 
-if (n == 0 || n < 0)
+public ComplexNumber add(ComplexNumber complexNumber) {
 

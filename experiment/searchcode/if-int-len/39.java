@@ -1,11 +1,10 @@
-public String lastChars(String a, String b) {
-int lenA = a.length();
-int lenB = b.length();
-String x = &quot;&quot;;
-if (lenA >= 1) {
-x += a.substring(0, 1);
-} else {
-x += &#39;@&#39;;
+int len = nums.length;
+if (len == 0) {
+return 0;
 }
-if (lenB >= 1) {
+
+int curLen = 0;
+for (int i = 0; i < len; ++i) {
+if (nums[i] == val) {
+continue;
 

@@ -1,9 +1,17 @@
-package JSci.physics.quantum;
+/*
+* Created on Feb 23, 2006
+*/
+package de.torstennahm.math;
 
-import JSci.maths.Complex;
-import JSci.maths.matrices.ComplexSquareMatrix;
-import JSci.maths.fields.ComplexField;
 
-/**
-* The GammaMatrix class provides an object for encapsulating the gamma matrices.
+public class Complex {
+public boolean equals(Object o) {
+if (o instanceof Complex) {
+Complex c = (Complex) o;
+return c.r == r &amp;&amp; c.i == i;
+} else {
+return false;
+}
+}
+}
 

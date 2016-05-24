@@ -1,6 +1,12 @@
-public class Solution {
-public int lengthOfLastWord(String s) {
-int len = 0, i = 0, lastLen = 0;
-while (i < s.length()){
-if (s.charAt(i++) == &#39; &#39;){
+public void relpace(char[] str, int len)
+{
+if (str == null || str.length == 0)
+return;
+int newLen = len;
+for (int i = 0; i < len; i++)
+{
+if (str[i] == &#39; &#39;)
+newLen += 2;
+}
+str[newLen] = &#39;\0&#39;;
 

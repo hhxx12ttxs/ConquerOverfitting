@@ -1,8 +1,11 @@
-package org.sourceit.ComplexFraction;
+// ------------
+// Complex.java
+// ------------
 
-public class ComplexFraction {
-private ComplexNumber numerator;
-private ComplexNumber denominator;
-
-public ComplexFraction(ComplexNumber numerator, ComplexNumber denominator) {
+class MyComplex {
+private int _r;
+private int _i;
+public boolean equals (Object rhs) {
+if (!(rhs instanceof MyComplex))
+return false;
 

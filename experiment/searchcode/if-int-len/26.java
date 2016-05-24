@@ -1,17 +1,10 @@
-int[] r = new int[2];
-int lenA = a.length;
-
-for (int i = 0; i < lenA; i++) {
-if (i < 2) {
-r[i] = a[i];
-}
-}
-
-for (int i = lenA; i < 2; i++) {
-r[i] = b[i - lenA];
-}
-
-return r;
-}
-}
+public int selectGasStation(int[] a, int[] g) {
+int len = a.length;
+if(len == 0) return 0;
+int[] c = new int[2*len];
+int sum = 0;
+for(int i=0;i<2*len;i++){
+// c[i] not a[i]
+sum += c[i];
+if(sum < 0){
 

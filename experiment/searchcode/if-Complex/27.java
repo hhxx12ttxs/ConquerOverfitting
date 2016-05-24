@@ -1,10 +1,9 @@
-package Algebra;
+package JSci.physics.quantum;
 
-public class FastFourierTransform {
-private Complex[] fft(Complex[] x) {
-int N = x.length;
+import JSci.maths.Complex;
+import JSci.maths.matrices.ComplexSquareMatrix;
+import JSci.maths.fields.ComplexField;
 
-if (N == 1)
-return new Complex[] {x[0]};
-Complex[] arr = new Complex[N >> 1];
+/**
+* The GammaMatrix class provides an object for encapsulating the gamma matrices.
 

@@ -1,11 +1,9 @@
-package electricUtils;
+import java.util.Set;
 
-import mathUtils.Complex;
-import mathUtils.MathUtils;
-
-public class ElectricUtils {
-public static Complex getEquivalentResistance(Complex resistance1, Complex resistance2,
-boolean areAlongside) {
-if (areAlongside) {
-Complex numerator = MathUtils.ComplexUtils.multiplyComplex(resistance1, resistance2);
+public class ComplexAttribute
+{
+private String name;
+private Set<Attribute> attributes;
+public void addComplexAttribute(ComplexAttribute complexAttribute) {
+if (this.complexAttributes == null)
 

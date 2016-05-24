@@ -1,17 +1,10 @@
-/*
-* Created on Feb 23, 2006
-*/
-package de.torstennahm.math;
+package Algebra;
 
+public class FastFourierTransform {
+private Complex[] fft(Complex[] x) {
+int N = x.length;
 
-public class Complex {
-public boolean equals(Object o) {
-if (o instanceof Complex) {
-Complex c = (Complex) o;
-return c.r == r &amp;&amp; c.i == i;
-} else {
-return false;
-}
-}
-}
+if (N == 1)
+return new Complex[] {x[0]};
+Complex[] arr = new Complex[N >> 1];
 

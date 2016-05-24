@@ -1,10 +1,13 @@
+* Created by Luiz Arantes Sa on 9/11/14.
+*/
 public class Complex {
 
-float realNum, complexNum;
-//The default constructor
-public Complex() {
-//The toString method, returns the complex number as a string.
-@Override
-public String toString() {
-if(complexNum>0)
+// real numbers
+private double a;
+private double b;
+
+
+public Complex(double a, double b) {
+this.a = a;
+this.b = b;
 

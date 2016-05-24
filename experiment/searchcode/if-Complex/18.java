@@ -1,8 +1,9 @@
-public Complex exp()                {return new Complex(Math.pow(E,this.x)*Math.cos(this.y),Math.pow(E,this.x)*Math.sin(this.y));}
+package util;
 
-public Complex pow(int n)
-{
-double[] p = toPolar(this);
-if      (n==0)                  return new Complex(1,0);
-else if (n>0)                   return new Complex(Math.pow(p[0],n)*Math.cos(n*Math.cos(p[1])),Math.pow(p[0],n)*Math.sin(n*Math.sin(p[1])));
+public class PolynomialComplex {
+Complex[] a;
+public PolynomialComplex(Complex[] a){
+this.a=new Complex[a.length];
+for (int i=0;i<a.length;i++){
+this.a[i]=a[i].copy();
 

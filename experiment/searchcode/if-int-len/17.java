@@ -1,10 +1,7 @@
-public int selectGasStation(int[] a, int[] g) {
-int len = a.length;
-if(len == 0) return 0;
-int[] c = new int[2*len];
-int sum = 0;
-for(int i=0;i<2*len;i++){
-// c[i] not a[i]
-sum += c[i];
-if(sum < 0){
+public class Solution {
+public int removeElement(int[] A, int elem) {
+int len = A.length;
+for(int i = 0; i < len; i ++) {
+if(A[i] == elem) {
+while(len > 0 &amp;&amp; A[len - 1] == elem) {
 

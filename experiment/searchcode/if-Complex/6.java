@@ -1,12 +1,13 @@
-package util;
+public class complex {
 
-public class Complex{
-double a,b;
+double x, y;
+ErrorHandler error;
+complex z, u;
 
-public Complex(double a,double b){
-this.a=a;
-public Complex divide(Complex other){
-double norm=other.norm();
-Complex result=other.conjugate().multiply(this);
-if (norm==0){
+public complex(float d, float b) {
+public complex cdiv(complex u, complex v) {
+
+z = new complex(0, 0);
+float d = (float) (v.x * v.x + v.y * v.y), eps = epsilon();
+if (d < eps * eps)
 

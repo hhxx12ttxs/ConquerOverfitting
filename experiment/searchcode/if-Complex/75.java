@@ -1,15 +1,10 @@
-import org.renjin.sexp.CHARSEXP;
-import org.renjin.sexp.ComplexVector;
-import org.renjin.sexp.DoubleVector;
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
-          sb.append(\"+\");
-        sb.append(ParseUtil.toString(complex.getReal()));
-        if(complex.getImaginary() >= 0) {
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-import org.apache.commons.math.complex.Complex;
-import org.renjin.eval.Context;
+package as;
+
+final public class Complex {
+public static final Complex ZERO = new Complex(0, 0);
+return new Complex(r * c.r - i * c.i, i * c.r + r * c.i);
+}
+
+public Complex pow(int power) {
+if (power <= 0) throw new IllegalArgumentException();
 

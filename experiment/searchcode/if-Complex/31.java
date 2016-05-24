@@ -1,9 +1,17 @@
-package JSci.physics.quantum;
-
-import JSci.maths.*;
-import JSci.maths.fields.ComplexField;
-* @version 1.2
-* @author Mark Hale
+/*
+* Created on Feb 23, 2006
 */
-public final class GammaMatrix extends ComplexSquareMatrix {
+package de.torstennahm.math;
+
+
+public class Complex {
+public boolean equals(Object o) {
+if (o instanceof Complex) {
+Complex c = (Complex) o;
+return c.r == r &amp;&amp; c.i == i;
+} else {
+return false;
+}
+}
+}
 

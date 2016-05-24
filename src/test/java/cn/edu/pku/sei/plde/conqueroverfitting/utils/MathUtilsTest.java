@@ -128,11 +128,11 @@ public class MathUtilsTest {
 //            log.logSignLine("end");
 //        }
 //
-        String path = "experiment//searchcode//if-Complex";
-        BoundaryCollect boundaryCollect = new BoundaryCollect(path, true , "Complex");
+        String path = "experiment//searchcode//if-int-len";
+        BoundaryCollect boundaryCollect = new BoundaryCollect(path, false , null);
         boundaryWithFreqs = boundaryCollect.getBoundaryWithFreqList();
 
-        Log log = new Log("log//if-Complex.log");
+        Log log = new Log("log//if-int-len.log");
         for(BoundaryWithFreq boundaryInfo : boundaryWithFreqs){
             log.logSignLine("begin");
             //log.logStr("name: " + boundaryInfo.name);

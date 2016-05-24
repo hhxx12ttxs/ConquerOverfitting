@@ -1,10 +1,12 @@
-public static Complex onPoint(SL2C t, Complex z){
-if(z.isInfinity()){
-if(!t.c.isZero()){
-return Complex.div(t.a, t.c);
-}else{
-Complex numerix = Complex.add( Complex.mult(t.a, z), t.b);
-Complex denominator = Complex.add( Complex.mult(t.c, z), t.d);
+package util;
 
-if(denominator.isZero()){
+public class Complex{
+double a,b;
+
+public Complex(double a,double b){
+this.a=a;
+public Complex divide(Complex other){
+double norm=other.norm();
+Complex result=other.conjugate().multiply(this);
+if (norm==0){
 

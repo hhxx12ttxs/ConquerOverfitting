@@ -1,13 +1,11 @@
-class LCS {
-public int lcs (int[] A) {
-if (A == null) {
-return 0;
+public String conCat(String a, String b) {
+int len = a.length();
+int lenB = b.length();
+if (len <= 0) {
+return b;
 }
-int len = A.length;
-if (len <= 1) {
-return len;
+if (lenB <= 0) {
+return a;
 }
-int[] f = new int[len];
-f[0] = 1;
-for (int i = 1; i < len; i++) {
+if (a.substring(len-1, len).equals(b.substring(0, 1))) {
 

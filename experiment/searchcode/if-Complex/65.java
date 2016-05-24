@@ -1,14 +1,7 @@
-BigComplex tmp)
-{
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- * 
-if (inputType.hasLongRepresentation() && outputType.hasLongRepresentation())
-{
-}
-else if (inputType.hasDoubleRepresentation() &&
-outputType.hasDoubleRepresentation())
-if (bounded != dataType.isBounded()) continue;
-if (complex != dataType.isComplex()) continue;
-if (floating != dataType.isFloat()) continue;
+package PolynomialLibrary;
+
+public class ComplexNumber extends NumberField<ComplexNumber> {
+public double R,I;
+public ComplexNumber(double real, double imaginary) {
+R = real;
 

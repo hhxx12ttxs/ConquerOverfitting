@@ -1,17 +1,15 @@
-  /**
-   * Determines if a simple ID is present.
-   *
-   * @return true if the key is not a complex ID and at least one field was annotated with @Id.
-   */
-  public boolean isSimpleIdPresent() {
-    return !isComplexKey() && !idPropertyMap.isEmpty();
-   * @return true if complex, false otherwise
-      throw new IllegalArgumentException(\"Primary Key Class cannot be null\");
-    this.pkClazz = pkClazz;
-  }
-  /**
-   * Determines if the key is complex (IdClass, Embedded, etc) or a simple one field type.
-   *
-    if (null == this.pkClazz) {
-   */
+* Omschrijving: 	Programma kan wiskundige functies met complexe getallen uitvoeren
+*/
+
+public class ComplexGetal implements ComplexGetalInterface {
+double a, b;
+
+ComplexGetal(double a, double b){
+nieuw_a = a + c *-1;
+}
+else if (d < 0){
+nieuw_b = b + d *-1;
+}
+
+ComplexGetal complex_getal = new ComplexGetal(nieuw_a, nieuw_b);
 

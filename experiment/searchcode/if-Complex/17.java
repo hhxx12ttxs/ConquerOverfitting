@@ -1,9 +1,7 @@
-package util;
+package JSci.maths.algebras;
 
-public class PolynomialComplex {
-Complex[] a;
-public PolynomialComplex(Complex[] a){
-this.a=new Complex[a.length];
-for (int i=0;i<a.length;i++){
-this.a[i]=a[i].copy();
+import JSci.maths.*;
+import JSci.maths.fields.ComplexField;
+private final static Complex t1[][]={
+{Complex.ZERO,Complex.ZERO,Complex.ZERO,Complex.ZERO},
 

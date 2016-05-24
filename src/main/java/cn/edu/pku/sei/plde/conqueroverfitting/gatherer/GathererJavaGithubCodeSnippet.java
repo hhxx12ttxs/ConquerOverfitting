@@ -29,7 +29,7 @@ import org.htmlparser.util.NodeIterator;
 import org.htmlparser.util.NodeList;
 
 public class GathererJavaGithubCodeSnippet {
-    private static final int API_PAGE_NUM = 5;
+    private static final int API_PAGE_NUM = 8;
 
     private static final String API_SEARCH_CODE_BASE_URL = "https://github.com/search?l=java&";
     private static final String API_SEARCH_CODE_POST_URL = "&ref=searchresults&type=Code&utf8=✓";
@@ -80,12 +80,12 @@ public class GathererJavaGithubCodeSnippet {
 //            }
 
 
-            try {
-                int sleep = 7500;
-                Thread.sleep(sleep);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+//            try {
+//                int sleep = 7500;
+//                Thread.sleep(sleep);
+//            } catch (InterruptedException e) {
+//                e.printStackTrace();
+//            }
 
             //codeUrlList.addAll(urls);
         }
@@ -93,8 +93,8 @@ public class GathererJavaGithubCodeSnippet {
         try {
             // get the response body as an array of bytes
             for(int i = 0; i < codeSnippets.size(); i ++) {
-                System.out.println("i = " + i);
-                System.out.println(codeSnippets.get(i));
+                //System.out.println("i = " + i);
+                //System.out.println(codeSnippets.get(i));
                 FileUtils.writeFile("experiment//searchcode//" + packageName + "//" + i + ".java", codeSnippets.get(i));
             }
         } catch (Exception e) {
@@ -186,22 +186,29 @@ public class GathererJavaGithubCodeSnippet {
                     code = code.append(str2 + "\n");
                     //System.out.println(str2);
                 }
-                codeSnippets.add(code.toString());
+
               //  System.out.println("str " + str);
-//                filter = new NodeClassFilter(LinkTag.class);
-//                NodeList nodeListUrl = getNodeList(str, filter);
-//                for (Node node : nodeListUrl.toNodeArray()) {
-//                    if (node instanceof LinkTag) {
-//                        String link = ((LinkTag) node).getLink();
-//                        link = link.replace("blob/", "");
-//                        if(link.contains(project)){
-//                            continue;
-//                        }
-//                        if (link != null && link.contains(".java")) {
-//                            codeUrlList.add(CODE_BASE_URL + link.toString());
-//                        }
-//                    }
-//                }
+                boolean flag = false;
+                filter = new NodeClassFilter(LinkTag.class);
+                NodeList nodeListUrl = getNodeList(str, filter);
+                for (Node node : nodeListUrl.toNodeArray()) {
+                    if (node instanceof LinkTag) {
+                        String link = ((LinkTag) node).getLink();
+                        link = link.replace("blob/", "");
+                        if(link.contains(project)){
+                            //continue;
+                            flag = true;
+                            break;
+                        }
+                    }
+                }
+
+                if(!flag){
+                    codeSnippets.add(code.toString());
+                }
+                else{
+                    System.out.println("code " + code);
+                }
             }
         }
 

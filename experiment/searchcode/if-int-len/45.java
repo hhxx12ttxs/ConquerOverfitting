@@ -1,10 +1,7 @@
-int len = nums.length;
-if (len == 0) {
-return 0;
-}
+public class Solution {
+public int removeElement(int[] A, int elem) {
+int len = A.length;
 
-int curLen = 0;
-for (int i = 0; i < len; ++i) {
-if (nums[i] == val) {
-continue;
+for (int i = 0; i < len; i++) {
+if (A[i] == elem) {
 

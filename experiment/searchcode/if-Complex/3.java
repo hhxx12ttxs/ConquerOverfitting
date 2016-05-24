@@ -1,13 +1,13 @@
-public class complex {
+* Created by Luiz Arantes Sa on 9/11/14.
+*/
+public class Complex {
 
-double x, y;
-ErrorHandler error;
-complex z, u;
+// real numbers
+private double a;
+private double b;
 
-public complex(float d, float b) {
-public complex cdiv(complex u, complex v) {
 
-z = new complex(0, 0);
-float d = (float) (v.x * v.x + v.y * v.y), eps = epsilon();
-if (d < eps * eps)
+public Complex(double a, double b) {
+this.a = a;
+this.b = b;
 

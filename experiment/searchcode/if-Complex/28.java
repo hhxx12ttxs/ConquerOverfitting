@@ -1,11 +1,9 @@
-// ------------
-// Complex.java
-// ------------
+package JSci.physics.quantum;
 
-class MyComplex {
-private int _r;
-private int _i;
-public boolean equals (Object rhs) {
-if (!(rhs instanceof MyComplex))
-return false;
+import JSci.maths.*;
+import JSci.maths.fields.ComplexField;
+* @version 1.2
+* @author Mark Hale
+*/
+public final class GammaMatrix extends ComplexSquareMatrix {
 

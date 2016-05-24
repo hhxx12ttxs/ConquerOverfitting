@@ -1,9 +1,9 @@
-package charpter1;
-
-public class q1_6 {
-public static int[][] rotate(int[][] arr){
-int len = arr.length ;
-for(int i = 0 ; i < len ; i++){
-for(int j = 0 ; j < len ; j++){
-if(arr[i][j]>=0){
+public int removeElement(int[] A, int elem) {
+if (A == null || A.length < 1)
+return 0;
+int len = A.length;
+for (int i = 0;i < len; i++) {
+if (A[i] != elem)
+continue;
+len--;
 
