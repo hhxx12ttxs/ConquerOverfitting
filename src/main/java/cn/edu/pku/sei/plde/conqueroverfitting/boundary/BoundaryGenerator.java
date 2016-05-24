@@ -48,7 +48,7 @@ public class BoundaryGenerator {
                 try {
                     ArrayList<BoundaryWithFreq> intervalss = MathUtils.generateInterval(variableBoundary, Double.valueOf(value));
                     if (intervalss == null  || intervalss.size() == 0){
-                        return new ArrayList<>();
+                        continue;
                     }
                     intervals.add(intervalss.get(0).value);
                 }catch (Exception e){

@@ -4,8 +4,8 @@ import cn.edu.pku.sei.plde.conqueroverfitting.boundary.BoundaryCollect;
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.BoundaryFilter;
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.BoundaryInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.BoundaryWithFreq;
-import cn.edu.pku.sei.plde.conqueroverfitting.gatherer.GathererJava;
-import cn.edu.pku.sei.plde.conqueroverfitting.gatherer.GathererJava;
+import cn.edu.pku.sei.plde.conqueroverfitting.gatherer.GathererJavaCodeSnippet;
+import cn.edu.pku.sei.plde.conqueroverfitting.gatherer.GathererJavaCodeSnippet;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Suspicious;
 import cn.edu.pku.sei.plde.conqueroverfitting.main.Config;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.ExceptionVariable;
@@ -60,7 +60,20 @@ public class SearchBoundaryFilter {
         keywords.addAll(addonKeywords);
         keywords.add(valueType);
         if (VariableUtils.isExpression(info)){
-            keywords.add(info.expressMethod);
+            String keyword = "";
+            int num=0;
+            for (int i= info.expressMethod.length()-1; i>=0; i--){
+                if (info.expressMethod.charAt(i)<='Z'&&info.expressMethod.charAt(i)>='A'){
+                    if (num == 0){
+                        keyword = info.expressMethod.substring(0, i);
+                    }
+                    num++;
+                }
+            }
+            if (num == 1 || keyword.equals("")){
+                keyword = info.expressMethod;
+            }
+            keywords.add(keyword);
             keywords.remove(variableName);
         }
         if (variableName.length() == 1){
@@ -166,9 +179,9 @@ class SearchCodeProcess implements Callable<Boolean> {
     }
 
     public synchronized Boolean call() {
-        GathererJava GathererJava = new GathererJava(keywords, StringUtils.join(keywords, "-"),getProjectFullName(project));
+        GathererJavaCodeSnippet GathererJavaCodeSnippet = new GathererJavaCodeSnippet(keywords, StringUtils.join(keywords, "-"),getProjectFullName(project));
         try {
-            GathererJava.searchCode();
+            GathererJavaCodeSnippet.searchCode();
             if (Thread.interrupted()){
                 return false;
             }
