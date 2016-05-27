@@ -4,7 +4,7 @@ import psutil, time
 import os
 import sys
 
-ban = [40747]
+ban = [38686]
 
 def get_pip(p):
     try:

@@ -8,16 +8,21 @@ public class TimeLine {
     private long timeLimit;
     private boolean timeoutNow = false;
 
+    private long downloadTime = 0;
+
     public TimeLine(int timeLimit){
         this.timeLimit = timeLimit;
         startTime = System.currentTimeMillis();
     }
 
+    public void addDownloadTime(long time){
+        downloadTime +=time;
+    }
     public boolean isTimeout(){
         if (timeoutNow){
             return true;
         }
-        return (System.currentTimeMillis() - startTime)/1000 > timeLimit;
+        return (System.currentTimeMillis() - startTime - downloadTime)/1000 > timeLimit;
     }
 
     public void timeOutNow(){

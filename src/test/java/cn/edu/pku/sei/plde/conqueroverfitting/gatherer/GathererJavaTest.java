@@ -13,10 +13,10 @@ public class GathererJavaTest extends TestCase {
 		long timeStart = System.currentTimeMillis();
 		ArrayList<String> keyWords = new ArrayList<String>();
 		keyWords.add("if");
-		keyWords.add("int");
-		keyWords.add("len");
+		//keyWords.add("int");
+		keyWords.add("getPivot");
 		//keyWords.add("Complex");
-		GathererJavaGithubCodeSnippet gathererJava = new GathererJavaGithubCodeSnippet(keyWords, "if-int-len", "commons-math");
+		GathererJavaGithubCodeSnippet gathererJava = new GathererJavaGithubCodeSnippet(keyWords, "if-getPivot", "commons-math");
 		//GathererJavaGithubCodeSnippet gathererJava = new GathererJavaGithubCodeSnippet(keyWords, "if-Complex", "commons-math");
 		//new GathererJavaGithub(keyWords, "commons-math");Math
 		//new GathererJavaGithub(keyWords, "commons-lang");Lang

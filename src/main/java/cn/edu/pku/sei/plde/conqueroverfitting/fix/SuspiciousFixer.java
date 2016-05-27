@@ -248,7 +248,9 @@ public class SuspiciousFixer {
 
     private List<String> getBoundary(ExceptionVariable exceptionVariable){
         if (!boundarysMap.containsKey(exceptionVariable)){
+            long downLoadStartTime = System.currentTimeMillis();
             List<String> boundarys = BoundaryGenerator.generate(suspicious,exceptionVariable, trueValues, falseValues, project);
+            timeLine.addDownloadTime(System.currentTimeMillis()-downLoadStartTime);
             if(timeLine.isTimeout()){
                 return new ArrayList<>();
             }

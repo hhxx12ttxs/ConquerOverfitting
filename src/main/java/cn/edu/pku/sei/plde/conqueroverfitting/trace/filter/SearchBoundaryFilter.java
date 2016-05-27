@@ -4,8 +4,8 @@ import cn.edu.pku.sei.plde.conqueroverfitting.boundary.BoundaryCollect;
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.BoundaryFilter;
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.BoundaryInfo;
 import cn.edu.pku.sei.plde.conqueroverfitting.boundary.model.BoundaryWithFreq;
-import cn.edu.pku.sei.plde.conqueroverfitting.gatherer.GathererJavaCodeSnippet;
-import cn.edu.pku.sei.plde.conqueroverfitting.gatherer.GathererJavaCodeSnippet;
+import cn.edu.pku.sei.plde.conqueroverfitting.gatherer.GathererJavaGithubCodeSnippet;
+import cn.edu.pku.sei.plde.conqueroverfitting.gatherer.GathererJavaGithubCodeSnippet;
 import cn.edu.pku.sei.plde.conqueroverfitting.localization.Suspicious;
 import cn.edu.pku.sei.plde.conqueroverfitting.main.Config;
 import cn.edu.pku.sei.plde.conqueroverfitting.trace.ExceptionVariable;
@@ -61,6 +61,7 @@ public class SearchBoundaryFilter {
         keywords.add(valueType);
         if (VariableUtils.isExpression(info)){
             String keyword = "";
+            /*
             int num=0;
             for (int i= info.expressMethod.length()-1; i>=0; i--){
                 if (info.expressMethod.charAt(i)<='Z'&&info.expressMethod.charAt(i)>='A'){
@@ -72,9 +73,19 @@ public class SearchBoundaryFilter {
             }
             if (num == 1 || keyword.equals("")){
                 keyword = info.expressMethod;
+            }*/
+            for (Character ch: info.expressMethod.toCharArray()){
+                if(!((ch<='Z')&&(ch>='A'))){
+                    keyword += ch;
+                }
+                else {
+                    keywords.add(keyword);
+                    keyword = ""+ch;
+                }
             }
             keywords.add(keyword);
             keywords.remove(variableName);
+            keywords.remove(valueType);
         }
         if (variableName.length() == 1){
             String methodName = suspicious.functionnameWithoutParam();
@@ -179,9 +190,9 @@ class SearchCodeProcess implements Callable<Boolean> {
     }
 
     public synchronized Boolean call() {
-        GathererJavaCodeSnippet GathererJavaCodeSnippet = new GathererJavaCodeSnippet(keywords, StringUtils.join(keywords, "-"),getProjectFullName(project));
+        GathererJavaGithubCodeSnippet GathererJavaGithubCodeSnippet = new GathererJavaGithubCodeSnippet(keywords, StringUtils.join(keywords, "-"),getProjectFullName(project));
         try {
-            GathererJavaCodeSnippet.searchCode();
+            GathererJavaGithubCodeSnippet.searchCode();
             if (Thread.interrupted()){
                 return false;
             }

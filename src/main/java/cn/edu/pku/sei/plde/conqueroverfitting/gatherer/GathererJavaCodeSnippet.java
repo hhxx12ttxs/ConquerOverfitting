@@ -23,8 +23,8 @@ import java.util.ArrayList;
 
 
 public class GathererJavaCodeSnippet {
-    private static final int API_PAGE_NUM = 2;
-    private static final int API_PER_PAGE = 100;
+    private static final int API_PAGE_NUM = 1;
+    private static final int API_PER_PAGE = 50;
     private static final int API_CODE_LANGUAGE = 23;// java
 
     private static final String API_SEARCH_CODE_BASE_URL = "https://searchcode.com/api/";
