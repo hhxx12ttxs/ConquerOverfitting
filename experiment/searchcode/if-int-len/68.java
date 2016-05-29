@@ -1,9 +1,8 @@
-public class Solution {
-public int removeDuplicates(int[] A) {
-int len = A.length;
-if(len <= 2) return len;
-int i = 1;
-int j = 2;
-
-while(j < len){
+public String lastTwo(String str) {
+int len = str.length();
+if (len <= 1) {
+return str;
+}
+return str.substring(0, len - 2) + str.substring(len - 1, len) + str.substring(len - 2, len - 1);
+}
 

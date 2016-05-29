@@ -1,16 +1,8 @@
-     */
-     */
-     * @return a copy of this datetime with the period added
-     * @throws ArithmeticException if the result exceeds the internal capacity
-     */
-     * @return a copy of this datetime with the duration added
-     * @throws ArithmeticException if the result exceeds the internal capacity
-     */
-     * @throws ArithmeticException if the result exceeds the internal capacity
-     *  or if it has field types that don't match
-     * @return a copy of this datetime with the duration added
-     * @throws IllegalArgumentException if the value is null or invalid
-     * @throws ArithmeticException if the result exceeds the internal capacity
-     */
-     * @throws NullPointerException if the partial is null
+String maturityDate = &quot;23/06/2018&quot;;
+Date maturity = df.parse(maturityDate);
+
+int months = getMonthsDiff(maturity);
+
+//Schatz contracts are 1.75 - 2.25 years, or 8 - 15 months
+final int SHORTEST_SCHATZ_MONTHS = 8;
 

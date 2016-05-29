@@ -1,0 +1,10 @@
+class PowerFit extends Fit {
+protected double getFitAtX(double c0, double c1, double xi) {
+if (c0 == 0 &amp;&amp; c1 == 0)
+return 0;
+return Math.exp(c0 + Math.log(xi) * c1) + ymin - 1;
+}
+
+protected double fx(double xi) {
+return Math.log(Math.max(1E-3, xi));
+

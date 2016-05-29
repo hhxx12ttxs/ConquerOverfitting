@@ -1,16 +1,13 @@
+package lesson5dash1decisions.cuteness;
+
+public class Kitten
+{
+private int months; // Age.
+public Kitten(int ageInMonths)
+{
+months = ageInMonths;
+}
+
 /**
- * Returns <code>true<\/code> if the long integers are equal.
- *
- * @param  long2 the second long integer
- * @return <code>true<\/code> if the long integers are equal;
- *         <code>false<\/code> otherwise
-/**
- * Returns <code>true<\/code> if the integers are equal.
- *
- * @param  int2 the second integer
- * @return <code>true<\/code> if the integers are equal; <code>false<\/code>
- *         otherwise
-public static boolean equals(int int1, int int2) {
-if (int1 == int2) {
-return true;
+* Returns how cute a kitten is based on age.
 

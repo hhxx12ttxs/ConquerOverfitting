@@ -1,0 +1,6 @@
+public static boolean overlapRectangles(Rectangle r1, Rectangle r2)
+{
+if(r1.lowerLeft.x < r2.lowerLeft.x + r2.width &amp;&amp;
+r1.lowerLeft.x + r1.width > r2.lowerLeft.x &amp;&amp;
+r1.lowerLeft.y < r2.lowerLeft.y + r2.height &amp;&amp;
+
