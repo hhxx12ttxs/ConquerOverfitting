@@ -1,21 +1,7 @@
+public class Solution {
+public int removeElement(int[] A, int elem) {
 int len = A.length;
-int i = 0;
-
-while (i < len) {
-if (A[i] > 0 &amp;&amp; A[i] <= len &amp;&amp; A[i] != i + 1 &amp;&amp; A[i] != A[A[i] - 1]) {
-i--;
-}
-
-i++;
-}
-
-for (int j = 0; j < len; j++) {
-if (A[j] != j + 1) {
-return j + 1;
-}
-}
-
-return len + 1;
-}
-}
+for(int i = 0; i < len; i ++) {
+if(A[i] == elem) {
+while(len > 0 &amp;&amp; A[len - 1] == elem) {
 

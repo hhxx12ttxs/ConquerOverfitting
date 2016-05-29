@@ -1,10 +1,10 @@
-c.setComplex(((this.complex * other.real) - (this.real * other.complex)) / ((Math.pow(other.real, 2) + Math.pow(other.complex, 2))));
-if(Double.isNaN(c.getReal()) || Double.isNaN(c.getComplex()))   {
-this.complex = complex;
+public Complex divide(Complex c) {
+if (c.a == 0) return new Complex(-b/c.b, -a/c.b);
+if (c.b == 0) return new Complex(a/c.a, b/c.a);
+public Complex divide(double v) {
+return new Complex(a/v, b/v);
 }
 
-@Override
-public String toString()    {
-if(complex >= 0) {
-return String.format(&quot;%.3f+%.3fi&quot;, real, complex);
+public double arg() {
+if (a == 0 &amp;&amp; b == 0) return Double.NaN;
 

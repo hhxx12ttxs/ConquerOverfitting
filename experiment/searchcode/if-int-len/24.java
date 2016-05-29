@@ -1,13 +1,10 @@
-class LCS {
-public int lcs (int[] A) {
-if (A == null) {
-return 0;
-}
-int len = A.length;
-if (len <= 1) {
-return len;
-}
-int[] f = new int[len];
-f[0] = 1;
-for (int i = 1; i < len; i++) {
+public int selectGasStation(int[] a, int[] g) {
+int len = a.length;
+if(len == 0) return 0;
+int[] c = new int[2*len];
+int sum = 0;
+for(int i=0;i<2*len;i++){
+// c[i] not a[i]
+sum += c[i];
+if(sum < 0){
 

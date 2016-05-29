@@ -1,10 +1,12 @@
+package util;
 
-public class Complex {
-double r,i;
-public Complex(double r,double i){
-this.r = r;
-this.i = i;
-}
-public static Complex add(Complex a,Complex b){
-return new Complex(a.r + b.r,a.i + b.i);
+public class Complex{
+double a,b;
+
+public Complex(double a,double b){
+this.a=a;
+public Complex divide(Complex other){
+double norm=other.norm();
+Complex result=other.conjugate().multiply(this);
+if (norm==0){
 

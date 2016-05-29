@@ -1,8 +1,10 @@
 public class Solution {
-private int fill(int[][] ret, int idx, int len, int d) {
-if (len == 1) {
-ret[idx][idx] = d++;
-return d;
+public int removeElement(int[] A, int elem) {
+int len = 0;
+for (int i = 0; i < A.length; i++)
+if (A[i] != elem)
+A[len++] = A[i];
+return len;
 }
-for (int i = 0; i < len - 1; i++) {
+}
 

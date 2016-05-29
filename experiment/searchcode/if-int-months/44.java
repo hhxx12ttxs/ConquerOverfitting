@@ -1,18 +1,11 @@
- * @param date
- *            The Date to modify
- * @param months
- */
-public static Date addMonths(Date date, int months) {
-return new Date(date.getYear(), date.getMonth() + months, date
- * @param date
- *            The Date to modify
- * @param days
- *            Number of day to add
- * @return The modified Date object
- */
-public static Date addDays(Date date, int days) {
-return new Date(date.getYear(), date.getMonth(), date.getDate() + days);
-/**
- * Add months to the Date object.
- * 
+public class Kitten
+{
+private int months; // Age.
+public Kitten(int ageInMonths)
+String cuteness = &quot;&quot;;
+if (months > 6)
+{
+cuteness = &quot;cute&quot;;
+}
+else if (months >=2)
 

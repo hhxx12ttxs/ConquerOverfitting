@@ -1,11 +1,9 @@
-public int[] front11(int[] a, int[] b) {
-int lenA = a.length;
-int lenB = b.length;
-if (lenA <= 0 &amp;&amp; lenB <= 0) {
-return a;
-}
-if (lenA <= 0) {
-int[] x = new int[1];
-x[0] = b[0];
-return x;
+package charpter1;
+
+public class q1_6 {
+public static int[][] rotate(int[][] arr){
+int len = arr.length ;
+for(int i = 0 ; i < len ; i++){
+for(int j = 0 ; j < len ; j++){
+if(arr[i][j]>=0){
 

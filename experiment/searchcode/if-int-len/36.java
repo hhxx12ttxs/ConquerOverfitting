@@ -1,10 +1,8 @@
 public class Solution {
-public int searchInsert(int[] A, int target) {
-int len = A.length;
-if (target <= A[0]) {
-return 0;
+private int fill(int[][] ret, int idx, int len, int d) {
+if (len == 1) {
+ret[idx][idx] = d++;
+return d;
 }
-int i = 0;
-while(i < len) {
-if (target <= A[i]) {
+for (int i = 0; i < len - 1; i++) {
 

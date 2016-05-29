@@ -1,12 +1,11 @@
-public final static double PI = 3.141592;
-int n;
-complex complex;
-ArrayList<complex> complex_list;
+// ------------
+// Complex.java
+// ------------
 
-FFT(ArrayList<complex> cl, complex c){
-this.n = cl.size();
-this.complex = c;
-this.complex_list = cl;
-
-// if the number of coefficients is not the power of 2, add 0s
+class MyComplex {
+private int _r;
+private int _i;
+public boolean equals (Object rhs) {
+if (!(rhs instanceof MyComplex))
+return false;
 

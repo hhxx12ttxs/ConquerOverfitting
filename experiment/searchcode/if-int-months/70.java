@@ -1,12 +1,11 @@
-     * overflowing into larger fields if necessary.
-     * <p>
-     */
-     */
-    public abstract int getMaximumShortTextLength(Locale locale);
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
-    public abstract int getMaximumTextLength(Locale locale);
-     * overflowing into larger fields if necessary.
-     * 
+import org.junit.BeforeClass;
+import org.junit.Test;
+
+
+// This test case checks if the combobox for birth month has totally correct elements,
+boolean correct = true;
+
+for (int p=0; p < 13; p++){
+
+if (!CommonMethods.getElement(p, CommonMethods.ID_MONTH_OF_BIRTH_REG).equals(months[p])){
 

@@ -1,8 +1,10 @@
-public class Solution {
-public int removeElement(int[] A, int elem) {
-int len = A.length;
-int i = 0;
+public String comboString(String a, String b) {
+int lenA = a.length();
+int lenB = b.length();
 
-while (i < len) {
-if (A[i] == elem) {
+if (lenA > lenB)
+return b+a+b;
+else
+return a+b+a;
+}
 

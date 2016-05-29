@@ -1,11 +1,10 @@
-public String lastChars(String a, String b) {
-int lenA = a.length();
-int lenB = b.length();
-String x = &quot;&quot;;
-if (lenA >= 1) {
-x += a.substring(0, 1);
-} else {
-x += &#39;@&#39;;
+public class Solution {
+public int searchInsert(int[] A, int target) {
+int len = A.length;
+if (target <= A[0]) {
+return 0;
 }
-if (lenB >= 1) {
+int i = 0;
+while(i < len) {
+if (target <= A[i]) {
 

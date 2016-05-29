@@ -1,0 +1,9 @@
+public class Strings {
+
+public static boolean isBlank(CharSequence cs) {
+int strLen;
+if (cs == null || (strLen = cs.length()) == 0) {
+return true;
+}
+for (int i = 0; i < strLen; i++) {
+

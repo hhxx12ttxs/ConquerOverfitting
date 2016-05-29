@@ -1,13 +1,9 @@
-     * @param weeks  amount of weeks in this period, which must be zero if unsupported
-     */
-                  int hours, int minutes, int seconds, int millis) {
-     */
-                          int hours, int minutes, int seconds, int millis) {
-     * @param years  amount of years in this period, which must be zero if unsupported
-     * @param months  amount of months in this period, which must be zero if unsupported
-     * @param weeks  amount of weeks in this period, which must be zero if unsupported
-     */
-                    int hours, int minutes, int seconds, int millis, PeriodType type) {
-     * @param years  amount of years in this period, which must be zero if unsupported
-     * @param months  amount of months in this period, which must be zero if unsupported
+private final static String months[] = monthsInizialization();
+
+
+public static void printString(Object[] object){
+for(int h = 0; h < object.length ; h++)
+public static String convertMonths(String month){
+for(int w = 1; w <= PublicStrings.TOTAL_MONTHS; w++){
+if(w < 10) month = month.replace(months[w-1],&quot;/0&quot;+String.valueOf(w));
 

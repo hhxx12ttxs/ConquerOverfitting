@@ -1,7 +1,9 @@
 public class Solution {
-public int removeElement(int[] A, int elem) {
+public int removeDuplicates(int[] A) {
 int len = A.length;
 
-for (int i = 0; i < len; i++) {
-if (A[i] == elem) {
+if(len < 2) return len;
+
+int i = 0;
+for(int j = 0; j < len; j++){
 

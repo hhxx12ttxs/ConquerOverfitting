@@ -1,10 +1,12 @@
-package as;
+import com.snuggy.nr.refs.*;
 
-final public class Complex {
-public static final Complex ZERO = new Complex(0, 0);
-return new Complex(r * c.r - i * c.i, i * c.r + r * c.i);
+public class Complex implements ByValue<Complex> {
+
+private double real, imag;
+Complex r = new Complex(real, imag);
+return r;
 }
 
-public Complex pow(int power) {
-if (power <= 0) throw new IllegalArgumentException();
+public static Complex complex(Complex x) {
+if (x == null)
 

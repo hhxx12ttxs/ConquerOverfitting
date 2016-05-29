@@ -1,15 +1,11 @@
-     */
-    public YearMonthDay minusMonths(int months) {
-    /**
-     * Returns a copy of this date plus the specified number of months.
-     * <p>
-     * Returns a copy of this date minus the specified number of months.
-        /** The field index */
-        private final int iFieldIndex;
-     * <p>
-    /**
-    public YearMonthDay plusMonths(int months) {
-        return withFieldAdded(DurationFieldType.months(), months);
-        return withFieldAdded(DurationFieldType.months(), FieldUtils.safeNegate(months));
-     */
+public class Kitten
+{
+private int months; // Age.
+public Kitten(int ageInMonths)
+String cuteness = &quot;&quot;;
+if (months > 6)
+{
+cuteness = &quot;cute&quot;;
+}
+else if (months >=2)
 

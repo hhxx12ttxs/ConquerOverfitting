@@ -1,9 +1,10 @@
-package JSci.physics.quantum;
+public static void main2(String[] args) {
+CollectionViewX<Complex> view = null;
+CollectionView<ComplexAdder2> tmp = view.gather(new ComplexAdder2());
+return a;
+}
 
-import JSci.maths.*;
-import JSci.maths.fields.ComplexField;
-* @version 1.2
-* @author Mark Hale
-*/
-public final class GammaMatrix extends ComplexSquareMatrix {
+@Override
+public ComplexAdder2 map(Complex a, ComplexAdder2 b) {
+if (b == null) {
 

@@ -1,17 +1,11 @@
-/*
-* Created on Feb 23, 2006
-*/
-package de.torstennahm.math;
+package electricUtils;
 
+import mathUtils.Complex;
+import mathUtils.MathUtils;
 
-public class Complex {
-public boolean equals(Object o) {
-if (o instanceof Complex) {
-Complex c = (Complex) o;
-return c.r == r &amp;&amp; c.i == i;
-} else {
-return false;
-}
-}
-}
+public class ElectricUtils {
+public static Complex getEquivalentResistance(Complex resistance1, Complex resistance2,
+boolean areAlongside) {
+if (areAlongside) {
+Complex numerator = MathUtils.ComplexUtils.multiplyComplex(resistance1, resistance2);
 

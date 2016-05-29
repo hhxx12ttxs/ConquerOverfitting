@@ -1,17 +1,16 @@
-/*
-* Created on Feb 23, 2006
-*/
-package de.torstennahm.math;
+package package1;
 
+public class ComplexNumber
+{
 
-public class Complex {
-public boolean equals(Object o) {
-if (o instanceof Complex) {
-Complex c = (Complex) o;
-return c.r == r &amp;&amp; c.i == i;
-} else {
-return false;
-}
-}
-}
+// VARIABLES
+
+private int r;
+private int i;
+
+// CONSTRUCTORES
+
+public ComplexNumber()
+{
+this.r=1;
 

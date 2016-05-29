@@ -1,9 +1,6 @@
-public class Solution {
-public int removeDuplicates(int[] A) {
-int len = A.length;
-if (len <= 1) {
-return len;
-}
-int p = 0;
-int q = 0;
+public int countHi2(String str) {
+int len = str.length();
+if (len < 2) return 0;
+if (str.substring(len-2, len).equals(&quot;hi&quot;)) {
+if ((len > 2 &amp;&amp; str.charAt(len-3) != &#39;x&#39;) || len == 2 )
 

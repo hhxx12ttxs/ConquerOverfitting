@@ -1,13 +1,10 @@
-public class complex {
+public class Complex {
 
-double x, y;
-ErrorHandler error;
-complex z, u;
-
-public complex(float d, float b) {
-public complex cdiv(complex u, complex v) {
-
-z = new complex(0, 0);
-float d = (float) (v.x * v.x + v.y * v.y), eps = epsilon();
-if (d < eps * eps)
+float realNum, complexNum;
+//The default constructor
+public Complex() {
+//The toString method, returns the complex number as a string.
+@Override
+public String toString() {
+if(complexNum>0)
 

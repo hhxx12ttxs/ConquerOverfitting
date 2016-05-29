@@ -1,7 +1,7 @@
 public class Solution {
-public void rotate(int[] nums, int k) {
-int len = nums.length;
-int res[] = new int[len];
-
-if(len==k) return; // worst case
+public int minCut(String s) {
+int len = s.length();
+int[] f = new int[len+1];
+boolean[][] p = new boolean[len][len];
+// the worst case is cutting by each char
 

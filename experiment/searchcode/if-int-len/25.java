@@ -1,22 +1,10 @@
-int len = A.length;
-
-if (len == 0 || len == 1) {
+public class Solution {
+public int removeElement(int[] A, int elem) {
+int len = 0;
+for (int i = 0; i < A.length; i++)
+if (A[i] != elem)
+A[len++] = A[i];
 return len;
-}
-
-int i = 0;
-int j = 1;
-
-while (j < len) {
-if (A[j] != A[j - 1]) {
-i++;
-A[i] = A[j];
-}
-
-j++;
-}
-
-return i + 1;
 }
 }
 

@@ -1,0 +1,11 @@
+double correction;
+
+totalError += error;
+
+if (firstRun) {
+correction = kp * error;
+firstRun = false;
+} else {
+double de = error - lastError;
+correction = kp * error + ki * totalError + kd * de;
+

@@ -1,9 +1,12 @@
-public class Solution {
-public int removeDuplicates(int[] A) {
-int len = A.length;
-
-if(len < 2) return len;
-
-int i = 0;
-for(int j = 0; j < len; j++){
+public int sumLimit(int a, int b) {
+String a = a + &quot;&quot;;
+int lenA = a.length();
+int sum = a + b;
+String sumString = sum + &quot;&quot;;
+int lenS = sumString.length();
+if (lenA == lenS) {
+return sum;
+}
+return a;
+}
 

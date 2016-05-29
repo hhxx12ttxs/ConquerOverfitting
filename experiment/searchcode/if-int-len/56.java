@@ -1,7 +1,8 @@
-public class Solution {
-public int minCut(String s) {
-int len = s.length();
-int[] f = new int[len+1];
-boolean[][] p = new boolean[len][len];
-// the worst case is cutting by each char
+public class GasStation {
+public int canCompleteCircuit(int[] gas, int[] cost) {
+int len = gas.length;
+for (int i = 2 * len - 1; i >= 0; --i) {
+int remain = gas[i % len] - cost[(i + len - 1) % len];
+total += remain;
+if (total < 0) {
 

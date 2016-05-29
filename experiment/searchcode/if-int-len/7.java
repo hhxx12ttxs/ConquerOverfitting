@@ -1,12 +1,10 @@
-// !! n >= 0 !!
-// if n==0 then 1
-// else 12345->5
-int digLen(long n) {
-int len = 1;
-while (n >= 10) {
-len++;
-n /= 10;
-}
-return len;
-}
+public int selectGasStation(int[] a, int[] g) {
+int len = a.length;
+if(len == 0) return 0;
+int[] c = new int[2*len];
+int sum = 0;
+for(int i=0;i<2*len;i++){
+// c[i] not a[i]
+sum += c[i];
+if(sum < 0){
 

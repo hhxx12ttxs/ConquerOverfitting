@@ -1,10 +1,6 @@
 public class Solution {
-public int removeElement(int[] A, int elem) {
-int len = 0;
-for (int i = 0; i < A.length; i++)
-if (A[i] != elem)
-A[len++] = A[i];
-return len;
-}
-}
+public int lengthOfLastWord(String s) {
+int len = 0, i = 0, lastLen = 0;
+while (i < s.length()){
+if (s.charAt(i++) == &#39; &#39;){
 

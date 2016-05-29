@@ -1,9 +1,16 @@
-//     for (int j = 0; j < ylen; j++) {
-//         //Everytime the length should equal zero
-//         int len = 0;
-//         while (i + len < xlen &amp;&amp; j + len < ylen &amp;&amp; A.
-//         charAt(i + len) == B.charAt(j+len)) {
-//             len++;
-//             if (len > maxlen) {
-//                 maxlen = len;
+package solutions;
+
+public class RemoveElement {
+
+int removeElement(int[] a, int v) {
+int len = 0;
+for (int i = 0; i < a.length; i++) {
+if (a[i] != v) {
+a[len++] = a[i];
+}
+}
+return len;
+}
+
+}
 

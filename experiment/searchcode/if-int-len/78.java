@@ -1,10 +1,10 @@
-public int hIndex(int[] citations) {
-if(citations.length == 0) return 0;
-int len = citations.length;
-for(int c : citations) {
-if(c > len) count[len]++;
-else count[c]++;
+int len = A.length;
+if (len == 0) {
+return 1;
 }
-
-int res = 0;
+for (int i = 0; i < len; i++) {
+while (A[i] > 0 &amp;&amp; A[i] <= len &amp;&amp; A[i] != i + 1) {
+int temp = A[A[i] - 1];
+if (A[i] == temp) {
+break;
 

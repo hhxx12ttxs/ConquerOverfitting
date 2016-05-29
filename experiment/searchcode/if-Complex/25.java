@@ -1,9 +1,11 @@
-package JSci.physics.quantum;
+package complex;
 
-import JSci.maths.*;
-import JSci.maths.fields.ComplexField;
-* @version 1.2
-* @author Mark Hale
-*/
-public final class GammaMatrix extends ComplexSquareMatrix {
+import org.junit.Assert;
+import org.junit.Test;
+public class ComplexTest {
+
+@Test
+public void TestCreation() {
+Complex Z = new Complex(4,5);
+Complex Z2 = new Complex(Z);
 

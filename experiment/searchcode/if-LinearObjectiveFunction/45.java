@@ -1,0 +1,9 @@
+* the x<sub>i</sub> are the coordinates of the current point.
+* </p>
+* @version $Id: LinearObjectiveFunction.java 1244107 2012-02-14 16:17:55Z erans $
+if (this == other) {
+return true;
+}
+
+if (other instanceof LinearObjectiveFunction) {
+

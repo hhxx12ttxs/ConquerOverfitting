@@ -1,0 +1,7 @@
+char currChar;
+char lastChar = &#39; &#39;;
+int wordCount = 0;
+for (int i = 0; i < sentence.length(); i++) {
+currChar = sentence.charAt(i);
+if (!Character.isLetter(lastChar) &amp;&amp; Character.isLetter(currChar)){
+

@@ -1,9 +1,12 @@
-package charpter1;
-
-public class q1_6 {
-public static int[][] rotate(int[][] arr){
-int len = arr.length ;
-for(int i = 0 ; i < len ; i++){
-for(int j = 0 ; j < len ; j++){
-if(arr[i][j]>=0){
+public void relpace(char[] str, int len)
+{
+if (str == null || str.length == 0)
+return;
+int newLen = len;
+for (int i = 0; i < len; i++)
+{
+if (str[i] == &#39; &#39;)
+newLen += 2;
+}
+str[newLen] = &#39;\0&#39;;
 

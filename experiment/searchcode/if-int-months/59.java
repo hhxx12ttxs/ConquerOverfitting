@@ -1,16 +1,10 @@
-    @net.sf.jni4net.attributes.ClrMethod(\"(LSystem/IFormatProvider;)S\")
-    public native short ToInt16(system.IFormatProvider provider);
-    
-    @net.sf.jni4net.attributes.ClrMethod(\"(LSystem/IFormatProvider;)LSystem/UInt16;\")
-    public native short ToUInt16(system.IFormatProvider provider);
-    
-    @net.sf.jni4net.attributes.ClrMethod(\"(LSystem/IFormatProvider;)I\")
-    public native int ToInt32(system.IFormatProvider provider);
-    
-    @net.sf.jni4net.attributes.ClrMethod(\"(LSystem/IFormatProvider;)LSystem/UInt32;\")
-    public native int ToUInt32(system.IFormatProvider provider);
-    
-    @net.sf.jni4net.attributes.ClrMethod(\"(LSystem/IFormatProvider;)J\")
-    public native long ToInt64(system.IFormatProvider provider);
-    
+int mon = Integer.parseInt(Month);
+
+if (mon < 0 || mon > 12 ){
+System.out.println(&quot;It should be from 1 to 12&quot;);
+case 11: months = &quot;November&quot;;break;
+case 12: months = &quot;December&quot;;break;
+}
+
+if (mon >= 1 &amp;&amp; mon <= 2 || mon == 12){
 

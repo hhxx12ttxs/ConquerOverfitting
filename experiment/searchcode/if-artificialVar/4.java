@@ -1,0 +1,9 @@
+* Create the tableau by itself.
+* @param maximize if true, goal is to maximize the objective function
+* @return created tableau
+double[][] matrix = new double[height][width];
+
+// initialize the objective function rows
+if (getNumObjectiveFunctions() == 2) {
+matrix[0][0] = -1;
+

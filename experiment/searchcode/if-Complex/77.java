@@ -1,10 +1,13 @@
-package as;
+import org.junit.Test;
 
-final public class Complex {
-public static final Complex ZERO = new Complex(0, 0);
-return new Complex(r * c.r - i * c.i, i * c.r + r * c.i);
-}
+import com.nr.Complex;
 
-public Complex pow(int power) {
-if (power <= 0) throw new IllegalArgumentException();
+public class Test_hypgeo {
+
+@Before
+public void setUp() throws Exception {
+public void test() {
+int i,N=20,M=100;
+double err,errmax,sbeps;
+Complex aa,bb,cc,zz,res1,res2;
 

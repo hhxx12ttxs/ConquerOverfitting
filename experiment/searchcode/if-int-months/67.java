@@ -1,12 +1,12 @@
-     */
-    public abstract int getMinimumValue(long instant);
-     * int v = ...
-     * int age = getDifference(add(instant, v), instant);
-     * <\/pre>
-     * overflowing into larger fields if necessary.
-     * 
-     */
-     * overflowing into larger fields if necessary.
-     * <p>
-    public abstract int getDifference(long minuendInstant, long subtrahendInstant);
+package Assignment1;
+
+public class dates_in_months {
+
+int day;
+int month;
+int year;
+
+public dates_in_months(int inp_day, int inp_month, int inp_year) {
+this.day=inp_day;
+this.month=inp_month;
 

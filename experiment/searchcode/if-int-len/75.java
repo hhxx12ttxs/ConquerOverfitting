@@ -1,10 +1,9 @@
-int len = A.length;
-if (len == 0) {
-return 1;
-}
-for (int i = 0; i < len; i++) {
-while (A[i] > 0 &amp;&amp; A[i] <= len &amp;&amp; A[i] != i + 1) {
-int temp = A[A[i] - 1];
-if (A[i] == temp) {
-break;
+public class Solution {
+public String longestPalindrome(String s) {
+
+int maxLen=0, start=0, end=0;
+
+for (int i=0; i<s.length(); i++) {
+
+int lenA=searchCenter(s, i, i);
 

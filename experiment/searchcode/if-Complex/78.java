@@ -1,12 +1,14 @@
-import com.snuggy.nr.refs.*;
+package mandelbrot.model;
 
-public class Complex implements ByValue<Complex> {
+import java.text.DecimalFormat;
 
-private double real, imag;
-Complex r = new Complex(real, imag);
-return r;
+/**
+* Complex
+* @author Michael
+Complex complex = (Complex) o;
+
+if (Double.compare(complex.im, im) != 0) {
+return false;
 }
-
-public static Complex complex(Complex x) {
-if (x == null)
+if (Double.compare(complex.re, re) != 0) {
 

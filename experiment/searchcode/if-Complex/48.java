@@ -1,14 +1,10 @@
-return DOUBLE;
-}
-if (&quot;complex&quot;.equals(value))
-{
-return COMPLEX;
-}
-if (&quot;double-complex&quot;.equals(value))
-return new Complex(Re/divisor,-Im/divisor);
-}
+/*
+Java Experiment 5 - MyComplex
+Author: Bird Liu (Liu Xin)
 
-public Complex complexPolarPow(int n){
-
-if (n == 0 || n < 0)
+This is an Open-source Project under GNU GPLv2
+return r;
+}
+public boolean equals(MyComplex t) {
+if ( x == t.x &amp;&amp; y == t.y )
 

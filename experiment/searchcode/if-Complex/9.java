@@ -1,10 +1,10 @@
-public Complex divide(Complex c) {
-if (c.a == 0) return new Complex(-b/c.b, -a/c.b);
-if (c.b == 0) return new Complex(a/c.a, b/c.a);
-public Complex divide(double v) {
-return new Complex(a/v, b/v);
-}
+public static Complex onPoint(SL2C t, Complex z){
+if(z.isInfinity()){
+if(!t.c.isZero()){
+return Complex.div(t.a, t.c);
+}else{
+Complex numerix = Complex.add( Complex.mult(t.a, z), t.b);
+Complex denominator = Complex.add( Complex.mult(t.c, z), t.d);
 
-public double arg() {
-if (a == 0 &amp;&amp; b == 0) return Double.NaN;
+if(denominator.isZero()){
 

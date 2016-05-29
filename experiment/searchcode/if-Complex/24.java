@@ -1,9 +1,6 @@
-package JSci.physics.quantum;
+package kpfu.terentyev.quantum.emulator.Gates;
 
-import JSci.maths.Complex;
-import JSci.maths.matrices.ComplexSquareMatrix;
-import JSci.maths.fields.ComplexField;
-
-/**
-* The GammaMatrix class provides an object for encapsulating the gamma matrices.
+import kpfu.terentyev.quantum.emulator.Complex;
+public ControlledUGate (Complex [][] uMatrix) throws Exception{
+if (uMatrix.length!=2 || (uMatrix.length==2 &amp;&amp; (uMatrix[0].length!=2 || uMatrix[1].length!=2))){
 

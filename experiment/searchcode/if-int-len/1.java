@@ -1,12 +1,9 @@
-public String minCat(String a, String b) {
-int lenA = a.length();
-int lenB = b.length();
-if (lenA > lenB) {
-return a.substring(lenA - lenB) + b;
-}
-if (lenB > lenA) {
-return a + b.substring(lenB - lenA);
-}
-return a + b;
-}
+public int[] merge(int[] L, int[] R){
+int lenL = L.length;
+int lenR = R.length;
+int[] merged = new int[lenL+lenR];
+int i = 0;
+int j = 0;
+while(i<lenL||j<lenR){
+if(i<lenL &amp; j<lenR){
 

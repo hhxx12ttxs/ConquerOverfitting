@@ -1,8 +1,8 @@
-public String lastTwo(String str) {
-int len = str.length();
-if (len <= 1) {
-return str;
-}
-return str.substring(0, len - 2) + str.substring(len - 1, len) + str.substring(len - 2, len - 1);
-}
+public class Solution {
+public int removeElement(int[] A, int elem) {
+int end = A.length - 1;
+int len = A.length;
+int i = 0;
+while(i < len){
+if(A[i] == elem){
 

@@ -1,6 +1,15 @@
-package kpfu.terentyev.quantum.emulator.Gates;
+import org.babyfish.lang.Arguments;
 
-import kpfu.terentyev.quantum.emulator.Complex;
-public ControlledUGate (Complex [][] uMatrix) throws Exception{
-if (uMatrix.length!=2 || (uMatrix.length==2 &amp;&amp; (uMatrix[0].length!=2 || uMatrix[1].length!=2))){
+/**
+* @author Tao Chen
+*/
+public final class Complex {
+
+public static final Complex ZERO = new Complex(0, 0);
+return true;
+}
+if (!(obj instanceof Complex)) {
+return false;
+}
+Complex other = (Complex)obj;
 

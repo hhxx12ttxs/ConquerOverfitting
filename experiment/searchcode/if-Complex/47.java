@@ -1,9 +1,16 @@
-// Matrizendaten
-JObjectVector l1;       Complex a , b , c ;
-JObjectVector l2;       Complex d , e , f ;
-JObjectVector l3;       Complex g , h , i ;
+package Task003;
 
-JObjectVector                   r1, r2, r3;
+/**
+* Created by Kamil on 25.02.16.
+*/
+public class ComplexNumber {
 
-public JObjectMatrix(double  a, double  b, double  c
+public double getX() {
+this.y = y;
+}
+
+private double x;
+private double y;
+
+public ComplexNumber add(ComplexNumber complexNumber) {
 

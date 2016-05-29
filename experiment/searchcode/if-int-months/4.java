@@ -1,15 +1,8 @@
-     */
-    public static Period months(int months) {
-        return new Period(new int[] {0, months, 0, 0, 0, 0, 0, 0}, PeriodType.standard());
-    }
-                    int hours, int minutes, int seconds, int millis, PeriodType type) {
-     */
-                  int hours, int minutes, int seconds, int millis) {
-     * @param years  amount of years in this period, which must be zero if unsupported
-    /**
-     * Create a period with a specified number of months.
-     * <p>
-     * @param months  amount of months in this period, which must be zero if unsupported
-     * @param weeks  amount of weeks in this period, which must be zero if unsupported
-     */
+Scanner input = new Scanner(System.in);
+int months = input.nextInt();
+System.out.println(months + &quot;个月后兔子数是：&quot; + function(months));
+}
+
+public static int function(int months) {
+if (months == 1 || months == 2)
 

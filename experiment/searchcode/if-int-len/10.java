@@ -1,9 +1,11 @@
-public int removeElement(int[] A, int elem) {
-if (A == null || A.length < 1)
-return 0;
-int len = A.length;
-for (int i = 0;i < len; i++) {
-if (A[i] != elem)
-continue;
-len--;
+public int[] front11(int[] a, int[] b) {
+int lenA = a.length;
+int lenB = b.length;
+if (lenA <= 0 &amp;&amp; lenB <= 0) {
+return a;
+}
+if (lenA <= 0) {
+int[] x = new int[1];
+x[0] = b[0];
+return x;
 

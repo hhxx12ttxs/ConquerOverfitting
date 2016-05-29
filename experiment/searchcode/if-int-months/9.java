@@ -1,16 +1,6 @@
-     * @return a copy of this datetime with the duration added
-     * @throws ArithmeticException if the result exceeds the internal capacity
-     */
-     */
-     * @return a copy of this datetime with the duration added
-     * @throws IllegalArgumentException if the value is null or invalid
-     * @throws ArithmeticException if the result exceeds the internal capacity
-     */
-     * @return a copy of this datetime with the period added
-     * @throws ArithmeticException if the result exceeds the internal capacity
-     */
-     *  or if it has field types that don't match
-     * @throws NullPointerException if the partial is null
-     */
-     * @throws ArithmeticException if the result exceeds the internal capacity
+private final long chitValue, dividendAlreadyRecieved;
+private final int months, completedMonths, minBidIncrement;
+
+public Chit(long chitValue, int months, int completedMonths) {
+this(chitValue, months, completedMonths, 0);
 

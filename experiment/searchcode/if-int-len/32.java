@@ -1,7 +1,6 @@
 public class Solution {
 public int removeElement(int[] A, int elem) {
-int len = A.length;
-int i = 0;
-while(i<len) {
-if(A[i]==elem) {
+int len = A.length - 1;
+for(int i = 0; i <= len;) {
+if(A[i] == elem) {
 

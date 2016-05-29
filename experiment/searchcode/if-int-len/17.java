@@ -1,7 +1,13 @@
-public class Solution {
-public int removeElement(int[] A, int elem) {
+class LCS {
+public int lcs (int[] A) {
+if (A == null) {
+return 0;
+}
 int len = A.length;
-for(int i = 0; i < len; i ++) {
-if(A[i] == elem) {
-while(len > 0 &amp;&amp; A[len - 1] == elem) {
+if (len <= 1) {
+return len;
+}
+int[] f = new int[len];
+f[0] = 1;
+for (int i = 1; i < len; i++) {
 

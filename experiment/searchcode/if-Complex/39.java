@@ -1,12 +1,11 @@
-/**
-* Created by Giuseppe on 4/16/2014.
-*/
+public static Complex[] fftDit1d(Complex[] complex){
+final int N = complex.length;
 
-public class TestComplex {
+// base case
+if (N == 1){
+return new Complex[] { complex[0] };
+}
 
-public static void main(String[] args) {
-
-double a = 3.5;
-double b = 5.5;
-Complex c1 = new Complex(a, b);
+// radix 2 Cooley-Tukey FFT
+if (N % 2 != 0) {
 

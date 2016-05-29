@@ -1,8 +1,12 @@
-package org.sourceit.ComplexFraction;
+/**
+* Created by Giuseppe on 4/16/2014.
+*/
 
-public class ComplexFraction {
-private ComplexNumber numerator;
-private ComplexNumber denominator;
+public class TestComplex {
 
-public ComplexFraction(ComplexNumber numerator, ComplexNumber denominator) {
+public static void main(String[] args) {
+
+double a = 3.5;
+double b = 5.5;
+Complex c1 = new Complex(a, b);
 

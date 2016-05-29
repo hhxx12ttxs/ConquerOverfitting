@@ -1,11 +1,10 @@
-import java.io.*;
-class ExComplex
-{
-public static void main(String args[])
-{
-Complex a=new Complex(2,3);
-Complex b=new Complex(2,3);
-Complex c=a.add(b);
-c.display();
-c.sub(a,b);
+package com.barsoft.example.lab2;
+
+public class Complex {
+protected double x;
+protected double y;
+public boolean equals(Object obj) {
+if (obj != null) {
+if (obj instanceof Complex) {
+Complex cmp = (Complex) obj;
 

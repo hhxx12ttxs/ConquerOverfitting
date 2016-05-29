@@ -1,9 +1,10 @@
-public class Solution {
-public String longestPalindrome(String s) {
-
-int maxLen=0, start=0, end=0;
-
-for (int i=0; i<s.length(); i++) {
-
-int lenA=searchCenter(s, i, i);
+solution.merge(A, 0, B, 1);
+}
+public void merge(int A[], int m, int B[], int n) {
+int len = m + n - 1;
+int aLen = m;
+int bLen = n;
+int i = 0, j = 0;
+while (i < aLen &amp;&amp; j < bLen) {
+if (A[aLen - 1 - i] < B[bLen - 1 - j]) {
 

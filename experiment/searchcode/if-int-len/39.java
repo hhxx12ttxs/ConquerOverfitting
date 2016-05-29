@@ -1,10 +1,15 @@
-int len = nums.length;
-if (len == 0) {
-return 0;
-}
+if(A == null)   return 0;
+int len = A.length;
+if(len <= 2)    return len;
 
-int curLen = 0;
-for (int i = 0; i < len; ++i) {
-if (nums[i] == val) {
-continue;
+int i = 2;
+for(int j = i; j < len; j++) {
+if(A[i - 2] != A[j]) {
+A[i] = A[j];
+i++;
+}
+}
+return i;
+}
+}
 

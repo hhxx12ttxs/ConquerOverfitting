@@ -1,12 +1,10 @@
-public void relpace(char[] str, int len)
-{
-if (str == null || str.length == 0)
-return;
-int newLen = len;
-for (int i = 0; i < len; i++)
-{
-if (str[i] == &#39; &#39;)
-newLen += 2;
-}
-str[newLen] = &#39;\0&#39;;
+public int selectGasStation(int[] a, int[] g) {
+int len = a.length;
+if(len == 0) return 0;
+int[] c = new int[2*len];
+int sum = 0;
+for(int i=0;i<2*len;i++){
+// c[i] not a[i]
+sum += c[i];
+if(sum < 0){
 

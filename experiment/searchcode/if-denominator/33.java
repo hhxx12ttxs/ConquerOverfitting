@@ -1,0 +1,7 @@
+private int denominator;
+
+public Fraction(int numerator, int denominator) {
+if(denominator == 0) throw new ArithmeticException(&quot;Denominator must not be zero&quot;);
+
+this.numerator = numerator;
+

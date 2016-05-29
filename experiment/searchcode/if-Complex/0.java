@@ -1,14 +1,16 @@
-protected int size;
+package zadaci_20_02_2016;
 
+import java.text.DecimalFormat;
 
-@Override
-public String toString(){
-Complex [][] matrix = new Complex[0][];
-try {
-result = result + &quot;\n&quot;;
-}
-return result;
-}
+/*
+* Complex class
+*/
 
-public abstract Complex [][] getMatrix () throws Exception;
+public class Complex {
+
+// real numbers
+private double a;
+private double b;
+
+// constructors next 3 lines
 

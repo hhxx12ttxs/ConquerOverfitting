@@ -1,0 +1,8 @@
+package solvedTopcoder;
+public class GuessTheNumber {
+public int noGuesses(int upper, int answer) {
+int lower = 1;
+for (int i = 1;; i++) {
+int x = (lower + upper) / 2;
+if (x == answer) {
+

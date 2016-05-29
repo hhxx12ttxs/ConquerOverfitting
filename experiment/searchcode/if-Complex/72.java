@@ -1,9 +1,16 @@
-public boolean equals(Object o) {
-if (o == this)
-return true;
-if (o instanceof Complex) {
-Complex complex = new Complex();
-int sum = v.lastIndexOf(&#39;+&#39;);
-int sub = v.lastIndexOf(&#39;-&#39;);
-if (sum == sub) {
+/*
+Shady Salaheldin
+*/
+
+public class Complex {
+
+
+
+public Complex(double real, double img) {
+
+this.real = real;
+this.img = img;
+}
+
+public Complex add(Complex o) {
 

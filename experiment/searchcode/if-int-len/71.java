@@ -1,8 +1,10 @@
-public class Solution {
-public int removeElement(int[] A, int elem) {
-if (A == null || A.length == 0) {
-return 0;
-}
-int len = A.length-1;
-for (int i=0; i<=len; i++) {
+/*    */ public class FrenchMinimalStemmer
+/*    */ {
+/*    */   public int stem(char[] s, int len)
+/*    */   {
+/* 64 */     if (len < 6) {
+/* 65 */       return len;
+/*    */     }
+/* 67 */     if (s[(len - 1)] == &#39;x&#39;) {
+/* 68 */       if ((s[(len - 3)] == &#39;a&#39;) &amp;&amp; (s[(len - 2)] == &#39;u&#39;))
 

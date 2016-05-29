@@ -1,11 +1,10 @@
-package Chapter5;
-
-public class Complex {
-private double r;
-private double i;
-Complex(double rr,double ii){
-(c1.r*c2.r+c1.i*c2.i)/(c2.r*c2.r+c2.i*c2.i),(c1.i*c2.r-c2.i*c1.r)/(c2.r*c2.r+c2.i*c2.i));
+public static void main2(String[] args) {
+CollectionViewX<Complex> view = null;
+CollectionView<ComplexAdder2> tmp = view.gather(new ComplexAdder2());
+return a;
 }
-public boolean equals(Object o){
-if(o.getClass() != Complex.class){
+
+@Override
+public ComplexAdder2 map(Complex a, ComplexAdder2 b) {
+if (b == null) {
 

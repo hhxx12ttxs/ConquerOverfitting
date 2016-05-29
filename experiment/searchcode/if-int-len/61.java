@@ -1,12 +1,7 @@
-public int sumLimit(int a, int b) {
-String a = a + &quot;&quot;;
-int lenA = a.length();
-int sum = a + b;
-String sumString = sum + &quot;&quot;;
-int lenS = sumString.length();
-if (lenA == lenS) {
-return sum;
-}
-return a;
-}
+public class Solution {
+public int minCut(String s) {
+int len = s.length();
+int[] f = new int[len+1];
+boolean[][] p = new boolean[len][len];
+// the worst case is cutting by each char
 

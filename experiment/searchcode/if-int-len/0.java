@@ -1,12 +1,9 @@
-if(A.length < 2){
-return A.length;
-}
-int len = 2;
-for(int i = 2;i < A.length;i++){
-if(A[i] != A[len - 2]){
-A[len] = A[i];
-len++;
-}
-}
-return len;
+public int[] merge(int[] L, int[] R){
+int lenL = L.length;
+int lenR = R.length;
+int[] merged = new int[lenL+lenR];
+int i = 0;
+int j = 0;
+while(i<lenL||j<lenR){
+if(i<lenL &amp; j<lenR){
 

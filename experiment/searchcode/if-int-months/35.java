@@ -1,16 +1,14 @@
-   */
-  public static void shiftMonths(Date date, int months) {
-    if (months != 0) {
-    shiftMonths(curMonthAndYear, deltaMonths);
-   */
-  public static int diffDays(Date start, Date finish) {
-    if (hasTime(start)) {
-   */
-  public static void shiftDays(Date date, int days) {
-    date.setDate(date.getDate() + days);
-   */
-  public void shiftCurrentMonth(int deltaMonths) {
-  /**
-   * Shift the date by the given number of months.
-   * 
+int n = daysAvailable.length;
+double items = 0;
+int months = 0;
+for(int i=0;i<n;i++){
+if(daysAvailable[i]!=0){
+items += (sales[i]*30.0/daysAvailable[i]);
+months ++;
+}
+}
+
+return   (int)(Math.ceil(items*1.0/months-1e-9));
+}
+}
 

@@ -1,10 +1,12 @@
-public class Solution {
-public int removeElement(int[] A, int elem){
-int len = A.length;
-
-int i = 0;
-while( i <= len-1 ){
-if( A[i] == elem ){
-while( i < len-1 ){
-if( A[len-1] == elem ){
+public void relpace(char[] str, int len)
+{
+if (str == null || str.length == 0)
+return;
+int newLen = len;
+for (int i = 0; i < len; i++)
+{
+if (str[i] == &#39; &#39;)
+newLen += 2;
+}
+str[newLen] = &#39;\0&#39;;
 

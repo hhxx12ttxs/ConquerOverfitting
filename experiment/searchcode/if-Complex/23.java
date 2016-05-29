@@ -1,17 +1,11 @@
-/*
-* Created on Feb 23, 2006
-*/
-package de.torstennahm.math;
+public class Complex extends Number
+{
+double imaginary;
 
-
-public class Complex {
-public boolean equals(Object o) {
-if (o instanceof Complex) {
-Complex c = (Complex) o;
-return c.r == r &amp;&amp; c.i == i;
-} else {
-return false;
-}
-}
-}
+public Complex ( double re
+Number add ( Number operand)
+{
+if (operand instanceof Complex)
+{ Complex cmplx = (Complex) operand;
+return new Complex( real + cmplx.real, imaginary + cmplx.imaginary);
 

@@ -1,10 +1,11 @@
-package Algebra;
+// ------------
+// Complex.java
+// ------------
 
-public class FastFourierTransform {
-private Complex[] fft(Complex[] x) {
-int N = x.length;
-
-if (N == 1)
-return new Complex[] {x[0]};
-Complex[] arr = new Complex[N >> 1];
+class MyComplex {
+private int _r;
+private int _i;
+public boolean equals (Object rhs) {
+if (!(rhs instanceof MyComplex))
+return false;
 

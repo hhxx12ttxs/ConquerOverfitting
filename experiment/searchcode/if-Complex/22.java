@@ -1,17 +1,8 @@
-/*
-* Created on Feb 23, 2006
-*/
-package de.torstennahm.math;
+Complex a = this;
+switch(n){
 
+case 1 : if(n == 1); a = new Complex(power*Math.cos(n*phase),power*Math.sin(n*phase));
+break;
 
-public class Complex {
-public boolean equals(Object o) {
-if (o instanceof Complex) {
-Complex c = (Complex) o;
-return c.r == r &amp;&amp; c.i == i;
-} else {
-return false;
-}
-}
-}
+case 2 : if( n == 2); a = new Complex(power*cos2x,power*sin2x);
 

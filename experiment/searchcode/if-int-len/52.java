@@ -1,22 +1,6 @@
-
-
-
-
 public class Solution {
-public int searchInsert(int[] A, int target) {
-int len = A.length;
-
-if( target > A[len-1] ){
-return len;
-}
-
-for( int i = 0; i <= len-1; i++ ){
-if( target <= A[i] ){
-return i;
-}
-}
-
-return -1;
-}
-}
+public int removeDuplicates(int[] A) {
+int n = A.length, len = -1, c = 2-1, comp = 0;
+for(int i=0; i<n; i++) {
+if(i == 0 || A[i] != A[len]) {
 

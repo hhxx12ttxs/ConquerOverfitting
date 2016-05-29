@@ -1,11 +1,22 @@
-public String conCat(String a, String b) {
-int len = a.length();
-int lenB = b.length();
-if (len <= 0) {
-return b;
+int len = A.length;
+
+if (len == 0 || len == 1) {
+return len;
 }
-if (lenB <= 0) {
-return a;
+
+int i = 0;
+int j = 1;
+
+while (j < len) {
+if (A[j] != A[j - 1]) {
+i++;
+A[i] = A[j];
 }
-if (a.substring(len-1, len).equals(b.substring(0, 1))) {
+
+j++;
+}
+
+return i + 1;
+}
+}
 

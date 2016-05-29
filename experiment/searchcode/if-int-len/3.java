@@ -1,9 +1,10 @@
-public int[] merge(int[] L, int[] R){
-int lenL = L.length;
-int lenR = R.length;
-int[] merged = new int[lenL+lenR];
-int i = 0;
-int j = 0;
-while(i<lenL||j<lenR){
-if(i<lenL &amp; j<lenR){
+public int removeDuplicates(int[] A) {
+int len = 0;
+if(A.length == 0)
+return 0;
+for(int i = 0; i<A.length; ) {
+A[len] = A[i];
+int times = 1;
+do {
+if(times == 2) {
 

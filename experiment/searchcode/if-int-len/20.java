@@ -1,12 +1,10 @@
-public void relpace(char[] str, int len)
-{
-if (str == null || str.length == 0)
-return;
-int newLen = len;
-for (int i = 0; i < len; i++)
-{
-if (str[i] == &#39; &#39;)
-newLen += 2;
-}
-str[newLen] = &#39;\0&#39;;
+public static void   mergeSortedArray(int[] A, int m, int[] B, int n) {
+
+int lenA=m-1;
+int lenB=n-1;
+int len=m+n-1;
+
+
+for(int i=len; i>=0;i--){
+if (lenB>=0&amp;&amp; lenA>=0){
 
