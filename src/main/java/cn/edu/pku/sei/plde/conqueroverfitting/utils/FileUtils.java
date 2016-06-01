@@ -41,7 +41,7 @@ public class FileUtils {
 			for (File subFile : subFiles) {
 				if (subFile.isDirectory()) {
 					fileList.add(subFile);
-				} else if (subFile.getName().endsWith(".java")) {
+				} else if (subFile.getName().endsWith(".code")) {
 					filesPath.add(subFile.getAbsolutePath());
 				}
 			}

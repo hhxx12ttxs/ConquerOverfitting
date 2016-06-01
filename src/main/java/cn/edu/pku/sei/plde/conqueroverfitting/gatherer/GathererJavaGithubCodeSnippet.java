@@ -95,7 +95,7 @@ public class GathererJavaGithubCodeSnippet {
             for(int i = 0; i < codeSnippets.size(); i ++) {
                 //System.out.println("i = " + i);
                 //System.out.println(codeSnippets.get(i));
-                FileUtils.writeFile("experiment//searchcode//" + packageName + "//" + i + ".java", codeSnippets.get(i));
+                FileUtils.writeFile("experiment//searchcode//" + packageName + "//" + i + ".code", codeSnippets.get(i));
             }
         } catch (Exception e) {
             e.printStackTrace();
